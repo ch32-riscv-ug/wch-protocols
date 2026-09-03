@@ -44,7 +44,7 @@ target(チップ)に到達する経路は 4 つあり、通る層が違う。詳
 | PC 側 USB ドライバ層(**Windows は 2 系統**) | [protocols/pc-usb-driver.ja.md](protocols/pc-usb-driver.ja.md) | Windows **verified** / 他 attested |
 | PC ↔ WCH-Link(USB) | [protocols/pc-to-link.ja.md](protocols/pc-to-link.ja.md) | **大半 verified**(実機 capture 済み) |
 | RISC-V Debug Module(DMI 上) | [protocols/riscv-debug-module.ja.md](protocols/riscv-debug-module.ja.md) | **大半 verified** |
-| WCH-Link ↔ target(SWIO/RVSWD 線) | [protocols/link-to-target.ja.md](protocols/link-to-target.ja.md) | **todo**(線上エンコードは未解読) |
+| WCH-Link ↔ target(SWIO/RVSWD 線) | [protocols/link-to-target.ja.md](protocols/link-to-target.ja.md) | **RVSWD 線は attested**(bit フレーム判明)/ SWIO は todo |
 | PC ↔ target(factory ISP、USB / UART シリアル) | [protocols/pc-to-device-isp.ja.md](protocols/pc-to-device-isp.ja.md) | **attested**(先行実装一致・自前 capture 未) |
 | target 側シリアル I/O(WCH IAP / USART printf / SDI printf、全シリーズ表) | [protocols/serial-and-print.ja.md](protocols/serial-and-print.ja.md) | **attested**(WCH 公式 EVT ソース) |
 | custom bootloader(DFU/UF2/UART/HID/OTA、実装事例) | [protocols/custom-bootloader.ja.md](protocols/custom-bootloader.ja.md) | **reference / attested** |

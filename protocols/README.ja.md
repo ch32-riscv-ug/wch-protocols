@@ -7,7 +7,7 @@
 | [pc-usb-driver.ja.md](pc-usb-driver.ja.md) | PC 側 USB ドライバ層(host が device を開く。**Windows は 2 系統**) | L1/L2 の PC 側境界(全 USB 経路に共通) | Windows **verified** / 他 attested |
 | [pc-to-link.ja.md](pc-to-link.ja.md) | PC ↔ WCH-Link(USB) | L2 転送 + L3 WCH cmd | **大半 verified** |
 | [riscv-debug-module.ja.md](riscv-debug-module.ja.md) | RISC-V Debug Module(DMI 上) | L3 DMI + L4 DM | **大半 verified** |
-| [link-to-target.ja.md](link-to-target.ja.md) | WCH-Link ↔ target(SWIO/RVSWD 線) | L1 物理 + L2 線上 DMI | **todo** |
+| [link-to-target.ja.md](link-to-target.ja.md) | WCH-Link ↔ target(SWIO/RVSWD 線) | L1 物理 + L2 線上 DMI | **RVSWD bit フレーム attested** / SWIO todo |
 | [pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) | PC ↔ target(factory ISP、**USB / UART シリアル**) | L3 ISP | **attested** |
 | [serial-and-print.ja.md](serial-and-print.ja.md) | target 側シリアル I/O(**WCH IAP** / USART printf / SDI printf、**全シリーズ対応表**) | L3/L4 target firmware | **attested**(WCH 公式 EVT ソース) |
 | [custom-bootloader.ja.md](custom-bootloader.ja.md) | custom bootloader(DFU/UF2/UART/HID/OTA、実装事例) | L3 各 bootloader | **reference / attested** |
