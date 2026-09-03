@@ -22,7 +22,50 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 - 1 線 target は **LinkE/LinkW のみ**(旧 CH549 Link は不可)。
 - 実運用の非対称は [pc-to-link.ja.md](pc-to-link.ja.md) の family パラメータ(stub・data packet・write pack)に出る。
 
-## 3. 第三者実装(解読の一次資料)
+## 3. RVSWD 2 線の線上フレーム(具体)
+
+状態: **attested**(fxsheep のリバース解析 + RINS が一致。自前ロジアナ実測で `verified` 化が要る)。出典: [WCH RVSWD protocol 解析](https://github-wiki-see.page/m/fxsheep/openocd_wchlink-rv/wiki/WCH-RVSWD-protocol)、Swindle `doc/rvswd.jpg`。
+
+**要点: RVSWD の 1 トランザクション = RISC-V DTM の `dmi` レジスタ(addr7 + data32 + op2)そのもの**。つまり USB の `DmiOp`(cmd `0x08`、payload `[addr, data_be32, op]`。[pc-to-link.ja.md](pc-to-link.ja.md) §4)は、この線上フレームを byte 詰めしただけ。WCH-Link は透過ブリッジ。
+
+### 信号とアイドル
+
+- 2 線: **SWDIO(data)/ SWCLK(clock)**。無トランザクション時は**両方 HIGH**。
+- pin 名は ARM SWD に似るが**別 protocol**(RISC-V Debug 0.13、designer=WCH)。
+
+### start / reset
+
+- RISC-V mode で起動時、SWDIO/SWCLK を HIGH にし、**IO を HIGH のまま 100 クロック(100 個の 1)を送り、STOP 条件**を出す(初期化)。
+
+### bit の駆動と sample
+
+- **clock が HIGH の間に bit を sample**(SWDIO=HIGH → 1、LOW → 0)。
+- **data は clock が LOW の間だけ変化**させる。
+- **全フィールド MSB first**。
+
+### 1 トランザクションのフレーム(順に)
+
+| 位相 | 送信側 | bit 数 | 内容 |
+|---|---|---:|---|
+| Address | host | **7** | DMI レジスタ番地 |
+| Data | host | **32** | 書込データ(read 時は don't-care) |
+| Operation | host | **2** | op(RISC-V DTM: 0 nop / 1 read / 2 write) |
+| Parity1 | host | **1** | Address+Data+Operation の **odd parity** |
+| Address | target | **7** | エコー |
+| Data | target | **32** | 読出データ |
+| Status | target | **2** | status(0 success / 2 failed / 3 busy) |
+| Parity2 | target | **1** | Address+Data+Status の **even parity** |
+
+- host 位相(7+32+2+1)→ target 位相(7+32+2+1)と続き、明示の turnaround bit は文書化されていない(位相の並びで暗黙に切替)。
+- これは [riscv-debug-module.ja.md](riscv-debug-module.ja.md) の DMI トランザクションと 1:1(op/status のコード、addr=DMDATA0=`0x04`/DMCONTROL=`0x10` 等がそのまま線上の 7bit addr に乗る)。
+- USB `DmiOp` 応答 `[addr, data_be32, status]` の status(0/2/3)も、この target 位相の 2bit status と同じ。
+
+### まだ不明
+
+- STOP 条件の波形詳細(SWDIO 遷移のタイミング)、クロック周波数、複数トランザクション間のアイドル規則。
+- RVSWD の 7bit addr が RISC-V 標準 DTM(通常 abits 可変)とどう対応するか(WCH は 7bit 固定と観測)。
+
+## 4. 第三者実装(解読の一次資料)
 
 WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数あり**、線上を解読するならこれらが出発点。
 
@@ -41,24 +84,24 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 
 | 実装 | probe | 参考価値 |
 |---|---|---|
-| [Swindle](https://github.com/mean00/swindle) | RP2040 PIO | `rvswd.pio` が **start/stop・clock・turnaround・read/write** を生成。Black Magic 由来の target 層。V203/208/303/305/307 を識別(GPL-3.0 系に注意) |
+| [Swindle](https://github.com/mean00/swindle) | RP2040 | **RVSWD の protocol 図 `doc/rvswd.jpg`** が最も分かりやすい。RP2040 firmware が線を生成し host は BMP-remote 経由(`blackmagic_addon/hosted/remote_rv_protocol.c`)。target 層は `blackmagic_addon/target/CH32V3xx/`。V203/208/303/305/307。GPL-3.0 系。**現行 repo に `rvswd.pio` は無い**(§3 の bit 仕様は attic + fxsheep から) |
 | [rvswdio_programmer](https://github.com/cnlohr/rv003usb/tree/master/rvswdio_programmer) | CH32V003 | RVSWD read/write、V003/00x/20x/30x/X03x 等を掲げる |
 | ESP32-S2 funprog | ESP32-S2 | SWCLK pin・RVSWD read/write・family 検出あり(非 V003 の検証範囲は不明確) |
 | [RINS](https://perigoso.github.io/rins/) | — | 第三者実装向けに **RVSWD の物理・論理層を文書化**(「SWD ではない」と明記) |
 | [WCH RVSWD protocol 初期解析](https://github-wiki-see.page/m/fxsheep/openocd_wchlink-rv/wiki/WCH-RVSWD-protocol) | — | 早期リバース。RINS と整合 |
 
-## 4. 未解読 / 要調査
+## 5. 未解読 / 要調査
 
-- SWIO 1 線の bit タイミング/フレーミング、pull-up 前提。
-- RVSWD 2 線のクロック/データ極性・turnaround・パケット構造(Swindle `rvswd.pio` が最も具体的)。
-- DMI トランザクション(addr/data/op)の線上ビット配置・ACK/parity。
-- entry シーケンス(target を debug mode に入れる初期化)、1/2 線切替 target の判定。
+- **SWIO 1 線**の bit タイミング/フレーミング(pulse 幅符号化)、pull-up 前提。RVSWD(§3)ほど整理された公開解析がまだ無い。
+- RVSWD の STOP 条件波形・クロック周波数・トランザクション間アイドル(§3 末尾)。
+- 1/2 線切替 target の判定と entry シーケンス(debug mode 突入の初期化)。
+- §3 の bit 仕様をロジアナ自前実測で `verified` 化。
 
-## 5. 調査の入口
+## 6. 調査の入口
 
-1. Swindle `rvswd.pio`(2 線)/ PicoRVD PIO(1 線)を読み、波形の生成規則を抽出。
-2. ロジックアナライザで LinkE ↔ target を実測し、[riscv-debug-module.ja.md](riscv-debug-module.ja.md) の DMI トランザクションと対応付ける。
-3. RINS の論理層記述で裏を取り、解読できたら status を上げる。
+1. §3 の RVSWD フレームをロジックアナライザで LinkE ↔ target 実測し、[riscv-debug-module.ja.md](riscv-debug-module.ja.md) の DMI トランザクション(addr/data/op/status)と 1:1 対応を確認。
+2. SWIO(1 線)は PicoRVD PIO / cnlohr minichlink の bit-bang を読み、pulse 幅規則を抽出。
+3. RINS の論理層記述と fxsheep 解析で裏を取り、status を上げる。
 
 ## 参照
 

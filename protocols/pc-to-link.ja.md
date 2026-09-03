@@ -54,7 +54,7 @@ payload は「cmd の後」を示す。応答が生バイト(frame 無し)の場
 | `0x0c` | `[family, speed]` | **SetSpeed**。attach 前は family 不明のため `0x01` を送る。speed は high=`0x01` / medium=`0x02` / low=`0x03`(**逆順注意**) | **verified** |
 | `0x08` | `[addr, data_be32, op]`(6B) | **DmiOp**。op=0 nop / 1 read / 2 write。応答 6B `[addr, data_be32, status]`(status=0 success / 2 failed / 3 busy)。busy は再試行 | **verified**(DM 経由で全 GPR・PC・flash/RAM を読み wlink dump とバイト一致) |
 
-DmiOp が RISC-V Debug Module への窓口。その先の DM レジスタ操作は [riscv-debug-module.ja.md](riscv-debug-module.ja.md)。
+DmiOp が RISC-V Debug Module への窓口。その先の DM レジスタ操作は [riscv-debug-module.ja.md](riscv-debug-module.ja.md)。**この `[addr, data_be32, op]` は RVSWD 線上フレーム(addr7+data32+op2)を byte 詰めしたもの**で、WCH-Link は透過ブリッジ(→ [link-to-target.ja.md](link-to-target.ja.md) §3)。
 
 ## 5. flash 書き込み経路
 
