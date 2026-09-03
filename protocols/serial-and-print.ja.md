@@ -60,7 +60,16 @@ target に IAP bootloader を焼いておくと、以降は WCH-Link 無しで U
 0xAA 0x55 | 0x00 | status(0x00 ok / 0x01 err) | 0x55 0xAA
 ```
 
-- USB 経由も同じコマンド体系(USBFS device の endpoint に載る)。UART は USART2・**460800 baud** が既定(EVT の `USART2_CFG(460800)`)。
+### USB フレーム(EP2、X035 例)
+
+USB 側は **sync head / checksum を使わない**(USB が framing を担う)。EP2 の 64B packet に **`isp_cmd` 構造体をそのまま載せる**:
+
+- USB device: **VID:PID = `1A86:55E0`**(descriptor)。**EP2 OUT / EP2 IN、max packet 64B**(`UEP2_TX_LEN=8` 初期、RX 64)。
+- packet レイアウト(`isp_cmd` union、`USBD_DATA_SIZE=64`):
+  - 汎用/PROM: `Cmd(1) | Len(1) | data[..]`
+  - ERASE/VERIFY: `Cmd(1) | Len(1) | addr[4] | data[56]`
+- **PROM の挙動**: 受信データを内部バッファに貯め、**256 byte たまるごとに 1 page erase + program、`Program_addr += 0x100`(256)で自動前進**。→ USB 側は明示アドレス無しで先頭から順次書く。
+- 同一 device が USB(EP2)と UART(USART2)を同時に待つ(`RecData_Deal`=USB / `UART_RecData_Deal`=UART)。UART は USART2・**460800 baud** 既定(`USART2_CFG(460800)`)。
 - **series 差**: V003/V006 は USB を持たないため IAP サンプルは `V00x_APP`(UART 系)。V103/M030 は `UART_USB_IAP`、V20x/V205/V307/V407/L103/X035/X315/H417 は `USB_UART`(§4 表)。
 
 ## 2. USART printf(物理 UART への printf)
@@ -82,6 +91,10 @@ EVT の `SDI_Printf` サンプル。**target が debug data レジスタ(memory-
   - 1 フレーム最大 **7 byte**: `DATA1 = buf[3..7]`(4B)、`DATA0 = count | buf[0]<<8 | buf[1]<<16 | buf[2]<<24`(**低 byte = 長さ(≤7)、上位 3 byte = 先頭 3 文字**)。
   - host は DATA0 低 byte ≠ 0 を見て count + 7 byte を取り出し、`DATA0 = 0` を書いて ACK。
 - **DEBUG_DATA0/1 のアドレスは core 世代で違う**(§4 表)。DMI から見た DMDATA0/DMDATA1(`0x04`/`0x05`)と同じ郵便受けの、target 側 memory-mapped view。
+- **DATA0 低 byte の 2 方式に注意**(同じ郵便受け・別 encode):
+  - **WCH EVT SDI_Printf**(本節・LinkE が CDC へ forward): 低 byte = **長さ(1..7)**、host は非 0 で読取。
+  - **ch32fun/minichlink SerialDMDATA(`-T` terminal)**: 低 byte = **`0x80 | (count+4)`**、host は **bit7=1** で読取、`DATA0=0` 書きで ACK(host→target 入力も同載)。ch32rv の `dmdata` はこちら。
+  - → host 側実装はどちらの target firmware かで読み分ける。
 
 ## 4. 対応シリーズ表(EVT 実測)
 
@@ -126,8 +139,8 @@ EVT の `SDI_Printf` サンプル。**target が debug data レジスタ(memory-
 
 ## 6. 要 capture(verified 化)
 
-- WCH IAP: WCHMcuIAP_WinAPP.exe の USB / UART 各 capture で、USB 側フレーム(endpoint・枠)と PROM のアドレス進行を確定。
-- SDI printf: dmdata polling の実往復と EVT `_write` の対応をバイトで突き合わせ(host 側は一部 verified、target 郵便受け方式は本書で確定)。
+- WCH IAP: UART frame(§1)・USB frame(EP2/`isp_cmd`/256B page 前進、§1)とも **EVT ソースから確定済み**。残るは WCHMcuIAP_WinAPP.exe の実 capture で host↔device の往復順序を照合し `verified` へ。
+- SDI printf: dmdata polling の実往復と EVT `_write`(§3、2 方式)をバイトで突き合わせ(host 側は一部 verified、target 郵便受け方式は本書で確定)。
 - 各シリーズの USART/IAP ピン・baud は EVT 既定。基板ごとの実配線は個別確認。
 
 ## 参照

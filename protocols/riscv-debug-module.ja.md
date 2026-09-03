@@ -28,12 +28,14 @@
 | **read_reg**(GPR/CSR/PC) | DMDATA0=0 → DMCOMMAND=`0x00220000 \| regno`(GPR=`0x1000+n`, PC=dpc=`0x7b1`)→ ABSTRACTCS busy 待ち → DMDATA0 読み | verified |
 | **write_reg** | DMDATA0=value → DMCOMMAND=`0x00230000 \| regno` → busy 待ち | verified |
 | **step**(1 命令) | dcsr(CSR `0x7b0`)の step(bit2)を立てて write_reg → resume → 再 halt を待つ → step クリア | verified(V203 で PC 前進を確認) |
-| **read_mem32** | PROGBUF0=`0x0002a303`(`lw x6,0(x5)`)・PROGBUF1=`0x00100073`(`ebreak`)→ DMDATA0=addr → DMCOMMAND=`0x00271005`(x5←data0 + postexec)→ DMCOMMAND=`0x00221006`(data0←x6)→ DMDATA0 読み | verified |
+| **read_mem32** | PROGBUF0=`0x0002a303`(`lw x6,0(x5)`)・PROGBUF1=`0x00100073`(`ebreak`)→ DMDATA0=addr → cmderr クリア → DMCOMMAND=`0x00271005`(x5←data0 + postexec)→ abstract 待ち → DMCOMMAND=`0x00221006`(data0←x6)→ abstract 待ち → DMDATA0 読み | verified |
+| **write_mem32** | PROGBUF0=`0x0072a023`(`sw x7,0(x5)`)・PROGBUF1=`0x00100073`(`ebreak`)→ DMDATA0=addr → cmderr クリア → DMCOMMAND=`0x00231005`(x5←data0)→ 待ち → DMDATA0=data → cmderr クリア → DMCOMMAND=`0x00271007`(x7←data0 + postexec で `sw`)→ 待ち | verified |
+| **write_mem16** | write_mem32 と同手順で PROGBUF0 のみ `0x00729023`(`sh x7,0(x5)`)。**V103 の標準 flash に必須**(16bit store ごとに FLASH controller が latch。`sw` では不可)→ [pc-to-link.ja.md](pc-to-link.ja.md) §6 | verified |
 
 - **DMABSTRACTCS**: busy=bit12、cmderr=bits[10:8](書き戻しでクリア)。
 - **DMSTATUS**: allrunning=bit11 / anyrunning=bit10 / allhalted=bit9 / anyhalted=bit8。
-
-**write_mem16**(V103 の flash に必要): PROGBUF0=`0x00729023`(`sh x7,0(x5)`)を使う。→ [pc-to-link.ja.md](pc-to-link.ja.md) §6 の V103 flash。
+- **DMCOMMAND(abstract register access)の読み方**: `0x0027xxxx`=transfer+postexec、`0x0023xxxx`=write(transfer, write bit)、`0x0022xxxx`=read(transfer)。下位 16bit が regno(GPR=`0x1000+n`: x5=`0x1005`, x6=`0x1006`, x7=`0x1007`)。read_mem/write_mem は「addr/data を DMDATA0 経由で x5/x7 に載せ、progbuf の lw/sw/sh を postexec」で成立する。
+- **任意長 write/read**(`write_mem`/`read_mem`)は word 単位で write_mem32/read_mem32 を回し、端の word は read-modify-write で byte 粒度を保つ。
 
 ## breakpoint の土台
 

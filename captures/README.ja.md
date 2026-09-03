@@ -30,6 +30,21 @@
 
 ## 参照 fixture
 
-初期は capture を置いていない。実機 capture を追加したらここに fixture(と対応する操作・機材・firmware 版のメモ)を置く。firmware 版で挙動が変わる項目(§10 版差、消去済みセルの read 値)は**版ごとに**記録する。
+[`fixtures/`](fixtures/) に実機 capture を置く。命名例: `<操作>-<target>-fw<版>.ndjson`。firmware 版で挙動が変わる項目(消去済みセルの read 値など)は**版ごとに**記録する。
 
-命名例: `<操作>-<target>-fw<版>.ndjson`(例 `flash-ch32v307-fw2.22.ndjson`)。
+### `fixtures/target-info-v307.ndjson`(attach + identify、LinkE fw2.22 → CH32V307)
+
+`target info` 相当の全往復。[pc-to-link.ja.md](../protocols/pc-to-link.ja.md) の各コマンドが実バイトでどう並ぶかの worked example(cmd EP、`81`=OUT/`82`=IN):
+
+| seq | dir | data | 意味([pc-to-link.ja.md](../protocols/pc-to-link.ja.md)) |
+|---|---|---|---|
+| 0/1 | out/in | `810d01ff` / `820d01ff` | **DetachChip**(セッション前クリア、§4 `0x0d 0xff`) |
+| 2/3 | out/in | `810d0101` / `820d04 02 16 12 00` | **GetProbeInfo**(§4)。応答 `[02,16,12,00]` = fw **2.22**・variant `0x12`(LinkE)・mode 0(RISC-V) |
+| 4/5 | out/in | `810c02 01 01` / `820c0101` | **SetSpeed**(§4 `0x0c`)。attach 前なので family=`0x01` placeholder、speed high=`0x01` |
+| 6/7 | out/in | `810d0102` / `820d05 06 30700528` | **AttachChip**(§4 `0x0d 0x02`)。応答 = family **`0x06`**(V30x)+ chip_id `0x30700528` |
+| 8/9 | out/in | `81110105` / (20B) `ffff 0120 7bbed00a9c1c5054 e339e339 30700528` | **ChipInfo**(§4 `0x11 0x05`、frame 無し生 20B)。flash_kb be16=`0x0120`=**288 KiB**、UUID `7bbed00a9c1c5054`、protection `e339e339`、chip_id `30700528` |
+| 10/11 | out/in | `810d01ff` / `820d01ff` | **DetachChip**(解放) |
+
+注: seq 6→7 の応答が ~62ms 後(`t_us` 5338→67590)。attach は target を掴むため時間がかかる。この fixture は ch32rv の replay 統合テストにも使われる決定的シーケンス。
+
+以降、実機 capture(flash / erase / DMI / ISP / DAP など)を追加する。
