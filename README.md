@@ -54,6 +54,8 @@ target(チップ)に到達する経路は 4 つあり、通る層が違う。詳
 
 status 語彙: `verified`(自前 capture で確認)/ `attested`(複数の先行実装が一致)/ `single-source`(単一実装のみ)/ `conflict`(実装間で矛盾。要 capture)/ `todo`(存在の証拠のみ)。
 
+各ドキュメントの**実装可否判定と、穴・次に集める情報**は [coverage.ja.md](coverage.ja.md)。
+
 ## ディレクトリ
 
 - [`guides/`](guides/) — 全体を説明するガイド(初心者向け [overview.ja.md](guides/overview.ja.md) / 上級者向け [advanced.ja.md](guides/advanced.ja.md))
