@@ -60,10 +60,17 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 - これは [riscv-debug-module.ja.md](riscv-debug-module.ja.md) の DMI トランザクションと 1:1(op/status のコード、addr=DMDATA0=`0x04`/DMCONTROL=`0x10` 等がそのまま線上の 7bit addr に乗る)。
 - USB `DmiOp` 応答 `[addr, data_be32, status]` の status(0/2/3)も、この target 位相の 2bit status と同じ。
 
+### SWIO 1 線との関係(transaction は同じ、bit 符号化だけ違う)
+
+- **SWIO も運ぶ中身は同じ DMI トランザクション**。minichlink の programmer 抽象は 1 線/2 線とも `WriteReg32(reg_7bit, u32)` / `ReadReg32(reg_7bit, *u32)` = **7bit reg + 32bit data**(= §3 の RVSWD host 位相と同一)。
+- 違いは**物理だけ**: RVSWD は clock 線で bit を刻む。SWIO は clock 線が無く、**1 本の line を host が LOW に引くパルスの幅で 0/1 を符号化**する(line は pull-up で HIGH がアイドル)。
+- **exact な pulse 幅/タイミングは未確定**(gap)。一次資料候補: WCH `CH32V003RM`(datasheet の debug/SDI 章)、cnlohr の bit-bang firmware(ESP32-S2 funprog / AVR zooswio の timing)。
+
 ### まだ不明
 
-- STOP 条件の波形詳細(SWDIO 遷移のタイミング)、クロック周波数、複数トランザクション間のアイドル規則。
-- RVSWD の 7bit addr が RISC-V 標準 DTM(通常 abits 可変)とどう対応するか(WCH は 7bit 固定と観測)。
+- (RVSWD)STOP 条件の波形詳細(SWDIO 遷移のタイミング)、クロック周波数、複数トランザクション間のアイドル規則。
+- (RVSWD)7bit addr が RISC-V 標準 DTM(通常 abits 可変)とどう対応するか(WCH は 7bit 固定と観測)。
+- (SWIO)LOW パルス幅の 0/1 閾値・start/frame・turnaround の実値。
 
 ## 4. 第三者実装(解読の一次資料)
 
