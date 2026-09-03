@@ -28,43 +28,44 @@
 | ファイル | 判定 | これで作れるもの | 不足(byte 単位で足りない点) |
 |---|---|---|---|
 | [pc-to-link](protocols/pc-to-link.ja.md) | **実装可** | attach/probe info/chip info/setspeed/DMI/flash(stub + 直接 FLASH controller)/erase/power/monitor | error 応答 frame 形式(§3 todo)、§12 の未解読 vendor cmd(mode 切替等) |
-| [riscv-debug-module](protocols/riscv-debug-module.ja.md) | **実装可(read 系)** | halt/resume/step/read_reg/write_reg/read_mem32/breakpoint/semihosting | **write_mem32/8 の一般手順が未記載**(read_mem32 と対称。DMCOMMAND の transfer/write bit 実値は ch32rv-dmi 実装から転記要)、abstract autoexec 詳細 |
+| [riscv-debug-module](protocols/riscv-debug-module.ja.md) | **実装可** | halt/resume/step/read_reg/write_reg/**read_mem32/write_mem32/write_mem16**/breakpoint/semihosting。DMCOMMAND encode の読み方も明記 | abstract autoexec 詳細(軽微) |
 | [pc-usb-driver](protocols/pc-usb-driver.ja.md) | **実装可** | 3 OS で device を開く。Windows 純正(CH375 IOCTL)含む | HID/CDC-GDB probe 系の driver 差(軽微) |
-| [serial-and-print](protocols/serial-and-print.ja.md) | **実装可(UART IAP / USART / SDI target 側)** | WCH IAP UART 更新、USART printf、SDI printf(target)、host dmdata 対応 | **WCH IAP の USB frame(usbfs_device.c 未転記)**、series 別 IAP frame 差 |
+| [serial-and-print](protocols/serial-and-print.ja.md) | **実装可(IAP UART+USB / USART / SDI target 側)** | WCH IAP 更新(UART+**USB EP2 frame 確定**)、USART printf、SDI printf(target・**dmdata 2 方式**)、host dmdata 対応 | series 別 IAP frame 差(軽微)、WCHMcuIAP 往復順序の capture 照合 |
 | [pc-to-device-isp](protocols/pc-to-device-isp.ja.md) | **部分的** | コマンド体系・遷移の理解、V003 factory BL の入口 | **XOR key 生成算法(chip 系列別)**、USB/UART の**実 frame byte**、Erase sector 数エンコード。自前 capture 必須 |
 | [custom-bootloader](protocols/custom-bootloader.ja.md) | **reference** | どの実装をどう選ぶか。共通仕様項目 | 各 BL(wch-uf2/Swindle DFU/PlumBL)の header/CRC/entry 実 byte |
 | [software-usb](protocols/software-usb.ja.md) | **reference** | rv003usb の仕組み理解、移植の要点(pin/clock/割込) | USB descriptor / HID report / bootloader stub protocol の実 byte |
 | [link-to-target](protocols/link-to-target.ja.md) | **RVSWD=概ね実装可(要 verify)/ SWIO=部分的** | RVSWD の bit フレーム(addr7+data32+op2+parity)、host 抽象(WriteReg32/ReadReg32) | RVSWD の STOP 波形/クロック周波数、**SWIO の LOW パルス幅 0/1 閾値**。ロジアナ verify |
 | [dap](protocols/dap.ja.md) | **todo** | — | mode 切替の実 byte 手順、CMSIS-DAP v1/v2 判定。DAP mode の capture |
-| [captures](captures/README.ja.md) | (方法論) | capture の取り方・replay 検証 | **実 fixture が repo に未commit** |
+| [captures](captures/README.ja.md) | (方法論 + 実例) | capture の取り方・replay 検証・**注釈付き実 fixture(target-info-v307)** | flash/erase/DMI/ISP/DAP の実 capture は今後追加 |
 | [references/probe-ecosystem](references/probe-ecosystem.ja.md) | (reference) | probe/host ツール選定、参照実装・言語の索引 | — |
 | guides([overview](guides/overview.ja.md)/[advanced](guides/advanced.ja.md)) | (ガイド) | 全体像・層モデル・RE 方法論 | — |
 
 ## 3. 穴と、次に集める情報(優先順)
 
-**P1 — 破壊的でなく効果大**
+**済(このセッションでローカルソースから充填)**
 
-1. **write_mem32/8 の一般手順**(riscv-debug-module): ch32rv-dmi 実装から DMCOMMAND 実値を転記([riscv-debug-module](protocols/riscv-debug-module.ja.md) を read_mem32 と対称に補完)。→ ローカルソースで即完了可。
-2. **capture fixture を repo に置く**([captures](captures/README.ja.md)): ch32rv の `--capture` NDJSON(target-info/flash/read)をコミットし、pc-to-link/riscv-debug の `verified` の証跡にする。
-3. **WCH-Link error 応答 frame 形式**([pc-to-link](protocols/pc-to-link.ja.md) §3 todo): 異常系(target 無し `0x55` 等)の capture 収集。
+- ~~write_mem32/8 の一般手順~~ → [riscv-debug-module](protocols/riscv-debug-module.ja.md) に転記済み(ch32rv-dmi、DMCOMMAND 実値 + encode の読み方)。
+- ~~WCH IAP の USB frame~~ → [serial-and-print](protocols/serial-and-print.ja.md) §1 に確定(EP2 out/in 64B、`isp_cmd` 直載せ、`1A86:55E0`、256B page 自動前進。EVT `ch32x035_usbfs_device.c`)。
+- ~~capture fixture~~ → [captures/fixtures/target-info-v307.ndjson](captures/fixtures/target-info-v307.ndjson) を注釈付きでコミット。
+- SDI/dmdata の **2 方式**(EVT=長さ / ch32fun=`0x80|(count+4)`)を [serial-and-print](protocols/serial-and-print.ja.md) §3 に明記。
 
-**P2 — 要 capture(実機/純正ツール)**
+**P1 — 要 capture(実機・軽い)**
 
-4. **factory ISP を byte 単位で確定**([pc-to-device-isp](protocols/pc-to-device-isp.ja.md)): WCHISPTool の USB / Serial 各モードを usbmon 収集 → `0xAx` frame・**XOR key 算法(CH32V/CH32X/CH55x 別)**・Erase エンコードを確定。ISP を実装可へ。
-5. **WCH IAP の USB frame**([serial-and-print](protocols/serial-and-print.ja.md) §1): EVT `CH32X035_IAP/ch32x035_usbfs_device.c` から USB endpoint/frame を転記(ローカルにあり)+ WCHMcuIAP の capture。UART は確定済み。
-6. **DAP mode**([dap](protocols/dap.ja.md)): WCH-Link を DAP mode に切替え、mode 切替 byte と CMSIS-DAP のやり取りを capture。
+1. **WCH-Link error 応答 frame 形式**([pc-to-link](protocols/pc-to-link.ja.md) §3 todo): 異常系(target 無し `0x55` 等)の capture 収集。
+2. **flash/erase/DMI の実 capture** を [captures/fixtures/](captures/fixtures/) に追加(ch32rv `--capture` 取得済み。annotate してコミット)。
+
+**P2 — 要 capture(純正ツール)**
+
+3. **factory ISP を byte 単位で確定**([pc-to-device-isp](protocols/pc-to-device-isp.ja.md)): WCHISPTool の USB / Serial を usbmon 収集 → `0xAx` frame・**XOR key 算法(CH32V/CH32X/CH55x 別)**・Erase エンコードを確定。ISP を実装可へ。**残る最大の穴**。
+4. **WCH IAP の往復順序照合**([serial-and-print](protocols/serial-and-print.ja.md) §6): frame は確定済み、WCHMcuIAP の capture で host↔device 順序を照合し `verified` 化。
+5. **DAP mode**([dap](protocols/dap.ja.md)): WCH-Link を DAP mode に切替え、mode 切替 byte と CMSIS-DAP のやり取りを capture。
 
 **P3 — 自作 probe/線を作る場合のみ**
 
-7. **SWIO の pulse 幅タイミング**([link-to-target](protocols/link-to-target.ja.md) §3): `CH32V003RM`(datasheet の debug/SDI 章、ローカル)+ cnlohr bit-bang firmware(ESP32-S2 funprog / AVR zooswio)から抽出。
-8. **RVSWD の bit フレームをロジアナで verify**([link-to-target](protocols/link-to-target.ja.md) §3): attested → verified。STOP 波形・クロックも実測。
-9. custom BL 各実装(wch-uf2 / Swindle DFU / PlumBL)の header/CRC/entry を source から転記([custom-bootloader](protocols/custom-bootloader.ja.md))。
+6. **SWIO の pulse 幅タイミング**([link-to-target](protocols/link-to-target.ja.md) §3): `CH32V003RM`(debug/SDI 章、ローカル)+ cnlohr bit-bang firmware から抽出。transaction 層(7bit+32bit)は確定済み、残るは物理タイミング。
+7. **RVSWD の bit フレームをロジアナで verify**([link-to-target](protocols/link-to-target.ja.md) §3): attested → verified。STOP 波形・クロックも実測。
+8. custom BL 各実装(wch-uf2 / Swindle DFU / PlumBL)の header/CRC/entry を source から転記([custom-bootloader](protocols/custom-bootloader.ja.md))。
 
-## 4. すぐ着手できる(ローカルソースだけで完結)
+## 4. 現況
 
-- P1-1(write_mem 転記、ch32rv-dmi)
-- P1-2(capture fixture コミット、ch32rv)
-- P2-5(IAP USB frame、EVT usbfs_device.c)
-- P3-7(SWIO タイミング、CH32V003RM + cnlohr)
-
-capture が要るのは P1-3 / P2-4 / P2-6 / P3-8(実機・純正ツール・ロジアナ)。
+**① probe 経路は byte 単位で実装可能**(driver / USB / DMI / flash / debug / print が揃った)。残る主な穴は capture 依存: **P2-3(factory ISP の XOR key・実 frame)が最大**、次いで P1-1(error frame)/ P2-5(DAP)/ P3(自作 probe 用の線タイミング)。ローカルソースで埋められるものはこのセッションで概ね充填済み。
