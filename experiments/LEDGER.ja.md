@@ -17,9 +17,10 @@
 
 | ID | 問い | ベンチ | 影響する doc | 状態 |
 |---|---|---|---|---|
-| **E001** | 実機なしで sketch を build・実行し、出力を assert できるか(profile 解決 / `socket://localhost` / 銘板) | **常設 v0**(実機なし。host Arduino core `lang-ship:host:host`) | (規則そのもの) | **完了**([e001_harness_smoke/](e001_harness_smoke/README.ja.md)) |
-| **E002** | 実機で通るか — upload / 実 port(別名パス)の解決 / 実時間の計測 / device lock / DTR reset の挙動 | **常設 v1**(ESP32-S3 1 枚) | [ecosystem-any-hardware](../references/ecosystem-any-hardware.ja.md) §4.5 | 未着手 |
-| **E003** | peer は使えるか(**環境確認のみ**)— 2 台同時 upload / lock が 2 枚に効くか / 片方の GPIO 遷移をもう片方が観測できるか | **常設 v2**(既設 peer 2 枚。GPIO18/19 直結済み、配線変更なし) | [README.ja.md §4.5](README.ja.md) v2 | 未着手 |
+| **E001** | 実機なしで sketch を build・実行し、出力を assert できるか(profile 解決 / `socket://localhost` / 銘板) | **常設 v0**(実機なし。host Arduino core `lang-ship:host:host`) | (規則そのもの) | **完了**([e001_smoke_host/](e001_smoke_host/README.ja.md)) |
+| **E002** | 実機 1 枚で upload → monitor → assert が通り、実時間が取れるか | **常設 v1**(peer 対の HOST 側 `esp32-s3-d0cf1359101c`) | (規則そのもの) | **完了 — 反証**([e002_smoke_board/](e002_smoke_board/README.ja.md)) |
+| **E003** | peer は使えるか(**環境確認のみ**)— 2 台同時 upload / lock が 2 枚に効くか / 片方の GPIO 遷移をもう片方が観測できるか | **常設 v2**(peer 対 2 枚。GPIO18/19 直結済み、配線変更なし) | [README.ja.md §4.5](README.ja.md) v2 | 未着手 |
+| **E004** | host からの trigger で応答させれば、起動時出力の取りこぼし(E002)を回避して銘板と実時間を取れるか | **常設 v1** | (規則そのもの)+ [dmi-bridge](../protocols/dmi-bridge.ja.md) §4.1 の裏付け | **完了**([e004_smoke_board_trigger/](e004_smoke_board_trigger/README.ja.md)) |
 
 順序に意味がある([README.ja.md §4.5](README.ja.md)):
 
@@ -37,6 +38,7 @@
 |---|---|---|---|---|---|
 | `loopback-inject` | loopback phy で DMI status の fail/busy・無応答・CRC 誤りを注入したとき、host は仕様どおり回復するか | **常設 v0**(実機なし) | host Arduino core のみ | 有 | [dmi-bridge](../protocols/dmi-bridge.ja.md) §2–§4/§6 |
 | `dut-scope` | DUT を module scope にできるか(1 実験で複数のテスト関数を書きたいとき)。E001 事実 2 の回避策の一般化 | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §1.3](README.ja.md) |
+| `device-lock` | device lock は 2 プロセス間で実際に効くか(片方が待つか) | **常設 v1** | 実機 1 枚 | 有 | [README.ja.md §7-9](README.ja.md) |
 | `runs-archive` | `_runs/` への結果退避は conftest の teardown で確実に起きるか。失敗した run でも残るか | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §3.4](README.ja.md) |
 | `collection-guard` | bare `pytest` が実験ファイルを収集しないことを、実プロジェクトの構成でも保てるか | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §1.3](README.ja.md) |
 | `banner-autofill` | 銘板の版情報(fw hash / core 版 / 日時)を build 時に自動で埋められるか | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §5](README.ja.md) |
@@ -69,9 +71,9 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 
 ## 3. 記録
 
-### E001 ハーネスのスモーク(実機なし)— 完了 2026-09-04
+### E001 スモーク: 実機なし(host Arduino core)— 完了 2026-09-04
 
-計画・結果の全文: [e001_harness_smoke/README.ja.md](e001_harness_smoke/README.ja.md)。run: `_runs/E001_20260904T050917Z_host/`。
+計画・結果の全文: [e001_smoke_host/README.ja.md](e001_smoke_host/README.ja.md)。run: `_runs/E001_20260904T050917Z_host/`。
 
 **事実**
 
@@ -86,3 +88,34 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: `dut-scope`(DUT の scope 変更が可能か)/ `runs-archive`(退避は今回手動)/ `collection-guard`(bare `pytest` 0 件は観測したのみ)。
 
 **反映**: 規則 §1.3(ファイルパス指定・1 実験 1 テスト関数)、§3.4(`output/` → `build/`)、§8(言語ルール)を更新。仕様の status は動かない。
+
+### E002 スモーク: 実機 1 枚 — 完了 2026-09-04(**仮説は反証された**)
+
+全文: [e002_smoke_board/README.ja.md](e002_smoke_board/README.ja.md)。run: `_runs/E002_*_s3_peer_host/`。
+
+**事実**
+
+1. **upload は通る。** `.env` の**別名パス(`/run/board-identify/by-id/...`)はそのまま port として解決された**。
+2. **`setup()` の出力は 1 行も届かない**(確定的)。銘板 / `SMOKE *` / `CLOCK` の出現回数はいずれも 0。最初に届くのは `HEARTBEAT 1` で、**`HEARTBEAT 0` すら失われている**ことから遅れは **1 秒以上**。
+3. **heartbeat を仕込んでいたおかげで「ボードが死んでいる」と「起動時出力の取りこぼし」を区別できた。**
+4. 実クロック(反証条件 5)は **未測定 `—`**。
+
+**候補**: (a) 銘板の周期再送 / (b) host からの DTR reset(プラグインは ESP 固有 reset を意図的に持たない)/ **(c) host の trigger に応答させる ← 本命**。
+
+**未決**: どれを採るか、実クロックが取れるか → **E004**。
+
+### E004 スモーク: 実機 + host trigger — 完了 2026-09-04
+
+全文: [e004_smoke_board_trigger/README.ja.md](e004_smoke_board_trigger/README.ja.md)。run: `_runs/E004_*_s3_peer_host/`。
+
+**事実**
+
+1. **host が撃って probe が答える形にすれば、監視の接続タイミングに依存しない。** 3/3 で取得、**再送不要(1 発)**。
+2. **実クロックが取れる。** `delayMicroseconds(1000)` に対し `micros()` 差分は **1003 us**(3 回とも同値)。仮想時計と明確に区別できる → **常設 v1 が成立**。
+3. `setup()` で何も出さない設計にすると、`dut.log` に応答だけが残り読みやすい。
+
+**候補**: **実機実験の共通の型 =「host が撃つ → probe が答える」**(採用)。E002 の候補 (a)(b) は試さずに済んだ。
+
+**未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
+
+**反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。

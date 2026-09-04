@@ -1,4 +1,4 @@
-# E001 ハーネスのスモーク(実機なし)
+# E001 スモーク: 実機なし(host Arduino core)
 
 状態: **完了**(2026-09-04)    <!-- 計画 → 実行中 → 完了 / 中断 -->
 
@@ -32,15 +32,15 @@
 
 1. `experiments/` に uv project を作る。依存は `pytest` / `pytest-embedded` / `pytest-embedded-serial` / `pytest-embedded-arduino-cli` のみ。
 2. `experiments/.env` に `TEST_SERIAL_PORT_HOST=socket://localhost` だけを置く(`.env.example` も同時に作る)。
-3. `e001_harness_smoke/` に 3 ファイル:
+3. `e001_smoke_host/` に 3 ファイル:
    - `sketch.yaml` — profile `host` = `lang-ship:host:host`、`port: socket://localhost`、platform を版で pin
-   - `e001_harness_smoke.ino` — `setup()` の先頭で**銘板 1 行**、続けて既知の 3 行(`A`/`B`/`C` のような固定文字列)を出して停止
-   - `e001_harness_smoke.py` — 銘板 → 3 行の順に `expect` する(`test_` を付けない。[規則 §1.3](../README.ja.md))
+   - `e001_smoke_host.ino` — `setup()` の先頭で**銘板 1 行**、続けて既知の 3 行(`A`/`B`/`C` のような固定文字列)を出して停止
+   - `e001_smoke_host.py` — 銘板 → 3 行の順に `expect` する(`test_` を付けない。[規則 §1.3](../README.ja.md))
 4. 実行:
    ```sh
    cd experiments
    uv sync
-   uv run --env-file .env pytest e001_harness_smoke/e001_harness_smoke.py
+   uv run --env-file .env pytest e001_smoke_host/e001_smoke_host.py
    ```
 5. 反証条件のどこで落ちたかを記録する。落ちた場合も、**どこまで進んだか**を段階ごとに残す(build までは通った、等)。
 
@@ -138,7 +138,7 @@ SMOKE done
 2. **DUT はテスト関数ごとに生成される。** 同じファイルに 2 つのテスト関数を書くと、2 つ目の DUT 起動で `SerialException: Could not open port socket://localhost:<port>: Connection refused` になった(1 つ目は pass)。**1 実験 1 テスト関数**にまとめると 3/3 で通る。
 3. **ビルド生成物は `<実験>/build/<profile>/` に出る**(`output/` ではない)。plugin が `--build-path` にこの位置を渡している。
 4. **生ログは `/tmp/pytest-embedded/<UTC>/<test 名>/dut.log`。** 銘板を含めて期待どおりの内容だけが入る。
-5. **実行の明示指定はファイルパスでなければならない。** ディレクトリを渡すと収集 0 件(`pytest e001_harness_smoke` → 0 items、`pytest e001_harness_smoke/e001_harness_smoke.py` → 1 item)。
+5. **実行の明示指定はファイルパスでなければならない。** ディレクトリを渡すと収集 0 件(`pytest e001_smoke_host` → 0 items、`pytest e001_smoke_host/e001_smoke_host.py` → 1 item)。
 6. 銘板の `build=` は `__DATE__ " " __TIME__` で埋まる(`Sep  4 2026 14:08:09`)。sketch を変えずに再ビルドしても更新される。
 
 ## 候補

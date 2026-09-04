@@ -5,7 +5,7 @@ Plan and report: README.ja.md
 The file name has no `test_` prefix, so a bare `pytest` run does not collect it.
 Run it by naming the file explicitly:
 
-    uv run --env-file .env pytest e001_harness_smoke/e001_harness_smoke.py
+    uv run --env-file .env pytest e001_smoke_host/e001_smoke_host.py
 
 The DUT is created per test function, so keep one experiment in one function.
 """
@@ -13,7 +13,7 @@ The DUT is created per test function, so keep one experiment in one function.
 import re
 
 
-def test_harness_smoke(dut):
+def test_smoke_host(dut):
     """The DUT starts, the banner arrives as one line, known lines follow in order."""
     dut.expect(
         re.compile(

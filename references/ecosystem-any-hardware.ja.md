@@ -155,7 +155,7 @@ hobby / 非商用のエコシステムにはこれが重い。そして **この
 
 **UART の実務上の落とし穴(必ず設計に入れる)**:
 
-- **DTR/RTS auto-reset**: 多くの Arduino board は port open 時の DTR で MCU が **reset** する(Uno/Nano の auto-reset 回路、ESP32 の esptool 式 DTR/RTS reset)。probe firmware が port open で reset されるので、**host は open 後に boot 完了と `hello` 応答を待つ**設計にする(逆に「open = probe を確実に初期状態にする」機能として使える)。LinkE の CDC で DTR が SDI forward を止めた実測([serial-and-print.ja.md](../protocols/serial-and-print.ja.md) §5)と同族の「bridge 副作用」。
+- **DTR/RTS auto-reset**(**実測で裏付けあり**: [experiments E002/E004](../experiments/LEDGER.ja.md)。ESP32-S3 + CH340 で、監視が接続するのは reset の **1 秒以上あと**。起動時出力は確定的に失われ、**host が撃って probe が答える形にすれば 1 発で取れた**): 多くの Arduino board は port open 時の DTR で MCU が **reset** する(Uno/Nano の auto-reset 回路、ESP32 の esptool 式 DTR/RTS reset)。probe firmware が port open で reset されるので、**host は open 後に boot 完了と `hello` 応答を待つ**設計にする(逆に「open = probe を確実に初期状態にする」機能として使える)。LinkE の CDC で DTR が SDI forward を止めた実測([serial-and-print.ja.md](../protocols/serial-and-print.ja.md) §5)と同族の「bridge 副作用」。
 - **baud**: 既定 115200 で `hello` → 能力交換で 921600〜(CH340 2 Mbps、CP2102 1 Mbps、USB-Serial-JTAG は baud 非依存)へ昇格。
 - **port scan の安全性**: 無関係な serial device に `hello` を撃っても害が無いよう、sync byte 列を「他 protocol が偶然反応しない」形にし、応答が無ければ即閉じる。
 

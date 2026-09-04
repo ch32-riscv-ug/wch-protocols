@@ -120,6 +120,10 @@ resp の payload 先頭は必ず `u8 status`(§6.2)。
 
 `hello` は host が対応可能な最大版を送り、probe が実際に使う版を返す。**`hello` が成立して初めて他のコマンドを送ってよい**。port scan は `hello` を撃って応答が無ければ閉じる。
 
+この「host が撃ってから probe が答える」という向きには実測の裏付けがある: 監視が接続するのは probe の reset より **1 秒以上あと**で、起動時に一方的に出した出力は確定的に失われる([experiments E002](../experiments/e002_smoke_board/README.ja.md))。trigger 方式なら接続タイミングに依存せず、再送も不要だった([E004](../experiments/e004_smoke_board_trigger/README.ja.md))。
+
+**reset 後にシリアルが流れ始める時刻は board 依存なので、host は固定時間待たない。`hello` を撃って応答が来るまで再送する**(応答が無ければ閉じる)。probe 側が初期化に時間を要する構成では、逆に probe が ready を定期送出し host がそれを見てから始める形も採れるが、既定は host 起点の再送とする。
+
 ### 4.2 lane
 
 | cmd | 名前 | req payload | resp payload |
