@@ -307,11 +307,22 @@ host Arduino core は sketch を PC 上で走らせ、`socket://localhost` で `
 
 ## 5. 記録
 
-**銘板** — sketch は `setup()` の最初に 1 行出し、テストはそれを前提条件として `expect` する:
+**銘板** — sketch は起動時(または最初の応答)に 1 行出し、テストはそれを前提条件として `expect` する:
 
 ```text
-# EXP E012 v1 fw=e2f1a9c core=rp2040:3.9.4 probe=pico target0=ch32v003 t=2026-09-04T11:20:00+09:00
+# EXP E012 v1 git=9b16c31+dirty probe=s3_peer_host target0=ch32v003 build=Sep  4 2026 15:18:33
 ```
+
+**`git=` は `conftest.py` が自動で埋める**([E012](e012_banner_autofill/README.ja.md))— `pytest_configure` が `TEST_BANNER_GIT`(short hash + 未コミットなら `+dirty`)を publish し、実験の `build_config.toml` が
+
+```toml
+[defines]
+TEST_BANNER_GIT = "BANNER_GIT"
+```
+
+で define に落とす。sketch は `Serial.print(BANNER_GIT)` するだけ。**`dut.log` 1 つで firmware を特定でき、未コミットで走らせたことも残る。**
+
+**実行時刻は銘板に入れない。** `_runs/<ID>_<UTC>_<profile>/` と `pytest-embedded` のログパスに既にあるので冗長。core の版も `sketch.yaml` に pin されており git hash から辿れる。
 
 `pytest-embedded` は `<tmpdir>/pytest-embedded/<UTC>/<test 名>/dut.log` に生ログを残す。銘板があれば、**その 1 ファイルだけで実験 ID・firmware・core 版・board・target・日時が復元できる**。台帳にはこのログと `.sr`(波形)の位置を書く。
 

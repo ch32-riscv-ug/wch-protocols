@@ -20,6 +20,7 @@
 | **E001** | 実機なしで sketch を build・実行し、出力を assert できるか(profile 解決 / `socket://localhost` / 銘板) | **常設 v0**(実機なし。host Arduino core `lang-ship:host:host`) | (規則そのもの) | **完了**([e001_smoke_host/](e001_smoke_host/README.ja.md)) |
 | **E002** | 実機 1 枚で upload → monitor → assert が通り、実時間が取れるか | **常設 v1**(peer 対の HOST 側 `esp32-s3-d0cf1359101c`) | (規則そのもの) | **完了 — 反証**([e002_smoke_board/](e002_smoke_board/README.ja.md)) |
 | **E003** | peer は使えるか(**環境確認のみ**)— 2 台同時 upload / 2 台の間で実際に繋がっている線はどれか | **常設 v2**(peer 対 2 枚、配線変更なし) | [README.ja.md §4.4/§4.5](README.ja.md) | **完了**([e003_smoke_peer/](e003_smoke_peer/README.ja.md)) |
+| **E012** | 銘板の版情報を conftest から build 時に自動で埋められるか。再ビルドのコストは | **常設 v0**(実機なし) | [README.ja.md §5](README.ja.md) | **完了**([e012_banner_autofill/](e012_banner_autofill/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -45,7 +46,6 @@
 |---|---|---|---|---|---|
 | `loopback-inject` | loopback phy で DMI status の fail/busy・無応答・CRC 誤りを注入したとき、host は仕様どおり回復するか | **常設 v0**(実機なし) | host Arduino core のみ | 有 | [dmi-bridge](../protocols/dmi-bridge.ja.md) §2–§4/§6 |
 | `device-lock` | device lock は 2 プロセス間で実際に効くか(片方が待つか) | **常設 v1** | 実機 1 枚 | 有 | [README.ja.md §7-9](README.ja.md) |
-| `banner-autofill` | 銘板の版情報(fw hash / core 版 / 日時)を build 時に自動で埋められるか | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §5](README.ja.md) |
 | `wire-bitstream` | SWIO / RVSWD の **bit 列**(start・addr7・data32・op2・parity)は [link-to-target](../protocols/link-to-target.ja.md) §3 の仕様どおりか。**タイミングは見ない** | **常設 v0**(実機なし)または **常設 v2**(E005 の道具で実線上を確認。半周期 5 us 以上) | host Arduino core / peer 対 | 有 | [link-to-target](../protocols/link-to-target.ja.md) §3 |
 | `tool-fast-capture` | 受信を SPI slave / レジスタ直読み / 割り込みにすれば、実 RVSWD 速度で bit を拾えるか(E005 は 100 kbps が上限) | **常設 v2** | peer 対 2 枚 | 有 | (道具) |
 | `linke-error-frame` | WCH-Link の異常系 error 応答 frame の形式(target 無し等) | **常設**(capture) | LinkE + usbmon | 有 | [pc-to-link](../protocols/pc-to-link.ja.md) §3、P1-1 |
@@ -124,6 +124,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E012 銘板: 版情報の自動埋め込み — 完了 2026-09-04
+
+全文: [e012_banner_autofill/README.ja.md](e012_banner_autofill/README.ja.md)。
+
+**事実**
+
+1. **conftest の `pytest_configure` で設定した環境変数が compile に届く。** `build_config.toml` の `[defines]` が `-DNAME="値"` として展開される。
+2. **git の short hash と dirty 判定が銘板に入る** → `dut.log` 1 つで firmware を特定できる。**未コミットで走らせたことも残る**(実験中は常に dirty なので、正直な表示として有用)。
+3. **毎回変わる値を入れても host core では実行時間の差が測れない**(8.8〜9.1 s で重なる)。増分ビルドが効いている。
+
+**候補**: **標準の銘板には git のみ。実行時刻は入れない** — コストではなく**冗長**だから(`_runs/` 名と pytest-embedded のログパスに既にある)。core 版も `sketch.yaml` の pin から git 経由で辿れる。
+
+**未決**: 実機(ESP32)の再ビルドコストは未測定。毎回変わる値を入れないと決めたので当面は影響しない。既存 E001〜E011 の銘板は手書きのまま(記録済みのものを後から変えない)。
+
+**反映**: `conftest.py` に `pytest_configure` を追加。規則 §5 に銘板の標準形と注入の仕組みを明記。
 
 ### E011 ハーネス: 誤爆防止の実地確認 — 完了 2026-09-04
 
