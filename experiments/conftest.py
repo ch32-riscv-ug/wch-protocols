@@ -7,8 +7,10 @@ Rules: README.ja.md
 """
 
 import datetime
+import os
 import re
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -21,6 +23,37 @@ ID_RE = re.compile(r"^(e\d{3})_")
 def _experiment_id(test_path: Path) -> str | None:
     match = ID_RE.match(test_path.parent.name)
     return match.group(1).upper() if match else None
+
+
+def _git_describe() -> str:
+    """Short commit plus a dirty marker, so a log names the exact firmware."""
+    try:
+        head = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=HERE, capture_output=True, text=True, timeout=5, check=True,
+        ).stdout.strip()
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=HERE, capture_output=True, text=True, timeout=5, check=True,
+        ).stdout.strip()
+    except (subprocess.SubprocessError, OSError):
+        return "unknown"
+    return head + ("+dirty" if dirty else "")
+
+
+def pytest_configure(config):
+    """Publish build-time facts so build_config.toml can inject them as defines.
+
+    Only values that change rarely go in: a value that changes every run would
+    force a full rebuild each time (see e012_banner_autofill).
+    """
+    os.environ.setdefault("TEST_BANNER_GIT", _git_describe())
+    if "E012_STAMP_EVERY_RUN" in os.environ:
+        os.environ["TEST_BANNER_STAMP"] = datetime.datetime.now(
+            datetime.timezone.utc
+        ).strftime("%Y%m%dT%H%M%SZ")
+    else:
+        os.environ.setdefault("TEST_BANNER_STAMP", "fixed")
 
 
 @pytest.fixture(autouse=True)
