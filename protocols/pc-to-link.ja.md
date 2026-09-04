@@ -11,7 +11,7 @@ status 語彙: `verified`(自前 capture)/ `attested`(複数実装一致)/ `sing
 | RISC-V mode | `1a86:8010` | vendor bulk(MI_00)+ CDC serial | verified(実機 2 台) |
 | RISC-V mode(第 2 PID) | `1a86:8011` | 同上 | attested |
 | ARM/DAP mode | `1a86:8012` | CMSIS-DAP + CDC | attested |
-| IAP mode | `4348:55e0` | WCH factory ISP と同一の bulk 構成 | attested |
+| IAP mode | `4348:55e0` | WCH factory ISP と同一の bulk 構成。**interface は class `0xff` / subclass `0x80` / protocol `0x55`、bulk EP 4 本(`0x01`/`0x81`/`0x02`/`0x82`)、いずれも 64 B、100 mA** | **構成は verified**(§10b の capture の config descriptor)/ **VID:PID は attested**(その capture には device descriptor が含まれず未確認) |
 
 ## 2. Endpoint と転送
 
@@ -156,6 +156,94 @@ family byte(probe-rs より転記。状態: attested):
 | SDI print 要件 | firmware 2.10 以降 | single-source |
 | 版比較の罠 | probe-rs は `v_major != 2 && v_minor < 7` の比較ミス。**正規化値で比較**すること | 教訓 |
 
+## 10b. probe firmware の更新(IAP)
+
+状態: **verified**(**WCH-LinkUtility V3.00**(FileVersion/ProductVersion とも `3.0.0.0`)で WCH-LinkE の firmware を **2.12 → 2.22** に更新した際の **USBPcap**(Windows)capture。手順・byte・総量まで確認)。
+
+probe 自身の firmware を書き換える経路。**target とは無関係**で、probe が USB device として別の identity に再列挙してから行う。
+
+### 10b.1 全体の流れ
+
+```
+① 通常 mode(1a86:8010、bcdDevice=旧版)
+     host → 81 0d 01 01              GetProbeInfo(§4)
+     probe → 82 0d 04 02 0c 12 00    2.12 / variant 0x12=LinkE / RISC-V
+     host → 81 0f 01 01              ★ IAP entry(応答なし。probe は即再起動)
+② IAP mode(別 device として再列挙)      ← §10b.2
+     書込 pass → 照合 pass → 終了
+③ 通常 mode(1a86:8010、bcdDevice=新版)
+```
+
+- **`81 0f 01 01` = IAP entry。** 応答は返らず、probe はそのまま bootloader へ落ちる(§12 の todo だったもの)。
+- **時間の実測**(1 回の更新、[fixture](../captures/fixtures/linke-iap-update-fw212-to-222.ndjson) と同じ run):
+
+  | 事象 | 直前からの間隔 |
+  |---|---|
+  | IAP entry 送信 → **IAP device が再列挙** | **1.92 s** |
+  | → **最初のデータ転送** | さらに 1.66 s(entry から計 3.58 s) |
+  | 書込 pass + 照合 pass(2 × 109,544 B) | **6.76 s**(≒ 32 KiB/s) |
+  | 最後のデータ転送 → **通常 mode で再列挙** | **1.06 s** |
+
+  host は **device の消失と再出現を待つ**必要がある。「entry 後 N ms」のような固定待ちではなく、再列挙の検出で進める。
+- **版は 2 か所に出る**: USB の `bcdDevice` は **BCD**(`0x0212` = 2.12 / `0x0222` = 2.22)、GetProbeInfo 応答は **binary**(`02 0c` / `02 16`)。同じ版の別表現なので、どちらで判定してもよいが混ぜない(§10)。
+
+### 10b.2 IAP mode の frame
+
+data EP **`0x02` OUT / `0x82` IN**(bulk)。command EP は使わない。
+
+```
+host  → cmd | len | off_lo | off_hi | data...
+probe → 00 00                                (毎回この 2 byte)
+```
+
+| cmd | len | 意味 |
+|---|---|---|
+| `0x81` | `0x02` | **開始**(payload `00 00`)。以降の書込に備える |
+| `0x80` | `0x3c` | **書込**。`off` から 60 byte |
+| `0x82` | `0x3c` | **照合**。同じ範囲・同じ内容をもう一度送る(2 pass 目) |
+| `0x83` | `0x02` | **終了**(payload `00 00`)。probe が app へ jump |
+
+- **`off` は 16 bit little-endian で、64 KB を超えると巻き上がる。** host が上位を管理する(実測: 最終 `off=0xabbc`+44 = `0xabe8`、上位込みで 109,544)。
+- IAP mode の interface は **class `0xff` / subclass `0x80` / protocol `0x55`、bulk EP 4 本**(§1)。**更新に使うのは `0x02`/`0x82` の 1 組だけ**で、`0x01`/`0x81` は使われない。
+- 最終 packet だけ `len` が端数(実測 `0x2c` = 44)。
+- **書込 pass と照合 pass で同じ全長を 2 回送る。** 実測はどちらも **109,544 byte** で、`WCH-LinkUtility/Firmware_Link/FIRMWARE_CH32V305.bin` と**完全一致**(先頭 60 byte も一致)。
+- 転送数は **書込 1,826 回 + 照合 1,826 回**(60 B × 1,825 + 端数 44 B)。
+- 実バイトの抜粋は [captures/fixtures/linke-iap-update-fw212-to-222.ndjson](../captures/fixtures/linke-iap-update-fw212-to-222.ndjson)。
+
+### 10b.3 firmware image の構成
+
+WCH-LinkUtility **V3.00** の `Firmware_Link/` に平文で入っている(以下のサイズ・一致はこの版で確認)。
+
+| ファイル | 中身 |
+|---|---|
+| `WCH-LinkE-APP-IAP.bin`(117,736 B) | **8 KB の IAP bootloader + app**。app 部は offset `0x2000` から `FIRMWARE_CH32V305.bin` と**バイト完全一致** |
+| `FIRMWARE_CH32V305.bin`(109,544 B) | **app のみ。IAP で転送されるのはこちら** |
+| `wchlink.wcfg` | **各 probe の版対応表**(下記) |
+
+- app の配置は **`0x08002000`**(flash 先頭 8 KB が IAP bootloader)。
+- `wchlink.wcfg` の `Ver` 値は **WCH 内部の通し番号**で、`minor = Ver − 20`:
+
+  | key | Ver | = 版 | 対象 |
+  |---|---:|---|---|
+  | `CH32V307Ver` | 42 | **2.22** | WCH-LinkE(CH32V305 実装) |
+  | `CH32V208Ver` | 34 | 2.14 | WCH-LinkW |
+  | `CH32V203Ver` | 32 | 2.12 | |
+  | `CH549Ver_RV` | 32 | 2.12 | 旧 WCH-Link(RISC-V) |
+  | `CH549Ver_ARM` | 31 | 2.11 | 旧 WCH-Link(ARM) |
+
+  実機の `ch32rv probe list` が出す `v42` はこの Ver 値そのもの。`firmware_version.txt` は `v40` で、この表のどの値とも一致しない(用途不明)。
+
+> **罠**: `WCH-LinkUtility.exe` の版は resource 上 `3.0.0.0`(= **V3.00**)だが、binary 内には `WCH-LinkUtility V2.50` という**更新し忘れの文字列**も残っている。版の判定は resource(FileVersion / ProductVersion)を見る。
+
+### 10b.4 firmware から確認できること
+
+`FIRMWARE_CH32V305.bin` は RISC-V の生イメージ(先頭 `6f 10 c0 1a` = `jal`)。debug 文字列はほぼ無いが:
+
+- **FLASH 解錠鍵 `0x45670123` / `0xCDEF89AB` を組み立てる命令列がある**(`lui s1,0xcdef9` + `addi a1,s1,-1621` 等、offset `0xba30` 付近)。FLASH controller base `0x40022000` の参照も同領域に集中。
+- SDI print が無効なときの案内文 `"Please check the SDI, and Enable this function through the upper computer software"` が平文で入っている([serial-and-print.ja.md](serial-and-print.ja.md) §3 の SDI 経路)。
+
+> 定数は RISC-V の `lui`+`addi` で組み立てられるため、**リテラル検索では見つからない**。上位 20 bit を `lui` の即値として走査する必要がある。
+
 ## 11. quirk(実測)
 
 | quirk | 内容 |
@@ -171,7 +259,9 @@ family byte(probe-rs より転記。状態: attested):
 
 ## 12. 未解読(todo)
 
-`wlink_disabledebug`、`wlink_getromram`(CODE/RAM split)、`wlink_rstout`、`wlink_chip_reset`、`wlink_armversion`、mode 切替(RV↔ARM: `81 ff 01 41`/`81 ff 01 52` の記述あり)、IAP entry。frame エラー応答の体系。→ 先行実装から転記 → capture で verified 化。
+`wlink_disabledebug`、`wlink_getromram`(CODE/RAM split)、`wlink_rstout`、`wlink_chip_reset`、`wlink_armversion`、mode 切替(RV↔ARM: `81 ff 01 41`/`81 ff 01 52` の記述あり)。frame エラー応答の体系。→ 先行実装から転記 → capture で verified 化。
+
+~~IAP entry~~ → **§10b で verified**(`81 0f 01 01`)。
 
 ## 参照
 
