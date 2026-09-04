@@ -79,8 +79,31 @@
 - `write_transfers` / `verify_transfers` = 各 **1,826**、`write_bytes` / `verify_bytes` = 各 **109,544**
 - `image_sha256` = 転送された image(`FIRMWARE_CH32V305.bin`)の SHA-256。**image 自体は WCH のものなのでこの repo には置かない**。同じものを持っているかはこのハッシュで確認する
 
-`_device` は phase ごとに 3 行(更新前 `bcdDevice=0x0212` / IAP mode / 更新後 `0x0222`)。**この capture には IAP mode の device descriptor が含まれない**ため VID:PID は記録していない(config descriptor から分かる interface 構成のみ `note` に置いた)。
+`_device` は phase ごとに 3 行(更新前 `bcdDevice=0x0212` / IAP mode / 更新後 `0x0222`)。**この capture には IAP mode の device descriptor が含まれない**ため VID:PID は記録していない(config descriptor から分かる interface 構成のみ `note` に置いた)。**VID:PID は下の Linux 側 fixture で確定している**。
 
 > **形式の拡張**: この fixture は既存形式に `ep`(生の endpoint)・`phase`(どの列挙か)・`_trim`(省略の明示)を足している。**複数の列挙をまたぐ capture では、生の endpoint と、省略した事実を数値で残すこと**を規約とする。
+
+### `fixtures/linke-iap-update-fw213-to-222-linux.ndjson`(同じ更新を Linux + 自前実装で)
+
+上の Windows 純正 capture の**対**。**ch32rv `probe firmware update --capture`**(Linux/WSL2 + usbipd)で同じ image(`FIRMWARE_CH32V305.bin`)を流したときの記録を、同じ方針で 20 転送に絞ったもの。
+
+- **frame 単位で純正と一致する**: 開始 1 + 書込 1,826 + 照合 1,826 + 終了 1、ack 3,653 個すべて `0000`、`off` の刻みも端数 44 B も同じで、**seq 番号まで一致**(最後の GetProbeInfo 往復 2 転送だけ多い)。
+- **IAP device の VID:PID がここで確定**: `_device` の `iap` phase 行が `4348:55e0`(Windows capture には device descriptor が無く attested 止まりだった)。**string descriptor を持たない**ことも `product`/`serial` が空であることから分かる。
+- **書込 pass の stall も再現**: 第 64・128・…・1792 packet の ack だけ ~170 ms(28 回)。driver 由来でなく probe 側の挙動と確定した。fixture では seq 3657→3658(照合 pass 最初の frame)の間隔にも出ている。
+- `chan` は `cmd` になっている。ch32rv は IAP mode で `0x02`/`0x82` を device の主 endpoint として開くためで、**この capture では `ep` が正**(`_meta.chan_note`)。→ ツール側は将来 `ep` を記録するようにするとよい。
+
+### `fixtures/linke-iap-update-fw213-to-222-linux.ndjson`(同じ更新を別実装・別 OS で)
+
+上の fixture の**対**。同じ image(`FIRMWARE_CH32V305.bin`、同じ SHA-256)を、**`ch32rv 0.5.0` の `probe firmware update --capture` で Linux/WSL2(usbipd 経由)から**流したときの記録。7,312 転送のうち **20 転送**を採用。
+
+**2 つ揃っていることが重要**: 純正 Windows ツールと自前実装という **独立した 2 実装が、同じ frame・同じ offset を同じ順で出す**。[experiments/README.ja.md](../experiments/README.ja.md) §6 の証拠水準でいう「独立実装 2 つの一致」に当たり、§10b が `verified` である根拠がここにある。
+
+この fixture でしか分からないこと:
+
+- **IAP mode の VID:PID = `4348:55e0`**(`_device` の `phase:"iap"` 行)。Windows 側 capture には device descriptor が含まれず未確認だった穴がここで埋まる。**string descriptor は持たない**(product / serial とも `null`)
+- **ack は全 3,653 回すべて `0000`**(`_trim.acks.all_0000`)。異常系の応答形式は依然不明だが、正常時の規則性はこの標本数で確認できている
+- **書込 pass に周期的な停止がある** — 100 ms を超える停止が **28 回、書込 64 packet ごと**(`stall_every_n_write_packets`)。照合 pass では 1 回だけ。**device 側が 64 packet 貯めてから flash に書いている**ことを示唆する(host tool の timeout はこの停止を見込む必要がある)
+
+`_trim` の持ち方・`seq` を元位置のまま残す規約は上の fixture と同じ。
 
 以降、実機 capture(flash / erase / DMI / ISP / DAP など)を追加する。
