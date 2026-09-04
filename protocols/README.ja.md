@@ -13,6 +13,7 @@
 | [custom-bootloader.ja.md](custom-bootloader.ja.md) | custom bootloader(DFU/UF2/UART/HID/OTA、実装事例) | L3 各 bootloader | **reference / attested** |
 | [software-usb.ja.md](software-usb.ja.md) | software USB(V003 系の bit-bang USB。hardware USB 無し chip) | L1/L2 を firmware 合成 | **reference / attested** |
 | [dap.ja.md](dap.ja.md) | CMSIS-DAP(ARM mode) | L3 DAP | **todo** |
+| [dmi-bridge.ja.md](dmi-bridge.ja.md) | **DMI Bridge Protocol**(host ↔ 汎用 probe。`dmibridge/1`) | L1 datagram + L2 多重化 + L3 cmd | **draft**(自前設計) |
 
 線上・自作 probe・host ツールの landscape(採用事例・言語・license・リンク): [../references/probe-ecosystem.ja.md](../references/probe-ecosystem.ja.md)。
 
