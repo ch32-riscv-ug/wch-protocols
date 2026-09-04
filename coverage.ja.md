@@ -27,7 +27,7 @@
 
 | ファイル | 判定 | これで作れるもの | 不足(byte 単位で足りない点) |
 |---|---|---|---|
-| [pc-to-link](protocols/pc-to-link.ja.md) | **実装可** | attach/probe info/chip info/setspeed/DMI/flash(stub + 直接 FLASH controller)/erase/power/monitor、**probe firmware の更新(§10b)** | error 応答 frame 形式(§3 todo)、§12 の残る未解読 vendor cmd(RV↔ARM mode 切替等)。**IAP entry は §10b で解決** |
+| [pc-to-link](protocols/pc-to-link.ja.md) | **実装可** | attach/probe info/chip info/setspeed/DMI/flash(stub + 直接 FLASH controller)/erase/power/monitor、**probe firmware の更新・救出・脱出(§10b。ch32rv が実装し実機往復検証済み)** | error 応答 frame 形式(§3 todo)、IAP の異常時応答形式(§10b.5)、§12 の残る未解読 vendor cmd(RV↔ARM mode 切替等)。**IAP entry・中断時の挙動は §10b で解決** |
 | [riscv-debug-module](protocols/riscv-debug-module.ja.md) | **実装可** | halt/resume/step/read_reg/write_reg/**read_mem32/write_mem32/write_mem16**/breakpoint/semihosting。DMCOMMAND encode の読み方も明記 | abstract autoexec 詳細(軽微) |
 | [pc-usb-driver](protocols/pc-usb-driver.ja.md) | **実装可** | 3 OS で device を開く。Windows 純正(CH375 IOCTL)含む | HID/CDC-GDB probe 系の driver 差(軽微) |
 | [serial-and-print](protocols/serial-and-print.ja.md) | **実装可(IAP UART+USB / USART / SDI target 側)** | WCH IAP 更新(UART+**USB EP2 frame 確定**)、USART printf、SDI printf(target・**dmdata 2 方式**)、host dmdata 対応 | series 別 IAP frame 差(軽微)、WCHMcuIAP 往復順序の capture 照合 |
