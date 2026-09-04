@@ -14,49 +14,52 @@
 | **experiment** | 自作 firmware を焼いて得る数値・閾値・性能 | **一回性**。結果が成果物 | **明示指定でのみ**走る(§1.3) |
 | **test** | 仕様どおり動き続けること | **恒久**。通り続けることが成果物 | まとめて走る |
 
+置き場所: capture と experiment は**この repo**(`captures/` と `experiments/`)、test は実装側(`ch32rv-probe/tests/`)。
+
 **experiment と test は道具もディレクトリ形も同じだが目的が逆**。experiment は「答えが出たら終わり」、test は「落ちたら困る」。混ぜると、答えの出た実験が CI を無駄に縛り、回帰テストが台帳を汚す。
 
-**コードは `ch32rv-probe` に、台帳と規則はここに置く**。実測には firmware と `arduino-cli` 環境が要る一方、「何が分かっていて、どう確かめたか」を持つのはこの知識ベースだから。台帳の各節は `ch32rv-probe@<sha>:tests/experiments/<ID>_<name>/` を参照する。
+**実験は台帳と同じ repo に置く**。理由は 3 つ: (a) 候補の多く(`linke-error-frame` / `isp-xor-key` / `iap-order` / `dap-mode`)は既存装置の観測で、実装側 repo と無関係。(b) 計画・コード・結果・台帳が repo を跨ぐと、参照に sha を打つ運用が要る。(c) この repo は既に `captures/` で証拠を持っており、実験はその延長。
+
+**回帰テストだけは実装側**(`ch32rv-probe/tests/`)に置く。ライブラリと同じ寿命だから。CH32RVProbe firmware を使う実験は、**隣に clone してある実装 repo のパスを `.env` の `TEST_CH32RVPROBE_DIR` で受け取り**、`sketch.yaml` の `libraries: dir:` へ渡す(パスは環境固有なので §4.1 の原則どおり `.env` に入る)。
 
 ## 1. 置き場所
 
 ### 1.1 uv project と `.env`
 
-**uv project は repo root ではなく `tests/` に 1 つ。`.env` はその隣。**
+**uv project は repo root ではなく `experiments/` に 1 つ。`.env` はその隣。**
 
 ```text
-ch32rv-probe/
-  library.properties  src/  examples/   ← Arduino ライブラリ本体(root は触らない)
-  tests/                               ← uv project はここ 1 つ
+wch-protocols/
+  protocols/  references/  captures/          ← 仕様・検討・既存装置の capture
+  experiments/                               ← uv project はここ 1 つ
+    README.ja.md                             ← 規則(本書)
+    LEDGER.ja.md                             ← 台帳
     pyproject.toml  uv.lock  conftest.py
-    .env            .env.example       ← ベンチ固有値の唯一の入口(.env は commit しない)
-    preflight.py                       ← 実行前のベンチ検査(§4.2)
-    _runs/                             ← 実行結果の退避先。追記のみ・消さない(§3.3)
-    README.ja.md                       ← 構成と実行方法
-    unit/                              ← 実機不要(fixture replay、frame/CRC parser)
-    core/  bulk/  multi/               ← 実機回帰。[dmi-bridge §8.1](../protocols/dmi-bridge.ja.md) の適合プロファイル単位
-    experiments/
-      e001_swio_threshold/
-        README.ja.md                   ← 計画(実行前) + レポート(実行後)。§3
-        e001_swio_threshold.ino         ← ディレクトリと同名(arduino-cli の要件)
-        e001_swio_threshold.py          ← test_ を付けない(§1.3)
-        sketch.yaml
-        output/                        ← ビルド生成物だけ。実行のたびに破棄
-    manual/                            ← 目視・手作業が要るもの
-```
+    .env  .env.example                       ← ベンチ固有値の唯一の入口(.env は commit しない)
+    preflight.py                             ← 実行前のベンチ検査(§4.2)
+    _runs/                                   ← 実行結果の退避先。追記のみ・消さない(§3.4)
+    e001_harness_smoke/
+      README.ja.md                           ← 計画(実行前) + レポート(実行後)。§3
+      e001_harness_smoke.ino                 ← ディレクトリと同名(arduino-cli の要件)
+      e001_harness_smoke.py                  ← test_ を付けない(§1.3)
+      sketch.yaml
+      build/<profile>/                     ← ビルド生成物だけ。実行のたびに破棄
+
+ch32rv-probe/                                ← 実装側。回帰テストだけこちら
+  library.properties  src/  examples/
+  tests/                                     ← 別の uv project(回帰専用)
 
 **「機材が共通なら `.env` は親に置きたい。すると uv も親になるのか」への答えは「ならない」。** `.env` は `uv run --env-file <path>` が**パスで受け取る**ので、uv project の位置と独立に置ける。ただし今回は**分ける必要がない**:
 
 - **共通にしてよいもの** = 機材の物理構成(port、lane に繋いだ chip、LA のチャンネル、GND)。これは「机」の性質で、回帰と実験で変わらない。→ `.env` 1 つ。
 - **共通にすると面倒なもの** = Python 依存(実験だけ解析・計測器ライブラリが要る)、pytest 設定、成果物の置き場。→ 分けたくなる**可能性**がある。
 
-いまはこの 2 つ目がまだ発生していない(回帰も実験も同じ依存)ので、**uv project は 1 つ**にする。将来 experiments だけが重い依存を持ったら `tests/experiments/` を別 project に割ればよく、そのとき `.env` は `tests/.env` のまま `--env-file ../.env` で共有できる。**`.env` の位置は uv の分割方針を先に決めなくてよい**、が結論。
+いまはこの 2 つ目がまだ発生していない(実験どうしは同じ依存)ので、**uv project は 1 つ**にする。将来グループごとに依存が割れても、`.env` は `experiments/.env` のまま `--env-file ../.env` で共有できる。**`.env` の位置は uv の分割方針を先に決めなくてよい**、が結論。
 
 ### 1.2 何をフォルダで分け、何を分けないか
 
 | 軸 | フォルダにするか | 表現方法 |
 |---|:--:|---|
-| **実行の性質**(実機不要 / 回帰 / 一回性 / 手作業) | **する** | `unit/` `core/`… `experiments/` `manual/` |
 | **調査の目的(問い)** | **する** | `experiments/<ID>_<question>/` 1 問い 1 ディレクトリ |
 | **デバイス(probe MCU)** | **しない** | `sketch.yaml` の profile + `.env` の `TEST_SERIAL_PORT_<PROFILE>` |
 | **target chip** | **しない** | `.env` の宣言 + テスト側の要求宣言(§4.1) |
@@ -78,9 +81,13 @@ ch32rv-probe/
 pytest の既定 `python_files = test_*.py` は**ディレクトリを辿るときの収集条件**で、**ファイルを明示指定したときは適用されない**(実測確認済み)。関数名は `test_*` のままでよい。
 
 ```sh
-uv run --env-file .env pytest                                   # 回帰と unit だけが走る。実験は走らない
-uv run --env-file .env pytest experiments/e001_swio_threshold    # ← 実験はこう明示する
+uv run --env-file .env pytest                                             # 何も走らない(実験しか無いので)
+uv run --env-file .env pytest e001_harness_smoke/e001_harness_smoke.py    # ← 実験はこう明示する
 ```
+
+**明示指定は「ファイルのパス」でなければならない。ディレクトリを渡すと 0 件になる**(E001 で実測)。ディレクトリ指定はその中を走査する動作で、走査には `python_files` の条件が効くため。
+
+**1 実験 1 テスト関数にする。** DUT はテスト関数ごとに生成されるので、同じファイルに 2 関数書くと 2 つ目の DUT 起動が失敗することがある(E001 事実 2)。一実験一問い(§7-1)とも一致する。
 
 **実験を明示指定でしか走らせないのは、起動の手間を惜しむより事故を避けるため。** 実機の実験は数十分の掃引・複数 board への書込・電源制御を含み、うっかり `pytest` を叩いて全部走ると時間も配線も壊す。一方、実験はもともと「計画を立てて 1 本ずつ回す」ものなので、明示指定はむしろ運用と一致する。回帰は逆に「まとめて走ってほしい」ので標準の `test_` を使う。**命名規約が §0 の区別をそのまま表す**。
 
@@ -135,7 +142,7 @@ ID は起票時に確定し、**再利用も再採番もしない**。だから�
 
 ### 3.2 計画は実行より先に commit する
 
-`tests/experiments/<ID>_<question>/README.ja.md` に、**コードを書く前に**次を書いて commit する:
+`experiments/<ID>_<question>/README.ja.md` に、**コードを書く前に**次を書いて commit する:
 
 ```markdown
 # E012 SWIO パルス幅閾値
@@ -169,11 +176,11 @@ ID は起票時に確定し、**再利用も再採番もしない**。だから�
 
 | 場所 | 中身 | 寿命 |
 |---|---|---|
-| `<実験>/output/` | ビルド生成物・一時ファイル | **実行のたびに破棄** |
-| `tests/_runs/<ID>_<UTC>_<profile>/` | 生ログ・波形(`.sr`)・数値・銘板 | **追記のみ。上書きも削除もしない** |
+| `<実験>/build/<profile>/` | ビルド生成物(plugin が `--build-path` に渡す位置) | **実行のたびに破棄してよい** |
+| `experiments/_runs/<ID>_<UTC>_<profile>/` | 生ログ・波形(`.sr`)・数値・銘板 | **追記のみ。上書きも削除もしない** |
 | `../captures/fixtures/` + 台帳 | レビューを通した証拠だけ | 恒久(commit する) |
 
-**結果を `output/` に書かない。最初から `_runs/<ID>_<UTC>_<profile>/` に書く。** 実験ファイルは `test_` を付けない(§1.3)ので誤爆しにくいが、それでも意図しない再実行は起きる。そのとき失うのが「時間」だけで済み、「前回の測定結果」が消えないようにするための分離。run ディレクトリ名に UTC を含めるので、同じ実験を何度回しても過去の run は残る。
+**結果を `build/` に書かない。最初から `_runs/<ID>_<UTC>_<profile>/` に書く。** 実験ファイルは `test_` を付けない(§1.3)ので誤爆しにくいが、それでも意図しない再実行は起きる。そのとき失うのが「時間」だけで済み、「前回の測定結果」が消えないようにするための分離。run ディレクトリ名に UTC を含めるので、同じ実験を何度回しても過去の run は残る。
 
 レポート(§3.3)には**どの run ディレクトリの数値か**を書く。人がレビューしてから、証拠として残す分だけ [../captures/fixtures/](../captures/) の流儀で注釈を付けて commit し、台帳に節を書く。実行と採用を分けることで「走ったから正しい」を避ける。
 
@@ -294,7 +301,7 @@ host Arduino core は sketch を PC 上で走らせ、`socket://localhost` で `
 
 `pytest-embedded` は `<tmpdir>/pytest-embedded/<UTC>/<test 名>/dut.log` に生ログを残す。銘板があれば、**その 1 ファイルだけで実験 ID・firmware・core 版・board・target・日時が復元できる**。台帳にはこのログと `.sr`(波形)の位置を書く。
 
-**`output/` は `conftest.py` が実行のたびに破棄する** — ただしそこに入るのはビルド生成物だけ。前回の生成物が残っていると、ビルドし損ねた回を成功と読み違える。**測定結果は §3.4 のとおり `_runs/` に退避する**ので、この破棄で失われるものは無い。
+**`<実験>/build/` は `conftest.py` が実行のたびに破棄する** — そこに入るのはビルド生成物だけ。前回の生成物が残っていると、ビルドし損ねた回を成功と読み違える。**測定結果は §3.4 のとおり `_runs/` に退避する**ので、この破棄で失われるものは無い。
 
 **replay を用意する。** commit した波形・capture を decode し直して、記録済みの結果と一致するかを確認する `unit/` テストを置く。デコーダや parser を触ったとき、実機なしで壊れていないかが分かる。
 
@@ -328,10 +335,20 @@ status 語彙([../README.md](../README.md))と対応させる。**自己申告�
 9. **device lock を切らない。** 複数 board を並べるベンチでは `--device-lock`(既定 `auto`)に任せ、port を直書きしない。
 10. **LA と MCU の GND を必ず共通にする。** 波形の測定でここを外すと、測っているのはノイズになる。
 
+## 8. 言語
+
+| 区分 | 言語 |
+|---|---|
+| **コード**(`.ino` / `.py` / `sketch.yaml` / `.env.example` / `pyproject.toml`)| **英語のみ**。コメント・docstring・識別子とも |
+| 未確定の設計・実験記録(`*.ja.md`) | 日本語のみでよい |
+| 利用者向け文書 | 英語と日本語を別ファイルにして相互リンク |
+
+**コードに日本語を入れない。** この repo は OSS として第三者に読まれる前提で、実験コードもそのまま参照実装になりうる。日本語で書くべき内容(なぜこの掃引範囲か、何を疑っているか)は**計画とレポート(`README.ja.md`)側に置き**、コードからはそこへリンクする。
+
 ## 参照
 
 - 実験台帳: [LEDGER.ja.md](LEDGER.ja.md)
 - 既存装置の capture 規則: [../captures/README.ja.md](../captures/README.ja.md)
 - 穴の一覧と優先順: [../coverage.ja.md](../coverage.ja.md)
 - 測る対象の仕様: [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md) / [../protocols/link-to-target.ja.md](../protocols/link-to-target.ja.md)
-- 実験コードの置き場所: `ch32rv-probe/tests/`
+- 回帰テストの置き場所(実装側): `ch32rv-probe/tests/`

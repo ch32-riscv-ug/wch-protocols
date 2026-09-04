@@ -1,0 +1,14 @@
+[project]
+name = "ch32rv-probe-tests"
+version = "0.1.0"
+description = "Measurement harness for the wch-protocols experiments (pytest + arduino-cli)"
+requires-python = ">=3.10"
+dependencies = [
+    "pytest>=8",
+    "pytest-embedded>=2.0",
+    "pytest-embedded-serial>=2.0",
+    "pytest-embedded-arduino-cli>=1.1",
+]
+
+[tool.uv]
+package = false
