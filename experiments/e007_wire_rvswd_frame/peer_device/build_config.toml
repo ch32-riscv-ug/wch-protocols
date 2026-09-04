@@ -1,0 +1,3 @@
+[defines]
+TEST_WIRE_CLK = "WIRE_CLK"
+TEST_WIRE_DIO = "WIRE_DIO"

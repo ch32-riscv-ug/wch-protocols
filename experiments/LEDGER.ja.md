@@ -20,6 +20,9 @@
 | **E001** | 実機なしで sketch を build・実行し、出力を assert できるか(profile 解決 / `socket://localhost` / 銘板) | **常設 v0**(実機なし。host Arduino core `lang-ship:host:host`) | (規則そのもの) | **完了**([e001_smoke_host/](e001_smoke_host/README.ja.md)) |
 | **E002** | 実機 1 枚で upload → monitor → assert が通り、実時間が取れるか | **常設 v1**(peer 対の HOST 側 `esp32-s3-d0cf1359101c`) | (規則そのもの) | **完了 — 反証**([e002_smoke_board/](e002_smoke_board/README.ja.md)) |
 | **E003** | peer は使えるか(**環境確認のみ**)— 2 台同時 upload / 2 台の間で実際に繋がっている線はどれか | **常設 v2**(peer 対 2 枚、配線変更なし) | [README.ja.md §4.4/§4.5](README.ja.md) | **完了**([e003_smoke_peer/](e003_smoke_peer/README.ja.md)) |
+| **E008** | SWIO write フレーム(start+addr7+rw+data32=41 bit)をパルス幅で出し、幅から復号できるか | **常設 v2** | [link-to-target](../protocols/link-to-target.ja.md) §3/§5(**status は動かさない**) | **完了**([e008_wire_swio_frame/](e008_wire_swio_frame/README.ja.md)) |
+| **E007** | RVSWD host 位相の 42 bit(addr7+data32+op2+parity)を線上に出したとき、[link-to-target](../protocols/link-to-target.ja.md) §3 の仕様どおりか | **常設 v2** | [link-to-target](../protocols/link-to-target.ja.md) §3(**status は動かさない**) | **完了**([e007_wire_rvswd_frame/](e007_wire_rvswd_frame/README.ja.md)) |
+| **E006** | RMT で SWIO 相当のパルス幅(290 / 890 ns)を生成・測定できるか。分解能は(**道具の性能測定**) | **常設 v2** | (道具)→ 候補 `swio-threshold` の機材要件 | **完了**([e006_tool_pulse_capture/](e006_tool_pulse_capture/README.ja.md)) |
 | **E005** | 2 線でクロック同期の bit 列を取り込めるか。取り込める最短のクロック周期は(**道具の性能測定**) | **常設 v2** | (道具)→ 候補 `wire-bitstream` の機材要件 | **完了**([e005_tool_clocked_capture/](e005_tool_clocked_capture/README.ja.md)) |
 | **E004** | host からの trigger で応答させれば、起動時出力の取りこぼし(E002)を回避して銘板と実時間を取れるか | **常設 v1** | (規則そのもの)+ [dmi-bridge](../protocols/dmi-bridge.ja.md) §4.1 の裏付け | **完了**([e004_smoke_board_trigger/](e004_smoke_board_trigger/README.ja.md)) |
 
@@ -27,7 +30,7 @@
 
 - **E001 が最初**なのは、これが通らないうちに測った数値は測定対象ではなく環境を測っているから([§3.1.2](README.ja.md))。**実機を一切使わない**ので、board の有無に関係なく今日始められる。
 - **E002** で初めて実機が出る。E001 で切り分け済みなので、ここで落ちたら原因は「実機まわり」に限定される。
-- **E003** は peer を**やるかどうかを決めるための確認**であって、peer テストの実装ではない。既設の 2 枚は GPIO18/19 が直結されており、**RVSWD が 2 線なので配線を触らずに 2 線ペアの形が既にある**。使えると分かれば選択肢として残り、使えないと分かれば早く諦められる。
+- **E003** は peer を**やるかどうかを決めるための確認**であって、peer テストの実装ではない。既設の 2 枚は **GPIO19↔19 / 20↔20** が直結されており、**RVSWD が 2 線なので配線を触らずに 2 線ペアの形が既にある**。使えると分かれば選択肢として残り、使えないと分かれば早く諦められる。
 
 ## 2. 候補(未採番)
 
@@ -56,7 +59,7 @@
 | `ardulink-compat` | ardulink 互換モードの 1 byte 目自動判別は、minichlink を無改造で通すか | **一時** | probe + V003 + minichlink | 不明 | [dmi-bridge](../protocols/dmi-bridge.ja.md) §7 |
 | `flash-time` | 64 KB 書込時間は per-op / batch / batch+`poll`+`write_rep` で幾ら違うか。基準装置(LinkE + ch32rv)と比べて | **一時** | probe + V307 + **LinkE** | 不明 | [generic-probe-design](../references/generic-probe-design.ja.md) §6、[dmi-bridge](../protocols/dmi-bridge.ja.md) §4.3 |
 | `lane-independence` | lane を 2 本同時に attach したとき、互いのタイミングは劣化するか。`max_inflight=1` で足りるか | **一時** | ESP32-S3 + V003 と V307 | 不明 | [dmi-bridge](../protocols/dmi-bridge.ja.md) §6.1 |
-| `swio-threshold` | SWIO の LOW パルス幅は 0/1 をどこで分けるか。**動かなくなる境界は両側どこか** | **使い捨て** | probe + V003 + **LA**。SWIO の 290 ns パルスは 24 MS/s で約 7 サンプル、立ち上がり(~120 ns)まで見るなら **100 MS/s 以上** + marker 線 | **要調達?** | [link-to-target](../protocols/link-to-target.ja.md) §3/§5、P3-6、[dmi-bridge](../protocols/dmi-bridge.ja.md) §9-2 |
+| `swio-threshold` | SWIO の LOW パルス幅は 0/1 をどこで分けるか。**動かなくなる境界は両側どこか** | **一時**(LA は任意) | probe + **実 V003**。幅の生成・測定は E006 の道具(12.5 ns 分解能)で足りる。**立ち上がり波形まで見るなら** LA 100 MS/s 以上 + marker 線 | V003 次第 | [link-to-target](../protocols/link-to-target.ja.md) §3/§5、P3-6、[dmi-bridge](../protocols/dmi-bridge.ja.md) §9-2 |
 | `rvswd-frame` | RVSWD の bit フレーム(7+32+2+1 ×2)は実波形と一致するか。STOP 波形とクロック周波数は | **使い捨て** | probe + V203/V307 + **LA 3ch**(SWCLK/SWDIO/marker) | **要調達?** | [link-to-target](../protocols/link-to-target.ja.md) §3、P3-7 |
 | `5v-swio` | 5 V board(Uno)から open-drain で SWIO を叩けるか。直列抵抗だけで安全か | **使い捨て** | Uno + V003 + **LA** + 抵抗 | 不明 | [dmi-bridge](../protocols/dmi-bridge.ja.md) §8.2 |
 
@@ -121,6 +124,54 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E008 線: SWIO write フレームの検算 — 完了 2026-09-04
+
+全文: [e008_wire_swio_frame/README.ja.md](e008_wire_swio_frame/README.ja.md)。run: `_runs/E008_*_s3_peer/`。
+
+**事実**
+
+1. **SWIO の write フレーム(start + addr7 + rw + data32 = 41 bit)をパルス幅で出し、幅から元の bit 列に復号できる**(5 ベクタ × 3 回すべて一致)。
+2. **615 パルスを測って min = med = max**。ジッタが観測されない。
+3. `1`(287.5 ns)と `0`(887.5 ns)は**重なりなく分離**。E006 の結果がフレーム全体でも保たれる。
+
+**候補**: **ESP32 の SWIO phy は RMT TX で作る** — bit ごとに幅の違う symbol を並べるだけで、ソフトのタイミングループが要らない。
+
+**未決**: read 位相は未実装(受信側が target を演じる必要がある)/ **実 CH32 の閾値は不明のまま**(`swio-threshold`)/ 立ち上がり時間は RMT では見えない。
+
+**主張できる範囲**: 「自分の符号器が参照実装の読みどおりに出している」まで。`attested` 止まり。**[coverage](../coverage.ja.md) P3-6 は埋まっていない。**
+
+### E007 線: RVSWD host 位相フレームの検算 — 完了 2026-09-04
+
+全文: [e007_wire_rvswd_frame/README.ja.md](e007_wire_rvswd_frame/README.ja.md)。run: `_runs/E007_*_s3_peer/`。
+
+**事実**
+
+1. **RVSWD host 位相の 42 bit を線上に出せる**(5 ベクタ × 3 回すべて一致、半周期 5 us)。
+2. **送信器・受信器・手計算の 3 者が一致**(全 1 → ones=41 → parity=0 → `FFFFFFFFFF80`、全 0 → parity=1 → `000000000040`)。送受が同じ誤りを共有している可能性は下がる。
+3. [link-to-target §3](../protocols/link-to-target.ja.md) の bit レイアウトが**実行可能な形**になった。CH32RVProbe の RVSWD phy の出発点にできる。
+
+**未決**: **parity の規約が確定していない**(仕様は「odd parity」としか書いておらず、この実験は「parity bit を含めて 1 の個数を奇数にする」と仮定した)。**実 CH32 が応答するかでしか決まらない**。target 応答位相・STOP 条件・初期化 100 clocks は未実装。
+
+**主張できる範囲**: 「**自分の符号器が仕様の読みどおりに bit を並べている**」まで。送受とも自作なので `attested` 止まり。**[coverage](../coverage.ja.md) P3-7 は埋まっていない** — §3 を `verified` にするのは実 CH32 が応答したときだけ。
+
+### E006 道具: パルス幅の生成と記録(RMT)— 完了 2026-09-04
+
+全文: [e006_tool_pulse_capture/README.ja.md](e006_tool_pulse_capture/README.ja.md)。run: `_runs/E006_*_s3_peer/`。
+
+**事実**
+
+1. **分解能 12.5 ns**(`rmtInit` が 80 MHz を受け付ける)。SWIO の短パルス 290 ns = 23 tick。
+2. **実測値は量子化された公称値と完全一致し、ばらつきが観測されない**(24 サンプルすべてで min=med=max)。
+3. **250 ns でも取りこぼしゼロ**(RX フィルタを 0 にする)。
+4. **290 ns と 890 ns は明確に分離できる** → SWIO の 0/1 を幅で見分ける道具として成立。
+5. **安価な LA(24 MS/s、290 ns = 約 7 サンプル)より細かい。**
+
+**候補**: SWIO の**送信**も RMT TX で作る(幅を tick 単位で正確に指定でき、ばらつきが無い)。将来の ESP32 phy にそのまま使える。
+
+**限界(誤読注意)**: 示したのは**道具の精度**であって **CH32 が何を受け付けるか**ではない。`swio-threshold` は実 target が必須のまま。立ち上がり波形(~120 ns)は RMT では見えないので、形が要るなら LA が要る。
+
+**反映**: `swio-threshold` の機材欄を「使い捨て + LA 必須」→「**一時、LA は任意**」に更新。
 
 ### E005 道具: クロック同期のビット取り込み — 完了 2026-09-04
 
