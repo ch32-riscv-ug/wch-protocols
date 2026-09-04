@@ -17,7 +17,7 @@
 
 | ID | 問い | ベンチ | 影響する doc | 状態 |
 |---|---|---|---|---|
-| **E001** | 実機なしで sketch を build・実行し、出力を assert できるか(profile 解決 / `socket://localhost` / 銘板) | **常設 v0**(実機なし。host Arduino core `lang-ship:host:host`) | (規則そのもの) | **計画**(`ch32rv-probe/tests/experiments/e001_harness_smoke/`) |
+| **E001** | 実機なしで sketch を build・実行し、出力を assert できるか(profile 解決 / `socket://localhost` / 銘板) | **常設 v0**(実機なし。host Arduino core `lang-ship:host:host`) | (規則そのもの) | **完了**([e001_harness_smoke/](e001_harness_smoke/README.ja.md)) |
 | **E002** | 実機で通るか — upload / 実 port(別名パス)の解決 / 実時間の計測 / device lock / DTR reset の挙動 | **常設 v1**(ESP32-S3 1 枚) | [ecosystem-any-hardware](../references/ecosystem-any-hardware.ja.md) §4.5 | 未着手 |
 | **E003** | peer は使えるか(**環境確認のみ**)— 2 台同時 upload / lock が 2 枚に効くか / 片方の GPIO 遷移をもう片方が観測できるか | **常設 v2**(既設 peer 2 枚。GPIO18/19 直結済み、配線変更なし) | [README.ja.md §4.5](README.ja.md) v2 | 未着手 |
 
@@ -36,6 +36,7 @@
 | slug | 問い | ベンチ種別 | 必要な機材 | 用意 | 影響する doc |
 |---|---|---|---|---|---|
 | `loopback-inject` | loopback phy で DMI status の fail/busy・無応答・CRC 誤りを注入したとき、host は仕様どおり回復するか | **常設 v0**(実機なし) | host Arduino core のみ | 有 | [dmi-bridge](../protocols/dmi-bridge.ja.md) §2–§4/§6 |
+| `dut-scope` | DUT を module scope にできるか(1 実験で複数のテスト関数を書きたいとき)。E001 事実 2 の回避策の一般化 | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §1.3](README.ja.md) |
 | `runs-archive` | `_runs/` への結果退避は conftest の teardown で確実に起きるか。失敗した run でも残るか | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §3.4](README.ja.md) |
 | `collection-guard` | bare `pytest` が実験ファイルを収集しないことを、実プロジェクトの構成でも保てるか | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §1.3](README.ja.md) |
 | `banner-autofill` | 銘板の版情報(fw hash / core 版 / 日時)を build 時に自動で埋められるか | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §5](README.ja.md) |
@@ -68,7 +69,20 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 
 ## 3. 記録
 
-<!-- 実験が「計画」に入った時点で、ここに 1 節ずつ追加する。
-     節の形式は README.ja.md §3.2 / §3.3。計画は実行前に commit し、結果は追記する(計画は書き換えない)。 -->
+### E001 ハーネスのスモーク(実機なし)— 完了 2026-09-04
 
-まだ完了した実験は無い。
+計画・結果の全文: [e001_harness_smoke/README.ja.md](e001_harness_smoke/README.ja.md)。run: `_runs/E001_20260904T050917Z_host/`。
+
+**事実**
+
+1. **実機なしで build → 実行 → assert が成立する**(3/3 pass、7.3–7.5 s)。arduino-cli 1.3.1 / lang-ship:host 1.7.1 / pytest-embedded-arduino-cli 1.4.1。→ **常設 v0 は使える**。
+2. **DUT はテスト関数ごとに生成される。** 同一ファイルの 2 関数目で `Connection refused`。**1 実験 1 テスト関数**にまとめれば通る。
+3. **ビルド生成物は `<実験>/build/<profile>/`**(`output/` ではない)。
+4. 生ログは `/tmp/pytest-embedded/<UTC>/<test 名>/dut.log`。銘板を含め期待どおりの 5 行のみ。
+5. **実行の明示指定はファイルパスでなければならない**(ディレクトリでは収集 0 件)。
+
+**候補**: 1 実験 1 テスト関数(採用)/ 銘板の `build=` に `__DATE__ __TIME__`(`banner-autofill` で置換予定)。
+
+**未決**: `dut-scope`(DUT の scope 変更が可能か)/ `runs-archive`(退避は今回手動)/ `collection-guard`(bare `pytest` 0 件は観測したのみ)。
+
+**反映**: 規則 §1.3(ファイルパス指定・1 実験 1 テスト関数)、§3.4(`output/` → `build/`)、§8(言語ルール)を更新。仕様の status は動かない。
