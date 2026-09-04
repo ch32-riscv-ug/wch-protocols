@@ -42,6 +42,8 @@
 
 ## 3. 穴と、次に集める情報(優先順)
 
+各項目の実測は [experiments/LEDGER.ja.md](experiments/LEDGER.ja.md) に ID(`E01`… / `C11`…)として登録し、[experiments/README.ja.md](experiments/README.ja.md) の規則(計画を先に commit、証拠の水準、未測定と合格の区別)に従って実行する。
+
 **済(このセッションでローカルソースから充填)**
 
 - ~~write_mem32/8 の一般手順~~ → [riscv-debug-module](protocols/riscv-debug-module.ja.md) に転記済み(ch32rv-dmi、DMCOMMAND 実値 + encode の読み方)。
