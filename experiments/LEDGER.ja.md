@@ -20,6 +20,9 @@
 | **E001** | 実機なしで sketch を build・実行し、出力を assert できるか(profile 解決 / `socket://localhost` / 銘板) | **常設 v0**(実機なし。host Arduino core `lang-ship:host:host`) | (規則そのもの) | **完了**([e001_smoke_host/](e001_smoke_host/README.ja.md)) |
 | **E002** | 実機 1 枚で upload → monitor → assert が通り、実時間が取れるか | **常設 v1**(peer 対の HOST 側 `esp32-s3-d0cf1359101c`) | (規則そのもの) | **完了 — 反証**([e002_smoke_board/](e002_smoke_board/README.ja.md)) |
 | **E003** | peer は使えるか(**環境確認のみ**)— 2 台同時 upload / 2 台の間で実際に繋がっている線はどれか | **常設 v2**(peer 対 2 枚、配線変更なし) | [README.ja.md §4.4/§4.5](README.ja.md) | **完了**([e003_smoke_peer/](e003_smoke_peer/README.ja.md)) |
+| **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
+| **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
+| **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
 | **E008** | SWIO write フレーム(start+addr7+rw+data32=41 bit)をパルス幅で出し、幅から復号できるか | **常設 v2** | [link-to-target](../protocols/link-to-target.ja.md) §3/§5(**status は動かさない**) | **完了**([e008_wire_swio_frame/](e008_wire_swio_frame/README.ja.md)) |
 | **E007** | RVSWD host 位相の 42 bit(addr7+data32+op2+parity)を線上に出したとき、[link-to-target](../protocols/link-to-target.ja.md) §3 の仕様どおりか | **常設 v2** | [link-to-target](../protocols/link-to-target.ja.md) §3(**status は動かさない**) | **完了**([e007_wire_rvswd_frame/](e007_wire_rvswd_frame/README.ja.md)) |
 | **E006** | RMT で SWIO 相当のパルス幅(290 / 890 ns)を生成・測定できるか。分解能は(**道具の性能測定**) | **常設 v2** | (道具)→ 候補 `swio-threshold` の機材要件 | **完了**([e006_tool_pulse_capture/](e006_tool_pulse_capture/README.ja.md)) |
@@ -41,10 +44,7 @@
 | slug | 問い | ベンチ種別 | 必要な機材 | 用意 | 影響する doc |
 |---|---|---|---|---|---|
 | `loopback-inject` | loopback phy で DMI status の fail/busy・無応答・CRC 誤りを注入したとき、host は仕様どおり回復するか | **常設 v0**(実機なし) | host Arduino core のみ | 有 | [dmi-bridge](../protocols/dmi-bridge.ja.md) §2–§4/§6 |
-| `dut-scope` | DUT を module scope にできるか(1 実験で複数のテスト関数を書きたいとき)。E001 事実 2 の回避策の一般化 | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §1.3](README.ja.md) |
 | `device-lock` | device lock は 2 プロセス間で実際に効くか(片方が待つか) | **常設 v1** | 実機 1 枚 | 有 | [README.ja.md §7-9](README.ja.md) |
-| `runs-archive` | `_runs/` への結果退避は conftest の teardown で確実に起きるか。失敗した run でも残るか | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §3.4](README.ja.md) |
-| `collection-guard` | bare `pytest` が実験ファイルを収集しないことを、実プロジェクトの構成でも保てるか | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §1.3](README.ja.md) |
 | `banner-autofill` | 銘板の版情報(fw hash / core 版 / 日時)を build 時に自動で埋められるか | **常設 v0** | host Arduino core のみ | 有 | [README.ja.md §5](README.ja.md) |
 | `wire-bitstream` | SWIO / RVSWD の **bit 列**(start・addr7・data32・op2・parity)は [link-to-target](../protocols/link-to-target.ja.md) §3 の仕様どおりか。**タイミングは見ない** | **常設 v0**(実機なし)または **常設 v2**(E005 の道具で実線上を確認。半周期 5 us 以上) | host Arduino core / peer 対 | 有 | [link-to-target](../protocols/link-to-target.ja.md) §3 |
 | `tool-fast-capture` | 受信を SPI slave / レジスタ直読み / 割り込みにすれば、実 RVSWD 速度で bit を拾えるか(E005 は 100 kbps が上限) | **常設 v2** | peer 対 2 枚 | 有 | (道具) |
@@ -124,6 +124,43 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E011 ハーネス: 誤爆防止の実地確認 — 完了 2026-09-04
+
+全文: [e011_collection_guard/README.ja.md](e011_collection_guard/README.ja.md)。
+
+**事実**
+
+1. **命名規約だけで誤爆から守れている。** 実験 11 本の状態で、引数なし / ディレクトリ指定 / カレント全体のいずれも**収集ゼロ**。ファイル指定は 1 件収集。
+2. **回帰テスト(`test_*.py`)を置けば引数なしでそれだけが拾われる** — 規則 §0 の「experiment はまとめて走らない / test はまとめて走る」が追加の仕掛けなしに成立。
+3. marker やオプションによる選別は**要らなかった**。
+
+### E010 ハーネス: 1 ファイルに複数のテスト関数 — 完了 2026-09-04
+
+全文: [e010_dut_scope/README.ja.md](e010_dut_scope/README.ja.md)。
+
+**事実**
+
+1. **「1 実験 1 テスト関数」は一般的な制約ではなかった。** 実機では 2 関数とも動く(2 回とも 2 passed)。
+2. **host core では 2 つ目の DUT 生成が `Connection refused` で失敗する。** 前の実行の後片付けと次の起動の競合と見られる。
+3. **skip されるテスト関数でも DUT は作られる**(`pytest.skip()` は fixture setup の後)。
+4. **実機では関数ごとに再 upload される**ので、関数を増やすと遅くなる。
+5. `dut` fixture は function scope 固定で、scope を変える公開オプションは無い。
+
+**反映**: 規則 §1.3 を「無条件」→「**host core 限定 + 実機では速度上の推奨**」に緩めた。**[E001](e001_smoke_host/README.ja.md) 事実 2 を一般化しすぎていたのを本実験が訂正**。
+
+### E009 退避: `_runs/` の自動保存 — 完了 2026-09-04
+
+全文: [e009_runs_archive/README.ja.md](e009_runs_archive/README.ja.md)。
+
+**事実**
+
+1. **`test_case_tempdir` に依存する autouse fixture の teardown で、成否に関わらず退避できる。** 失敗 run こそログが要るという用途に合う。
+2. **peer を使う実験では `peer-device.log` も一緒に入る**(ディレクトリごとコピーするので、conftest は DUT 数を知らなくてよい)。
+3. **ID は実験ディレクトリ名から導出できる**(`e001_smoke_host` → `E001`)。ID を path に入れると決めたことがここで実利になった。
+4. 連続実行しても上書きしない(名前に UTC 秒を含む)。
+
+**反映**: `experiments/conftest.py` を追加。規則 §3.4 を「手動」→「**自動**」に更新。
 
 ### E008 線: SWIO write フレームの検算 — 完了 2026-09-04
 
