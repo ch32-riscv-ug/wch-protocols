@@ -50,9 +50,10 @@ target(チップ)に到達する経路は 4 つあり、通る層が違う。詳
 | custom bootloader(DFU/UF2/UART/HID/OTA、実装事例) | [protocols/custom-bootloader.ja.md](protocols/custom-bootloader.ja.md) | **reference / attested** |
 | software USB(V003 系の bit-bang USB。hardware USB 無し chip) | [protocols/software-usb.ja.md](protocols/software-usb.ja.md) | **reference / attested** |
 | CMSIS-DAP(ARM mode) | [protocols/dap.ja.md](protocols/dap.ja.md) | **todo** |
+| **DMI Bridge Protocol**(host ↔ 汎用 probe。この repo で唯一の**自前設計**) | [protocols/dmi-bridge.ja.md](protocols/dmi-bridge.ja.md) | **draft** |
 | 自作 probe / host ツール landscape(採用事例・言語・リンク) | [references/probe-ecosystem.ja.md](references/probe-ecosystem.ja.md) | **reference** |
 
-status 語彙: `verified`(自前 capture で確認)/ `attested`(複数の先行実装が一致)/ `single-source`(単一実装のみ)/ `conflict`(実装間で矛盾。要 capture)/ `todo`(存在の証拠のみ)。
+status 語彙: `verified`(自前 capture で確認)/ `attested`(複数の先行実装が一致)/ `single-source`(単一実装のみ)/ `conflict`(実装間で矛盾。要 capture)/ `todo`(存在の証拠のみ) / `draft`(**解読ではなく自前設計**。実装・実測は未)。
 
 各ドキュメントの**実装可否判定と、穴・次に集める情報**は [coverage.ja.md](coverage.ja.md)。
 

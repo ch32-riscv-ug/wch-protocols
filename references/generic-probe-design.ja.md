@@ -79,6 +79,8 @@ host  ──(transport)──►  probe  ──(SWIO 1線 / RVSWD 2線)──►
 | **`stub_load(addr, bytes)` / `stub_run(pc, args)` / `stub_poll`** | RAM に code を置いて走らせ、結果を取る | flash bulk の高速化。probe は中身を知らない |
 | `uart_bridge`(任意) | target UART ⇄ host のパススルー | monitor 用途。probe に余った UART があれば |
 
+> **→ この案は [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)(`dmibridge/1`)として仕様化した。** 確定時の主な差分: (a) `lane`(複数 target レーン)を全 datagram のヘッダに追加、(b) transport 差は「境界」と「完全性」のみと整理し L1 adapter に閉じた、(c) **`stub_load`/`stub_run`/`stub_poll` は削除** — stub の load/起動/回収はすべて DMI read/write なので `batch` で表現でき、probe に DM 知識を入れずに済む、(d) BUSY 再試行は **probe 側**が吸収(下の未決事項への回答)、(e) BLE は対象外(Bluetooth SIG の手続きが重い。adapter を足せば後から可能)。
+
 - **frame**: sync + len + cmd + payload + CRC(UART/BLE 用。USB/TCP は省略可でも統一しておく)。**版番号**を必ず持つ(将来の非互換を吸収)。
 - **status**: RISC-V DTM 準拠(0 ok / 2 fail / 3 busy)をそのまま通す。busy の再試行は host か probe のどちらが担うか決める(probe 側で吸収すると host が単純)。
 
@@ -129,7 +131,7 @@ DMI 1 往復あたりの時間 × 必要往復数で書込時間が決まる。
 
 | 優先 | 作るもの | 何が変わるか | 依存 |
 |---|---|---|---|
-| **1** | **汎用 probe protocol 仕様**(本書 §4 の最小コマンド。transport 非依存、版付き、batch/stub 込み) | host も firmware も、この 1 仕様に合わせれば横展開できる。散在する minichlink/Ardulink 抽象の標準化 | 線層の解読(済) |
+| **1** | **汎用 probe protocol 仕様** → **[dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md) として draft 化済み** | host も firmware も、この 1 仕様に合わせれば横展開できる。散在する minichlink/Ardulink 抽象の標準化 | 線層の解読(済) |
 | **2** | **Arduino ライブラリ実装**(SWIO+RVSWD bit-bang、`Stream` transport)。最初は **RP2040(PIO)+ UART/CDC** | 「Pico を挿すだけでライタ」。ESP32/S3/AVR へ port | 1、PicoRVD/Swindle/cnlohr の線層 |
 | **3** | **ch32rv に汎用 probe backend**(serial/TCP で §4 protocol を喋る) | 既存 CLI(flash/read/monitor/gdb)がそのまま自作 probe で動く | 1, 2 |
 | **4** | **ブラウザ Web ライタ**(WebSerial → JS で DMI + flash algo。Wi-Fi なら WebSocket) | driver レス・Chromebook・ワークショップ。**現状最大の空白** | 1, 2。flash algo の JS 移植 |
