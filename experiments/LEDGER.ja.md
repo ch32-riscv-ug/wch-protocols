@@ -19,7 +19,7 @@
 |---|---|---|---|---|
 | **E001** | 実機なしで sketch を build・実行し、出力を assert できるか(profile 解決 / `socket://localhost` / 銘板) | **常設 v0**(実機なし。host Arduino core `lang-ship:host:host`) | (規則そのもの) | **完了**([e001_smoke_host/](e001_smoke_host/README.ja.md)) |
 | **E002** | 実機 1 枚で upload → monitor → assert が通り、実時間が取れるか | **常設 v1**(peer 対の HOST 側 `esp32-s3-d0cf1359101c`) | (規則そのもの) | **完了 — 反証**([e002_smoke_board/](e002_smoke_board/README.ja.md)) |
-| **E003** | peer は使えるか(**環境確認のみ**)— 2 台同時 upload / lock が 2 枚に効くか / 片方の GPIO 遷移をもう片方が観測できるか | **常設 v2**(peer 対 2 枚。GPIO18/19 直結済み、配線変更なし) | [README.ja.md §4.5](README.ja.md) v2 | 未着手 |
+| **E003** | peer は使えるか(**環境確認のみ**)— 2 台同時 upload / 2 台の間で実際に繋がっている線はどれか | **常設 v2**(peer 対 2 枚、配線変更なし) | [README.ja.md §4.4/§4.5](README.ja.md) | **完了**([e003_smoke_peer/](e003_smoke_peer/README.ja.md)) |
 | **E004** | host からの trigger で応答させれば、起動時出力の取りこぼし(E002)を回避して銘板と実時間を取れるか | **常設 v1** | (規則そのもの)+ [dmi-bridge](../protocols/dmi-bridge.ja.md) §4.1 の裏付け | **完了**([e004_smoke_board_trigger/](e004_smoke_board_trigger/README.ja.md)) |
 
 順序に意味がある([README.ja.md §4.5](README.ja.md)):
@@ -119,3 +119,19 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E003 スモーク: peer 2 台(環境確認)— 完了 2026-09-04
+
+全文: [e003_smoke_peer/README.ja.md](e003_smoke_peer/README.ja.md)。run: `_runs/E003_*_s3_peer/`。
+
+**事実**
+
+1. **2 台の同時 build / upload / monitor が成立する。** `peers["device"]` で操作でき、両 board とも trigger に 1 発で応答。
+2. **繋がっているのは GPIO19↔19 と GPIO20↔20 の 2 本**(双方向)。17・18・21 はどこにも繋がっていない。**ESP32-S3 の native USB ピン(D−=19 / D+=20)**。
+3. 入力を pull-down にしたことで未接続が常に 0 になり、**`READ=1` が接続の実証**になった。仮定を検算する形ではなく**走査して topology を発見する形**にしたのが正解。
+
+**候補**: peer 対は **2 線の直結**として使える(RVSWD の SWCLK + SWDIO と形が一致)。ただし 19/20 は native USB ピンなので、線として使う間は native USB を使えない(現在は CH340 経由の UART なので支障なし)。
+
+**未決**: `device-lock`(2 プロセス間の排他)/ この 2 線で RVSWD の速度・波形が成立するか(別実験)。
+
+**手順違反**: 計画を書く前に実装・実行した。最初の実装は誤った仮定を検算するだけで、失敗しても何が繋がっているかは分からなかった。**計画段階で「仮定を置かずに走査する」と決めていれば一度で済んだ** — 規則 §3.2 の実利がそのまま出た例。
