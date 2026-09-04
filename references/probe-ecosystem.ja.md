@@ -18,6 +18,7 @@ WCH-LinkE 以外にも、**汎用 MCU(CH32V003・ESP32-S2/S3・RP2040 等)を書
 | [Flipper Zero flasher](https://github.com/sukvojte/wch_swio_flasher) | Flipper Zero | C | — | NHC-Link042 emulation/minichlink | ○ | × | ○ | △ | △ | (repo 参照) | V003 で確認 |
 | [Ardulink / zooswio](https://github.com/zoobab/zooswio) | AVR Arduino 等 | C | UART | minichlink `-C ardulink` | ○ | × | △ | × | × | (repo 参照) | Uno/Nano 等旧機材で bootstrap。WIP/不安定表記 |
 | [WCH_WebLink](https://github.com/Subjective-Reality-Labs/WCH_WebLink) | ESP32 / ESP32-C3 | C | Wi-Fi WebSocket / Web UI | 独自(browser) | ○ | × | ○ | source debug 無 | SWIO terminal / UART | (repo 参照) | V003 のみ。読出し等未実装 |
+| [UIAPduino Pro Micro CH32V006 v1.1](https://www.uiap.jp/uiapduino/pro-micro/ch32v006/v1dot1)(**内蔵ライタ**) | CH32V003(board 上、rvswdio_programmer 改) | C | low-speed USB HID、VID/PID **`0x1209:0xB806`**(pid.codes) | minichlink funprog | ○(→V006 PD1) | — | ○ | basic | — | MIT | **board 内蔵 probe の採用事例**。minichlink のみ(Arduino IDE 未対応)。Windows 認識不安定・ケーブル長敏感・PC0 衝突の実地報告 → [bootloader-design-space.ja.md](bootloader-design-space.ja.md) §6b |
 
 ## 2. host protocol 方式(probe が PC とどう話すか)
 
@@ -66,6 +67,8 @@ WCH-LinkE 以外にも、**汎用 MCU(CH32V003・ESP32-S2/S3・RP2040 等)を書
 
 ## 参照
 
+- **この現況を踏まえた次の設計**(任意 MCU を汎用 probe に・PC 連携・ブラウザ書込・足りないもの): [generic-probe-design.ja.md](generic-probe-design.ja.md)
+- **エコシステムの前提**(hardware 制御度の階層、自作 firmware の VID/PID は pid.codes + chip UID serial): [ecosystem-any-hardware.ja.md](ecosystem-any-hardware.ja.md)
 - 線上(SWIO/RVSWD)の解読: [../protocols/link-to-target.ja.md](../protocols/link-to-target.ja.md)
 - WCH-Link USB protocol: [../protocols/pc-to-link.ja.md](../protocols/pc-to-link.ja.md)
 - custom bootloader(DFU/UF2/UART/HID)の実装事例: [../protocols/custom-bootloader.ja.md](../protocols/custom-bootloader.ja.md)
