@@ -263,7 +263,7 @@ TEST_LINKE_PORT=/dev/ttyACM2
 |---|---|---|---|---|
 | **v0** | **実機なし。host Arduino core**(`lang-ship:host:host` / `socket://localhost`) | ゼロ | pytest ハーネス、frame/CRC、`batch` の符号化、`tag` 再送、`caps`/`info` の TLV、loopback phy の**論理**、**線の bit 列** | **時間**(仮想時計)、USB、実際の電気 |
 | **v1** | 実機 1 枚(ESP32-S3) | 挿すだけ | build/upload/monitor、UART・USB CDC・IP transport、**実時間**、device lock、DTR reset | 線の波形、target の応答 |
-| **v2** | 実機 2 枚(既設の peer 対。**GPIO18/19 が直結済み**) | **ゼロ**(既にある) | 2 台同時 upload と lock、**2 線の相互観測** | 実 CH32 の挙動 |
+| **v2** | 実機 2 枚(既設の peer 対。**GPIO19↔19 / 20↔20 が直結済み**、E003 で実測) | **ゼロ**(既にある) | 2 台同時 upload と lock、**2 線の相互観測** | 実 CH32 の挙動 |
 | (以降) | 実 CH32 target | 一時 / 使い捨て | 線の波形、実書込性能 | — |
 
 #### v0 — 実機なしでどこまで行けるか(想像より遠い)
@@ -283,7 +283,9 @@ host Arduino core は sketch を PC 上で走らせ、`socket://localhost` で `
 
 #### v2 — peer(既設の 2 枚)
 
-既に 2 枚が常設され、**GPIO18/19 が相互に直結されている**(元は USB D+/D− の試験用)。**RVSWD は 2 線(SWCLK + SWDIO)なので、配線を一切変えずに 2 線ペアの形が既に存在する**。
+既に 2 枚が常設され、**GPIO19↔19 と GPIO20↔20 が相互に直結されている**([E003](e003_smoke_peer/README.ja.md) で走査して確定。ESP32-S3 の native USB D−=19 / D+=20 で、元は USB host/device 試験用)。**RVSWD は 2 線(SWCLK + SWDIO)なので、配線を一切変えずに 2 線ペアの形が既に存在する**。
+
+**この 2 台は USB 検証用の常設ベンチなので、この配線は常にある。逆に配線を足すのは難しい**という前提で実験を設計する。USB 有効モードで立ち上げれば USB host / device のペアテストになる構成でもある。
 
 やるかどうかは別として、**使えるかどうかの確認だけは先にしておく**(台帳 E003)。確認するのは「2 台へ同時に upload できるか」「device lock が 2 枚それぞれに効くか」「片方の GPIO 遷移をもう片方が観測できるか」まで。ここが通れば、後で「線を喋る dummy target」を作る選択肢が残る(§4.4 では実装コストを理由に見送ったが、**配線コストがゼロなら判断が変わりうる**)。
 
