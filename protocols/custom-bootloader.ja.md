@@ -63,3 +63,4 @@
 - WCH IAP(UART 実測済み): [serial-and-print.ja.md](serial-and-print.ja.md) §1
 - factory ISP との区別: [pc-to-device-isp.ja.md](pc-to-device-isp.ja.md)
 - host ツール・probe 一覧: [../references/probe-ecosystem.ja.md](../references/probe-ecosystem.ja.md)
+- **自分で BL を設計するときの設計空間**(entry 方式・能力・chip 別制約・BL↔Core↔host 契約・内蔵ライタ MCU): [../references/bootloader-design-space.ja.md](../references/bootloader-design-space.ja.md)

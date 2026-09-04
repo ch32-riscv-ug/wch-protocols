@@ -60,7 +60,7 @@ status 語彙: `verified`(自前 capture で確認)/ `attested`(複数の先行�
 
 - [`guides/`](guides/) — 全体を説明するガイド(初心者向け [overview.ja.md](guides/overview.ja.md) / 上級者向け [advanced.ja.md](guides/advanced.ja.md))
 - [`protocols/`](protocols/) — 領域別の実プロトコル仕様([索引](protocols/README.ja.md))
-- [`references/`](references/) — 自作 probe・host ツールの landscape([probe-ecosystem.ja.md](references/probe-ecosystem.ja.md):採用事例・言語・license・リンク)
+- [`references/`](references/) — 自作 probe・host ツールの landscape([probe-ecosystem.ja.md](references/probe-ecosystem.ja.md):採用事例・言語・license・リンク)、**汎用 probe と PC 連携の検討**([generic-probe-design.ja.md](references/generic-probe-design.ja.md):任意 MCU をライタにする設計案・transport 比較・ブラウザ書込・足りないもの)、**マイコンレス直接書込のための bootloader 設計空間**([bootloader-design-space.ja.md](references/bootloader-design-space.ja.md):BL への entry 方式・能力・chip 別制約・BL↔Core↔host 契約・内蔵ライタ MCU という第 3 の道)、**エコシステムの前提**([ecosystem-any-hardware.ja.md](references/ecosystem-any-hardware.ja.md):hardware 制御度 4 階層・共通/差替の境界・連鎖 bootstrap・**USB VID/PID/serial 方針 = pid.codes + chip UID**)
 - [`captures/`](captures/) — 検証用 capture の取り方と参照 fixture([captures/README.ja.md](captures/README.ja.md))
 
 ## 言語

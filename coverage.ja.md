@@ -69,3 +69,11 @@
 ## 4. 現況
 
 **① probe 経路は byte 単位で実装可能**(driver / USB / DMI / flash / debug / print が揃った)。残る主な穴は capture 依存: **P2-3(factory ISP の XOR key・実 frame)が最大**、次いで P1-1(error frame)/ P2-5(DAP)/ P3(自作 probe 用の線タイミング)。ローカルソースで埋められるものはこのセッションで概ね充填済み。
+
+## 5. protocol の外側 — ツール側の穴(別軸)
+
+protocol が読めても「手に入る道具」が LinkE に偏っている。**汎用 probe(任意 MCU をライタに)と PC 連携(UART / USB / Wi-Fi / ブラウザ)**の穴と設計案は [references/generic-probe-design.ja.md](references/generic-probe-design.ja.md) にまとめた。要点: probe は DMI ブリッジだけでよい(chip 知識は host)、latency 対策に batch + RAM stub を protocol に最初から入れる、最大の空白は driver レスのブラウザ書込。
+
+**マイコンレス直接書込**(probe 無し、USB ケーブルだけ)の設計空間は [references/bootloader-design-space.ja.md](references/bootloader-design-space.ja.md)。要点: 勝負は BL への **entry**(常時 BL 先行 + host 検出窓 + Core が全 sketch に reboot-to-BL hook を保証 = ボタン不要)、BL は小さく保ち RAM stub で能力拡張、**第 3 の道 = board 内蔵ライタ MCU**(UIAPduino V006 の実例。entry 問題を消すが、内蔵 MCU の software USB と minichlink 固定が実地の限界 → HW USB 化と共通 protocol が要件)。
+
+上記 2 本の**前提**は [references/ecosystem-any-hardware.ja.md](references/ecosystem-any-hardware.ja.md)。要点: 目標は UIAPduino の逆(hardware に依らず**どんな board・bare chip もつながる**)。hardware 制御度を T0(一切触れない)〜T3(出荷時 pre-flash)の 4 階層で分け、**T0 で成立する設計を core** にする。共通に保つのは host・chip 知識・protocol・識別、差し替えるのは backend(probe / 内蔵ライタ / target BL / factory ISP)で、host は capability 宣言で選ぶ。初回 probe は不可避だが「書けた board が次の probe になる」連鎖 bootstrap で軽くする。**USB ID は pid.codes(`0x1209`)で BL / app / probe の PID を分け、chip UID を serial string に**(hardware USB があっても WCH VID を名乗る権利は生じない。`4348:55E0` 衝突が反例)。
