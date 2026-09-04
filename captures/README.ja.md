@@ -90,7 +90,7 @@
 - **frame 単位で純正と一致する**: 開始 1 + 書込 1,826 + 照合 1,826 + 終了 1、ack 3,653 個すべて `0000`、`off` の刻みも端数 44 B も同じで、**seq 番号まで一致**(最後の GetProbeInfo 往復 2 転送だけ多い)。
 - **IAP device の VID:PID がここで確定**: `_device` の `iap` phase 行が `4348:55e0`(Windows capture には device descriptor が無く attested 止まりだった)。**string descriptor を持たない**ことも `product`/`serial` が空であることから分かる。
 - **書込 pass の stall も再現**: 第 64・128・…・1792 packet の ack だけ ~170 ms(28 回)。driver 由来でなく probe 側の挙動と確定した。fixture では seq 3657→3658(照合 pass 最初の frame)の間隔にも出ている。
-- `chan` は `cmd` になっている。ch32rv は IAP mode で `0x02`/`0x82` を device の主 endpoint として開くためで、**この capture では `ep` が正**(`_meta.chan_note`)。→ ツール側は将来 `ep` を記録するようにするとよい。
+- `chan` は `cmd` になっている。ch32rv は IAP mode で `0x02`/`0x82` を device の主 endpoint として開くためで、**この capture では `ep` が正**(`_meta.chan_note`)。この fixture の `ep` は後から付けたものだが、**ch32rv 側も `--capture` に `ep` を記録するようにした**ので、以降の capture は最初から自己記述的になる。
 
 ### `fixtures/linke-iap-update-fw213-to-222-linux.ndjson`(同じ更新を別実装・別 OS で)
 
