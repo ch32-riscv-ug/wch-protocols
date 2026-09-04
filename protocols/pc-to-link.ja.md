@@ -279,7 +279,7 @@ WCH-LinkUtility の `Firmware_Link/` に平文で入っている。**全ファ�
 
 #### image の入手
 
-**image は再配布せず、利用者に WCH 純正から取ってもらう。** 配布元は WCH の [WCH-LinkUtility 配布ページ](https://www.wch.cn/downloads/wch-linkutility_zip.html)(英語版は [wch-ic.com](https://www.wch-ic.com/downloads/wch-linkutility_zip.html))。ZIP を展開した `WCH-LinkUtility/Firmware_Link/` に §10b.3 の image が平文で入っている。MounRiver Studio / WCH の IDE 同梱版にも同じものがある。tool 側は **既知の sha256 と照合する**形にしておくとよい([fixture](../captures/fixtures/linke-iap-update-fw213-to-222-linux.ndjson) の `_trim.image_sha256`)。
+**image は再配布せず、利用者に WCH 純正から取ってもらう。** 配布元は WCH の [WCH-LinkUtility 配布ページ](https://www.wch.cn/downloads/WCH-LinkUtility_ZIP.html)(**中国語サイトのみ**。英語サイトには見当たらない → §10b.3)。ZIP を展開した `WCH-LinkUtility/Firmware_Link/` に §10b.3 の image が平文で入っている。MounRiver Studio / WCH の IDE 同梱版にも同じものがある。tool 側は **既知の sha256 と照合する**形にしておくとよい([fixture](../captures/fixtures/linke-iap-update-fw213-to-222-linux.ndjson) の `_trim.image_sha256`)。
 
 #### 経路は 3 つある
 
