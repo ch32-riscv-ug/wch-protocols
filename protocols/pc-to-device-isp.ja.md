@@ -11,7 +11,15 @@
 
 app を bypass して system bootloader を起動させる:
 
-- **BOOT ピン操作 + reset/電源投入**: BOOT0(と一部 chip の BOOT1)を規定レベルにして reset すると、user flash でなく system bootloader から起動する。ピンと論理は chip 系列ごとに違う(EVT / データシートの "System Memory / Boot configuration" 参照)。
+- 起動元の選び方は **2 系統**ある(各 RM §1.3 "Boot Configuration" / FLASH 章から転記、attested):
+
+| 系列 | 選択方式 | 条件 | 備考 |
+|---|---|---|---|
+| **V103 / V20x / V30x / V31x / L103 / V407**(/ V205 / H417 は同族と見られる、未確認) | **BOOT0 / BOOT1 ピン**(reset・電源投入時にラッチ) | `BOOT0=0` → user flash / **`BOOT0=1, BOOT1=0` → system memory(factory ISP)** / `BOOT0=1, BOOT1=1` → SRAM | system memory から起動すると `0x00000000` に alias。STM32 と同じ作法 |
+| **V003 / V00X / X035 / X315** | **ソフトウェア選択のみ**(BOOT ピン無し)。`FLASH_STATR` bit14 `BOOT_MODE`(1 = BOOT 領域 / 0 = user)を `BOOT_MODEKEYR`(`0x40022028`)解錠後に書き、software reset | RM の memory map に「software configuration に依存」と明記(V003/V00X)。X035/X315 は bit13 `BOOT_STATUS`・bit12 `BOOT_AVA` も持つ | **app が協力しないと factory ISP に入れない**(V003 の `START_MODE` 問題の正体)。X035 の factory BL は起動後に **PC17(USB D+)** を button として見る(ch32fun の注記) |
+| M030 | (BOOT 領域無し) | — | factory ISP 自体が無い |
+
+切替レジスタの詳細と自作 BL からの使い方: [custom-bootloader.ja.md](custom-bootloader.ja.md) §2a。
 - bootloader は **USB と UART の両方で応答を待つ**(chip による)。どちらか使う方につなぐ。
 
 ### factory bootloader の実体(系列差・entry の強さ)

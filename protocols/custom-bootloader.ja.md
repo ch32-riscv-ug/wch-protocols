@@ -19,9 +19,10 @@
 | WCH 公式 EVT `UART_USB_IAP` / `USB_UART` | V103 / V20x / V205 / V307 / V407 / X035 / X315 / L103 / M030 / H417 | user flash 先頭 20 KB(H417 24 KB)、APP `0x08005000`(H417 `0x08006000`) | WCHMcuIAP | C | UART 460800 + USB `1A86:55E0`(V103 は `4348:55E0`・57600)。→ [wch-iap.ja.md](wch-iap.ja.md) 世代 B / C |
 | WCH 公式 EVT `ETH_IAP` | V20x/V307 Ethernet | BIM 40 KB / USER 108 KB @`0x0800A000` / BACKUP 108 KB @`0x08025000`(A/B) | TCP 1000、`WCHNET` header | C | network IAP。→ [wch-iap.ja.md](wch-iap.ja.md) §6。製品には認証・rollback 追加要 |
 | WCH 公式 EVT `HOST_IAP` | V103〜H417 の USB host | target が USB メモリの **`/APP.BIN`** を読み `0x08006000` へ | PC 不要 | C | 現場更新。→ [wch-iap.ja.md](wch-iap.ja.md) §6。媒体 image の真正性確認は別途 |
-| [rv003usb bootloader](https://github.com/cnlohr/rv003usb/tree/master/bootloader) | V003、GPIO **software USB** low-speed **HID** | **1,916 B + 4 B(secret)= 1,920 B の BOOT 領域**。scratchpad は RAM `0x20000100` | minichlink(`-c 0x1209b003`) | C | **driver 不要**。`1209:B003`(UIAPduino fork は `B803`)。timeout(75 ms 単位、既定 7=~0.5 s、旧版 67=~5 s)/ button / host 検出。**protocol は §2b**。自己更新はしない(→ `ch32_user_bootloader_flasher`) |
+| [rv003usb bootloader](https://github.com/cnlohr/rv003usb/tree/master/bootloader) | V003、GPIO **software USB** low-speed **HID** | **1,916 B + 4 B(secret)= 1,920 B の BOOT 領域**。scratchpad は RAM `0x20000100` | minichlink(`-c 0x1209b003`) | C | **driver 不要**。`1209:B003`(UIAPduino fork は `B803`)。timeout(75 ms 単位。**upstream 既定 67 ≈ 5 s**、UIAPduino fork は 7 ≈ 0.5 s)/ button / host 検出。**protocol は §2b**。自己更新はしない(→ `ch32_user_bootloader_flasher`) |
 | `rv003usb/bootloader_v006` | V006 系、software USB | V00X 向け別実装 | minichlink | C | 旧 V003 版と別。README 整備途上 |
 | [ch32fun `examples_usb/bootloader`](https://github.com/cnlohr/ch32fun/tree/master/examples_usb/bootloader) | X035/CH5xx(V20x/V30x は stub 追加で可、V103 は BOOT 2 分割のため不可)、**hardware USB(USBFS)** | **BOOT 領域 3,328 B**(X035)。scratchpad **6,144 + 128 B**(RAM) | minichlink | C | rv003usb BL の移植。`1209:B003`、feature report `0xA8`(7 B)/`0xAA`(127 B)/`0xAB..0xB0`(〜6,272 B)。**同じ scratchpad protocol(§2b)**。非破壊書込、任意番地 read、`funRebootToBootloader` |
+| (host)[rv003usb-webflasher](https://github.com/SadaleNet/rv003usb-webflasher) / [WebLink_USB](https://github.com/monte-monte/WebLink_USB) | rv003usb BL を持つ V003(/V006)| — | **ブラウザ(WebHID、Chromium 系)** | JS | driver 不要・インストール不要で V003 を書ける。**§2b の JS 実装**。debug 不可、BL が焼かれている前提 |
 | [tinyboot](https://github.com/OpenServoCore/tinyboot) | V003/V00X/V103、UART・1 線 UART・**RS-485** | system/user flash mode | Rust `tinyboot` CLI | Rust | **CRC16**・info・retry・trial boot/confirm。transport 拡張可 |
 | [wch-uf2](https://github.com/ArcaneNibble/wch-uf2) | CH32V2xx の USBD | 先頭 **4 KiB** 予約、APP `0x08001000` | OS の MSC + **UF2 copy** | C | double reset、flash/RAM download。V3xx 非対応、hardcoded 値の family 化要 |
 | [Swindle CH32V3x DFU BL](https://github.com/mean00/swindle_bootloader_ch32v3x) | CH32V3x hardware USB | 先頭 **16 KiB** 予約(実 ~6 KiB)、APP `0x4000` | `dfu-util` | C | RAM marker/button/invalid CRC で DFU。12-byte header + **CRC32** |
@@ -50,7 +51,7 @@ factory ISP が入っている information block は、**多くの系列でユ�
 1. linker に `BFLASH` 領域を足す(`ORIGIN = 0x1FFFF000, LENGTH = 1920` / `0x1FFF0000, 3328`)。**IAP を丸ごと置くなら `FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 1920` と書く**(WCH IAP 世代 A の Link.ld。BOOT 領域は実行時 `0x00000000` にエイリアスされる)。
 2. BOOT 側に置く関数へ `__attribute__((section(".Bcode")))`。startup に `.bxx` セクション。
 3. **書込は debug probe(WCH-LinkUtility ≥ V1.80、X035 は ≥ V2.40)で、download address を `0x1FFFF000` / `0x1FFF0000` に指定、hex のみ**。factory ISP や自分自身からは書けない(ISP won't work — ch32fun README も同旨)。
-4. **BOOT 領域は user code から消去できない** → データ保存には使えない。
+4. EVT の注記「BOOT FLASH は user code から消去できない」は **BootAsUser(BOOT 領域に置いたコードがデータ領域として使えない)の文脈**。**`BOOT_MODEKEYR` を解錠すれば user code から BOOT 領域を erase / program できる**(V003 で実証: [`ch32_user_bootloader_flasher`](https://github.com/monte-monte/ch32_user_bootloader_flasher) は `KEYR` + `BOOT_MODEKEYR` + `MODEKEYR` の 3 組を解錠したあと、通常の fast `PAGE_ER` / `PAGE_PG`(64 B)を `0x1FFFF000` に対して実行する)。→ **BL の自己更新は「app 側 updater」の形で可能**。同ツールは書く前に **user flash 末尾 `0x08003800` に 1,920 B の backup** を取り、失敗時に復元する。V00X / X035 / X315 も同じレジスタを持つが未検証。
 5. **上書きすると factory ISP は失われる**。戻すには `0x1FFFF000` に元の Boot code を焼き直す(WCH の配布物か GitHub 上の dump)。
 
 ### boot mode の切替レジスタ(BOOT 領域 ↔ user 領域)
@@ -70,6 +71,7 @@ RCC->RSTSCKR |= 0x1000000;        // reset flag クリア(RMVF)
 PFIC->CFGR = 0xBEEF0080;          // system reset(key 付き)
 ```
 
+- **起動元の選択方式は系列で 2 系統**: V103 / V2x / V3x / L103 / V407 は **BOOT0/BOOT1 ピン**、**V003 / V00X / X035 / X315 は上記レジスタによるソフトウェア選択のみ**(BOOT ピン無し)。→ [pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) §1 の表。後者では **app が協力しないと factory ISP にも自作 BL にも入れない**ので、[../references/bootloader-design-space.ja.md](../references/bootloader-design-space.ja.md) §1 の entry 設計(窓・RAM magic・reset 原因)がそのまま必要になる。
 - **BL 側の「留まるか」判定に reset 原因を使う**: rv003usb BL は `RCC->RSTSCKR & (1<<26)`(power-on reset)でのみ BL に留まり、それ以外は即 user code。`SOFT_REBOOT_TO_BOOTLOADER` を有効にすると `RSTSCKR == 0x10000000`(software reset のみ)を「app からの要求」と解釈する。
 - minichlink は **`FLASH_STATR` bit13 で「いま BOOT 領域で走っているか」**を判定する(`B003DetermineIfInBoot`)。
 - V003 で BOOT 領域から起動させるには option byte 側の設定も要る(rv003usb `configurebootloader`: `OBKEYR`/`KEYR`/`MODEKEYR` 解錠 → `OPTER` → 再書込)。**出荷状態の多くは BOOT 起動になっている**が、要確認。
@@ -87,8 +89,18 @@ BL は **HID の feature report だけ**で動く(class request `SET_REPORT 0x21
 | VID:PID | **`1209:B003`**(UIAPduino fork は `B803`、V006 版 `B806`) | `1209:B003` |
 | app mode の PID(rv003usb demo)| `1209:D003` | — |
 | EP0 | 8 B(low-speed) | 64 B |
-| feature report ID | **`0xAA`**: 127 B(+ID = 128 B) | **`0xA8`**: 7 B / **`0xAA`**: 127 B / **`0xAB`**: 1,024+127 B / … / **`0xB0`**: 6,144+128 B(ID = `0xAA + size/1024`) |
+| feature report ID | **`0xAA`**: 127 B(+ID = 128 B) | **`0xA8`**: 7 B / **`0xAA`**: 127 / **`0xAB`**: 1,024+127 / **`0xAC`**: 2,048+127 / **`0xAD`**: 3,072+127 / **`0xAE`**: 4,095(Windows/macOS の上限)/ **`0xAF`**: 5,120+127 / **`0xB0`**: 6,144+127 B(ID = `0xAA + ⌈size/1024⌉`。host は `0xAD`/`0xB0` を GET して実サイズを探る) |
 | scratchpad | RAM `0x20000100`、**128 B**。`runwordpad` = `0x20000180` | RAM `.scratchpad`、**6,144 + 128 B** |
+
+### host 実装(3 つ)
+
+| host | 言語 / API | 対象 PID | 備考 |
+|---|---|---|---|
+| minichlink `pgm-b003fun.c`(cnlohr) | C / hidapi | `1209:B003`(`-c` で変更) | 参照実装。stub 群を持つ |
+| [rv003usb-webflasher](https://github.com/SadaleNet/rv003usb-webflasher)(SadaleNet) | **JS / WebHID** | `1209:B803` | MIT(`minichlink-minimal/` は GPL)。**sector ごとに read-back 照合し、差分だけ書く**。V006 は「たぶん」 |
+| [WebLink_USB](https://github.com/monte-monte/WebLink_USB)(monte-monte) | **JS / WebHID** | `1209:B803`(BL)/ `1209:D803`(app) | flasher + terminal。`ch32_user_bootloader_flasher` の UI にも使う |
+
+**同じ protocol を C と JS の別作者が実装して動いている**ので、protocol の形は「独立実装 2 つ以上の一致」を満たす(byte の verified 化には capture が要る)。**ブラウザ側は 2 実装とも UIAPduino fork の PID(`B803`)を既定にしている** — upstream `B003` の BL を使うなら filter を変える。
 
 ### scratchpad の構造と実行
 
