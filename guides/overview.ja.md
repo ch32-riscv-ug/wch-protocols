@@ -99,7 +99,7 @@ DMI で debug 用レジスタを叩けるようになると、その上に **RIS
 ## 4. ②③④ の経路は何が違うか
 
 - **② factory ISP**: WCH-Link を使わず、チップに元から入っている **書き込み専用 bootloader** を PC から直接叩く。DMI もデバッグも無く、flash 焼きと設定だけ。BOOT ピンを操作して bootloader に入れる。同じ ISP protocol を **USB(チップの USB を直結)でも UART(シリアル)でも**使える — **UART 経由の手順は WCH の EVT / AN で提示されている**。→ [pc-to-device-isp.ja.md](../protocols/pc-to-device-isp.ja.md)。
-- **③ custom bootloader**: アプリに仕込んだ独自 bootloader。WCH の EVT は **IAP**(app 内 bootloader、USB/UART 両対応、`0xAA 0x55`+`0x80..0x84`。factory ISP とは別 protocol)のサンプルを提示(→ [serial-and-print.ja.md](../protocols/serial-and-print.ja.md) §1)。ほかに DFU/UF2/HID/RS-485/OTA 等、実装事例は [custom-bootloader.ja.md](../protocols/custom-bootloader.ja.md)。**V003 のように USB peripheral を持たない chip**は、GPIO 2 本で USB を software で叩く(→ [software-usb.ja.md](../protocols/software-usb.ja.md))。
+- **③ custom bootloader**: アプリに仕込んだ独自 bootloader。WCH の EVT は **IAP**(app 内 bootloader、USB/UART 両対応、`0xAA 0x55`+`0x80..0x84`。factory ISP とは別 protocol。**3 世代・12 シリーズ**)のサンプルを提示(→ [wch-iap.ja.md](../protocols/wch-iap.ja.md))。ほかに DFU/UF2/HID/RS-485/OTA 等、実装事例は [custom-bootloader.ja.md](../protocols/custom-bootloader.ja.md)。**V003 のように USB peripheral を持たない chip**は、GPIO 2 本で USB を software で叩く(→ [software-usb.ja.md](../protocols/software-usb.ja.md))。
 - **④ DAP**: WCH-Link を **CMSIS-DAP**(業界標準の ARM 用デバッガ規格)モードに切り替え、ARM チップを SWD/JTAG で触る。RISC-V の DMI とは別世界。
 
 なお ① の WCH-Link は純正品以外に、**汎用 MCU(CH32V003・ESP32-S2/S3・RP2040 等)を probe 化した自作 firmware** が多数ある(採用事例・言語・リンクは [references/probe-ecosystem.ja.md](../references/probe-ecosystem.ja.md))。これらは線上(SWIO/RVSWD)を解読した一次資料でもある(→ [link-to-target.ja.md](../protocols/link-to-target.ja.md))。
