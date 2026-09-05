@@ -18,7 +18,7 @@
 | V003 probe の弱さ | USB 側が software USB(low-speed HID、timing 制約、[software-usb.ja.md](../protocols/software-usb.ja.md))。probe 自身の初回書込に別 programmer が要る。安価だが「最初の 1 台」にならない |
 | ESP32-S2 の微妙さ | timing-sensitive な GPIO + critical section、vendor HID で minichlink 専用、非 V003 の検証範囲が不明。汎用ライブラリではない |
 | 直接 UART ISP の非実用性 | factory bootloader は BOOT pin/`START_MODE` の入口が弱く(V003 は app が壊れると入れない)、XOR key 算法も未確定([pc-to-device-isp.ja.md](../protocols/pc-to-device-isp.ja.md))。USB 無し chip では **debug 線が唯一堅い経路** |
-| ブラウザ書込の不在 | driver レスで Chromebook/学校 PC から書ける「Web ライタ」が事実上無い(WebLink は V003 限定・機能不足) |
+| ブラウザ書込の不在 | driver レスで Chromebook/学校 PC から書ける「Web ライタ」が、**任意 chip を debug 線から書く経路では無い**。V003 + rv003usb BL に限れば **WebHID の実装が 2 つある**([custom-bootloader.ja.md](../protocols/custom-bootloader.ja.md) §2b: rv003usb-webflasher / WebLink_USB)。ESP32 経由の WCH_WebLink は WebSocket・V003 限定・未完成 |
 
 ## 2. ユースケース(誰が何を欲しいか)
 

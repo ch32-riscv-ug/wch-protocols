@@ -61,6 +61,8 @@ WCH-LinkE 以外にも、**汎用 MCU(CH32V003・ESP32-S2/S3・RP2040 等)を書
 | [tinyboot](https://github.com/OpenServoCore/tinyboot) | **Rust**(serial) | UART/RS-485 custom bootloader host。V003/V00X/V103 | MIT OR Apache-2.0 |
 | [rvprog.py](https://github.com/wagiminator/MCU-Flash-Tools/blob/main/rvprog.py) | **Python**(USB) | 小さい WCH-Link flasher **参考実装**(protocol 理解用) | MIT |
 | [dfu-util](https://dfu-util.sourceforge.net/) | **C**(libusb) | USB DFU custom bootloader。標準 DFU なら vendor 非依存 | GPL-2.0 |
+| [rv003usb-webflasher](https://github.com/SadaleNet/rv003usb-webflasher) | **JS**(WebHID) | rv003usb BL(V003)の**ブラウザ書込**。sector 照合・差分書込 | MIT(+ GPL の minichlink 抜粋) |
+| [WebLink_USB](https://github.com/monte-monte/WebLink_USB) | **JS**(WebHID) | 同 BL のブラウザ書込 + terminal | (repo 参照) |
 
 - **他言語で WCH-Link を叩く最短の参考**: Python は `rvprog.py`、Rust は `wlink`、C は `minichlink`。protocol 本体は [pc-to-link.ja.md](../protocols/pc-to-link.ja.md)。
 - SDI print は probe-rs が[未対応 issue](https://github.com/probe-rs/probe-rs/issues/3023)、wlink は SDI + LinkE UART watch を同一 session で扱える。

@@ -20,7 +20,7 @@ probe 経由([generic-probe-design.ja.md](generic-probe-design.ja.md))は「適�
 |---|---|---|---|---|---|---|
 | **A. 常時 BL 先行 + 窓(timeout)** | reset で必ず BL が走り、N ms 待って何も来なければ app へ jump | 不要 | 不要 | あり(N ms) | ◎ 最強の土台 | rv003usb(~5 s)、tinyboot |
 | **A'. host 検出で窓を短縮** | USB host の存在(VBUS / D± の状態 / SOF・bus reset 到来)を見て、居なければ即 app、居れば窓を開く | 不要 | 不要 | **ほぼ無し**(host 無し時) | ◎ | rv003usb「host detection」 |
-| **B. button / BOOT pin** | 押しながら reset | 不要 | GPIO + button | 無し | ◎ | UIAPduino、WCH IAP、rv003usb |
+| **B. button / BOOT pin** | 押しながら reset | 不要 | GPIO + button | 無し | ◎ | UIAPduino、WCH IAP、rv003usb。**V003/V00X/X035/X315 には hardware の BOOT ピンが無い**(起動元はソフト選択のみ → [../protocols/pc-to-device-isp.ja.md](../protocols/pc-to-device-isp.ja.md) §1)ので、button は BL が自分で読む GPIO になる |
 | **C. double-tap reset** | 1 回目の reset で RAM magic を置き、短時間内に 2 回目が来たら BL に留まる | 不要 | reset button | 無し | ○(RAM 保持前提) | wch-uf2、SAMD Arduino |
 | **D. app 発の reboot-to-BL** | app が RAM magic(or flash flag)を書いて software reset → BL が magic を見て留まる | **要**(hook) | 不要 | 無し | ◎(hook があれば) | ch32fun `funRebootToBootloader`、WCH IAP `CheckNum@CalAddr` |
 | D-1. 1200 baud touch | host が CDC を 1200 bps で開く → app の CDC callback が D を呼ぶ | 要(CDC stack) | HW USB or software USB | 無し | ◎ | Arduino Leonardo/SAMD |
@@ -64,7 +64,7 @@ reset →
 | 失敗耐性 | trial boot(次回起動で `confirm()` が無ければ BL へ戻す)、watchdog、(容量があれば)A/B slot | tinyboot 型。V003(16 KB)は A/B 不可、V20x 以上で可 |
 | **Serial monitor 兼用** | BL と app が **同じ USB device 実装**(同 VID/PID)を共有し、app 側は CDC(or HID report)で print、host は 1200-touch で BL へ | Leonardo 型。HW USB chip では自然。V003 は software USB を app にも入れる(2 kB・timing 制約)必要 |
 | 自己保護 | BL 領域は書込禁止(write-protect option or BL が自領域への書込を拒否) | BL を壊さない。BL 自身の更新は probe 経由に限定するのが安全 |
-| 自己更新 | 2 段構え(BL が「BL updater」stub を RAM に載せて自分を書く) | 可能だが失敗時に brick。rv003usb は非対応。要件次第 |
+| 自己更新 | **app 側 updater**(app が `BOOT_MODEKEYR` を解錠して BOOT 領域を書く。**V003 で実証**: `ch32_user_bootloader_flasher` は user flash 末尾に 1,920 B の backup を取ってから書き、失敗時に復元)、または BL が updater stub を RAM に載せる 2 段構え | 可能。**backup 領域を必ず取る**(失敗時は文鎖)。rv003usb BL 自身は非対応で、app 側ツールが担う。→ [../protocols/custom-bootloader.ja.md](../protocols/custom-bootloader.ja.md) §2a |
 
 ## 3. chip 別の制約と選択
 
@@ -120,7 +120,7 @@ host tool(ch32rv / Python / ブラウザ)
 
 - **app が協力せず、button も無く、BL に窓も無い**構成だけが詰む。→ A(窓)を必ず持てば詰まない。窓を A'(host 検出)で隠せば起動遅延も消える。
 - **host が「reset」を発生させる手段が無い**とき(app 死亡・hook 無し)、残るのは物理: 抜き差し / reset button / BOOT pin。抜き差しは常に可能なので実質 universal。
-- **BL 自身の破損**は probe 経由でしか直せない。BL 領域の write-protect と「BL は probe でしか更新しない」運用で回避。
+- **BL 自身の破損**は原則 probe 経由で直す。ただし **app が生きていれば app 側 updater で BOOT 領域を書き直せる**(V003 で実証。[../protocols/custom-bootloader.ja.md](../protocols/custom-bootloader.ja.md) §2a)ので、「BL 更新 = probe 必須」ではない。backup 領域を取る運用と併せれば、BL の版上げを配布後にもできる。
 - **V003 の同時 USB**(BL も app も software USB)は timing 制約が app の自由度を削る。「app は USB 不要、entry は SE0/UART/抜き差し」と割り切る選択肢が現実的。
 - **セキュリティ**(署名・読出保護)は別軸。開発用 BL では metadata CRC まで、製品では署名 + 読出保護 + BL 更新禁止。
 
