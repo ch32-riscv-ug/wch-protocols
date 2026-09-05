@@ -45,9 +45,10 @@ target(チップ)に到達する経路は 4 つあり、通る層が違う。詳
 | PC ↔ WCH-Link(USB) | [protocols/pc-to-link.ja.md](protocols/pc-to-link.ja.md) | **大半 verified**(実機 capture 済み) |
 | RISC-V Debug Module(DMI 上) | [protocols/riscv-debug-module.ja.md](protocols/riscv-debug-module.ja.md) | **大半 verified** |
 | WCH-Link ↔ target(SWIO/RVSWD 線) | [protocols/link-to-target.ja.md](protocols/link-to-target.ja.md) | **RVSWD 線は attested**(bit フレーム判明)/ SWIO は todo |
-| PC ↔ target(factory ISP、USB / UART シリアル) | [protocols/pc-to-device-isp.ja.md](protocols/pc-to-device-isp.ja.md) | **attested**(先行実装一致・自前 capture 未) |
-| target 側シリアル I/O(WCH IAP / USART printf / SDI printf、全シリーズ表) | [protocols/serial-and-print.ja.md](protocols/serial-and-print.ja.md) | **attested**(WCH 公式 EVT ソース) |
-| custom bootloader(DFU/UF2/UART/HID/OTA、実装事例) | [protocols/custom-bootloader.ja.md](protocols/custom-bootloader.ja.md) | **reference / attested** |
+| PC ↔ target(factory ISP、USB / UART シリアル) | [protocols/pc-to-device-isp.ja.md](protocols/pc-to-device-isp.ja.md) | **attested**(3 実装一致、USB 経路は byte 化・自前 capture 未) |
+| **WCH IAP**(EVT の app 内 bootloader、UART / USB 書込。3 世代・12 シリーズ) | [protocols/wch-iap.ja.md](protocols/wch-iap.ja.md) | **attested・実装可**(EVT 転記、自前 capture 未) |
+| target 側シリアル I/O(USART printf / SDI printf、全シリーズ表) | [protocols/serial-and-print.ja.md](protocols/serial-and-print.ja.md) | **attested**(WCH 公式 EVT ソース) |
+| custom bootloader(BOOT 領域表・切替レジスタ・HID scratchpad BL protocol、DFU/UF2/UART/OTA 事例) | [protocols/custom-bootloader.ja.md](protocols/custom-bootloader.ja.md) | **reference / attested**(BOOT 領域・HID BL は実装可) |
 | software USB(V003 系の bit-bang USB。hardware USB 無し chip) | [protocols/software-usb.ja.md](protocols/software-usb.ja.md) | **reference / attested** |
 | CMSIS-DAP(ARM mode) | [protocols/dap.ja.md](protocols/dap.ja.md) | **todo** |
 | **DMI Bridge Protocol**(host ↔ 汎用 probe。この repo で唯一の**自前設計**) | [protocols/dmi-bridge.ja.md](protocols/dmi-bridge.ja.md) | **draft** |

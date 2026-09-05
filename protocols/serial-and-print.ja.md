@@ -11,66 +11,19 @@
 | 名称 | bootloader | protocol | transport | PC ツール | 本書での扱い |
 |---|---|---|---|---|---|
 | **factory ISP** | chip 内蔵 system bootloader(工場書込済み) | `0xAx` 系 + UID XOR key | USB `4348:55e0` / UART | WCHISPTool | [pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) |
-| **WCH IAP(EVT)** | ユーザが焼く app 内 bootloader(EVT `IAP/USB_UART` サンプル) | `0xAA 0x55` sync + `0x80..0x84` | USB / UART 両対応 | WCHMcuIAP_WinAPP.exe(EVT 同梱) | §1(本書) |
-| **custom bootloader** | ユーザ自作(DFU/UF2/HID 等) | 各自 | USB/UART | dfu-util 等 | [dap.ja.md](dap.ja.md) 隣の boot 経路(todo) |
+| **WCH IAP(EVT)** | ユーザが焼く app 内 bootloader(EVT `IAP/USB_UART` サンプル) | `0xAA 0x55` sync + `0x80..0x84`(V103 は `57 AB`) | USB / UART 両対応 | WCHMcuIAP_WinAPP.exe(EVT 同梱) | **[wch-iap.ja.md](wch-iap.ja.md)** |
+| **custom bootloader** | ユーザ自作(DFU/UF2/HID 等) | 各自 | USB/UART | dfu-util / minichlink 等 | [custom-bootloader.ja.md](custom-bootloader.ja.md) |
 
 **factory ISP と WCH IAP は全くの別プロトコル**。ISP は工場 bootloader(BOOT ピンで入る)、IAP は自分で焼いた bootloader(領域 `0x08000000`〜、APP は後方)。
 
-## 1. WCH IAP demo protocol(EVT `IAP/USB_UART`)
+## 1. WCH IAP(EVT の app 内 bootloader)→ [wch-iap.ja.md](wch-iap.ja.md)
 
-target に IAP bootloader を焼いておくと、以降は WCH-Link 無しで USB か UART から app を更新できる。EVT の `CH32X035_IAP`(bootloader)+ `CH32X035_APP`(通常 app)の 2 プロジェクト構成。**同一 bootloader が USB(USBFS device)と UART を同時に待ち受ける**。
+**独立した仕様書に移した**([wch-iap.ja.md](wch-iap.ja.md)、12 シリーズ分の byte・配置・entry を転記済み)。要点だけ:
 
-### メモリ配置(X035 例)
-
-- IAP bootloader: `0x08000000`〜(先頭)。
-- APP: `FLASH_Base = 0x08005000`(= bootloader 20KB ぶん後方)。app 側もこの番地でリンクする。
-- **entry 判定**(bootloader 起動時):
-  - `*(0x08005000) == 0xFFFFFFFF`(app 未書込)→ IAP に留まる。
-  - `*(CalAddr) == CheckNum`(app が「次は IAP に入れ」フラグを書いた)→ IAP に留まる。`CalAddr = 0x0800F800 - 4`、`CheckNum = 0x5AA55AA5`。
-  - どちらでもない → APP へ jump。
-- app 側から IAP に戻すには `CalAddr` に `CheckNum` を書いて reset(コマンド `CMD_JUMP_IAP` 相当)。
-
-### コマンド
-
-| cmd | 値 | 意味 |
-|---|---|---|
-| CMD_IAP_PROM | `0x80` | program(受信データを flash へ。`FLASH_ErasePage_Fast` 後に書く) |
-| CMD_IAP_ERASE | `0x81` | erase(4 byte アドレス指定) |
-| CMD_IAP_VERIFY | `0x82` | verify(4 byte アドレス + データ) |
-| CMD_IAP_END | `0x83` | 終了(`CalAddr` page を消して app へ) |
-| CMD_JUMP_IAP | `0x84` | app から IAP へ入る要求 |
-
-応答ステータス: `0x00` success / `0x01` error / `0x02` end。
-
-### UART フレーム(USART2 @ 460800 baud、X035 例)
-
-**request**:
-
-```
-0xAA 0x55 | Cmd(1) | Len(1) | [ERASE/VERIFY: addr 4B] | [PROM/VERIFY: data Len B] | checksum_lo checksum_hi | 0x55 0xAA
-```
-
-- sync head: `0xAA 0x55`(先頭)/ `0x55 0xAA`(末尾、反転)。
-- checksum: **Cmd + Len + addr + data の総和(16bit)を LE**(lo, hi)で付ける。
-- ERASE/VERIFY は 4 byte アドレスを伴う。PROM/VERIFY は Len byte のデータを伴う。
-
-**response**(END 以外):
-
-```
-0xAA 0x55 | 0x00 | status(0x00 ok / 0x01 err) | 0x55 0xAA
-```
-
-### USB フレーム(EP2、X035 例)
-
-USB 側は **sync head / checksum を使わない**(USB が framing を担う)。EP2 の 64B packet に **`isp_cmd` 構造体をそのまま載せる**:
-
-- USB device: **VID:PID = `1A86:55E0`**(descriptor)。**EP2 OUT / EP2 IN、max packet 64B**(`UEP2_TX_LEN=8` 初期、RX 64)。
-- packet レイアウト(`isp_cmd` union、`USBD_DATA_SIZE=64`):
-  - 汎用/PROM: `Cmd(1) | Len(1) | data[..]`
-  - ERASE/VERIFY: `Cmd(1) | Len(1) | addr[4] | data[56]`
-- **PROM の挙動**: 受信データを内部バッファに貯め、**256 byte たまるごとに 1 page erase + program、`Program_addr += 0x100`(256)で自動前進**。→ USB 側は明示アドレス無しで先頭から順次書く。
-- 同一 device が USB(EP2)と UART(USART2)を同時に待つ(`RecData_Deal`=USB / `UART_RecData_Deal`=UART)。UART は USART2・**460800 baud** 既定(`USART2_CFG(460800)`)。
-- **series 差**: V003/V006 は USB を持たないため IAP サンプルは `V00x_APP`(UART 系)。V103/M030 は `UART_USB_IAP`、V20x/V205/V307/V407/L103/X035/X315/H417 は `USB_UART`(§4 表)。
+- **3 世代ある**: A = V003/V00X(**BOOT 領域常駐**、APP は `0x08000000` から全部、CheckNum = 「APP 有効」印、UART のみ)/ B = V4 系(user flash 先頭 20 KB、APP `0x08005000`、CheckNum = 「IAP に留まれ」要求、UART + USB `1A86:55E0`)/ C = V103(sync `57 AB`、`4348:55E0`、フラグ無し)。**A と B で CheckNum の極性が逆**。
+- UART frame: `AA 55 | Cmd | Len | [addr 4] | [data Len] | sum_lo sum_hi | 55 AA`、応答 `AA 55 00 status 55 AA`、END は応答なし。USB は EP2 64 B に `isp_cmd` 直載せ。
+- コマンド `0x80 PROM / 0x81 ERASE / 0x82 VERIFY / 0x83 END / 0x84 JUMP_IAP`。**addr は device 側で使われず順次書込**、**PROM の端数は VERIFY で flush** される。
+- 派生: HOST_IAP(`/APP.BIN`)、ETH_IAP(TCP 1000、`WCHNET` header、A/B)、BLE OTA(同じ `0x80..0x84`)。
 
 ## 2. USART printf(物理 UART への printf)
 
@@ -139,7 +92,7 @@ EVT の `SDI_Printf` サンプル。**target が debug data レジスタ(memory-
 
 ## 6. 要 capture(verified 化)
 
-- WCH IAP: UART frame(§1)・USB frame(EP2/`isp_cmd`/256B page 前進、§1)とも **EVT ソースから確定済み**。残るは WCHMcuIAP_WinAPP.exe の実 capture で host↔device の往復順序を照合し `verified` へ。
+- WCH IAP: → [wch-iap.ja.md](wch-iap.ja.md) §7(WCHMcuIAP_WinAPP.exe の実 capture で `verified` へ)。
 - SDI printf: dmdata polling の実往復と EVT `_write`(§3、2 方式)をバイトで突き合わせ(host 側は一部 verified、target 郵便受け方式は本書で確定)。
 - 各シリーズの USART/IAP ピン・baud は EVT 既定。基板ごとの実配線は個別確認。
 

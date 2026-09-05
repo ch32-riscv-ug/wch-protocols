@@ -49,8 +49,8 @@ hardware USB 側は WCH peripheral driver / ch32fun の USBFS/USBHS 例が担う
 
 peripheral 無しの V003 を **USB 端子だけで更新**できる custom bootloader。factory ISP([pc-to-device-isp.ja.md](pc-to-device-isp.ja.md))の弱い entry を補う。
 
-- 配置: **1,920 byte** の system 領域(`0x1FFFF000` 系)。
-- host: **minichlink**(driver 不要 HID)。
+- 配置: **1,920 byte** の system 領域(`0x1FFFF000`。実体は 1,916 B + 末尾 4 B の secret)。BOOT 領域の詳細と切替レジスタは [custom-bootloader.ja.md](custom-bootloader.ja.md) §2a。
+- host: **minichlink**(driver 不要 HID、`1209:B003`。protocol は [custom-bootloader.ja.md](custom-bootloader.ja.md) §2b)。
 - **entry**: ~5 秒 timeout / button / host 検出。firmware から戻るには `funRebootToBootloader` 相当。
 - bootloader 自身は自己更新しない(recovery は別 programmer)。
 - V006 系は別実装(`rv003usb/bootloader_v006`)。
@@ -66,9 +66,10 @@ ch32fun の [`examples_usb/bootloader`](https://github.com/cnlohr/ch32fun/tree/m
 
 ## 6. 未解読 / 要調査
 
-- rv003usb の USB frame(setup/HID report)の実バイトと、bootloader の stub protocol(minichlink 側)を capture で確定。
-- V003 の駆動クロック実値と割込みタイミングの余裕(移植の要点)。
-- ch32fun 版 stub protocol の command 体系(hardware USB 経路)。
+- ~~bootloader の stub protocol(minichlink 側)~~ → **[custom-bootloader.ja.md](custom-bootloader.ja.md) §2b に byte 単位で転記**(feature report ID `0xAA` 128 B、scratchpad `0x20000100`、末尾 `0x1234ABCD` で実行、完了印 `0xFF`、`runwordpad` の 3 状態、stub 一覧)。残るは USB capture での verified 化。
+- rv003usb の USB frame(setup / HID report)の実バイトを capture で確定。
+- V003 の駆動クロック実値(BL は `SYSTEM_CORE_CLOCK 48000000`)と割込みタイミングの余裕(移植の要点)。
+- **BOOT 領域の起動選択**(option byte、`configurebootloader`)と `FLASH_STATR` bit14 切替 → [custom-bootloader.ja.md](custom-bootloader.ja.md) §2a。
 
 ## 7. 参照
 

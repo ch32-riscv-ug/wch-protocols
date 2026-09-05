@@ -30,10 +30,11 @@
 | [pc-to-link](protocols/pc-to-link.ja.md) | **実装可** | attach/probe info/chip info/setspeed/DMI/flash(stub + 直接 FLASH controller)/erase/power/monitor、**probe firmware の更新・救出・脱出(§10b。ch32rv が実装し実機往復検証済み)** | error 応答 frame 形式(§3 todo)、IAP の異常時応答形式(§10b.5)、§12 の残る未解読 vendor cmd(RV↔ARM mode 切替等)。**IAP entry・中断時の挙動は §10b で解決** |
 | [riscv-debug-module](protocols/riscv-debug-module.ja.md) | **実装可** | halt/resume/step/read_reg/write_reg/**read_mem32/write_mem32/write_mem16**/breakpoint/semihosting。DMCOMMAND encode の読み方も明記 | abstract autoexec 詳細(軽微) |
 | [pc-usb-driver](protocols/pc-usb-driver.ja.md) | **実装可** | 3 OS で device を開く。Windows 純正(CH375 IOCTL)含む | HID/CDC-GDB probe 系の driver 差(軽微) |
-| [serial-and-print](protocols/serial-and-print.ja.md) | **実装可(IAP UART+USB / USART / SDI target 側)** | WCH IAP 更新(UART+**USB EP2 frame 確定**)、USART printf、SDI printf(target・**dmdata 2 方式**)、host dmdata 対応 | series 別 IAP frame 差(軽微)、WCHMcuIAP 往復順序の capture 照合 |
-| [pc-to-device-isp](protocols/pc-to-device-isp.ja.md) | **部分的** | コマンド体系・遷移の理解、V003 factory BL の入口 | **XOR key 生成算法(chip 系列別)**、USB/UART の**実 frame byte**、Erase sector 数エンコード。自前 capture 必須 |
-| [custom-bootloader](protocols/custom-bootloader.ja.md) | **reference** | どの実装をどう選ぶか。共通仕様項目 | 各 BL(wch-uf2/Swindle DFU/PlumBL)の header/CRC/entry 実 byte |
-| [software-usb](protocols/software-usb.ja.md) | **reference** | rv003usb の仕組み理解、移植の要点(pin/clock/割込) | USB descriptor / HID report / bootloader stub protocol の実 byte |
+| [wch-iap](protocols/wch-iap.ja.md) | **実装可** | **3 世代**(BOOT 常駐 / user 先頭 / 旧 V103)の配置・entry 極性・jump、**12 シリーズ表**(FLASH_Base / CalAddr / page / USART・pin・baud / USB ID)、UART・USB frame、コマンド意味(addr 不使用・VERIFY で flush)、派生(HOST/ETH/BLE) | WCHMcuIAP の実 capture、V103 の UART 末尾、V4 系 `SW_Handler` の実体(MRS テンプレート) |
+| [serial-and-print](protocols/serial-and-print.ja.md) | **実装可(USART / SDI target 側)** | USART printf、SDI printf(target・**dmdata 2 方式**)、host dmdata 対応 | — |
+| [pc-to-device-isp](protocols/pc-to-device-isp.ja.md) | **実装可(USB)/ 部分的(UART)** | Identify / ReadConfig(config 12 B・BTVER・UID)/ IspKey(**XOR key = ΣUID、seed 0**)/ Erase(**sector 数 = ceil(len/1K)、最小 8**)/ Program(**56 B chunk、addr は 0 起点、256 B pad**)/ WriteConfig / IspEnd — minichlink・wchisp・chprog の 3 実装一致 | UART 枠(`57 AB` + checksum、`0xC5` SetBaud)、config 12 B の補数位置の 1 byte ずれ疑い、chip 別 BOOT pin 条件。**自前 capture で verified 化** |
+| [custom-bootloader](protocols/custom-bootloader.ja.md) | **§2a/§2b 実装可、他 reference** | **BOOT 領域の番地・サイズ(全 family、RM 転記)、`BOOT_MODEKEYR`/`STATR` bit14 切替、BootAsUser 手順**、**HID scratchpad BL の protocol**(report ID・scratchpad 構造・`0x1234ABCD`・完了印・stub 一覧・app→BL hook) | wch-uf2 / Swindle DFU / PlumBL / tinyboot の実 byte(ソース未入手)、HID BL の USB capture |
+| [software-usb](protocols/software-usb.ja.md) | **reference** | rv003usb の仕組み理解、移植の要点(pin/clock/割込)。BL の stub protocol は custom-bootloader §2b へ | USB descriptor / HID report の実 byte(capture) |
 | [link-to-target](protocols/link-to-target.ja.md) | **RVSWD=概ね実装可(要 verify)/ SWIO=部分的** | RVSWD の bit フレーム(addr7+data32+op2+parity)、host 抽象(WriteReg32/ReadReg32) | RVSWD の STOP 波形/クロック周波数、**SWIO の LOW パルス幅 0/1 閾値**。ロジアナ verify |
 | [dap](protocols/dap.ja.md) | **todo** | — | mode 切替の実 byte 手順、CMSIS-DAP v1/v2 判定。DAP mode の capture |
 | [captures](captures/README.ja.md) | (方法論 + 実例) | capture の取り方・replay 検証・**注釈付き実 fixture(target-info-v307)** | flash/erase/DMI/ISP/DAP の実 capture は今後追加 |
@@ -58,8 +59,8 @@
 
 **P2 — 要 capture(純正ツール)**
 
-3. **factory ISP を byte 単位で確定**([pc-to-device-isp](protocols/pc-to-device-isp.ja.md)): WCHISPTool の USB / Serial を usbmon 収集 → `0xAx` frame・**XOR key 算法(CH32V/CH32X/CH55x 別)**・Erase エンコードを確定。ISP を実装可へ。**残る最大の穴**。
-4. **WCH IAP の往復順序照合**([serial-and-print](protocols/serial-and-print.ja.md) §6): frame は確定済み、WCHMcuIAP の capture で host↔device 順序を照合し `verified` 化。
+3. **factory ISP を capture で verified 化**([pc-to-device-isp](protocols/pc-to-device-isp.ja.md)): **byte 単位は minichlink 転記で埋まった(XOR key・Erase 符号化・Program chunk)**。残るは WCHISPTool の USB / Serial capture での照合と、UART 枠・config 12 B の補数位置。**「最大の穴」は解消、確認待ちに格下げ**。
+4. **WCH IAP の往復順序照合**([wch-iap](protocols/wch-iap.ja.md) §7): frame・配置・entry は **12 シリーズ分 EVT から確定済み**。WCHMcuIAP の capture で host↔device 順序を照合し `verified` 化。
 5. **DAP mode**([dap](protocols/dap.ja.md)): WCH-Link を DAP mode に切替え、mode 切替 byte と CMSIS-DAP のやり取りを capture。
 
 **P3 — 自作 probe/線を作る場合のみ**

@@ -76,7 +76,7 @@ reset →
 | CH32V30x(V4F) | USBHS / USBFS | 同上 | 128–480 KB | 同上・高速 | 同上 |
 | CH32V103(V3A) | USBFS | 2 分割 boot partition が特殊 | 64 KB | CDC/HID | ch32fun BL が「たぶん動かない」と注記。要調査 |
 
-- **system 領域を BL にできるか**は series ごとに確認が要る(V003 は実績あり。V20x 以上は user flash 先頭に置くのが実績豊富: WCH IAP `0x08005000`、wch-uf2 `0x08001000`、Swindle `0x4000`)。
+- **system(BOOT)領域のサイズと番地は RM で確定**([../protocols/custom-bootloader.ja.md](../protocols/custom-bootloader.ja.md) §2a の表): V003/641 **1,920 B**、V00X/X035/L103 **3,328 B**、V103 2K+1,792(2 分割)、**V20x/V30x/V407/X315 28 KB**、H417 28/56 KB、**M030 無し**。WCH 公式が `BootAsUser` で上書き手順を配布しているのは V003/641/V00X/X035。V20x 以上は 28 KB あるが実例は少なく、user flash 先頭に置くのが実績豊富: WCH IAP `0x08005000`、wch-uf2 `0x08001000`、Swindle `0x4000`。切替は `FLASH_STATR` bit14 + `BOOT_MODEKEYR`(同 §2a)。
 - **APP を offset に置く**と Core 側で linker script(FLASH origin)と割込みベクタ(BL から app へ jump 時に `mtvec` / vector 再設定)を面倒見る必要。Core を握っているので可能。
 
 ## 4. transport / protocol の選択(マイコンレス前提)
