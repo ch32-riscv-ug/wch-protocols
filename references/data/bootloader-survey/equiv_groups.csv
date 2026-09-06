@@ -10,3 +10,8 @@ eg-write-block-v20x,V20x/V30x 版 page ループ書込み,b003-write_block_v20x_
 eg-write-block-v20x,V20x/V30x 版 page ループ書込み,b003stub-write_block_v20x,generated-header,generated,104 B。**inline 版とバイト完全一致**,#,verified,diff:stubs_hex/b003-write_block_v20x_v30x.hex==stubs_hex/b003stub-write_block_v20x.hex
 eg-erase-block,page ループ消去,b003-erase_block,hex-array,reference,52 B,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
 eg-erase-block,page ループ消去,b003stub-erase_block,generated-header,generated,52 B だが **inline 版と 2 byte ずれる**(末尾の 01 00 の位置)。要確認,#,conflict,diff:stubs_hex/b003-erase_block.hex!=stubs_hex/b003stub-erase_block.hex
+eg-wlink-x035-l103,wlink flash loader: X035/CH643/L103 用,wlink-CH643,raw-byte-array,reference,488 B。0xff padding 無し,#,verified,computed:extract5.py
+eg-wlink-x035-l103,wlink flash loader: X035/CH643/L103 用,wlink-CH32L103,raw-byte-array,variant,512 B = CH643 488 B + 0xff × 24。**先頭 488 B がバイト完全一致 = 同一 stub**,#,verified,"computed:extract5.py(prefix=488, 残り 24B は全て 0xff)"
+eg-wlink-v20x-v30x,wlink flash loader: V20x/V30x 用,wlink-CH32V307,raw-byte-array,reference,446 B,#,verified,computed:extract5.py
+eg-wlink-v103,wlink flash loader: V103 用,wlink-CH32V103,raw-byte-array,reference,494 B。V307 と先頭 42 B 共通、CH643 と先頭 79 B 共通,#,verified,computed:extract5.py
+eg-wlink-v003,wlink flash loader: V003/CH641 用(**RV32EC 専用ビルド**),wlink-CH32V003,raw-byte-array,reference,498 B。他 4 本と共通接頭辞 0 B。x0-x15 のみ使用,#,verified,computed:extract5.py
