@@ -1,0 +1,14 @@
+series,project_id,driver_class,flash_base,cal_addr,check_num,blank_pattern,polarity,exit_method,gpio_pin,watchdog,erase_gran,program_gran,uart_port,baud,vid,pid_vendor,pid_hid,usb_iap_mode,total_code_flash_kb,blank_check_word_cdd,fast_program_bytes_cdd,fast_erase_bytes_cdd,page_erase_bytes_cdd,#,confidence,basis
+CH32V003,evt-v003-iap,A,0x08000000,(0x08004000-4),(0x5aa55aa5),0xFFFFFFFF,==,boot-mode-register+reset,PC0,0,64,,USART1,460800,,,,,16,0xFFFFFFFF,64,64,1024,#,attested,survey:P1-P5
+CH32V00X,evt-v00x-iap,B,0x08000000,(0x08004000-4),(0x5aa55aa5),0xFFFFFFFF,==,boot-mode-register+reset,PC0,0,256,256,USART1,460800,,,,,62,0xFFFFFFFF,256,256,1024,#,attested,survey:P1-P5
+CH32V103,evt-v103-iap,D,,,,0xFFFFFFFF,,software-irq,PA0,0,,,USART3,57600,0x4348,0x55E0,,,,0xFFFFFFFF,128,128,1024,#,attested,survey:P1-P5
+CH32V205,evt-v205-iap,B,0x08005000,(0x08040000-4),(0x5aa55aa5),0xFFFFFFFF,!=,software-irq,PA0,0,256,256,USART2,460800,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_HID,256,0xFFFFFFFF,256,256,2048,#,attested,survey:P1-P5
+CH32V20x,evt-v20x-iap,C,0x08005000,(0x08038000-4),(0x5aa55aa5),0xe339e339,!=,software-irq,PA0,0,256,,USART3,460800,0x4348,0x55E0,,,224,0xe339e339,256,256,4096,#,attested,survey:P1-P5
+CH32V30x,evt-v30x-iap,C,0x08005000,(0x08078000-4),(0x5aa55aa5),0xe339e339,!=,software-irq,PA0,1,256,,USART3,460800,0x1A86,0x55E0,,,480,0xe339e339,256,256,4096,#,attested,survey:P1-P5
+CH32V407,evt-v407-iap,C,0x08005000,(0x080F8000-4),(0x5aa55aa5),0xe339e339,!=,software-irq,PA0,1,4096,256,USART2,460800,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_HID,992,0xe339e339,256,,4096,#,attested,survey:P1-P5
+CH32X035,evt-x035-iap,B,0x08005000,(0x0800F800-4),(0x5aa55aa5),0xFFFFFFFF,!=,software-irq,PA0,0,256,,USART2,460800,0x1A86,0x55E0,,,62,0xFFFFFFFF,256,256,1024,#,attested,survey:P1-P5
+CH32X315,evt-x315-iap,C,0x08005000,(0x08038000-4),(0x5aa55aa5),0xe339e339,!=,software-irq,PA0,1,4096,256,USART2,460800,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_VENDOR,480,0xe339e339,256,,4096,#,attested,survey:P1-P5
+CH32L103,evt-l103-iap,B,0x08005000,(0x08010000-4),(0x5aa55aa5),0xFFFFFFFF,!=,software-irq,PA0,0,256,256,USART2,460800,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_HID,64,0xFFFFFFFF,256,256,2048,#,attested,survey:P1-P5
+CH32M030,evt-m030-iap,E,0x08005000,(0x08010000-4),(0x5aa55aa5),0xFFFFFFFF,!=,software-irq,PB4,0,128,,USART1,460800,0x1A86,0x55E0,,,64,0xFFFFFFFF,128,128,1024,#,attested,survey:P1-P5
+CH32H417,evt-h417-v3f-iap,C,0x08006000,(0x08078000-4),(0x5aa55aa5),0xe339e339,!=,software-irq,PA0,0,,,USART1,460800,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_HID,960,0xe339e339,256,,4096,#,attested,survey:P1-P5
+CH32H417,evt-h417-v5f-iap,C,0x08006000,(0x08078000-4),(0x5aa55aa5),0xe339e339,!=,software-irq,PA0,0,,,USART1,460800,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_HID,,0xe339e339,256,,4096,#,attested,survey:P1-P5

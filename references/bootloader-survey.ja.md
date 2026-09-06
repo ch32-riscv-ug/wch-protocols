@@ -1,7 +1,7 @@
 # bootloader 横断調査 — 分析結果(第 2 回・深堀り)
 
 状態: **attested**(EVT 12 series の IAP 13 project + 副対象 9 + OSS BL 3 + stub 51 を実ソースから機械抽出。**BL のビルドサイズと stub の逆アセンブルは実測 = `verified`**。実機 capture 未)。
-調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(25 テーブル・3,236 行 + stub の hex/逆アセンブル 34 対)
+調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(26 テーブル・3,249 行 + stub の hex/逆アセンブル 34 対)
 
 この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F43`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
 
@@ -524,7 +524,12 @@ EVT IAP が呼ぶ flash 関数の実体は SDK(`EVT/EXAM/SRC/Peripheral/src/ch32
 
 ---
 
-## 9. 参照
+## 9. 次の一手
+
+この調査の結論を実装境界に落とした設計案 → **[unified-bootloader-design.ja.md](unified-bootloader-design.ja.md)**(status: draft)。
+要点は「**分割の主軸は series ではなく driver class(5 つ)**」「**真の障害は極性反転 1 件だけ**」「**拡張は stub 側で稼ぐ**」。
+
+## 10. 参照
 
 - 調査設計(軸・スキーマ・方法論): [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md)
 - 生データと再実行手順: [data/bootloader-survey/README.ja.md](data/bootloader-survey/README.ja.md)
