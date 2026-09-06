@@ -223,35 +223,68 @@ ADC を 4ch 全部観測に回して DAC を全部外付けにする案もある
 
 ## 8. CH32 family 側の配線と衝突
 
-「どのピンに何を繋ぐと何ができるか」は、**series ごとの衝突表**が答えになる。以下は **EVT サンプルの `@Note` コメント**と**公式 datasheet**からの転記(= attested)。
+**このデータは生成物**。一次データは [`ch32-device-data`](https://github.com/openwch/ch32-device-data) の `evidence/`、抽出スクリプトと出力は [`data/harness-wiring/`](data/harness-wiring/README.ja.md)。**手書きしない**(ピン表は必ず腐る)。
 
-抽出方法(再現可能):
+| 項目 | 値 | confidence |
+|---|---|---|
+| debug 線(SWDIO/SWCLK、1/2 線の別) | **26 series** | **`confirmed`**(WCH-Link User Manual、ページ番号つき) |
+| 周辺の route(USART/SPI/I2C/PIOC) | 20 series / 1,655 route | `reference`(datasheet ピン表からの候補) |
+| debug pad の衝突 | **30 件** | `confirmed` + `reference` |
 
-```sh
-# EVT の @Note から周辺のピン注記を拾う
-grep -rhoE "(SPI[12]_(SCK|MOSI|MISO|NSS)|I2C[12]_(SCL|SDA)|USART[1-8]_(Tx|Rx))\(P[A-E][0-9]+\)" <series>/EVT/EXAM | sort -u
-# datasheet の pin 表から debug 線を拾う(pypdf でテキスト化して SWIO/SWDIO/SWCLK を grep)
-```
+### 8.1 debug 線と、その pad に来る他の役割
 
-| series | debug 線 | USART1 | SPI1 | I2C1 | 実害のある衝突 |
-|---|---|---|---|---|---|
-| **V003 / V006** | **SWIO = PD1** | TX **PD5** / RX **PD6** | SCK PC5 / MOSI PC6 / MISO PC7 / NSS **PC1** | SCL PC2 / SDA **PC1** | **PC1 が SDA と NSS で重複** → SPI(hw NSS)と I2C は同居不可。さらに **PD1(SWIO)は `SCL_1`/`URX_1` の remap 先** → remap すると debug 線と食い合う |
-| **V103** | (2 線) | PA9 / PA10 | PA5/PA6/PA7 + NSS PA4 | EVT は PB8/PB9、PB10/PB11 | — |
-| **V20x / V205** | **SWDIO = PA13 / SWCLK = PA14** | PA9 / PA10 | PA5/PA6/PA7 + NSS PA4 | PB8/PB9 | PA13/PA14 は USART3 の remap 先 |
-| **V307 / V407** | **PA13 / PA14** | PA9 / PA10 | PA5/PA6/PA7 + NSS PA4 | PB8/PB9、PB10/PB11 | **DAC ch0 = PA4 = SPI1_NSS** → target の DAC を Pico の ADC で見るなら NSS はソフト制御に |
-| **L103** | (2 線) | PA9 / PA10 | PA5/PA6/PA7 + NSS PA4 | PB6/PB7、PB10/PB11 | — |
-| **X035** | (2 線) | TX PA9 or **PB10** / RX PA10 or **PB11** | PA5/PA6/PA7 + NSS PA4 | SCL **PA10** / SDA PA11 | **I2C1_SCL(PA10)が USART1_RX(PA10)と衝突** → USART1 を PB10/PB11 へ remap 必須 |
-| **X315** | (2 線) | TX PA11 / RX PA10 | PA5/PA6/PA7 + NSS PA4 | SCL PA0 / SDA PA1(AF3) | 比較的素直 |
-| **M030** | (1/2 線切替) | TX **PC1**(remap) / RX PC0 | SCK PA1 / MOSI PC3 / MISO PC4 / NSS PA0 | SCL PC2 or PB3 / SDA **PC1** or PB2 | **PC1 が USART1_TX(remap)と I2C1_SDA で重複** |
-| **H417** | (2 線) | PA9 / PA10 | (EVT は SPI2: SCK PB13 / MOSI PC1 / MISO PC2 / NSS PB12) | (EVT は I2C2: SCL PC0 / SDA PC1) | EVT サンプルが SPI2/I2C2 を使っている |
+| series | wire | SWDIO/SWIO | SWCLK | debug pad と食い合う役割 |
+|---|---|---|---|---|
+| CH32H415 | **1/2 線** | PB9 | PB8 | *(route データ無し)* |
+| CH32H416 | **1/2 線** | PB9 | PB8 | *(route データ無し)* |
+| CH32H417 | **1/2 線** | PB9 | PB8 | *(route データ無し)* |
+| CH32L103 | 2 線 | PA13 | PA14 | **PA13**: I2C1_SCL, USART1_RTS<br>**PA14**: USART1_CTS |
+| CH32M007 | **1/2 線** | PD1 | PB3 | **PB3**: I2C_SCL, SPI_MISO, USART1_RX, USART1_TX, USART2_RTS, USART2_RX<br>**PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX, USART2_RX |
+| CH32M030 | **1/2 線** | PA3 | PA2 | **PA2**: I2C_SCL, SPI_NSS, UART_CTS, UART_RX, UART_TX<br>**PA3**: I2C_SDA, UART_RX, UART_TX |
+| CH32V002 | **1/2 線** | PD1 | PB3 | **PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX |
+| CH32V003 | 1 線 | PD1 | — | *(route データ無し)* |
+| CH32V004 | **1/2 線** | PD1 | PB3 | **PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX |
+| CH32V005 | **1/2 線** | PD1 | PB3 | **PB3**: I2C_SCL, SPI_MISO, USART1_RX, USART1_TX, USART2_RTS, USART2_RX<br>**PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX, USART2_RX |
+| CH32V006 | **1/2 線** | PD1 | PB3 | **PB3**: I2C_SCL, SPI_MISO, USART1_RX, USART1_TX, USART2_RTS, USART2_RX<br>**PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX, USART2_RX |
+| CH32V007 | **1/2 線** | PD1 | PB3 | **PB3**: I2C_SCL, SPI_MISO, USART1_RX, USART1_TX, USART2_RTS, USART2_RX<br>**PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX, USART2_RX |
+| CH32V103 | 2 線 | PA13 | PA14 | — |
+| CH32V203 | 2 線 | PA13 | PA14 | — |
+| CH32V205 | **1/2 線** | PA13 | PA14 | *(route データ無し)* |
+| CH32V208 | 2 線 | PA13 | PA14 | — |
+| CH32V303 | 2 線 | PA13 | PA14 | **PA13**: USART3_TX<br>**PA14**: UART8_TX, USART3_RX |
+| CH32V305 | 2 線 | PA13 | PA14 | **PA13**: USART3_TX<br>**PA14**: UART8_TX, USART3_RX |
+| CH32V307 | 2 線 | PA13 | PA14 | **PA13**: USART3_TX<br>**PA14**: UART8_TX, USART3_RX |
+| CH32V317 | 2 線 | PA13 | PA14 | **PA13**: USART3_TX<br>**PA14**: UART8_TX, USART3_RX |
+| CH32V407 | **1/2 線** | PA13 | PA14 | **PA13**: USART3_TX, USART4_CTS, USART6_CK<br>**PA14**: USART3_RX, USART6_CTS, USART8_TX |
+| CH32V467 | **1/2 線** | PA13 | PA14 | **PA13**: USART3_TX, USART4_CTS, USART6_CK<br>**PA14**: USART3_RX, USART6_CTS, USART8_TX |
+| CH32X033 | 2 線 | PC18 | PC19 | **PC18**: PIOC_IO0<br>**PC19**: PIOC_IO1 |
+| CH32X035 | 2 線 | PC18 | PC19 | **PC18**: PIOC_IO0<br>**PC19**: PIOC_IO1 |
+| CH32X305 | **1/2 線** | PA13 | PA14 | *(route データ無し)* |
+| CH32X315 | **1/2 線** | PA13 | PA14 | *(route データ無し)* |
 
-**注意**: 上表は **EVT サンプルが選んだピン**であって、そのペリフェラルが取り得る唯一の組とは限らない(remap がある)。確定させるには series ごとに RM の AF/remap 表を当たる必要がある。
+### 8.2 データの穴と、EVT 由来で残しているもの
 
-### 示唆
+**7 series は `remap_routes.csv` に USART/SPI/I2C の route が無い**: H415, H416, H417, V003, V205, X305, X315。**V003 と X035 が含まれるのが痛い**(harness の主要ターゲット)。→ [データ依頼](data/harness-wiring/README.ja.md#依頼)。
 
-- **V003 は「1 device 専有」の設計理由そのもの**。SWIO(PD1)+ USART(PD5/PD6)+ SPI(PC5/6/7)+ I2C(PC2/PC1)で 20 pin パッケージがほぼ埋まる。複数 lane を張る余地が物理的に無い。
-- **PC1/PA4/PA10/PC1 のような「1 ピン 2 役」が series ごとに違う場所に出る**。[bootloader-survey](bootloader-survey.ja.md) が「差は series ではなく EVT サンプルの系譜で決まる」と結論したのと同じ構造で、**配線も series 表ではなく衝突表として持つ**のが正しい形に見える。
-- 2 線系(V20x 以降)は debug が PA13/PA14 に固まっていて、SPI1(PA4-7)・USART1(PA9/PA10)・I2C1(PBx)と衝突しない。**2 線系は全部載せが素直、1 線系(V003/V006)は取捨選択が要る**。
+この 7 series については、**EVT サンプルの `@Note` から拾った初版の事実が依然として唯一の情報源**。生成物に無いので、ここに残す:
+
+| series | 事実 | 出典 | 水準 |
+|---|---|---|---|
+| **V003** | SPI1 `NSS = PC1` と I2C1 `SDA = PC1` が重複 → **SPI(hw NSS)と I2C は同居不可** | EVT `@Note` | 弱い(サンプルが選んだ組) |
+| **V307 / V407** | **DAC ch0 = PA4 = SPI1_NSS** → target の DAC を観測するなら NSS はソフト制御に | EVT `DAC/*/main.c` | 同 |
+| **X035** | I2C1 `SCL = PA10` と USART1 `RX = PA10` が重複 → USART1 を PB10/PB11 へ remap 必須 | EVT `@Note` | 同 |
+| **M030** | USART1 `TX = PC1`(remap)と I2C1 `SDA = PC1` が重複 | EVT `@Note` | 同 |
+
+**DAC は `bus_routes.csv` の対象外**(USART/SPI/I2C/PIOC のみ)なので、V307/V407 の DAC 衝突は route データが増えても出てこない。別途拾う必要がある。
+
+### 8.3 harness としての読み方
+
+1. **1/2 線を選べることが「使える pad を選べる」ことになる**(15 series が両対応: H415, H416, H417, M007, M030, V002, V004, V005, V006, V007, V205, V407, V467, X305, X315)。
+   例: **V005/V006/V007/M007 は 2 線だと SWCLK = PB3 が SPI_MISO と食い合う**が、**1 線を選べば PB3 が空く**。SPI slave エミュと debug を同時に成立させたいなら 1 線を選ぶ。**これは初版の EVT 表では見えなかった設計レバー**。
+2. **X033 / X035 は PIOC の既定ピンが debug ピンそのもの**(`PC18`/`PC19`)。X035 の remap でも **IO0 が PC7 に移るだけで IO1 は PC19 = SWCLK のまま**。→ **PIOC を probe の phy に使うと、その chip 自身の debug port が塞がる**([harness-board-survey.ja.md §3.5](harness-board-survey.ja.md) の推論がデータで裏付けられた)。
+3. **harness に最も素直なのは V103 / V203 / V208**(debug pad の衝突 0 件)。次が **V303/V305/V307/V317**(USART3 の remap 先だけなので、USART3 を使わなければ衝突ゼロ)。
+4. **いちばん苦しいのは V00x 系**。PD1(SWIO)に **I2C 両線 + USART1 両方向 + USART2_RX** が重なる。**V003 は「1 線のみ」で唯一逃げ道が無い** — §1 の「1 device 専有」がここで具体的な形になる。
+5. **`pin_conflicts.csv` は 372 行あり、うち debug 絡みは 30 行**。残り(bus 同士の衝突)は「その 2 つを同時に使えない」という意味なので、**harness の 16ch 窓に何を載せるかを決めるときの制約表**として使える。
 
 ## 9. 未決事項(実測してから決める)
 
@@ -265,6 +298,10 @@ grep -rhoE "(SPI[12]_(SCK|MOSI|MISO|NSS)|I2C[12]_(SCL|SDA)|USART[1-8]_(Tx|Rx))\(
 8. **target 5V 時の扱い**(直列抵抗だけで済む線と、レベル変換が要る線の切り分け)。
 9. **エミュが駆動した時刻と firmware の指示時刻のずれ**。大きければ §3.3 の「Pico が駆動する線は窓から落とす」原則を見直す。
 10. **名前**。DUT harness / bench probe / DUT scope など仮。[dmi-bridge §8.1](../protocols/dmi-bridge.ja.md) に既に `Bench` プロファイルがあるので、`bench` は避けた方がよいかもしれない。
+11. **`ch32-device-data` の route データの穴を埋めるか**(§8.2)。USART/SPI/I2C の route が無い 7 series(**V003 / V205 / X035 / X033 / X315 / X305 / H41x**)。埋まるまで V003 と X035 は EVT 由来の弱いデータのまま。→ [依頼案](data/harness-wiring/README.ja.md#依頼)
+12. **CH32X033 の `afio-pioc-remap` value 1 は存在するか**。X035 には remap 行があるが X033 には無い。**データの穴か、X033 では PIOC が debug pad に固定なのか**で、X033 を probe に使えるかが変わる(§8.3-2)。
+13. **[link-to-target](../protocols/link-to-target.ja.md) §1 の「1/2 線 切替可」の列挙に V205 / V407 / V467 / X305 / X315 / H41x を反映するか**。`debug_wiring.csv` は `confirmed` で 15 series を挙げている(§8.3-1)。→ protocol 側の記述変更なので別判断。
+14. **窓に NRST を入れるか**。ArduinoCore-CH32 側の論理信号は 13 本(`MARKER` / `GPIO_OUT` / `INT_IN` / `PWM` / `UART_TX` / `UART_RX` / `I2C_SCL` / `I2C_SDA` / `SPI_SCK` / `SPI_MOSI` / `SPI_MISO` / `SPI_CS` / `MCO`)で、**debug 2 本 + NRST = 16 でちょうど埋まり空きゼロ**。§3.3 の優先順位規則では NRST(Pico 駆動)は窓から落とす候補だが、**測定原点に reset 時刻を使いたい要求**があるので衝突する。→ **Pico(23ch 窓)なら消える**。
 
 ## 9b. 仕様をどこに置くか(**まだ決めない**)
 
@@ -290,6 +327,7 @@ grep -rhoE "(SPI[12]_(SCK|MOSI|MISO|NSS)|I2C[12]_(SCL|SDA)|USART[1-8]_(Tx|Rx))\(
 - 多 lane 側の protocol 仕様: [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)
 - 自己観測で埋めたい穴(SWIO パルス幅 / RVSWD STOP 波形): [../protocols/link-to-target.ja.md](../protocols/link-to-target.ja.md)
 - target 側 print(時間軸に載せるもの (d)): [../protocols/serial-and-print.ja.md](../protocols/serial-and-print.ja.md)
+- **§8 の生成データと抽出スクリプト**: [data/harness-wiring/](data/harness-wiring/README.ja.md)(一次データ = `ch32-device-data/evidence/{debug_wiring,remap_routes}.csv`)
 - series 差の扱い方の先例: [bootloader-survey.ja.md](bootloader-survey.ja.md)
 - 実測の規則(計画 → 実行 → レポート): [../experiments/README.ja.md](../experiments/README.ja.md) / 台帳 [../experiments/LEDGER.ja.md](../experiments/LEDGER.ja.md)
 - board 実ピンの出典: [Waveshare RP2040-Zero wiki](https://www.waveshare.com/wiki/RP2040-Zero) / [TinyGo waveshare-rp2040-zero](https://tinygo.org/docs/reference/microcontrollers/machine/waveshare-rp2040-zero/) / [Waveshare RP2350-Zero wiki](https://www.waveshare.com/wiki/RP2350-Zero)
