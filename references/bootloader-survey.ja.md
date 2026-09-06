@@ -1,7 +1,7 @@
 # bootloader 横断調査 — 分析結果(第 2 回・深堀り)
 
 状態: **attested**(EVT 12 series の IAP 13 project + 副対象 9 + OSS BL 3 + stub 51 を実ソースから機械抽出。**BL のビルドサイズと stub の逆アセンブルは実測 = `verified`**。実機 capture 未)。
-調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(19 テーブル・約 1,600 行 + stub の hex/逆アセンブル 34 対)
+調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(18 テーブル・1,656 行 + stub の hex/逆アセンブル 34 対)
 
 この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F35`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
 
