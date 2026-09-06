@@ -1,0 +1,14 @@
+pad_size_bytes,hid_report_id,condition,#,confidence,basis
+128,0xAA,<= 128,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+1152,0xAB,> 128,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+1152,0xAB,> 128,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+2176,0xAC,> 1152,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+2176,0xAC,> 1152,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+3200,0xAD,> 2176,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+3200,0xAD,> 2176,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+4096,0xAE,> 3200,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+4096,0xAE,> 3200,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+5248,0xAF,> 4096,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+5248,0xAF,> 4096,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+6272,0xB0,> 5248,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+6272,0xB0,> 5248,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
