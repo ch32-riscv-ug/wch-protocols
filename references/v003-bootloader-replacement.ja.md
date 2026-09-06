@@ -173,6 +173,9 @@
 | libc / libgcc | **`memcpy` / `memset` / `strlen` / `printf` の呼び出しが無い**。C 側に **乗除算が無い**(シフトのみ)ので `__mulsi3` / `__divsi3` を引かない | grep で確認 |
 | 命令選択 | asm 側で圧縮命令を明示(`c.sw` / `c.li` / `c.addi` / `c.j` / `c.nop`) | `rv003usb.S` |
 | 属性 | `boot_usercode` に `noreturn`(「**2–4 byte 節約できる**」とコメント) | `bootloader.c` |
+| 定数選択 | `BOOTLOADER_TIMEOUT_BASE` は「**定数が 1 命令で載るように選んである。変えるとコードが大きくなる**」とコメント | 同上 |
+| RAM↔flash | **`RV003USB_OPTIMIZE_FLASH` は RAM を犠牲に flash を削る switch**。RV32EC に速い `c.lbu`/`c.sbu` が無いため endpoint の全フィールドを `uint32_t` に広げ、`struct usb_endpoint` を **16 → 32 byte** にしている(`_Static_assert` で固定)。`ENDPOINTS 2` なので **RAM +32 B で flash を買っている** | `rv003usb.h` |
+| 関数の除外 | 同 switch で **`usb_pid_handle_ack` を丸ごとコンパイルしない**(「Do not compile ACK commands」) | `rv003usb.c` |
 
 → **「`-Os` にしましょう」「`--gc-sections` を」の類は全部済み。** 残っているのは下の A–E。
 
@@ -181,7 +184,7 @@
 | # | 測ること | 手段 | なぜ最初か |
 |---|---|---|---|
 | **A1** | **関数別サイズと残り byte** | `.map` と `--print-memory-usage` は**既に有効**。ビルドして読むだけ | **これ無しに A2 以降は判断できない**。「大きい関数」の順位が削減の優先順になる |
-| **A2** | **`0x00`–`0x4F`(ベクタ領域)に startup が何 byte 使っているか** | map + 逆アセンブル | 余っていれば**死んだ隙間**。小関数を置ける |
+| **A2** | **`0x00`–`0x4F`(ベクタ領域)に startup が何 byte 使っているか** | `objdump -d` | **静的に数えると 80 B = ちょうど `0x50`。空きは 0 の見込み**(→ §8.5.1)。**優先度は低い**が、`. = 0x52` の脆さの裏付けになる |
 | **A3** | **構成別の差分**(timeout のみ / button のみ / 両方 / `KEEP_PORT_CFG` 有無) | 構成を変えてビルドし直す | **§4 の唯一の動機が「あと何 byte」に確定する** |
 
 **A1–A3 は実機も target も要らない。** [experiments/README.ja.md §3.1](../experiments/README.ja.md) の梯子で言えば最下段(実機なし)で答えが出る問いなので、上の段に持ち上げない。
@@ -213,14 +216,17 @@
 
 #### D. USB descriptor / protocol level(**効きが大きい可能性**)
 
+**この節だけ実数で追えた**(descriptor は全部 `usb_config.h` にリテラルで書かれているので、ビルドしなくても byte が数えられる)。内訳は §8.5。
+
 | # | 案 | 見込み | リスク | 還元 |
 |---|---|---|---|---|
-| **D1** | **string descriptor の短縮** — USB string は **UTF-16LE = 1 文字 2 byte**。manufacturer / product / serial の 3 つがある。product を短くする、serial index を `0` にする | **数十 byte**(16 文字の product を削れば 34 B) | ⚠ [ecosystem §4.2](ecosystem-any-hardware.ja.md) の「**serial string に UID を載せて個体識別**」と衝突する。**BL では個体識別の必要性が低い**ので許容できるかの判断が要る | **fork 固有**(UIAPduino の patch が触った箇所そのもの) |
-| **D2** | **EP1 IN を省けるか** — BL の protocol は **control transfer だけ**(`SET_REPORT` / `GET_REPORT`)。`ENDPOINTS 2`(EP0 + 1)を **1** にできれば、endpoint descriptor 7 B + endpoint 処理コード + buffer が消える | **当たれば最大**(数十〜百 byte + RAM) | ⚠⚠ **HID class は interrupt IN endpoint を持つのが通例で、Windows が列挙を拒否する可能性がある**。**3 OS での受容性を確認する実機実験が必須** | **upstream の設計判断**(大きいので相談案件) |
-| **D3** | HID report descriptor の最小化(feature report だけなので不要な usage / collection を削る) | 十数 byte | host 側の report 解釈が変わる。3 host 実装(minichlink / webflasher / WebLink)で確認 | upstream |
-| **D4** | config / interface descriptor の共有・圧縮 | 数〜十数 byte | 低 | upstream |
+| **D1** | ~~string descriptor の短縮~~ → **既に済んでいる**。`STR_MANUFACTURER u""` / `STR_SERIAL u""` は**空文字列**、`STR_PRODUCT u"32V003"` は 6 文字(14 B)。**削る余地は文字列側に無い** | — | — | — |
+| **D1′** | **空文字列 descriptor の丸ごと削除** — device descriptor の `iManufacturer` / `iSerialNumber` を **`0`(= 文字列なし)**にして、`string1` / `string3` と `descriptor_list` の 2 エントリを消す | **約 28 B**(§8.5.2) | **低**。index 0 は USB 仕様の「文字列なし」。HID は serial を要求しない。**いま既に空文字列なので失う情報がゼロ** | **fork 固有**(即入れられる) |
+| **D1″** | **`descriptor_list` の構造体 padding の回収** — `{uint32_t, ptr, uint8_t}` = 9 B が **12 B に padding** されている。7 エントリで **21 B が純粋な padding** | **15–35 B**(§8.5.2) | 低〜中。**`packed` にしてはいけない**(RV32EC は非整列アクセスを byte 分解するのでコードが増える)。**並列配列に分ける**のが正解 | **upstream** |
+| **D2** | **EP1 IN を省けるか** — BL の protocol は **control transfer だけ**(`SET_REPORT` / `GET_REPORT`)。config descriptor に **endpoint descriptor 7 B が入っている**(`0x81`, interval `0xff`)ので、`bNumEndpoints 0` + `ENDPOINTS 1` にできれば descriptor 7 B + endpoint 処理コード + **RAM 32 B** が消える | **数十〜百 byte** | ⚠⚠ **HID class は interrupt IN endpoint を持つのが通例で、Windows が列挙を拒否する可能性**。**3 OS での受容性を確認する実機実験が必須** | **upstream の設計判断**(相談案件) |
+| **D3** | HID report descriptor(**17 B**)の最小化。**upstream 自身が `HID_USAGE(0xff)` に `// Needed?` とコメントを付けている** | 2–6 B | host 側の report 解釈が変わる。3 host 実装で確認 | upstream(**upstream の疑問に答える形になる**) |
 
-**D2 が唯一「実機と 3 OS が要る」項目**。他は全部ビルドだけで判定できる。
+**D2 が唯一「実機と 3 OS が要る」項目**。**D1′ / D1″ / D3 はビルドだけで判定でき、合計 45–70 B**。
 
 #### E. コード level(効くが PR 規模が大きい)
 
@@ -230,15 +236,100 @@
 | **E2** | `boot_usercode` の `asmDelay(1000000)` の見直し | 数 byte | D− を LOW にしてから host が切断を認識するまでの待ちなので、**短くすると再列挙に失敗しうる** | upstream |
 | **E3** | **entry 判定の共通化** — timeout / button / host 検出で重複している GPIO 設定を 1 本化 | 十〜数十 byte | 3 方式の組合せテストが要る | **upstream**。**§4 の唯一の動機に対する直接の手段** |
 
-### 8.4 進め方
+### 8.4 進め方と累積予算
 
-1. **A1 → A2 → A3**(ビルドのみ)。ここで「残り byte」と「両方載せるのに足りない byte」が数字になる。
-2. **C1 → B1 → B3**(リスク低・還元しやすい順)。A3 の不足分が埋まるか見る。
-3. 埋まらなければ **D1**(fork 固有なので UIAPduino 側で即入れられる)。
-4. まだ足りなければ **E3**、それでも足りなければ **D2**(実機 + 3 OS)。
-5. **どの段で足りたかを記録して、その内容を UIAPduino / upstream に出す**。
+§8.5 で実数が出た分は見込みの信頼度が上がったので、**リスクの低い順ではなく「確度 × 額」の順**に並べ替える。
 
-**2 の時点で「実は 200 byte 空いていた」なら §4 の結論(entry 同時搭載は容量で無理)が覆る。** 逆に **1 で「残り 4 byte」だったら、この節の残りは全部やらなくていい**。だから A1 が最優先。
+| 段 | 項目 | 削減(見込み) | 累積 | 確度 | 実機 |
+|---:|---|---:|---:|---|:--:|
+| 0 | **A1 / A3**(map を読む・構成別差分) | — | — | — | 不要 |
+| 1 | **D1′** 空文字列 descriptor の削除 | **≈28 B** | **28** | **高**(実数で数えた。失う情報ゼロ) | 不要 |
+| 2 | **C1** 未使用セクションの `ALIGN(4)` padding | 10–20 B | 38–48 | 中(map で確認できる) | 不要 |
+| 3 | **D1″** `descriptor_list` を並列配列に | 15–25 B | 53–73 | 中〜高(実数で数えた) | 不要 |
+| 4 | **B1 / B3** `-Oz` / 新 GCC | 不定(数十 B) | — | 中 | 不要 |
+| 5 | **D3** HID report descriptor の削減 | 2–6 B | +数 B | 中 | host 3 実装 |
+| 6 | **E3** entry 判定の共通化 | 10–数十 B | — | 低(要コード読み) | 要 |
+| 7 | **D2** EP1 IN の省略 | 数十〜百 B | — | **低**(3 OS が拒否しうる) | **要・3 OS** |
+
+- **段 1–3 だけで 53–73 B が、実機なしで、fork にも upstream にも出せる形で見えている。** A3 の不足分がこの範囲なら、**それだけで entry 同時搭載が成立する**。
+- **A2 は §8.5.1 で「空き 0」と分かったので落とす。** 代わりに「**startup の変更は等サイズ以下でなければビルドが通らない**」という制約として §8.5.1 を参照する。
+- **A1 で「残り 4 byte」だったら段 1 から順に積む。「残り 200 byte」だったら §4 の結論(entry 同時搭載は容量で無理)がその場で覆る。** どちらにしても **A1 が最優先**で、他は A1 の値でしか順序が決まらない。
+- **還元の出し方**: 段 1 は **UIAPduino fork に直接**(strings は fork 側の設定)。段 2・3・5 は **upstream(cnlohr)への PR**。段 7 は **upstream への issue / 相談**から。
+
+### 8.5 実数で追えた 2 箇所
+
+#### 8.5.1 startup は `0x00`–`0x4F` を**ちょうど**埋めている(空きは 0 の見込み)
+
+`USE_TINY_BOOT` の startup を静的に数えると:
+
+| 命令 | byte | 根拠 |
+|---|---:|---|
+| `la sp, _eusrstack` | 8 | `0x20000800` は下位 12 bit ≠ 0 → `lui`+`addi`。`.option norelax` 下 |
+| `li a0, 0x80` / `csrw mstatus` / `csrw mtvec, 3` | 4+4+4 | `0x80` は `c.li` の範囲(−32..31)外 |
+| `addi a0, sp, -2048` / `addi gp, a0, 0x3fc` | 4+4 | |
+| RAM クリアループ(`c.li` / `c.sw` / `c.addi` / `blt`) | 2+2+2+4 | 圧縮命令 |
+| `la a2, RCC_BASE` / `la a3, FLASH_R_BASE` | 4+4 | **`0x40021000` / `0x40022000` は下位 12 bit = 0 → `lui` 1 命令**に畳める |
+| `li a1, 0x01000081` | 8 | 下位 12 bit ≠ 0 |
+| clock 設定の `c.sw` / `c.li` ×5 | 2×5 | |
+| `la a1, main` / `csrw mepc` / `mret` | 8+4+4 | |
+| **合計** | **80** | **= `0x50`** |
+
+`0x50` は `EXTI7_0_IRQHandler` のベクタスロット(`csrw mtvec, 3` でベクタ表を番地 0 に置いているため)。つまり **startup は「未使用のベクタスロット `0x04`–`0x4F` にちょうど収まる」ように書かれていて、隙間は残っていない**。
+
+→ **A2 の答えは「空き 0」の見込みで、回収できる死んだ領域は無い。** 同時にこれは、ソース中の
+
+```
+// CAREFUL THIS MUST BE EXACTLY AT 0x50
+. = 0x52 // Weird...  I don't know why this has to be 0x52, for it to be at 0x50.
+```
+
+が**なぜ壊れやすいか**の説明にもなる: **startup に 2 byte 足すだけで `. =` が後戻りになり(GAS はエラー)、ビルドが通らなくなる**。**startup 側の変更は「等サイズ以下」でなければ入らない**という制約として扱うべき。
+
+#### 8.5.2 descriptor テーブルの内訳 — **回収できるのは文字列ではなくテーブル**
+
+`usb_config.h` の実データ(すべてリテラルなので数えられる):
+
+| 物 | byte | 備考 |
+|---|---:|---|
+| `device_descriptor` | 18 | `iManufacturer=1` / `iProduct=2` / `iSerialNumber=3` |
+| `config_descriptor` | **34** | config 9 + interface 9 + HID 9 + **endpoint 7**(← D2 の対象) |
+| `special_hid_desc` | **17** | うち `HID_USAGE(0xff)` 2 B に upstream が `// Needed?` |
+| `string0`(langid) | 4 | |
+| `string1`(manufacturer)| **2** | **`u""` = 空文字列** |
+| `string2`(product) | 14 | `u"32V003"`(6 文字 × 2 + 2) |
+| `string3`(serial) | **2** | **`u""` = 空文字列** |
+| **`descriptor_list`** | **84** | **7 エントリ × 12 B** |
+| 合計 | **175** | 1,916 B の **約 9%** |
+
+**`descriptor_list` が単体で 84 B ある**のが要点。構造体は
+
+```c
+struct descriptor_list_struct { uint32_t lIndexValue; const uint8_t * addr; uint8_t length; };
+```
+
+で **4 + 4 + 1 = 9 B が 12 B に padding** される(ilp32e、alignment 4)。→ **7 × 3 = 21 B が純粋な padding**。
+
+さらに **7 エントリのうち 2 つは空文字列(`string1` / `string3`)を指している**。
+
+| 手 | 削減 | 備考 |
+|---|---:|---|
+| **(1) 空文字列を消す** — `iManufacturer` / `iSerialNumber` を `0` にし、`string1` / `string3` と対応する 2 エントリを削除 | **24 + 4 ≈ 28 B** | **失う情報ゼロ**(いま既に空)。linear scan も 7 → 5 周に減る(下記) |
+| **(2) 並列配列に分ける** — `uint32_t idx[5]` + `const uint8_t* addr[5]` + `uint8_t len[5]` = 45 B(対 5 × 12 = 60 B) | **+15 B** | **`packed` は逆効果**(RV32EC は非整列 word アクセスを byte 分解する)。並列配列なら stride が 4 / 4 / 1 で全部整列 |
+| **(3) `addr` を 16 bit offset に** — descriptor は全部 1,916 B 以内にあるので `uint16_t` で足りる | **+10 B**(参照側に add 1 命令) | 効果は小さいので (1)(2) の後 |
+| **合計** | **約 43–53 B** | うち **(1) の 28 B はリスクがほぼ無い** |
+
+**関連して、lookup が `break` の無い linear scan**になっている:
+
+```c
+for( i = 0; i < DESCRIPTOR_LIST_ENTRIES; i++ ) {
+    dl = &descriptor_list[i];
+    if( dl->lIndexValue == wvi ) { ... }   // ← break が無い。常に全周する
+}
+```
+
+`break` を入れれば control transfer の応答が少し速くなるが、**サイズは増える可能性がある**(分岐が増える)ので、これは A1 の実測で判断する項目。**制御転送なので timing 制約(40 サイクル)には触れない。**
+
+→ **§8.3-D の「見込み 45–70 B」の根拠はここ。** そして **string 短縮(元の D1)は既に済んでいて、削るべきは文字列ではなくテーブル構造**だった、が本節の結論。
 
 ## 9. 参照
 
