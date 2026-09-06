@@ -331,6 +331,154 @@ for( i = 0; i < DESCRIPTOR_LIST_ENTRIES; i++ ) {
 
 → **§8.3-D の「見込み 45–70 B」の根拠はここ。** そして **string 短縮(元の D1)は既に済んでいて、削るべきは文字列ではなくテーブル構造**だった、が本節の結論。
 
+### 8.6 空けた分で何が入るか — **入るのは「entry 条件」だけ**
+
+削減の話は「**空けた byte に何を入れるか**」が無ければ意味が無い。結論から:
+
+> **1,920 B の枠に後から入るのは entry 条件の追加だけで、新しい機能の類は 1 つも入らない。** entry 条件が要らないなら **今のままでよい**。
+
+#### 8.6.1 UIAPduino の変更は**わずか 8 箇所**(本家との差分で確定)
+
+fork の `origin/master` は **cnlohr 本家そのもの**(最終 commit は cnlohr、2025-09-22)で、`custom/main` はそこから分岐している。したがって **`git diff origin/master custom/main` が UIAPduino の変更の全体**。`bootloader/` に対する差分は **`bootloader.c` 3 箇所 + `usb_config.h` 5 箇所だけ**だった。
+
+| # | ファイル | 本家 | **UIAPduino** | 意味 |
+|---|---|---|---|---|
+| 1 | `bootloader.c` | `BOOTLOADER_TIMEOUT_PWR 67`(≈5 s) | **`7`**(≈525 ms) | BL に留まる窓を短縮 |
+| 2 | `bootloader.c` | `//#define BOOTLOADER_TIMEOUT_USB 0`(無効) | **有効化** | **USB 通信があれば BL に永久に留まる** |
+| 3 | **`bootloader.c`** | **(無い)** | **`if (!(RCC->RSTSCKR & (1<<26))) boot_usercode();` を追加** | **power-on reset 以外なら即 app へ**(§8.6.3 の主役。**本家には無い行**) |
+| 4 | `usb_config.h` | `USB_PIN_DPU 5` | コメントアウト | pull-up を 3.3 V 固定に |
+| 5 | `usb_config.h` | PID `0xB003` | **`0xB803`** | fork の PID |
+| 6 | `usb_config.h` | bcdDevice `0x0000` | **`0x0141`**(1.41) | 版管理 |
+| 7 | `usb_config.h` | bMaxPower `0x64`(200 mA) | **`0xFA`**(500 mA) | |
+| 8 | `usb_config.h` | `u"cnlohr"` / `u"rv003usb"` / `u"NBTT"` | **`u""` / `u"32V003"` / `u""`** | **string を空に(約 24 B 節約)** |
+
+**commit の帰属も確認した**(`git merge-base --is-ancestor`):
+
+| commit | 著者 | 本家に入っているか |
+|---|---|---|
+| `dfe879d`「add warning about bootloader entry condition」 | **BogdanTheGeek** | **本家**。→ **`#warning` は UIAPduino のものではない** |
+| `ac321c0` / `e432ff0`「reset flow を 1 関数にまとめてバイナリを小さくする」 | **YuukiUmeta-UIAP** | **本家に merge 済み** → **既に還元されている** |
+| `807669d` / `326cc3e` / `9e30b75` / `b524c05` | YuukiUmeta-UIAP | fork 固有 |
+
+**ここから言えること**:
+
+- **`#warning` を UIAPduino が「button を入れたくて入らなかった記録」と読んだのは誤り。** 本家の一般的な注意書きで、**UIAPduino が button を試した証拠は無い**(そもそも fork の差分に button は現れない)。
+- **UIAPduino のサイズ最適化(reset flow の統合)は既に本家へ還元済み。** 残る fork 固有の変更は**設定値と識別子だけ**で、コード削減の余地に手を付けた形跡は無い。
+- → **§8.5.2 の `descriptor_list` の padding・空文字列エントリ、§8.3-C1 の linker `ALIGN(4)` は、本家も fork も触っていない。** 還元先は **本家(cnlohr)**。
+- **string を空にしたのは UIAPduino** なので、§8.3-D1′(空文字列 descriptor の**エントリごと削除**)は **fork 側で完結できる**。
+
+#### 8.6.1b ⚠ 情報源と限界(**実機の挙動は見ていない**)
+
+§8.5–§8.6 の根拠は**すべてソースコードの読解**で、**実機の観測でも出荷 firmware のバイナリでもない**。
+
+| 見たもの | 実体 |
+|---|---|
+| checkout | `rv003usb`(origin = `YuukiUmeta-UIAP/rv003usb`)、branch **`custom/main`**、HEAD `5cddcd5`(2025-10-02) |
+| 比較対象 | 同 repo の **`origin/master` = cnlohr 本家**(2025-09-22) |
+| 読んだファイル | `bootloader/{bootloader.c, usb_config.h, README.md, *.ld, Makefile}`、`rv003usb/{rv003usb.S, .c, .h}`、`ch32fun/ch32fun.mk` |
+| `bootloader/` の最終更新 | `326cc3e`(2025-08-24)。HEAD の keyboard commit は `demo_pikokey_hid/` のみ |
+
+**この checkout のどこにも button を有効化した設定は無い**(`#define BOOTLOADER_BTN_PORT D` が非コメントで現れるのは `bootloader/README.md` の説明文だけ)。keyboard の customize も `demo_pikokey_hid/`(**app** 側)だけで、BL は触っていない。
+
+→ **「ボタンを押しながら接続で BL に入る」は、この source からは再現されない。** 出荷 firmware が別ならソース外の話になるので、**実機で確定させる**:
+
+| 確かめ方 | 分かること |
+|---|---|
+| **何も押さずに挿して** `lsusb` を見る | **`1209:B803` なら BL に居る**(= source どおり)。app の PID なら別構成 |
+| `bcdDevice` を見る | `1.41` なら fork の `9e30b75` 以降のビルド |
+| ボタンを押しながら挿して比べる | 挙動が変わるなら **出荷版は source と違う** |
+
+#### 8.6.2 いまの entry 動作(**commit された既定構成**。出荷版は未確認)
+
+| 設定 | 値 | 効果 |
+|---|---|---|
+| `BOOTLOADER_TIMEOUT_PWR` | **7**(75 ms/単位 → **約 525 ms**) | power-on 後 525 ms は BL に留まる |
+| `BOOTLOADER_TIMEOUT_USB` | **0** | **その窓の間に USB 通信があれば `localpad = 0` = timeout 無効 → BL に永久に留まる** |
+| button | **無効** | — |
+| `SOFT_REBOOT_TO_BOOTLOADER` | **無効** | — |
+
+`reset_timeout = 1` は `usb_pid_handle_data`(= host からの DATA packet)で立つので、**列挙されるだけで条件を満たす**。
+
+→ **PC に挿したら必ず BL に留まる。** app が走るのは (a) USB host のいない電源(充電器・電池)で起動したとき、または (b) host が `run_app` stub を撃ったとき。
+
+**この帰結が重要**: **USB に繋がっている限り entry は既に 100% 保証されている**ので、「app から BL に戻る」機能は**この構成では要らない**。
+
+#### 8.6.3 `SOFT_REBOOT_TO_BOOTLOADER` は**この fork のコードでは動かない**(button の有無に関わらず)
+
+`SOFT_REBOOT_TO_BOOTLOADER` の参照箇所は **button ブロックの中だけ**(`bootloader.c` L239–248)。**そして button を有効にしても、その後の L265–266 が無条件に効いてしまう**:
+
+```c
+if (!(RCC->RSTSCKR & (1<<26)))     // L265: #ifdef で囲まれていない
+    boot_usercode();
+```
+
+app→BL の切替シーケンスは `RCC->RSTSCKR |= 0x1000000`(RMVF = reset flag クリア)を通るので、**再起動後は bit26(POR)が落ちていて、この行が無条件に user code へ飛ばす**。
+
+L265–266 は `#ifdef` に一切囲まれていない(L237–251 の button ブロックの **外**、L263 の `NVIC_EnableIRQ` の直後)。**そしてこの 3 行は §8.6.1 の #3 — 本家に無い、UIAPduino が追加した行**。したがって:
+
+| 構成 | app→BL は動くか |
+|---|:--:|
+| button 無効 + `SOFT_REBOOT` 有効 | **✗**(マクロの参照先が全部コンパイルされない) |
+| **button 有効 + `SOFT_REBOOT` 有効** | **✗**(L240/L246 は通過するが、**L265 が無条件に `boot_usercode()` する**) |
+
+→ **この fork では `SOFT_REBOOT_TO_BOOTLOADER` はどう設定しても効かない**(本家では L265 が無いので button 構成なら効く)、というのがコードから読める結論(**実機確認が要る**。→ LEDGER `bl-softreboot-decouple`)。
+
+**逆に、この 3 行が UIAPduino の意図した挙動でもある**: power-on 以外の reset(NRST・watchdog)では **525 ms 待たずに即 app へ行く**。つまり
+
+| 起動要因 | UIAPduino の BL の行き先 |
+|---|---|
+| **電源投入(抜き差し)** | **BL**(USB host が居れば永久に留まる) |
+| **NRST / watchdog / soft reset** | **即 app** |
+
+→ **entry は「抜き差し」で、ボタンは要らない。** 代わりに **app からの要求(soft reset)でも BL に入れない**。これを可能にする修正は **fork 側**(本家への還元ではない):
+
+> **L265 を `SOFT_REBOOT_TO_BOOTLOADER` で独立に条件化する**(`&& RCC->RSTSCKR != 0x10000000` を足す)。`RSTSCKR` は既にレジスタに載っているので **`lui` + `beq` ≈ 8 B**。**button の GPIO コスト(20–40 B)を払わずに app→BL entry が手に入る。**
+
+#### 8.6.4 何が入って、何が入らないか
+
+| 入れたいもの | コスト(推定) | 53–73 B で入るか | 備考 |
+|---|---:|:--:|---|
+| **L265 の独立条件化**(app→BL entry) | **≈8 B** | **◎** | §8.6.3。**いま 8 B 空いていれば削減すら不要** |
+| **boot button** | **20–40 B** | **◎** | GPIO 設定は既存 `CFGLR` 式に合流するので安い。**`dfe879d` が示す本命** |
+| `BOOTLOADER_KEEP_PORT_CFG` | **8–16 B**(ソースに明記) | ◎ | app が触ったピン設定を保つ |
+| BL mode の LED 表示 | 10–20 B | ○ | `BOOTLOADER_DEBUG_BOOT` の実装が既にある |
+| **BL 自己更新** | **数百 B** | **✗** | しかも **app 側 updater で既に実現済み**(§0-4) |
+| **trial boot / ロールバック** | **数百 B** | **✗** | §4。16 KB を 2 分割する痛みも別にある |
+| **transport 追加(UART/I2C)** | **数百 B** | **✗** | §4 |
+| scratchpad の拡大 | **flash はほぼ 0**(RAM を食う) | — | **削減と無関係**。RAM は runpad の後に 1 KB 空いている。low-speed EP0 は 8 B/packet なので効果は限定的 |
+
+→ **入るのは 1–3 個の entry 条件だけ。** 構造的な機能は 1 つも入らない。
+
+#### 8.6.4b ⚠ button と timeout は「足し算」ではなく**どちらか**
+
+前提を 1 つ訂正する。**button 単体は問題なく入る**。ソースの推奨構成が
+
+> If you want to use a Button during boot to enter bootloader, use these defines to setup the Button. **If you do, it makes sense to also set `DISABLE_BOOTLOAD` above, set `BOOTLOADER_TIMEOUT_PWR` to 0 and disable `BOOTLOADER_TIMEOUT_USB`**
+
+であり、`BOOTLOADER_TIMEOUT_PWR 0` にすると `#if !(BOOTLOADER_TIMEOUT_PWR == 0)` でカウントダウン一式がコンパイルから外れるため、**button のコードはその跡地に収まる**。`#warning` が出るのは **両方を同時に有効にしたとき**だけ。
+
+つまり成立する構成は 2 つで、**排他**:
+
+| 構成 | entry の仕方 | 用途 |
+|---|---|---|
+| **A: button 構成**(`BTN_PORT` + `DISABLE_BOOTLOAD` + `TIMEOUT_PWR 0`) | **ボタンを押しながら電源投入**。押さなければ即 app | **USB HID 機器**(キーボード等)。README が「HID 機器には通常これが最良」と明記 |
+| **B: timeout 構成**(fork の commit 既定。`TIMEOUT_PWR 7` + `TIMEOUT_USB 0`) | **挿すだけ**(約 525 ms の窓 → USB 通信があれば BL に留まる) | **開発ボード**。挿せば必ず書ける |
+| A + B | — | **入らない**(`#warning`) |
+
+**B はキーボードには向かない**: 起動が数百 ms 遅れるうえ、`TIMEOUT_USB 0` では **PC が列挙した時点で BL に居続ける**ので、キーボードとして動かない。→ **UIAPduino が A を選び、併用を諦めたのは妥当な判断**。
+
+→ **「空けた 53–73 B の行き先」は A + B の併用**だが、**キーボード用途ではそもそも B が要らない**。行き先が無いなら削減する理由も無い。
+
+#### 8.6.5 判断
+
+| もし… | 結論 |
+|---|---|
+| **ボタンを押さずに BL に入りたい**(key combo など、app からの要求で) | **§8.6.3 の ≈8 B だけ**。**削減は要らない可能性が高い**(A1 で 8 B 空いていれば終わり)。**いま効いていないはずの機能が効くようになる**ので、還元としても価値がある |
+| **「押しながら」も「挿すだけ」も両方欲しい** | **A + B の併用 → §8.4 の段 1–3(53–73 B)が要る**。ただし **B は HID 機器では副作用が大きい**(§8.6.4b) |
+| **今の「押しながら接続」で困っていない** | **空けた byte に行き先が無い → 今のままでよい** |
+
+**測る順序も変わる**: A1(残り byte)で **8 B 以上空いていれば §8.6.3 を入れて終わり**。button まで欲しいときだけ §8.4 の段 1–3 に進む。**削減が目的ではなく、button のための手段**という位置づけにする。
+
 ## 9. 参照
 
 - software USB の物理・timing・BL の位置づけ: [../protocols/software-usb.ja.md](../protocols/software-usb.ja.md)

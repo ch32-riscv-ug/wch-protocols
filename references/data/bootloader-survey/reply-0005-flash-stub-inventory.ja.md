@@ -182,3 +182,96 @@ wlink は MIT OR Apache-2.0、blob 自体は WCH EVT の flash ルーチン由�
 export WCH_ROOT=<repo の親>
 python3 extract5.py     # ch32rv/crates/flash/src/stub.rs を読んで hex/disasm/比較を再生成
 ```
+
+## 6. 追記(2026-09-06)— WCH 純正 OpenOCD から loader を全数取得した
+
+`~/dev_wch/tools` に WCH 純正 OpenOCD の**バイナリとソースの両方**が置かれたので、§Q3-bis を先に進めました。
+**バイナリが strip されておらず**、loader がシンボル名付きで並んでいました。
+
+### 6.1 「どちらが純正か」の最終回答 = **両方**
+
+wlink の 5 本と minichlink の `linke-flashloader-v3`/`v4` は、純正 OpenOCD のシンボルと**バイト一致**します。
+
+| 手元の名前 | 純正シンボル | family |
+|---|---|---|
+| `CH32V003` | `flash_op003` | CH32V003 / CH641 |
+| `CH32V103` | `flash_op103` | CH32V103 |
+| `CH32V307` | `flash_op307` | CH32V20x / CH32V30x |
+| `CH643` / `CH32L103` | `flash_op643` | CH643 / CH32X035 |
+| `linke-flashloader-v3` | `flash_op583` | CH58x / CH59x |
+| `linke-flashloader-v4` | `flash_op573` | CH57x |
+
+**例外**: minichlink の `v1`/`v2`(V20x/V30x 用)だけは純正と**共通接頭辞 0 B で不一致**。出所が別です。
+
+> なお `flash_op643` と `flash_opl103` は**バイト完全一致**でした。**そちらが `0x0E`(L103)に `CH643` を使っている判断は、
+> WCH 自身の命名からも裏付けられます**。
+
+### 6.2 **`0x4E`(CH32V00X)には専用 loader がある** — これが一番効く話
+
+`params_for_family()` が `0x4E` を `_ => return None` に落としているのは(意図どおり)問題ありません。
+ただし**将来 V00X を足すとき、`CH32V003` を流用してはいけません**。
+
+WCH は **`flash_op00X`(500 B)** を別に持っており、`flash_op003`(498 B)との差は**ページサイズだけ**です:
+
+```
+flash_op003 : addi x15,x12,63    srli x15,x15,0x6    addi x14,x14,64     ← 64 B ページ
+flash_op00X : addi x15,x12,255   srli x15,x15,0x8    addi x14,x14,256    ← 256 B ページ
+```
+
+命令数は 199 対 199、共通接頭辞 83 B・接尾辞 109 B。**同一ソースをページ定数だけ変えてビルドしたもの**です。
+V003 版を V00X に使うと 64 B 刻みで動き、実ページ 256 B と食い違います。
+
+### 6.3 family byte → loader の dispatch(全 21 分岐)
+
+純正バイナリの `wlink_ready_write` にある jump table(`0x32a5e8`)を展開しました。
+**そちらの `params_for_family()` を広げるときの一次資料**になります。
+
+| `riscvchip` | loader | 送出サイズ | 公開ソースにも |
+|---|---|---:|:-:|
+| `0x01` | `flash_op103` | 512 | ✓ |
+| `0x05` `0x06` | `flash_op307` | 512 | ✓ |
+| `0x09` | `flash_op003` | 512 | ✓ |
+| `0x0c` | `flash_op643` | 512 | ✓ |
+| `0x0e` | `flash_opl103` | 512 | ✓ |
+| **`0x4e`** | **`flash_op00X`** | **512** | ✗ |
+| **`0x8e`** | **`flash_opm030`** | — | ✗ |
+| **`0xc6`** | **`flash_op417`** | — | ✗ |
+| **`0x86` / `0xa6`** | **`flash_op317`** | — | ✗ |
+| `0x02` `0x03` `0x07` `0x0b` `0x0a` `0x0f` `0x46` `0x4b` `0x8b` `0xcb` | CH5xx 系 8 種 | — | 一部のみ |
+
+**穴が 2 つ**: **`0x0d`(CH32X035)と `0x49`(CH641)は dispatch に無い**。
+WCH 自身は X035 / CH641 を stub 経路で書いていません。
+そちらが `0x0D`→`CH643`、`0x49`→`CH32V003` を流用して実機検証しているのは、**純正より広い対応**ということになります。
+
+### 6.4 ABI は CH32V 系 10 本で共通(§Q4 の一般化)
+
+`a0` bit0..4 / `a1` addr / `a2` len / 戻り値 0\|16 は **CH32V/X/L/M 系 10 本すべてに共通**でした。
+buffer 番地だけ 2 系統 — **`0x20000xxx`(V003 / V00X = RAM 2〜4 KB の小容量品)** と `0x20001xxx`(他)。
+**CH5xx 系 8 本は別 ABI**で `a0` bit0 しか見ません。
+
+→ **§Q4 の契約のまま 10 family へ広げられます**。
+
+### 6.5 loader のページ定数が `ch32-device-data` と 9/9 一致
+
+| | V003 | V00X | V103 | L103 | V20x | V30x | X035 | M030 | H417 |
+|---|---|---|---|---|---|---|---|---|---|
+| loader 埋め込み | 64 | 256 | 128 | 256 | 256 | 256 | 256 | 128 | 256 |
+| `flash_geometry.fast_program_bytes` | 64 | 256 | 128 | 256 | 256 | 256 | 256 | 128 | 256 |
+
+**probe 経路(WCH バイナリ)と RM/EVT 由来のデータが独立に一致**したので、相互の裏取りになります。
+
+### 6.6 公開 GPL ソースのバグ(そちらには影響しません)
+
+`riscv-openocd-wch` の `wlinke.c` L1187 が `wlink_ramcodewrite(flash_op643, sizeof(flash_op8571))` と
+**別配列のサイズ**を渡しています(512 B の配列から 1408 B 送出)。**配布バイナリでは修正済み**です。
+公開ソースは 9 loader / 11 分岐で、**バイナリ(18 loader / 21 分岐)より明確に古い**ことも分かりました。
+
+### 6.7 生バイトの扱い
+
+新規 12 本の hex と逆アセンブルは、**当リポジトリには保存していません**(WCH 配布 GPL バイナリ由来のため)。
+`wch_openocd_loaders.csv` に**事実だけ**(symbol / サイズ / `fnv1a64` / family / `a0_bits` / `buffer_base` / `page_bytes`)を
+置いてあります。中身が要るときは手元の OpenOCD から再生成してください:
+
+```sh
+EMIT_BLOBS=1 python3 extract8.py
+```
