@@ -1,7 +1,7 @@
 # bootloader 横断調査 — 分析結果(第 2 回・深堀り)
 
 状態: **attested**(EVT 12 series の IAP 13 project + 副対象 9 + OSS BL 3 + stub 51 を実ソースから機械抽出。**BL のビルドサイズと stub の逆アセンブルは実測 = `verified`**。実機 capture 未)。
-調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(28 テーブル・3,307 行 + stub の hex/逆アセンブル 34 対)
+調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(28 テーブル・3,308 行 + stub の hex/逆アセンブル 34 対)
 
 この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F57`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
 
@@ -570,7 +570,12 @@ loader がシンボル名付きで並んでいた。
 ## 9. 次の一手
 
 この調査の結論を実装境界に落とした設計案 → **[unified-bootloader-design.ja.md](unified-bootloader-design.ja.md)**(status: draft)。
-要点は「**分割の主軸は series ではなく driver class(5 つ)**」「**真の障害は極性反転 1 件だけ**」「**拡張は stub 側で稼ぐ**」。
+要点:
+
+- **分割の主軸は series ではなく制御レジスタ列** — flash driver は **5 関数 + 4 パラメータ**で 12 series を覆える(F44)
+- **真の障害は極性反転 1 件だけ**(F07)。しかも `==` に倒せば blank pattern 依存まで消える
+- **拡張は stub 側で稼ぐ**(H4)。WCH 純正 loader ABI は 5 操作固定なので、拡張目標には minichlink 方式を採る
+- **移植 1 件の config は 13 定数 + 2 選択**。うち 6 個は `ch32-device-data` から引くだけ
 
 ## 10. 参照
 

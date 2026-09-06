@@ -125,7 +125,7 @@ family 別パラメータ(実機確認。code flash 先頭は共通 `0x08000000`
 - **page program は 3 方式**(消去済み前提。unlock 後):
   - **PgStart 方式(V20x/V30x, page 256)**: CTLR=FTPG → 4B ずつ write_mem32(各 word 後 WRBUSY 待ち)→ CTLR=FTPG\|PGSTART → STATR BUSY 待ち → CTLR=0 → lock。
   - **Buffered 方式(V003/CH641 page 64, X035/CH643/L103 page 256)**: CTLR=FTPG → CTLR=FTPG\|BUFRST → BUSY 待ち → 各 word: write_mem32 → CTLR=FTPG\|BUFLOAD → BUSY 待ち → 全 word 後: FLASH_ADDR=addr → CTLR=FTPG\|STRT → BUSY 待ち → CTLR=0 → lock。
-  - **V103 標準 halfword 方式(erase 128 / program 標準)**: fast buffer でなく 16bit halfword(`sh`=`write_mem16`)で書く。**各 erase/program 後に未文書の commit 副作用が必須**: `*(0x40022034) = *((addr & ~3) ^ 0x1000)`(無いと無反応。実測)。高速化のため PG も commit も page で 1 回にまとめて EVT 手順と等価を確認。
+  - **V103 標準 halfword 方式(erase 128 / program 標準)**: fast buffer でなく 16bit halfword(`sh`=`write_mem16`)で書く。**各 erase/program 後に未文書の commit 副作用が必須**: `*(0x40022034) = *((addr & ~3) ^ MASK)`(無いと無反応。実測)。**同じ副作用を CH32M030 も持つ**(SDK 全 12 series 走査で V103 10 箇所 / M030 8 箇所、他 10 series は 0)。**XOR マスクは series で違う — V103 = `0x1000` / M030 = `0x100`**。高速化のため PG も commit も page で 1 回にまとめて EVT 手順と等価を確認。
 
 実機検証: V20x/V30x(PgStart)✓ / V003/CH641(Buffered)✓ / X035/CH643(Buffered)✓ / **L103(Buffered)✓**(256 B page の surgical erase — 前後の page 無傷、program/verify 往復)/ V103(標準)✓。
 
@@ -402,7 +402,7 @@ WCH-LinkUtility の `Firmware_Link/` に平文で入っている。**全ファ�
 
 ## 12. 未解読(todo)
 
-~~`wlink_disabledebug`、`wlink_getromram`、`wlink_rstout`、`wlink_chip_reset`~~ → **§4 に転記して verified**(WCH 純正 OpenOCD のソース [`wlinke.c`](tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c) から byte 確定。2026-09-06)。
+~~`wlink_disabledebug`、`wlink_getromram`、`wlink_rstout`、`wlink_chip_reset`~~ → **§4 に転記して verified**(WCH 純正 OpenOCD のソース `riscv-openocd-wch` の `src/jtag/drivers/wlinke.c` から byte 確定。2026-09-06)。
 
 残り: `wlink_armversion`(ソースにも無い)。**frame エラー応答の体系**。→ capture で確定する。
 

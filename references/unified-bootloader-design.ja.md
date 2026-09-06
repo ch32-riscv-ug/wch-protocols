@@ -1,8 +1,8 @@
 # 統一 bootloader の設計 — 調査結果を実装境界に落とす
 
 状態: **draft**(解読ではなく**自前設計**。実装・実測は未)。
-根拠はすべて [bootloader-survey.ja.md](bootloader-survey.ja.md) の所見 ID(`F01`〜`F43`)と
-[data/bootloader-survey/](data/bootloader-survey/) の 25 テーブルにある。設計判断のたびに ID を引く。
+根拠はすべて [bootloader-survey.ja.md](bootloader-survey.ja.md) の所見 ID(`F01`〜`F58`)と
+[data/bootloader-survey/](data/bootloader-survey/) の 28 テーブルにある。設計判断のたびに ID を引く。
 
 この文書が答えるのは **「Q2 = 統一 BL は作れるか」の続き**、すなわち **どこで分けるのが最小の分割か**。
 
@@ -19,6 +19,7 @@
 | **言語は層で分ける** | 線上信号 = asm 必須 / BL 本体 = C / stub = asm | H1〜H3、§6 |
 | **拡張は stub 側でやる** | BL 本体は固定。scratchpad は ch32fun で BL 本体の 1.9 倍 | H4 / F19 / F20 |
 | **サイズ上限は自前で持ち込む** | EVT は 13 project 中 5 つしか強制していない | F13 |
+| **移植の config は 13 定数 + 2 選択** | §9b。うち 6 個は `ch32-device-data` から引くだけ | F42〜F58 |
 
 ---
 
@@ -158,9 +159,10 @@ CTLR &= ~PAGE_PG
 *(0x40022034) = ...          # ★ 未文書の commit 副作用。v103 と m030 が持つ
 ```
 
-> **`0x40022034` への書き込みは未文書**。`protocols/pc-to-link.ja.md` §6 が V103 について
-> 「無いと無反応(実測)」と書いているもので、**M030 も同じものを持っている**(本調査で判明)。
-> **(a) 形を実装するなら必ず入れる**。
+> **`0x40022034` への書き込みは未文書**(D6 の答え、F58)。SDK 全 12 series を走査した結果、
+> **持つのは V103(10 箇所)と M030(8 箇所)の 2 series だけ**、他 10 series は 0 箇所。
+> **XOR マスクも違う** — `*(0x40022034) = *((addr & ~3) ^ MASK)` で **V103 = `0x1000` / M030 = `0x100`**。
+> → config の `commit_xor_mask`(0 = 副作用なし / 0x1000 / 0x100)**1 個で表せる**。分岐は不要。
 
 ### 4.4 まとめ — driver の実装本数
 
@@ -239,6 +241,21 @@ HID report ID = 0xAA + pad_size/1024,  pad_size ∈ {128, 1152, 2176, 3200, 4096
 
 ---
 
+### 7.1 stub 契約の選択肢は 3 つになった(D4)
+
+| 契約 | 出所 | 特徴 |
+|---|---|---|
+| **(i) minichlink HID scratchpad** | `pgm-b003fun.c` | host が**任意の機械語**を送って実行させる。能力は host 側の stub で無限に増える。既存 host が 3 実装ある |
+| **(ii) WCH 純正 loader ABI** | WCH OpenOCD の 18 loader(F45/F56) | `a0` = 操作ビットマスク(unlock / mass erase / page erase / program / verify)、`a1` = addr、`a2` = len、buffer 固定、戻り値 0\|16。**能力が 5 操作に固定** |
+| (iii) 自前 | — | 自由だが host も全部自作 |
+
+**(i) を採る**。理由は §7 冒頭のとおりで、**(ii) は能力が 5 操作に固定される**から。
+統一 BL の設計目標は「BL を小さく保ったまま**能力を後から足せる**」ことなので、
+固定 5 操作の ABI はその目標と噛み合わない。
+
+ただし **(ii) を知っている価値は大きい**: 同じ target に対して WCH 純正 probe 経路でも書けるので、
+**BL が壊れたときの復旧路**として (ii) が使える(BL を焼き直す側の経路)。両立する。
+
 ## 8. 作らないもの(non-goals)
 
 - **WCHMcuIAP 互換**。§3.2 で `==` に倒すなら互換は捨てる。倒さないなら §3.2 の利点も捨てる
@@ -248,16 +265,47 @@ HID report ID = 0xAA + pad_size/1024,  pad_size ∈ {128, 1152, 2176, 3200, 4096
 
 ---
 
-## 9. 未決
+## 9. 決定と未決
 
-| # | 内容 | 決め方 |
+| # | 内容 | 状態 |
 |---|---|---|
-| **D1** | §3.2 の極性。**host も自作するか、WCHMcuIAP 互換を残すか** | 設計判断。他のすべてがこれに従属する |
-| ~~D2~~ | ~~class D と E を畳めるか~~ → **解決**(F44)。制御列で測れば D/E は同形で、差は `words_per_bufload`(4 vs 2)だけ。全体も 5 関数に縮んだ | — |
-| ~~D3~~ | ~~read-modify-write の置き場~~ → **決めた**: **driver の上**(§4.5)。driver を「レジスタの薄い包み」に保つことが 5 関数化の前提なので、消去粒度と書込粒度の食い違いは上位の page cache 層で吸収する | — |
-| **D6** | `0x40022034` の commit 副作用は V103・M030 以外にも要るか。SDK に書かれていない series で本当に不要かは未確認 | 実機で確認 |
-| **D4** | scratchpad の契約を minichlink 互換にするか、自前にするか | 互換なら既存 host が使える。自前なら `a0` の使い方を自由にできる |
-| **D5** | BOOT 領域配置と user flash 配置を**同一ソースで両対応**にするか、別ターゲットにするか | §3.3 の exit と linker が連動する |
+| **D1** | §3.2 の極性(`==` = APP 正当の印 / `!=` = BL に留まれの要求) | **仮決め: `==`**。フェイルセーフ性で優る(blank pattern 依存が消える)。代償は WCHMcuIAP 非互換。**host も自作する前提。覆すなら §3.2 の表を読み替えるだけで戻せる** |
+| ~~D2~~ | class D と E を畳めるか | **解決**(F44)。制御列で測れば同形。差は `words_per_bufload`(4 vs 2)だけ |
+| ~~D3~~ | read-modify-write の置き場 | **決めた**: driver の上(§4.5)。driver を薄く保つのが 5 関数化の前提 |
+| ~~D4~~ | scratchpad の契約 | **決めた**(§7.1): minichlink HID scratchpad 互換。WCH 純正 ABI は 5 操作固定で拡張目標と噛み合わない。純正経路は**復旧路**として併存 |
+| **D5** | BOOT 領域配置と user flash 配置を同一ソースで両対応にするか | 差は (a) linker script (b) exit 方式 (c) `FLASH_Base` の **3 点だけ**でいずれも定数/マクロ。**論理的には両対応可**だが、V003 の 1,920 B では BOOT 側だけで予算が尽きる(§5)ので**ビルド構成としては分ける**のが現実的。最終判断は実装時 |
+| ~~D6~~ | commit 副作用の範囲 | **解決**(F58)。**V103 と M030 の 2 series だけ**。XOR マスクも違う(`0x1000` / `0x100`)。config 定数 1 個で表せる |
+
+---
+
+## 9b. config surface の確定版
+
+移植 1 件に必要なのは **13 個の定数と 2 個の選択**だけ。値は [`port_matrix.csv`](data/bootloader-survey/port_matrix.csv) と
+`ch32-device-data` `evidence/flash_geometry.csv` から引く(§2)。
+
+| # | 名前 | 出所 | 取りうる値 |
+|---|---|---|---|
+| 1 | `FLASH_BASE`(APP 先頭) | port_matrix | `0x08000000` / `0x08005000` / `0x08006000` |
+| 2 | `BL_MAX_BYTES` | 配置から | 1920 / 3328 / 20K / 24K |
+| 3 | `APP_MARKER_ADDR` | port_matrix(`cal_addr`) | Code FLASH 末尾 −4 |
+| 4 | `APP_MARKER_VALUE` | 全 series 共通 | `0x5aa55aa5` |
+| 5 | `ERASE_GRAN` | flash_geometry | 64 / 128 / 256 / 4096 |
+| 6 | `PROGRAM_GRAN` | flash_geometry(`fast_program_bytes`) | 64 / 128 / 256 |
+| 7 | `WORDS_PER_BUFLOAD` | reg_ops(F44) | 1 / 2 / 4 |
+| 8 | `COMMIT_XOR_MASK` | F58 | **0(不要)** / `0x1000`(V103)/ `0x100`(M030) |
+| 9 | `UART_PORT` | port_matrix | USART1 / 2 / 3 |
+| 10 | `UART_BAUD` | port_matrix | 460800(V103 のみ 57600) |
+| 11 | `ENTRY_GPIO` | port_matrix | PA0 / PC0 / PB4 |
+| 12 | `USB_VID` / `USB_PID` | 自前(pid.codes) | — |
+| 13 | `SCRATCHPAD_BASE` / `_SIZE` | 実装で決める | RAM 容量に従う |
+
+| # | 選択 | 値 |
+|---|---|---|
+| S1 | **BL の配置** | BOOT 領域 / user flash 先頭 → §3.3 の exit が自動的に決まる |
+| S2 | **program の形** | (a) buffer-then-commit / (b) inline-write-then-commit → §4.3 |
+
+**`blank_pattern` は D1 を `==` に倒したので config に要らない**(§3.2)。
+`!=` に戻す場合だけ 14 個目として `BLANK_WORD`(`0xFFFFFFFF` / `0xe339e339`)が復活する。
 
 ---
 

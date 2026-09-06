@@ -74,7 +74,7 @@ python3 extract8.py   # U11: WCH 純正 OpenOCD の loader 目録(事実のみ)
 | `reg_ops.csv` | 41 | `impl_id`,`seq` | **言語をまたぐ比較の共通座標系**。C / asm / hex を MMIO 操作列に正規化。検証セットのみ |
 | `equiv_groups.csv` | 16 | `equiv_group`,`impl_id` | 同一機能の別形態を束ねる |
 | `files.csv` | 467 | `path` | 解析した全ファイルの `bytes` / `lines` / `sha256`。EVT 更新時の差分検出用 |
-| `findings.csv` | 57 | `finding_id` | 所見。`axis` は調査設計 §2 の軸 ID |
+| `findings.csv` | 58 | `finding_id` | 所見。`axis` は調査設計 §2 の軸 ID |
 | `stubs_hex/*.hex` | 34 | — | stub の生バイト(space 区切り 16 進)。**劣化なし** |
 | `stub_disasm/*.asm` | 34 | — | 上を `riscv-none-elf-objdump -D -b binary -m riscv:rv32 -M numeric` した結果 |
 
