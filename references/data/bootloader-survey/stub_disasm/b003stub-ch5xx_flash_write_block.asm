@@ -1,0 +1,129 @@
+# b003stub-ch5xx_flash_write_block  (388 bytes)
+# riscv-none-elf-objdump -D -b binary -m riscv:rv32 -M numeric
+   0:	00458693          	addi	x13,x11,4
+   4:	82ae                	mv	x5,x11
+   6:	02c50713          	addi	x14,x10,44
+   a:	18850793          	addi	x15,x10,392
+   e:	00f75763          	bge	x14,x15,0x1c
+  12:	4310                	lw	x12,0(x14)
+  14:	c290                	sw	x12,0(x13)
+  16:	0711                	addi	x14,x14,4
+  18:	0691                	addi	x13,x13,4
+  1a:	bfd5                	j	0xe
+  1c:	4394                	lw	x13,0(x15)
+  1e:	43dc                	lw	x15,4(x15)
+  20:	00458713          	addi	x14,x11,4
+  24:	8702                	jr	x14
+  26:	0001                	nop
+  28:	55fd                	li	x11,-1
+  2a:	c10c                	sw	x11,0(x10)
+  2c:	00052423          	sw	x0,8(x10)
+  30:	4518                	lw	x14,8(x10)
+  32:	df7d                	beqz	x14,0x30
+  34:	972a                	add	x14,x14,x10
+  36:	474c                	lw	x11,12(x14)
+  38:	12345637          	lui	x12,0x12345
+  3c:	67860613          	addi	x12,x12,1656 # 0x12345678
+  40:	fec59be3          	bne	x11,x12,0x36
+  44:	00c50713          	addi	x14,x10,12
+  48:	0002a023          	sw	x0,0(x5)
+  4c:	0002a583          	lw	x11,0(x5)
+  50:	ddf5                	beqz	x11,0x4c
+  52:	300025f3          	csrr	x11,mstatus
+  56:	f775f593          	andi	x11,x11,-137
+  5a:	30059073          	csrw	mstatus,x11
+  5e:	4591                	li	x11,4
+  60:	a2ec                	fsd	f11,192(x13)
+  62:	4595                	li	x11,5
+  64:	00068323          	sb	x0,6(x13)
+  68:	a2ec                	fsd	f11,192(x13)
+  6a:	0ff00613          	li	x12,255
+  6e:	0001                	nop
+  70:	0001                	nop
+  72:	a2d0                	fsd	f12,128(x13)
+  74:	00668583          	lb	x11,6(x13)
+  78:	fe05cee3          	bltz	x11,0x74
+  7c:	a2d0                	fsd	f12,128(x13)
+  7e:	00668583          	lb	x11,6(x13)
+  82:	fe05cee3          	bltz	x11,0x7e
+  86:	00068323          	sb	x0,6(x13)
+  8a:	00068323          	sb	x0,6(x13)
+  8e:	4595                	li	x11,5
+  90:	00b68323          	sb	x11,6(x13)
+  94:	0001                	nop
+  96:	0001                	nop
+  98:	4599                	li	x11,6
+  9a:	00b68223          	sb	x11,4(x13)
+  9e:	00668583          	lb	x11,6(x13)
+  a2:	fe05cee3          	bltz	x11,0x9e
+  a6:	00068323          	sb	x0,6(x13)
+  aa:	00068323          	sb	x0,6(x13)
+  ae:	4595                	li	x11,5
+  b0:	00b68323          	sb	x11,6(x13)
+  b4:	0001                	nop
+  b6:	0001                	nop
+  b8:	4589                	li	x11,2
+  ba:	00b68223          	sb	x11,4(x13)
+  be:	460d                	li	x12,3
+  c0:	833e                	mv	x6,x15
+  c2:	00668583          	lb	x11,6(x13)
+  c6:	fe05cee3          	bltz	x11,0xc2
+  ca:	01035593          	srli	x11,x6,0x10
+  ce:	0ff5f593          	zext.b	x11,x11
+  d2:	00b68223          	sb	x11,4(x13)
+  d6:	0322                	slli	x6,x6,0x8
+  d8:	167d                	addi	x12,x12,-1
+  da:	f665                	bnez	x12,0xc2
+  dc:	04000613          	li	x12,64
+  e0:	430c                	lw	x11,0(x14)
+  e2:	0711                	addi	x14,x14,4
+  e4:	c28c                	sw	x11,0(x13)
+  e6:	4591                	li	x11,4
+  e8:	00668303          	lb	x6,6(x13)
+  ec:	fe034ee3          	bltz	x6,0xe8
+  f0:	4355                	li	x6,21
+  f2:	00668323          	sb	x6,6(x13)
+  f6:	15fd                	addi	x11,x11,-1
+  f8:	f9e5                	bnez	x11,0xe8
+  fa:	167d                	addi	x12,x12,-1
+  fc:	f275                	bnez	x12,0xe0
+  fe:	10078793          	addi	x15,x15,256
+ 102:	00668603          	lb	x12,6(x13)
+ 106:	fe064ee3          	bltz	x12,0x102
+ 10a:	00068323          	sb	x0,6(x13)
+ 10e:	00080337          	lui	x6,0x80
+ 112:	04030d63          	beqz	x6,0x16c
+ 116:	137d                	addi	x6,x6,-1 # 0x7ffff
+ 118:	4615                	li	x12,5
+ 11a:	00068323          	sb	x0,6(x13)
+ 11e:	a2f0                	fsd	f12,192(x13)
+ 120:	a2d0                	fsd	f12,128(x13)
+ 122:	00668603          	lb	x12,6(x13)
+ 126:	fe064ee3          	bltz	x12,0x122
+ 12a:	00468383          	lb	x7,4(x13)
+ 12e:	00668603          	lb	x12,6(x13)
+ 132:	fe064ee3          	bltz	x12,0x12e
+ 136:	00468383          	lb	x7,4(x13)
+ 13a:	00668603          	lb	x12,6(x13)
+ 13e:	fe064ee3          	bltz	x12,0x13a
+ 142:	00068323          	sb	x0,6(x13)
+ 146:	0013f393          	andi	x7,x7,1
+ 14a:	fc0394e3          	bnez	x7,0x112
+ 14e:	450c                	lw	x11,8(x10)
+ 150:	95aa                	add	x11,x11,x10
+ 152:	05b1                	addi	x11,x11,12
+ 154:	f2e59be3          	bne	x11,x14,0x8a
+ 158:	414c                	lw	x11,4(x10)
+ 15a:	00b78963          	beq	x15,x11,0x16c
+ 15e:	300025f3          	csrr	x11,mstatus
+ 162:	0885e593          	ori	x11,x11,136
+ 166:	30059073          	csrw	mstatus,x11
+ 16a:	bd7d                	j	0x28
+ 16c:	300025f3          	csrr	x11,mstatus
+ 170:	0885e593          	ori	x11,x11,136
+ 174:	30059073          	csrw	mstatus,x11
+ 178:	56fd                	li	x13,-1
+ 17a:	c114                	sw	x13,0(x10)
+ 17c:	0002a023          	sw	x0,0(x5)
+ 180:	8082                	ret
+ 182:	0001                	nop

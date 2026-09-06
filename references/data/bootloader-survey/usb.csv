@@ -1,0 +1,16 @@
+project_id,series,descr_style,vid,pid_vendor,pid_hid,iap_mode,source_file,source_line,#,confidence,basis
+evt-v003-iap,CH32V003,,,,,,,,#,single-source,
+evt-v00x-iap,CH32V00X,,,,,,,,#,single-source,
+evt-v103-iap,CH32V103,raw-bytes,0x4348,0x55E0,,,CH32V103/EVT/EXAM/IAP/UART_USB_IAP/CH32V103_IAP/User/main.c,39,#,single-source,evt:CH32V103/EVT/EXAM/IAP/UART_USB_IAP/CH32V103_IAP/User/main.c(L39)
+evt-v205-iap,CH32V205,macro,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_HID,CH32V205/EVT/EXAM/IAP/USB_UART/CH32V205_IAP/User/USB/usb_desc.h,20,#,single-source,evt:CH32V205/EVT/EXAM/IAP/USB_UART/CH32V205_IAP/User/USB/usb_desc.h(L20)
+evt-v20x-iap,CH32V20x,raw-bytes,0x4348,0x55E0,,,CH32V20x/EVT/EXAM/IAP/USB_UART/CH32V20x_IAP/CONFIG/usb_desc.c,18,#,single-source,evt:CH32V20x/EVT/EXAM/IAP/USB_UART/CH32V20x_IAP/CONFIG/usb_desc.c(L18)
+evt-v30x-iap,CH32V30x,raw-bytes,0x1A86,0x55E0,,,CH32V307/EVT/EXAM/IAP/USB_UART/CHV30x_IAP/User/ch32v30x_usbfs_device.c,44,#,single-source,evt:CH32V307/EVT/EXAM/IAP/USB_UART/CHV30x_IAP/User/ch32v30x_usbfs_device.c(L44)
+evt-v407-iap,CH32V407,macro,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_HID,CH32V407/EVT/EXAM/IAP/USB_UART/CH32V407_IAP/User/USB/usb_desc.h,20,#,single-source,evt:CH32V407/EVT/EXAM/IAP/USB_UART/CH32V407_IAP/User/USB/usb_desc.h(L20)
+evt-x035-iap,CH32X035,raw-bytes,0x1A86,0x55E0,,,CH32X035/EVT/EXAM/IAP/USB_UART/CH32X035_IAP/User/ch32x035_usbfs_device.c,48,#,single-source,evt:CH32X035/EVT/EXAM/IAP/USB_UART/CH32X035_IAP/User/ch32x035_usbfs_device.c(L48)
+evt-x315-iap,CH32X315,macro,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_VENDOR,CH32X315/EVT/EXAM/IAP/USB_UART/CH32X315_IAP/User/USB/usb_desc.h,20,#,single-source,evt:CH32X315/EVT/EXAM/IAP/USB_UART/CH32X315_IAP/User/USB/usb_desc.h(L20)
+evt-l103-iap,CH32L103,macro,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_HID,CH32L103/EVT/EXAM/IAP/USB_UART/CH32L103_IAP/User/USB/usb_desc.h,20,#,single-source,evt:CH32L103/EVT/EXAM/IAP/USB_UART/CH32L103_IAP/User/USB/usb_desc.h(L20)
+evt-m030-iap,CH32M030,raw-bytes,0x1A86,0x55E0,,,CH32M030/EVT/EXAM/IAP/UART_USB_IAP/CH32M030_IAP/User/ch32m030_usbfs_device.c,48,#,single-source,evt:CH32M030/EVT/EXAM/IAP/UART_USB_IAP/CH32M030_IAP/User/ch32m030_usbfs_device.c(L48)
+evt-h417-v3f-iap,CH32H417,macro,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_HID,CH32H417/EVT/EXAM/IAP/USB_UART/CH32H417_IAP/Common/USB/usb_desc.h,20,#,single-source,evt:CH32H417/EVT/EXAM/IAP/USB_UART/CH32H417_IAP/Common/USB/usb_desc.h(L20)
+evt-h417-v5f-iap,CH32H417,macro,0x1A86,0x55E0,0xFE17,DEF_USB_IAP_MODE_HID,CH32H417/EVT/EXAM/IAP/USB_UART/CH32H417_IAP/Common/USB/usb_desc.h,20,#,single-source,evt:CH32H417/EVT/EXAM/IAP/USB_UART/CH32H417_IAP/Common/USB/usb_desc.h(L20)
+oss-rv003usb-bl,CH32V003,,,,,,,,#,single-source,
+oss-ch32fun-bl,CH32X035;CH5xx,,,,,,,,#,single-source,

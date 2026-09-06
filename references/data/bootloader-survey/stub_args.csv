@@ -1,0 +1,5 @@
+stub_id,scratchpad_offset,width_bytes,direction,meaning,#,confidence,basis
+b003-scratchpad,60,,,"@60
+		if( MCF.PrepForLongOp ) MCF.PrepForLongOp( dev );  // Give the programmer a headsup this next operation could take a while.",#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L903)
+b003-scratchpad,84,,,"@84
+			if( MCF.PrepForLongOp ) MCF.PrepForLongOp( dev );  // Give the programmer a headsup this next operation could take a while.",#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L1011)

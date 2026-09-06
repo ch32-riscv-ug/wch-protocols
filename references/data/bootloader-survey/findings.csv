@@ -1,0 +1,25 @@
+finding_id,axis,claim,scope,evidence_refs,counterexample,#,confidence,basis
+F01,A/H,EVT IAP の command 定数は 13 project 全部で完全一致(PROM 0x80 / ERASE 0x81 / VERIFY 0x82 / END 0x83 / JUMP 0x84、ERR 0x00/0x01/0x02、CheckNum 0x5aa55aa5、USBD_DATA_SIZE 64),evt-iap 13,protocol.csv;constants.csv,CMD_JUMP_IAP のみ 12(V103 に無い),#,attested,survey:P1-P4
+F02,A/H,"8 project 以上に現れる #define のうち 13 個が全 project 同一値、割れるのは 5 個だけ(CalAddr 7 通り / FLASH_Base 3 通り / isp_cmd_t 2 通り / Uart_Sync_Head1,2 各 2 通り)",evt-iap 13,constants.csv,,#,attested,survey:P1-P4
+F03,A,"CH32V103 のみ完全に別世代。sync head 0x57,0xab(他は 0xaa,0x55)、CMD_JUMP_IAP 無し、ERR_SCUESS(綴り)、CalAddr/FLASH_Base/CheckNum 無し、entry は GPIO のみ。doc_date 2020/12/16 で他より 4 年以上古い",evt-v103-iap,protocol.csv;entry_exit.csv;projects.csv,,#,attested,survey:P1-P4
+F04,-,"**設計クラスタは series 名と一致しない**。(blank,polarity,exit,program API) で分類すると 7 群: {v003}{v00x}{v103}{v205,l103}{v20x,v30x,h417-v3f,h417-v5f}{v407,x315}{x035,m030}",evt-iap 13,entry_exit.csv;flash_ops.csv,,#,attested,survey:P1-P4
+F05,-,10 属性で比較して **v205↔l103 / v407↔x315 / h417-v3f↔h417-v5f が 10/10 完全一致**、v20x↔v30x は 9/10(差は VID のみ)。v407 と x315 は doc_date も同じ 2025/12/01,evt-iap 13,entry_exit.csv;usb.csv;flash_ops.csv;clock_uart.csv;projects.csv,,#,attested,survey:P1-P4
+F06,F,"APP 存在判定の blank pattern が 2 系統: 0xFFFFFFFF(v003,v00x,v205,x035,l103,m030)/ 0xe339e339(v20x,v30x,v407,x315,h417×2)。series 軸では説明できない",evt-iap 12,entry_exit.csv,,#,attested,survey:P1-P4
+F07,F,CalAddr 判定の極性が反転: v003/v00x のみ `== CheckNum` で APP へ、他 10 は `!= CheckNum` で APP へ。**同じ定数で意味が逆**,evt-iap 12,entry_exit.csv,,#,attested,survey:P1-P4
+F08,F,APP への抜け方が 2 系統: v003/v00x は BOOT_MODEKEYR 解錠 + FLASH_STATR bit14 クリア + system reset、他 11 は Software_IRQn を pending にするだけ,evt-iap 13,entry_exit.csv,,#,attested,survey:P1-P4
+F09,C,"flash program API が 4 系統: inline CTLR 直叩き(v003)/ FLASH_ROM_WRITE(v00x,v205,v407,x315,l103)/ FLASH_ProgramPage_Fast(adr,buf)(v20x,v30x,h417)/ FLASH_BufLoad+FLASH_ProgramPage_Fast(adr)(v103,x035,m030)",evt-iap 13,flash_ops.csv,,#,attested,survey:P1-P4
+F10,C,"erase 粒度が 4 種: 64 B(v003)/ 128 B(m030)/ 256 B(v00x,v205,v20x,v30x,x035,l103)/ 4096 B(v407,x315)。M030 のマスクは 0xFFFFFF80 = 128 B で他の 256 B と違う",evt-iap 10,flash_ops.csv,v103 は CH32_IAP_ERASE 経由で 128 B,#,attested,survey:P1-P4
+F11,E,"USB descriptor が 2 世代: 生バイト(v103,v20x,v30x,x035,m030)/ DEF_USB_VID マクロ(v205,v407,x315,l103,h417×2)。後者は **Vendor / HID モード切替**(DEF_USB_IAP_MODE)を持ち PID_HID 0xFE17 が増える",evt-iap 11,usb.csv,,#,attested,survey:P1-P4
+F12,E,"**VID は 2 種類**: 0x4348(v103, v20x)と 0x1A86(他 9)。PID は全て 0x55E0。既存 doc の 1A86:55E0 と V20x sample の 4348:55E0 はどちらも正しく、series で割れているのが真相",evt-iap 11,usb.csv,,#,attested,survey:P1-P4
+F13,D,`.ld` は series 既定からズレる側にだけ置かれる。IAP 側でサイズを実際に縛るのは 13 中 5(v003 1920/v00x 3328/v205 20K/v407 20K/h417-v3f 24K)。x315 と h417-v5f は .ld があるが既定と同値で無制約、残り 6 は .ld 自体が無い,evt-iap 13,memory_map.csv;series_memory.csv,,#,attested,survey:P1-P4
+F14,I,series 既定 ld にコメントアウトされた品種別構成が同居(V00X 3 / V20x 3 / V30x 2 系統)。flash/RAM は品種と option で可変なので、flash 末尾を build 時定数で決め打ちできない,12 series,series_memory.csv,,#,attested,survey:P1-P4
+F15,I,CalAddr(= APP 存在フラグの番地)を ch32-device-data の parts.csv と突き合わせると、v20x は family 最小品種(32 KB)の flash 外を指す。v30x/v407/x315 は parts.csv の flash_bytes を超える(parts.csv の定義が zero-wait 領域のみの可能性)。**要 RM 突合**,evt-iap 11,entry_exit.csv;parts.csv,,#,conflict,survey:P1-P4
+F16,J,stub の記述形態は 4 種(C / asm / 手書き hex / 生成 header)。inline hex 13 + 生成 header 15 + asm 17 + WCH 純正 blob 4 = 51 行,stub 51,stubs.csv,,#,attested,survey:P1-P4
+F17,J,**b003 系 stub 47 本すべてが x0–x15 のみ使用(rv32ec_safe=1)**。内訳は inline hex 15 + 生成 header 15(この 30 本は逆アセンブルで実測)+ asm ソース 17。一方 WCH 純正 flashloader blob 4 本はすべて x16 以降を使う(rv32ec_safe=0)。V003 で走らせる必要の有無が、そのままレジスタ規律の有無になっている,stub 51,stubs.csv;stub_disasm/,,#,verified,survey:P1-P4
+F18,J,inline hex と生成 header がバイト完全一致するものがある(write_block 104 B / write_block_v20x 104 B)。erase_block は 52 B 同士だが 2 byte ずれる → **二重管理で片方が古い可能性**,stub 6,equiv_groups.csv;stubs_hex/,,#,conflict,survey:P1-P4
+F19,Q4,stub の実測サイズ: halt_wait 10 B / run_app_new 8 B / write64_flash 48 B / erase_block 52 B / write_block 104 B / run_app 120 B。ch5xx 系は 26〜388 B。**機能 1 個あたり数十バイトで BL の flash 予算を消費しない**,stub 51,stubs.csv,,#,verified,survey:P1-P4
+F20,Q4,"scratchpad 予算: rv003usb は BL 1,916 B + secret 4 B に対し scratchpad 128 B。ch32fun は BL 3,328 B に対し scratchpad 6,144+128 B = **BL 本体の約 1.9 倍**。拡張余地は flash ではなく RAM にある",oss-bl 2,memory_map.csv;custom-bootloader.ja.md,,#,attested,survey:P1-P4
+F21,G,X035 のみ USBFS_Device_Init が VDD を引数に取る(PWR_VDD_SupplyVoltage())。他 series は 1 引数,evt-x035-iap,entry_exit.csv;main.c,,#,attested,survey:P1-P4
+F22,B,H417 のみ core 別に project が 2 本(V3F/V5F)。V5F は flash ORIGIN が 0x00010000 で「BL は flash 先頭」の前提が崩れる唯一の例。ただし 10 属性の比較では V3F と V5F は 10/10 一致(IAP 本体は Common/ 共有),evt-h417 2,projects.csv;memory_map.csv,,#,attested,survey:P1-P4
+F23,F,IWDG_ReloadCounter を main loop に持つのは v30x/v407/x315 の 3 つだけ。BL 中の watchdog 扱いが統一されていない,evt-iap 13,entry_exit.csv,,#,attested,survey:P1-P4
+F24,E,"UART は USART1(v003,v00x,m030)/ USART2(v205,v407,x035,x315,l103)/ USART3(v103,v20x,v30x)に割れる。baud は V103 の 57600 以外すべて 460800",evt-iap 11,clock_uart.csv,,#,attested,survey:P1-P4

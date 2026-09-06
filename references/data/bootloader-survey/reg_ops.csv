@@ -1,0 +1,42 @@
+impl_id,seq,op,reg_name,reg_addr,value_expr,value_num,mask,wait_on,wait_bit,loop_count,source_form,source_file,source_line,#,confidence,basis
+evt-v003-iap,0,set-bits,FLASH_CTLR,0x40022010,0x00010000,65536,,,,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,29,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L29)
+evt-v003-iap,1,set-bits,FLASH_CTLR,0x40022010,0x00080000,524288,,,,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,30,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L30)
+evt-v003-iap,2,wait,FLASH_STATR,0x4002200C,,,0x1,FLASH_STATR,BSY,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,31,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L31)
+evt-v003-iap,3,clear-bits,FLASH_CTLR,0x40022010,0x00010000,65536,,,,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,33,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L33)
+evt-v003-iap,4,loop-begin,,,16,16,,,,16,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,36,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L36)
+evt-v003-iap,5,set-bits,FLASH_CTLR,0x40022010,0x00010000,65536,,,,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,37,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L37)
+evt-v003-iap,6,write,FLASH_BUF,,*(adr+4*j)=buf[j],,,,,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,38,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L38)
+evt-v003-iap,7,set-bits,FLASH_CTLR,0x40022010,0x00040000,262144,,,,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,39,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L39)
+evt-v003-iap,8,wait,FLASH_STATR,0x4002200C,,,0x1,FLASH_STATR,BSY,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,40,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L40)
+evt-v003-iap,9,clear-bits,FLASH_CTLR,0x40022010,0x00010000,65536,,,,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,42,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L42)
+evt-v003-iap,10,loop-end,,,,,,,,16,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,43,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L43)
+evt-v003-iap,11,set-bits,FLASH_CTLR,0x40022010,0x00010000,65536,,,,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,45,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L45)
+evt-v003-iap,12,write,FLASH_ADDR,0x40022014,adr,,,,,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,46,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L46)
+evt-v003-iap,13,set-bits,FLASH_CTLR,0x40022010,0x00000040,64,,,,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,47,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L47)
+evt-v003-iap,14,wait,FLASH_STATR,0x4002200C,,,0x1,FLASH_STATR,BSY,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,48,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L48)
+evt-v003-iap,15,clear-bits,FLASH_CTLR,0x40022010,0x00010000,65536,,,,,c,CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c,50,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c(L50)
+oss-uiap-flasher,0,write,FLASH_CTLR,0x40022010,CR_PAGE_PG,65536,,,,,c,ch32_user_bootloader_flasher/v003_flash.c,112,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c(L112)
+oss-uiap-flasher,1,write,FLASH_CTLR,0x40022010,CR_BUF_RST|CR_PAGE_PG,589824,,,,,c,ch32_user_bootloader_flasher/v003_flash.c,113,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c(L113)
+oss-uiap-flasher,2,write,FLASH_ADDR,0x40022014,address,,,,,,c,ch32_user_bootloader_flasher/v003_flash.c,114,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c(L114)
+oss-uiap-flasher,3,wait,FLASH_STATR,0x4002200C,,,0x1,FLASH_STATR,BSY,,c,ch32_user_bootloader_flasher/v003_flash.c,117,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c(L117)
+oss-uiap-flasher,4,loop-begin,,,16,16,,,,16,c,ch32_user_bootloader_flasher/v003_flash.c,119,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c(L119)
+oss-uiap-flasher,5,write,FLASH_BUF,,address[i]=data[i],,,,,,c,ch32_user_bootloader_flasher/v003_flash.c,120,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c(L120)
+oss-uiap-flasher,6,write,FLASH_CTLR,0x40022010,CR_PAGE_PG|BUF_LOAD,327680,,,,,c,ch32_user_bootloader_flasher/v003_flash.c,122,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c(L122)
+oss-uiap-flasher,7,wait,FLASH_STATR,0x4002200C,,,0x1,FLASH_STATR,BSY,,c,ch32_user_bootloader_flasher/v003_flash.c,123,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c(L123)
+oss-uiap-flasher,8,loop-end,,,,,,,,16,c,ch32_user_bootloader_flasher/v003_flash.c,124,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c(L124)
+oss-uiap-flasher,9,write,FLASH_CTLR,0x40022010,CR_PAGE_PG|CR_STRT,65600,,,,,c,ch32_user_bootloader_flasher/v003_flash.c,127,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c(L127)
+oss-uiap-flasher,10,wait,FLASH_STATR,0x4002200C,,,0x1,FLASH_STATR,BSY,,c,ch32_user_bootloader_flasher/v003_flash.c,129,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c(L129)
+b003-write64_flash,0,read,scratchpad@52,,addr = lw 0(x14),,,,,,hex-array,ch32fun/minichlink/pgm-b003fun.c,71,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L71)+disasm:stub_disasm/b003-write64_flash.asm
+b003-write64_flash,1,read,scratchpad@56,,STATR base = lw 4(x14),,,,,,hex-array,ch32fun/minichlink/pgm-b003fun.c,71,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L71)+disasm:stub_disasm/b003-write64_flash.asm
+b003-write64_flash,2,write,FLASH_ADDR,0x40022014,"sw x11,8(x15)  # STATR+8",,,,,,hex-array,ch32fun/minichlink/pgm-b003fun.c,71,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L71)+disasm:stub_disasm/b003-write64_flash.asm
+b003-write64_flash,3,loop-begin,,,64/4 = 16,16,,,,16,hex-array,ch32fun/minichlink/pgm-b003fun.c,71,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L71)+disasm:stub_disasm/b003-write64_flash.asm
+b003-write64_flash,4,write,FLASH_BUF,,"sw x13,0(x11)",,,,,,hex-array,ch32fun/minichlink/pgm-b003fun.c,71,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L71)+disasm:stub_disasm/b003-write64_flash.asm
+b003-write64_flash,5,write,FLASH_CTLR,0x40022010,lui 0x50 -> 0x00050000 (PAGE_PG|BUF_LOAD),327680,,,,,hex-array,ch32fun/minichlink/pgm-b003fun.c,71,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L71)+disasm:stub_disasm/b003-write64_flash.asm
+b003-write64_flash,6,loop-end,,,,,,,,16,hex-array,ch32fun/minichlink/pgm-b003fun.c,71,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L71)+disasm:stub_disasm/b003-write64_flash.asm
+b003-write64_flash,7,write,FLASH_CTLR,0x40022010,0x00010040 (PAGE_PG|STRT),65600,,,,,hex-array,ch32fun/minichlink/pgm-b003fun.c,71,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L71)+disasm:stub_disasm/b003-write64_flash.asm
+b003-write64_flash,8,write,scratchpad[0],,0xFFFFFFFF  # 完了印,4294967295,,,,,hex-array,ch32fun/minichlink/pgm-b003fun.c,71,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L71)+disasm:stub_disasm/b003-write64_flash.asm
+asm-write_block-attic,0,write,CSR_mstatus,,andi -137  # 割込み全禁止,,,,,,asm,ch32fun/misc/attic/rv003usb_bootloader_stubs_for_minichlink/write_block.asm,9,#,attested,oss:ch32fun/misc/attic/rv003usb_bootloader_stubs_for_minichlink/write_block.asm(L9)
+asm-write_block-attic,1,read,scratchpad@108,,addr / STATR / block size / total len,,,,,,asm,ch32fun/misc/attic/rv003usb_bootloader_stubs_for_minichlink/write_block.asm,12,#,attested,oss:ch32fun/misc/attic/rv003usb_bootloader_stubs_for_minichlink/write_block.asm(L12)
+asm-write_block-attic,2,write,FLASH_CTLR,0x40022010,0x00010000 (CR_PAGE_PG),65536,,,,,asm,ch32fun/misc/attic/rv003usb_bootloader_stubs_for_minichlink/write_block.asm,24,#,attested,oss:ch32fun/misc/attic/rv003usb_bootloader_stubs_for_minichlink/write_block.asm(L24)
+asm-write_block-attic,3,loop-begin,,,block ごと,,,,,,asm,ch32fun/misc/attic/rv003usb_bootloader_stubs_for_minichlink/write_block.asm,26,#,attested,oss:ch32fun/misc/attic/rv003usb_bootloader_stubs_for_minichlink/write_block.asm(L26)
+asm-write_block-attic,4,write,FLASH_CTLR,0x40022010,0x00090000 (BUF_RST|PAGE_PG),589824,,,,,asm,ch32fun/misc/attic/rv003usb_bootloader_stubs_for_minichlink/write_block.asm,28,#,attested,oss:ch32fun/misc/attic/rv003usb_bootloader_stubs_for_minichlink/write_block.asm(L28)
