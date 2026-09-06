@@ -1,27 +1,28 @@
-series,swdio_pad,swclk_pad,wire_modes,confidence,basis
-CH32H415,PB9,PB8,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32H416,PB9,PB8,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32H417,PB9,PB8,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32L103,PA13,PA14,2-wire,confirmed,WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
-CH32M007,PD1,PB3,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32M030,PA3,PA2,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32V002,PD1,PB3,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32V003,PD1,,1-wire,confirmed,WCH-LinkUserManual.PDF:zh(p.4)+WCH-LinkUserManual.PDF:en(p.6)
-CH32V004,PD1,PB3,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32V005,PD1,PB3,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32V006,PD1,PB3,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32V007,PD1,PB3,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32V103,PA13,PA14,2-wire,confirmed,WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
-CH32V203,PA13,PA14,2-wire,confirmed,WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
-CH32V205,PA13,PA14,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32V208,PA13,PA14,2-wire,confirmed,WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
-CH32V303,PA13,PA14,2-wire,confirmed,WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
-CH32V305,PA13,PA14,2-wire,confirmed,WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
-CH32V307,PA13,PA14,2-wire,confirmed,WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
-CH32V317,PA13,PA14,2-wire,confirmed,WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
-CH32V407,PA13,PA14,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32V467,PA13,PA14,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32X033,PC18,PC19,2-wire,confirmed,WCH-LinkUserManual.PDF:zh(p.4)+WCH-LinkUserManual.PDF:en(p.6)
-CH32X035,PC18,PC19,2-wire,confirmed,WCH-LinkUserManual.PDF:zh(p.4)+WCH-LinkUserManual.PDF:en(p.6)
-CH32X305,PA13,PA14,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
-CH32X315,PA13,PA14,1-wire+2-wire,confirmed,"WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+series,family,debug_if,swdio_pads,swclk_pads,wording,section,confidence,basis
+CH32H415,CH32H417,both,PB9,PB8,Serial Debug Interface (SDI),1.4.46,confirmed,"CH32H417DS0.PDF:zh(1.4)+CH32H417DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32H416,CH32H417,both,PB9,PB8,Serial Debug Interface (SDI),1.4.46,confirmed,"CH32H417DS0.PDF:zh(1.4)+CH32H417DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32H417,CH32H417,both,PB9,PB8,Serial Debug Interface (SDI),1.4.46,confirmed,"CH32H417DS0.PDF:zh(1.4)+CH32H417DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32L103,CH32L103,rvswd,PA13,PA14,2-wire SDI Serial Debug Interface,1.4.26,confirmed,CH32L103DS0.PDF:zh(1.4)+CH32L103DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
+CH32M007,CH32V006,both,PD1,PB3,1-wire Serial Debug Interface (SDI),1.4.20,confirmed,"CH32V007DS0.PDF:zh(1.4)+CH32V007DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32M030,CH32M030,both,PA3,PA2,Serial Debug Interface (SDI),1.4.22,confirmed,"CH32M030DS0.PDF:zh(1.4)+CH32M030DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32M103,CH32L103,rvswd,PA13,PA14,2-wire SDI Serial Debug Interface,1.4.26,confirmed,CH32L103DS0.PDF:zh(1.4)+CH32L103DS0.PDF:en(1.4)
+CH32V002,CH32V006,swio,PD1,,1-wire Serial Debug Interface (SDI),1.4.17,confirmed,"CH32V002DS0.PDF:zh(1.4)+CH32V002DS0.PDF:en(1.4)+!WCH-LinkUserManual.PDF(swclk=PB3,dual=yes)"
+CH32V003,CH32V003,swio,PD1,,1-wire Serial Debug Interface (SDI),1.4.18,confirmed,CH32V003DS0.PDF:zh(1.4)+CH32V003DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.4)+WCH-LinkUserManual.PDF:en(p.6)
+CH32V004,CH32V006,swio,PD1,,1-wire Serial Debug Interface (SDI),1.4.17,confirmed,"CH32V004DS0.PDF:zh(1.4)+CH32V004DS0.PDF:en(1.4)+!WCH-LinkUserManual.PDF(swclk=PB3,dual=yes)"
+CH32V005,CH32V006,both,PD1,PB3,Serial Debug Interface (SDI),1.4.18,confirmed,"CH32V006DS0.PDF:zh(1.4)+CH32V006DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32V006,CH32V006,both,PD1,PB3,Serial Debug Interface (SDI),1.4.18,confirmed,"CH32V006DS0.PDF:zh(1.4)+CH32V006DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32V007,CH32V006,both,PD1,PB3,1-wire Serial Debug Interface (SDI),1.4.20,confirmed,"CH32V007DS0.PDF:zh(1.4)+CH32V007DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32V103,CH32V103,rvswd,PA13,PA14,2-wire Serial Debug Interface (SDI),1.5.20,confirmed,CH32V103DS0.PDF:zh(1.5)+CH32V103DS0.PDF:en(1.5)+WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
+CH32V203,CH32V20x,rvswd,PA13,PA14,2-wire SDI Serial Debug Interface,2.5.23,confirmed,CH32V203DS0.PDF:zh(2.5)+CH32V203DS0.PDF:en(2.5)+WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
+CH32V205,CH32V205,both,PA13,PA14,Serial Debug Interface (SDI),1.4.28,confirmed,"CH32V205DS0.PDF:zh(1.4)+CH32V205DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32V208,CH32V20x,rvswd,PA13,PA14,,2.5.23,confirmed,CH32V208DS0.PDF:zh(2.5)+WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
+CH32V303,CH32V307,rvswd,PA13,PA14,2-wire SDI Serial Debug Interface,2.5.30,confirmed,CH32V20x_30xDS0.PDF:zh(2.5)+CH32V20x_30xDS0.PDF:en(2.5)+WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
+CH32V305,CH32V307,rvswd,PA13,PA14,2-wire SDI Serial Debug Interface,2.5.30,confirmed,CH32V20x_30xDS0.PDF:zh(2.5)+CH32V20x_30xDS0.PDF:en(2.5)+WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
+CH32V307,CH32V307,rvswd,PA13,PA14,2-wire SDI Serial Debug Interface,2.5.30,confirmed,CH32V20x_30xDS0.PDF:zh(2.5)+CH32V20x_30xDS0.PDF:en(2.5)+WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
+CH32V317,CH32V307,rvswd,PA13,PA14,2-wire SDI Serial Debug Interface,2.5.30,confirmed,CH32V20x_30xDS0.PDF:zh(2.5)+CH32V20x_30xDS0.PDF:en(2.5)+WCH-LinkUserManual.PDF:zh(p.5)+WCH-LinkUserManual.PDF:en(p.6)
+CH32V407,CH32V407,both,PA13,PA14,Serial Debug Interface (SDI),1.4.32,confirmed,"CH32V407DS0.PDF:zh(1.4)+CH32V407DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32V467,CH32V407,both,PA13,PA14,Serial Debug Interface (SDI),1.4.32,confirmed,"CH32V407DS0.PDF:zh(1.4)+CH32V407DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32X033,CH32X035,rvswd,PC18,PC19,2-wire SDI Serial Debug Interface,1.4.22,confirmed,CH32X035DS0.PDF:zh(1.4)+CH32X035DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.4)+WCH-LinkUserManual.PDF:en(p.6)
+CH32X035,CH32X035,rvswd,PC18,PC19,2-wire SDI Serial Debug Interface,1.4.22,confirmed,CH32X035DS0.PDF:zh(1.4)+CH32X035DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.4)+WCH-LinkUserManual.PDF:en(p.6)
+CH32X305,CH32X315,both,PA13,PA14,Serial Debug Interface (SDI),1.4.22,confirmed,"CH32X315DS0.PDF:zh(1.4)+CH32X315DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
+CH32X315,CH32X315,both,PA13,PA14,Serial Debug Interface (SDI),1.4.22,confirmed,"CH32X315DS0.PDF:zh(1.4)+CH32X315DS0.PDF:en(1.4)+WCH-LinkUserManual.PDF:zh(p.5,p.5)+WCH-LinkUserManual.PDF:en(p.6,p.6)"
