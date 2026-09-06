@@ -27,7 +27,7 @@
 
 | ファイル | 判定 | これで作れるもの | 不足(byte 単位で足りない点) |
 |---|---|---|---|
-| [pc-to-link](protocols/pc-to-link.ja.md) | **実装可** | attach/probe info/chip info/setspeed/DMI/**高速バルク read(§5b)**/flash(stub + 直接 FLASH controller)/**option byte 書込(§6b)**/erase/power/monitor/**RV↔ARM mode 切替(§4、両方向 verified)**、**probe firmware の更新・救出・脱出(§10b。ch32rv が実装し実機往復検証済み)** | error 応答 frame 形式(§3 todo)、IAP の異常時応答形式(§10b.5)、§12 の残る未解読 vendor cmd(`wlink_disabledebug`/`getromram`/`rstout`/`chip_reset`/`armversion`)。**IAP entry・中断時の挙動は §10b、mode 切替は §4 で解決** |
+| [pc-to-link](protocols/pc-to-link.ja.md) | **実装可** | attach/probe info/chip info/setspeed/DMI/**高速バルク read(§5b)**/flash(stub + 直接 FLASH controller)/**option byte 書込(§6b)**/erase/power/monitor/**RV↔ARM mode 切替(§4、両方向 verified)**、**probe firmware の更新・救出・脱出(§10b。ch32rv が実装し実機往復検証済み)** | error 応答 frame 形式(§3 todo)、IAP の異常時応答形式(§10b.5)、§12 の残る未解読 vendor cmd(**`armversion` のみ**。他 4 件は WCH OpenOCD ソースから verified 化)。**IAP entry・中断時の挙動は §10b、mode 切替は §4 で解決** |
 | [riscv-debug-module](protocols/riscv-debug-module.ja.md) | **実装可** | halt/resume/step/read_reg/write_reg/**read_mem32/write_mem32/write_mem16**/breakpoint/semihosting。DMCOMMAND encode の読み方も明記 | abstract autoexec 詳細(軽微) |
 | [pc-usb-driver](protocols/pc-usb-driver.ja.md) | **実装可** | 3 OS で device を開く。Windows 純正(CH375 IOCTL)含む | HID/CDC-GDB probe 系の driver 差(軽微) |
 | [wch-iap](protocols/wch-iap.ja.md) | **実装可** | **3 世代**(BOOT 常駐 / user 先頭 / 旧 V103)の配置・entry 極性・jump、**12 シリーズ表**(FLASH_Base / CalAddr / page / USART・pin・baud / USB ID)、UART・USB frame、コマンド意味(addr 不使用・VERIFY で flush)、派生(HOST/ETH/BLE) | WCHMcuIAP の実 capture、V103 の UART 末尾、V4 系 `SW_Handler` の実体(MRS テンプレート) |
@@ -50,6 +50,7 @@
 - ~~write_mem32/8 の一般手順~~ → [riscv-debug-module](protocols/riscv-debug-module.ja.md) に転記済み(ch32rv-dmi、DMCOMMAND 実値 + encode の読み方)。
 - ~~WCH IAP の USB frame~~ → [serial-and-print](protocols/serial-and-print.ja.md) §1 に確定(EP2 out/in 64B、`isp_cmd` 直載せ、`1A86:55E0`、256B page 自動前進。EVT `ch32x035_usbfs_device.c`)。
 - ~~capture fixture~~ → [captures/fixtures/target-info-v307.ndjson](captures/fixtures/target-info-v307.ndjson) を注釈付きでコミット。
+- **WCH 純正 OpenOCD から確定**(2026-09-06): 未解読 vendor cmd 4 件(`GetRomRam` = `81 0d 01 04` / `RstOut` = `81 0d 01 13`・`14` / `DisableDebug` = `81 0e 01 01` / `ChipReset` = `81 0b 02`)を [pc-to-link](protocols/pc-to-link.ja.md) §4 へ。**flash loader は 18 種**あり family byte → loader の dispatch(21 分岐)も確定(→ [bootloader-survey](references/bootloader-survey.ja.md) §6b.12)
 - **ch32rv 固有だった protocol 事実を移管**(2026-09-06): 高速バルク memory read(§5b)、option byte 書込手順(§6b)、flash stub の family 表に X035/CH643・L103 を追加(§5)、RV↔ARM mode 切替の verified 化(§4 / [dap](protocols/dap.ja.md))。**消去済みセルの `0xe339e339` を「LinkE placeholder」とする誤読を訂正**(チップ自身の値。[bootloader-survey](references/bootloader-survey.ja.md) §2.3)。
 - SDI/dmdata の **2 方式**(EVT=長さ / ch32fun=`0x80|(count+4)`)を [serial-and-print](protocols/serial-and-print.ja.md) §3 に明記。
 

@@ -76,4 +76,5 @@ ch32fun の [`examples_usb/bootloader`](https://github.com/cnlohr/ch32fun/tree/m
 - 一次実装: [rv003usb](https://github.com/cnlohr/rv003usb)(software USB + bootloader、V003)/ ch32fun [`examples_usb/bootloader`](https://github.com/cnlohr/ch32fun/tree/master/examples_usb/bootloader)(hardware USB 移植・stub 設計)。
 - これを使う probe: [rvswdio_programmer](https://github.com/cnlohr/rv003usb/tree/master/rvswdio_programmer)(→ [../references/probe-ecosystem.ja.md](../references/probe-ecosystem.ja.md))。
 - custom bootloader 全体(DFU/UF2/UART/HID): [custom-bootloader.ja.md](custom-bootloader.ja.md)。factory ISP: [pc-to-device-isp.ja.md](pc-to-device-isp.ja.md)。
+- **標準 BL を入れ替えるべきかの判断**(完全上位の 6 条件・1,920 B の内訳・app 側で足りる理由): [../references/v003-bootloader-replacement.ja.md](../references/v003-bootloader-replacement.ja.md)
 - software USB を **target 自身の BL** に使うか、**board 内蔵ライタ MCU** に使うか(UIAPduino V003 → V006 の判断。内蔵側でも low-speed の限界が出る): [../references/bootloader-design-space.ja.md](../references/bootloader-design-space.ja.md) §6b。

@@ -1,9 +1,9 @@
 # bootloader 横断調査 — 分析結果(第 2 回・深堀り)
 
 状態: **attested**(EVT 12 series の IAP 13 project + 副対象 9 + OSS BL 3 + stub 51 を実ソースから機械抽出。**BL のビルドサイズと stub の逆アセンブルは実測 = `verified`**。実機 capture 未)。
-調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(26 テーブル・3,249 行 + stub の hex/逆アセンブル 34 対)
+調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(28 テーブル・3,307 行 + stub の hex/逆アセンブル 34 対)
 
-この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F43`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
+この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F57`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
 
 ---
 
@@ -490,6 +490,49 @@ EVT IAP が呼ぶ flash 関数の実体は SDK(`EVT/EXAM/SRC/Peripheral/src/ch32
   他 12 project は APP ld の ORIGIN が APP_START と一致
 
 
+
+### 6b.12 U11 完全決着 — WCH 純正 loader は **18 種**、dispatch は 21 分岐(F48〜F57)
+
+`~/dev_wch/tools` に WCH 純正 OpenOCD の**バイナリとソースの両方**があった。バイナリは **strip されておらず**、
+loader がシンボル名付きで並んでいた。
+
+**「どちらが純正か」の答えは「両方」**: wlink の 5 本と minichlink の `linke-flashloader-v3`/`v4` は
+純正のシンボルと**バイト一致**する(v3 = `flash_op583`/CH583、v4 = `flash_op573`/CH573)。
+**minichlink の `v1`/`v2`(V20x/V30x 用)だけは純正と共通接頭辞 0 B で不一致** — 出所が別。
+
+| 状態 | loader |
+|---|---|
+| 既知(wlink / minichlink が持っていた) | `flash_op003` `flash_op103` `flash_op307` `flash_op643` `flash_op573` `flash_op583` |
+| **未知だった** | **`flash_op00X`** **`flash_opm030`** **`flash_op417`** `flash_op317` `flash_op645` `flash_opl103` `flash_op564` `flash_op569` `flash_op572` `flash_op584` `flash_op595` `flash_op8571` |
+
+**dispatch(family byte → loader)は 21 分岐**。`0x4e`→`flash_op00X` / `0x8e`→`flash_opm030` /
+`0xc6`→`flash_op417` などは**バイナリにしか無い**(公開 GPL ソースは 11 分岐 / 9 loader で明確に古い)。
+→ [`wch_loader_dispatch.csv`](data/bootloader-survey/wch_loader_dispatch.csv)
+
+**穴が 2 つ**: `0x0d`(CH32X035)と `0x49`(CH641)は dispatch に無い。WCH 自身は X035 を stub 経路で書いていない。
+
+#### ABI と page 定数(F55〜F57)
+
+- **CH32V/X/L/M 系 10 本は ABI 共通**(`a0` bit0..4 / `a1` addr / `a2` len / 戻り値 0|16)。
+  buffer は 2 系統 — **`0x20000xxx`(V003 / V00X = RAM 2〜4 KB の小容量品)** と `0x20001xxx`(他)。
+  **CH5xx 系は別 ABI**で `a0` bit0 しか見ない
+- **`flash_op003` と `flash_op00X` の差は「ページサイズ」だけ**。命令数 199 対 199、共通接頭辞 83 B・接尾辞 109 B。
+  差は `(a2+63)>>6` / `addr+=64`(V003)対 `(a2+255)>>8` / `addr+=256`(V00X)。**同一ソースの定数違い**
+- **loader のページ定数が `ch32-device-data` の `fast_program_bytes` と 9/9 一致**
+  (V003=64 / V00X=256 / V103=128 / L103=256 / V20x=256 / V30x=256 / X035=256 / M030=128 / H417=256)。
+  **probe 経路と RM/EVT 由来のデータが独立に一致**したので相互の裏取りになる
+
+#### WCH ソースのバグ(F51)
+
+`wlinke.c` L1187 が `wlink_ramcodewrite(flash_op643, sizeof(flash_op8571))` と**別配列のサイズ**を渡す
+(512 B の配列から 1408 B 送出 = 896 B の範囲外読み)。**配布バイナリでは修正済み**(`0x200` = 512 を渡す)。
+
+#### 副産物 — `pc-to-link.ja.md` §12 の未解読 4 件が確定
+
+`GetRomRam` = `81 0d 01 04` / `RstOut` = `81 0d 01 13`・`14` / `DisableDebug` = `81 0e 01 01` /
+`ChipReset` = `81 0b 02`。残る todo は `armversion`(ソースにも無い)と frame エラー応答の体系のみ。
+
+
 ---
 
 ## 7. 副産物 — 既存文書の更新が必要な点
@@ -519,8 +562,8 @@ EVT IAP が呼ぶ flash 関数の実体は SDK(`EVT/EXAM/SRC/Peripheral/src/ch32
 | ~~U8~~ | ~~`ch32-device-data` への移管依頼~~ → **完了**(`R-31`)。`evidence/flash_geometry.csv` に `erased_read_*` 4 列 + `blank_check_word` が入り、当方の暫定 CSV は削除した | — |
 | ~~U9~~ | ~~BLE IAP の slot の出自~~ → **解決**(§6b.8、F32)。**CH32V307 級(480 KB)向け**。V20x では使えない | — |
 | **U7** | 未取得の OSS BL(`wch-uf2` / Swindle DFU / PlumBL / tinyboot) | Q6 |
-| **U10** | wlink 系 loader の `a0` bit2/bit3 と作業 RAM の意味。逆アセンブルだけでは確定しない — probe firmware が `a0` に何を積むか、または `0x02`/`0x0c` の capture が要る(依頼 0005 への逆質問) | Q4 |
-| **U11** | **同じ family に loader が 2 系統**(wlink 系 / minichlink `linke-flashloader-*`)。どちらが WCH 純正に近いか | Q4 |
+| ~~U10~~ | ~~`a0` bit2/bit3~~ → **解決**(F45)。stub 自身の逆アセンブルで bit0..4 + `a1`/`a2`/buffer/戻り値まで確定 | — |
+| ~~U11~~ | ~~どちらが純正か~~ → **解決**(§6b.12、F48〜F57)。**両方**。ただし minichlink の `v1`/`v2` だけ出所不明 | — |
 
 ---
 
