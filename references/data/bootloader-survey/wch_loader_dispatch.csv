@@ -1,0 +1,12 @@
+riscvchip,family,loader_symbol,size_arg,note,source_line,#,confidence,basis
+0x01,CH32V103,flash_op103,sizeof(flash_op103),,1167,#,verified,oss:tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c(L1167)
+0x02,CH57x,flash_op573,sizeof(flash_op573),,1170,#,verified,oss:tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c(L1170)
+0x03,CH56x,flash_op569,sizeof(flash_op569),,1164,#,verified,oss:tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c(L1164)
+0x05,CH32V20x,flash_op307,sizeof(flash_op307),,1178,#,verified,oss:tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c(L1178)
+0x06,CH32V30x,flash_op307,sizeof(flash_op307),,1178,#,verified,oss:tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c(L1178)
+0x07,CH58x,flash_op583,sizeof(flash_op583),,1174,#,verified,oss:tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c(L1174)
+0x09,CH32V003,flash_op003,sizeof(flash_op003),,1181,#,verified,oss:tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c(L1181)
+0x0a,CH8571,flash_op8571,sizeof(flash_op8571),,1184,#,verified,oss:tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c(L1184)
+0x0b,CH59x,flash_op583,sizeof(flash_op583),,1174,#,verified,oss:tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c(L1174)
+0x0c,CH643,flash_op643,**sizeof(flash_op8571)**,**バグ: 別配列のサイズを渡している(512 B の配列から 1408 B 送出 = 896 B の範囲外読み)**,1187,#,verified,oss:tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c(L1187)
+0x0e,CH32L103,flash_opl103,sizeof(flash_opl103),,1190,#,verified,oss:tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c(L1190)
