@@ -16,8 +16,7 @@ python3 extract4.py   # P3: stub_args / stub_framing(extract3 の出力に依存
 `$WCH_ROOT/tools/xpack-riscv-none-elf-gcc/14.3.0-1/bin/riscv-none-elf-objdump`。
 別のものを使うなら `RISCV_OBJDUMP=<path>` を渡す。
 
-`reg_ops.csv` / `equiv_groups.csv` / `findings.csv` / `flash_erased_read.csv` /
-`subordinate_targets.csv` は**人手で作った**(`basis` を参照)。
+`reg_ops.csv` / `equiv_groups.csv` / `findings.csv` / `subordinate_targets.csv` は**人手で作った**(`basis` を参照)。
 `build_sizes.csv` は**実際にビルドして測った**(手順は §ビルド実測)。
 
 ### 必要な repo
@@ -56,7 +55,6 @@ python3 extract4.py   # P3: stub_args / stub_framing(extract3 の出力に依存
 | `stub_args.csv` | 97 | `stub_name`,`scratchpad_offset` | scratchpad の引数配置。`ResetOp`→`WriteOpArb`→`WriteOp4`→`CommitOp` を追って**計算した offset**。`meaning` にはソースのコメント原文を残してあるが、**write_block 系はコメント側が誤り**(`@76` と書いてあるが実際は `@108`。逆アセンブルで確認) |
 | `stub_framing.csv` | 13 | `pad_size_bytes` | HID feature report の pad サイズと report ID(`0xAA + pad_size/1024`)の対応 |
 | `build_sizes.csv` | 17 | `project_id`,`config`,`toolchain` | **rv003usb BL の実測サイズ**。機能フラグ 14 構成 × 予算 1,916 B、および toolchain 3 種の比較 |
-| `flash_erased_read.csv` | 12 | `family` | **暫定**。flash 消去後の読み出し値(系統 A = `0xFFFFFFFF` / B = `0xe339e339`)。→ `ch32-device-data` へ[移管依頼中](request-ch32-device-data.ja.md)。**完了したら削除して join に切り替える** |
 | `subordinate_targets.csv` | 9 | `project_id` | 副対象(ETH_IAP 2 / BLE IAP・OTA 3 / HOST_IAP 1 / BootAsUser 3)の領域構成と magic |
 | `reg_ops.csv` | 41 | `impl_id`,`seq` | **言語をまたぐ比較の共通座標系**。C / asm / hex を MMIO 操作列に正規化。検証セットのみ |
 | `equiv_groups.csv` | 11 | `equiv_group`,`impl_id` | 同一機能の別形態を束ねる |
@@ -80,12 +78,20 @@ toolchain は `$WCH_ROOT/tools/` 配下の 4 種を使った(`riscv-none-embed-g
 > **注意**: fork の `ch32v003fun` submodule が未チェックアウトだったため upstream HEAD で代替した。
 > **絶対値は upstream の CI と一致しない可能性がある。差分(`delta_vs_baseline`)は同一条件なので頑健**。
 
+## 他 repo が持つデータ(ここには置かない)
+
+- **flash 消去後の読み出し値**(系統 A = `0xFFFFFFFF` / B = `0xe339e339`)は
+  `ch32-device-data` の `evidence/flash_geometry.csv` が一次ソース
+  (`erased_read_word/half/byte_even/byte_odd` = RM 原文、**`blank_check_word` = word 幅に
+  正規化した比較用の値**)。当初ここに暫定 CSV を置いていたが、依頼 `R-31`
+  ([request-ch32-device-data.ja.md](request-ch32-device-data.ja.md))が反映されたので**削除した**。
+  RM のページ番号は依頼書 §5 に残してある。
+
 ## 既知の穴
 
 - `reg_ops.csv` は検証セット(V003 の 64 B fast program、5 実装)だけ。全 project 展開は未(U5)。
 - `flash_ops.csv` の `granularity_bytes` は program 側が空の project がある
   (`FLASH_BufLoad` ループ回数から導出していないため)。
 - 副対象のうち **HOST_IAP は 13 project あるうち 1 つしか見ていない**(U6 残)。
-- `flash_erased_read.csv` は `ch32-device-data` に置くべきデータの**暫定コピー**(U8)。
 - **GB18030 のヘッダがある**(BLE の `ota.h` 等)。`grep` が binary 扱いして黙って取り落とすので、
   抽出スクリプトを広げるときは `iconv -f GB18030` を通すこと(F34)。
