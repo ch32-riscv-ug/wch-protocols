@@ -284,6 +284,8 @@ grep -rhoE "(SPI[12]_(SCK|MOSI|MISO|NSS)|I2C[12]_(SCL|SDA)|USART[1-8]_(Tx|Rx))\(
 
 ## 10. 参照
 
+- **board 別にどこまで届くか**(RP2040 / RP2350 / ESP32-S3 / CH32X035 / X033 の 8 軸比較): [harness-board-survey.ja.md](harness-board-survey.ja.md)
+- **書込のみ / 複数 target / 書込+LA を 1 仕様に載せられるか**: [probe-pattern-coexistence.ja.md](probe-pattern-coexistence.ja.md)
 - 親の設計メモ(汎用 probe と PC 連携): [generic-probe-design.ja.md](generic-probe-design.ja.md)
 - 多 lane 側の protocol 仕様: [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)
 - 自己観測で埋めたい穴(SWIO パルス幅 / RVSWD STOP 波形): [../protocols/link-to-target.ja.md](../protocols/link-to-target.ja.md)

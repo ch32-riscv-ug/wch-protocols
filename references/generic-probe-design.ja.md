@@ -161,5 +161,5 @@ DMI 1 往復あたりの時間 × 必要往復数で書込時間が決まる。
 - host が持つ中身: [../protocols/riscv-debug-module.ja.md](../protocols/riscv-debug-module.ja.md) / [../protocols/pc-to-link.ja.md](../protocols/pc-to-link.ja.md) §5–6
 - transport の driver 事情: [../protocols/pc-usb-driver.ja.md](../protocols/pc-usb-driver.ja.md) / [../protocols/software-usb.ja.md](../protocols/software-usb.ja.md)
 - **エコシステム全体の前提**(hardware 制御度の階層・共通/差替の境界・probe firmware の VID/PID は pid.codes): [ecosystem-any-hardware.ja.md](ecosystem-any-hardware.ja.md)
-- **1 target 専有にして計測器を兼ねる方向**(本書の逆側): [dut-harness-design.ja.md](dut-harness-design.ja.md)。複数 lane を諦めて resource を 1 target に集中し、ロジアナ・周辺エミュ(SPI/I2C/UART の slave)・debug 線・アナログを 1 つの時間軸に載せる案。**アイデアメモ**
+- **1 target 専有にして計測器を兼ねる方向**(本書の逆側): [dut-harness-design.ja.md](dut-harness-design.ja.md)。複数 lane を諦めて resource を 1 target に集中し、ロジアナ・周辺エミュ(SPI/I2C/UART の slave)・debug 線・アナログを 1 つの時間軸に載せる案。**アイデアメモ**。board 別の到達範囲は [harness-board-survey.ja.md](harness-board-survey.ja.md)、書込のみ / 複数 / +LA の共存は [probe-pattern-coexistence.ja.md](probe-pattern-coexistence.ja.md)
 - **probe 無しの直接書込(target 自身の BL / board 内蔵ライタ MCU)**: [bootloader-design-space.ja.md](bootloader-design-space.ja.md)。内蔵ライタ(UIAPduino V006)が minichlink 固定で Arduino IDE から使えない実地報告は、本書 §8-1「共通 probe protocol」の必要性をそのまま示している
