@@ -1,9 +1,9 @@
 # bootloader 横断調査 — 分析結果(第 2 回・深堀り)
 
 状態: **attested**(EVT 12 series の IAP 13 project + 副対象 9 + OSS BL 3 + stub 51 を実ソースから機械抽出。**BL のビルドサイズと stub の逆アセンブルは実測 = `verified`**。実機 capture 未)。
-調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(18 テーブル・1,656 行 + stub の hex/逆アセンブル 34 対)
+調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(20 テーブル・1,704 行 + stub の hex/逆アセンブル 34 対)
 
-この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F35`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
+この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F36`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
 
 ---
 
@@ -367,6 +367,60 @@ generated : … 14 c1 | 82 80 (ret) | 01 00 (nop)
 
 **EVT のヘッダには GB18030 のものがある**(BLE の `ota.h` 等)。`grep` はこれを binary 扱いし、`-h` 指定時に**一致を黙って捨てる**。本調査でも一度「`IMAGE_A_START_ADD` はどこにも定義されていない」と誤判定した。`iconv -f GB18030 -t UTF-8` を通してから検索する必要がある。
 
+
+### 6b.7 U1 解決 — **`CalAddr` は全 series で範囲内だった**(F15、`attested`)
+
+前回「範囲外」と判定したのは誤りで、原因は**比較対象を間違えていた**こと。`ch32-device-data` の
+`parts.csv` の `flash_bytes` は**零等待(zero-wait)領域**であって、Code FLASH の総容量ではない
+(`flash_geometry.csv` の `zero_wait_note` がそう書いている)。総容量で測り直すと:
+
+| project | `CalAddr` offset | Code FLASH 総容量 | 判定 |
+|---|---:|---:|---|
+| v20x | 223 KB | **224 KB**(DS: "Code FLASH 224KB max") | **末尾 −4** |
+| v30x | 479 KB | **480 KB** | **末尾 −4** |
+| v407 | 991 KB | **992 KB**(DS: "Code FLASH (992KB)") | **末尾 −4** |
+| v205 / x035 / l103 / m030 / v003 | 255 / 61 / 63 / 63 / 15 KB | 256 / 62 / 64 / 64 / 16 KB | 末尾 −4 |
+
+→ **WCH は各 series で「Code FLASH の最終ワード」を APP 存在フラグに使っている**。一貫した規則で、誤りではない。
+
+末尾でないのは 3 つだけ:
+
+| project | offset | 総容量 | 理由 |
+|---|---:|---:|---|
+| v00x | 15 KB | 62 KB | **最小品種 16 KB の末尾**。全品種で安全側 |
+| x315 | 223 KB | 480 KB | **V20x と同一値**。転用の疑い。480 KB 内なので動く(非零等待領域に落ちる) |
+| h417-v3f | 479 KB | 480〜960 KB | 480 KB 品種の末尾。960 KB 品種では中途 |
+
+データ: [`caladdr_validity.csv`](data/bootloader-survey/caladdr_validity.csv)
+
+### 6b.8 U9 解決 — **BLE IAP の slot は CH32V307 級からの流用**(F32)
+
+同じ総容量基準で BLE を測り直すと、逆に**流用が裏付けられた**:
+
+```
+IAP 16K + IMAGE_A 216K + IMAGE_B 216K = 448K,  OTA_DATAFLASH @0x08077000 = 476K
+  CH32V307 の Code FLASH 480K  → 収まる ✓
+  CH32V203/V208 の 224K max    → 収まらない ✗
+```
+
+`ota.h` の日付 2018/12/14 と合わせて、**CH32V307 級(480 KB)の製品向けに書かれたものが CH32V20x の
+EVT に置かれている**と結論できる。CH32V20x では**そのままでは使えない**。
+
+### 6b.9 wlink 系 flash loader を目録化(依頼 0005、F36)
+
+`ch32rv` から届いた [依頼 0005](data/bootloader-survey/reply-0005-flash-stub-inventory.ja.md) に応えて、
+wlink 由来の flash loader 5 本を `stubs.csv` に追加(**51 → 56 行**)。突き合わせ結果:
+
+| 問い | 答え |
+|---|---|
+| `CH32L103`(512 B)は minichlink の `linke-flashloader-v1/v2`(同じ 512 B)と同一か | **別 blob**。512 は padding 後のサイズが一致しただけ |
+| `CH32V003` だけ先頭が違う理由 | **RV32EC 専用ビルド**。先頭差は prologue そのもの(`addi x2,x2,-28` + s0/s1 退避 vs `-32`)。**x0–x15 のみ使用**で、他 4 本は x28〜x30 を使い V003 では走らない |
+| 5 本の相互差分 | **`CH643` と `CH32L103` は同一 stub**(先頭 488 B がバイト一致、差は `0xff`×24 の padding)。**実質 4 本で 9 family byte をカバー**できる |
+| stub の ABI | エントリは blob 先頭、`a0` が動作フラグのビットマスク(**bit0 = flash unlock** が定数から確定)、戻り値は `a0` に 0/16 |
+
+→ **wlink 系と minichlink 系という 2 系統の loader が同じ family(V20x/V30x)に並存**している。どちらが WCH 純正に近いかは未決(依頼への逆質問として投げた)。
+
+
 ---
 
 ## 7. 副産物 — 既存文書の更新が必要な点
@@ -387,15 +441,17 @@ generated : … 14 c1 | 82 80 (ret) | 01 00 (nop)
 
 | # | 内容 | 効く問い |
 |---|---|---|
-| **U1** | (継続)**`CalAddr` の妥当性**。`ch32-device-data/index/parts.csv` と突き合わせると v20x の `CalAddr`(223 KB)は family 最小品種(32 KB)の flash 外。v30x / v407 / x315 は parts.csv の `flash_bytes` を超える(parts.csv が zero-wait 領域のみを数えている可能性)。**RM と突合が必要**(F15、`confidence=conflict`) | Q2 / Q5 |
+| ~~U1~~ | ~~`CalAddr` の妥当性~~ → **解決**(§6b.7、F15)。**全 series で範囲内**。`parts.csv` の `flash_bytes` を総容量と誤認していたのが原因 | — |
 | ~~U2~~ | ~~`erase_block` の 2 byte 差~~ → **解決**(F30。`nop`/`ret` の順序。機能は同一) | — |
 | ~~U3~~ | ~~H2 の定量化~~ → **解決**(F28/F29、§6b.1-2)。残: fork の `ch32v003fun` submodule を正しく checkout して**絶対値を upstream と一致させる** | Q7 |
 | ~~U4~~ | ~~scratchpad の引数配置~~ → **解決**(F26/F27、`stub_args.csv` 97 行 + `stub_framing.csv`) | — |
 | **U5** | `reg_ops.csv` を検証セット(5 実装)から全 project へ展開 | Q1 / Q2 |
 | ~~U6~~ | ~~副対象が未収録~~ → **一部解決**(`subordinate_targets.csv` 9 行)。残: HOST_IAP 13 project の個別差分 | Q5 |
 | ~~U8~~ | ~~`ch32-device-data` への移管依頼~~ → **完了**(`R-31`)。`evidence/flash_geometry.csv` に `erased_read_*` 4 列 + `blank_check_word` が入り、当方の暫定 CSV は削除した | — |
-| **U9** | BLE IAP の slot 定義が品種容量を超える件(F32)。どの製品向けの流用かを特定する | Q5 |
+| ~~U9~~ | ~~BLE IAP の slot の出自~~ → **解決**(§6b.8、F32)。**CH32V307 級(480 KB)向け**。V20x では使えない | — |
 | **U7** | 未取得の OSS BL(`wch-uf2` / Swindle DFU / PlumBL / tinyboot) | Q6 |
+| **U10** | wlink 系 loader の `a0` bit2/bit3 と作業 RAM の意味。逆アセンブルだけでは確定しない — probe firmware が `a0` に何を積むか、または `0x02`/`0x0c` の capture が要る(依頼 0005 への逆質問) | Q4 |
+| **U11** | **同じ family に loader が 2 系統**(wlink 系 / minichlink `linke-flashloader-*`)。どちらが WCH 純正に近いか | Q4 |
 
 ---
 

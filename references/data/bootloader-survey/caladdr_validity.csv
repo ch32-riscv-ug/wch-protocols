@@ -1,0 +1,13 @@
+project_id,series,cal_addr,offset_kb,total_code_flash_kb,verdict,#,confidence,basis
+evt-v003-iap,CH32V003,(0x08004000-4),15,16,末尾-4(最小=最大品種 16K),#,attested,rm:CH32V003DS0
+evt-v00x-iap,CH32V00X,(0x08004000-4),15,62,**最小品種 16K の末尾-4**(V006 は 62K なので余裕),#,attested,rm:CH32V00XRM+parts.csv
+evt-v103-iap,CH32V103,(なし),,,CalAddr を持たない(GPIO entry のみ),#,attested,evt:CH32V103_IAP
+evt-v205-iap,CH32V205,(0x08040000-4),255,256,末尾-4,#,attested,parts.csv(256K)
+evt-v20x-iap,CH32V20x,(0x08038000-4),223,224,**末尾-4**(Code FLASH 224KB max),#,attested,ds:CH32V203DS0.en 'Code FLASH 224KB max'
+evt-v30x-iap,CH32V30x,(0x08078000-4),479,480,**末尾-4**(Code FLASH 480KB max),#,attested,ds:CH32V20x_30xDS0.en + product_attributes.code_flash_bytes=480K
+evt-v407-iap,CH32V407,(0x080F8000-4),991,992,**末尾-4**(Code FLASH 992KB),#,attested,ds/rm:CH32V407 'Code FLASH (992KB)'
+evt-x035-iap,CH32X035,(0x0800F800-4),61,62,末尾-4,#,attested,parts.csv(62K)
+evt-x315-iap,CH32X315,(0x08038000-4),223,480,**末尾ではない**。V20x と同値 = 転用の疑い。480K 内なので動作はする(非零等待領域),#,attested,product_attributes.code_flash_bytes=480K(1)
+evt-l103-iap,CH32L103,(0x08010000-4),63,64,末尾-4,#,attested,parts.csv(64K)
+evt-m030-iap,CH32M030,(0x08010000-4),63,64,末尾-4,#,attested,parts.csv(64K)
+evt-h417-v3f-iap,CH32H417,(0x08078000-4),479,960,**末尾ではない**(480K 品種の末尾-4)。最大 960K 品種では中途,#,attested,parts.csv(480..960K)

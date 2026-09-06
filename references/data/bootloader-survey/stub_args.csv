@@ -96,3 +96,11 @@ ch5xx_flash_erase_bin,code,4,316,in,stub 本体(ch5xx_flash_erase_bin),1488,#,at
 ch5xx_flash_erase_bin,arg,320,4,in,len,1489,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L1489)
 ch5xx_flash_erase_bin,arg,324,4,in,addr,1490,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L1490)
 ch5xx_flash_erase_bin,commit,pad_size-4,4,in,"magic 0x1234abcd(send_data_len=0, receive_data_len=0)",1492,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L1492)
+wlink_flash_op,entry,0,,in,エントリは blob 先頭(offset 0)。probe firmware が呼ぶ,,#,verified,oss:ch32-rs/wlink/src/flash_op.rs (via ch32rv/crates/flash/src/stub.rs) + disasm:stub_disasm/wlink-*.asm
+wlink_flash_op,prologue,0,,in,"`addi x2,x2,-32`(V003 版は -28 + x8/x9 退避)。**SP が有効であることが前提**",,#,verified,oss:ch32-rs/wlink/src/flash_op.rs (via ch32rv/crates/flash/src/stub.rs) + disasm:stub_disasm/wlink-*.asm
+wlink_flash_op,arg-a0.bit0,a0 bit0,4,in,"**flash unlock**。立つと KEYR(0x40022004)へ 0x45670123,0xCDEF89AB、MODEKEYR(0x40022024)へ同じ 2 語",,#,verified,oss:ch32-rs/wlink/src/flash_op.rs (via ch32rv/crates/flash/src/stub.rs) + disasm:stub_disasm/wlink-*.asm
+wlink_flash_op,arg-a0.bit1,a0 bit1,4,in,CTLR(0x40022010)を read-modify-write(`|= 0x4`)。消去系と見られる,,#,attested,oss:ch32-rs/wlink/src/flash_op.rs (via ch32rv/crates/flash/src/stub.rs) + disasm:stub_disasm/wlink-*.asm
+wlink_flash_op,arg-a0.bit2,a0 bit2,4,in,分岐あり。意味未確定,,#,single-source,oss:ch32-rs/wlink/src/flash_op.rs (via ch32rv/crates/flash/src/stub.rs) + disasm:stub_disasm/wlink-*.asm
+wlink_flash_op,arg-a0.bit3,a0 bit3,4,in,分岐あり。意味未確定,,#,single-source,oss:ch32-rs/wlink/src/flash_op.rs (via ch32rv/crates/flash/src/stub.rs) + disasm:stub_disasm/wlink-*.asm
+wlink_flash_op,ret-a0,a0,4,out,"終盤で `andi a0,a0,16` → 0 か 16 を返す。**成否フラグと見られる**",,#,attested,oss:ch32-rs/wlink/src/flash_op.rs (via ch32rv/crates/flash/src/stub.rs) + disasm:stub_disasm/wlink-*.asm
+wlink_flash_op,buffer,0x20001000 / 0x20002000 付近,,in/out,stub が触る RAM。probe が data EP から流したデータの置き場と見られる,,#,single-source,oss:ch32-rs/wlink/src/flash_op.rs (via ch32rv/crates/flash/src/stub.rs) + disasm:stub_disasm/wlink-*.asm

@@ -1,0 +1,18 @@
+question,pair_or_stub,result,#,confidence,basis
+Q1,wlink-CH32L103 vs linke-flashloader-v1,完全一致=False / 0xff padding 除去後の長さ=488 vs 464 / padding 除去後一致=False / 先頭16B一致=False,#,verified,computed:extract5.py
+Q1,wlink-CH32L103 vs linke-flashloader-v2,完全一致=False / 0xff padding 除去後の長さ=488 vs 416 / padding 除去後一致=False / 先頭16B一致=False,#,verified,computed:extract5.py
+Q2,CH32V307,先頭4B=01 11 02 ce / x16以上=あり / 最大レジスタ=x28,#,verified,computed:extract5.py
+Q2,CH32V103,先頭4B=01 11 02 ce / x16以上=あり / 最大レジスタ=x29,#,verified,computed:extract5.py
+Q2,CH32V003,先頭4B=11 11 22 cc / x16以上=なし / 最大レジスタ=x15,#,verified,computed:extract5.py
+Q2,CH643,先頭4B=01 11 02 ce / x16以上=あり / 最大レジスタ=x30,#,verified,computed:extract5.py
+Q2,CH32L103,先頭4B=01 11 02 ce / x16以上=あり / 最大レジスタ=x30,#,verified,computed:extract5.py
+Q3,CH32V307 vs CH32V103,共通接頭辞=42B / 共通接尾辞=1B / サイズ=446 vs 494,#,verified,computed:extract5.py
+Q3,CH32V307 vs CH32V003,共通接頭辞=0B / 共通接尾辞=0B / サイズ=446 vs 498,#,verified,computed:extract5.py
+Q3,CH32V307 vs CH643,共通接頭辞=42B / 共通接尾辞=1B / サイズ=446 vs 488,#,verified,computed:extract5.py
+Q3,CH32V307 vs CH32L103,共通接頭辞=42B / 共通接尾辞=0B / サイズ=446 vs 512,#,verified,computed:extract5.py
+Q3,CH32V103 vs CH32V003,共通接頭辞=0B / 共通接尾辞=0B / サイズ=494 vs 498,#,verified,computed:extract5.py
+Q3,CH32V103 vs CH643,共通接頭辞=79B / 共通接尾辞=1B / サイズ=494 vs 488,#,verified,computed:extract5.py
+Q3,CH32V103 vs CH32L103,共通接頭辞=79B / 共通接尾辞=0B / サイズ=494 vs 512,#,verified,computed:extract5.py
+Q3,CH32V003 vs CH643,共通接頭辞=0B / 共通接尾辞=0B / サイズ=498 vs 488,#,verified,computed:extract5.py
+Q3,CH32V003 vs CH32L103,共通接頭辞=0B / 共通接尾辞=0B / サイズ=498 vs 512,#,verified,computed:extract5.py
+Q3,CH643 vs CH32L103,共通接頭辞=488B / 共通接尾辞=0B / サイズ=488 vs 512,#,verified,computed:extract5.py
