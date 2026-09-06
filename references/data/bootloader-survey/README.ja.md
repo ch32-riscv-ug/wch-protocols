@@ -65,6 +65,7 @@ python3 extract7.py   # U5: SDK の flash 関数を MMIO 操作列へ正規化
 | `iap_reserve_compare.csv` | 9 | `series` | UART/USB IAP と HOST_IAP の BL 予約サイズ比較 |
 | `reg_ops_sdk.csv` | 593 | `impl_id`,`function`,`seq` | **SDK の flash 関数を MMIO 操作列へ正規化**(U5)。12 series × 10 関数 |
 | `reg_ops_signature.csv` | 10 | `function` | 上の署名比較。**どの series が同じ操作列か**= driver class の根拠 |
+| `port_matrix.csv` | 13 | `series` | **統一 BL の移植パラメータ 1 枚**。protocol/entry は本調査、chip の事実は `ch32-device-data` から join(`*_cdd` 列)。→ [unified-bootloader-design.ja.md](../../unified-bootloader-design.ja.md) |
 | `subordinate_targets.csv` | 9 | `project_id` | 副対象(ETH_IAP 2 / BLE IAP・OTA 3 / HOST_IAP 1 / BootAsUser 3)の領域構成と magic |
 | `reg_ops.csv` | 41 | `impl_id`,`seq` | **言語をまたぐ比較の共通座標系**。C / asm / hex を MMIO 操作列に正規化。検証セットのみ |
 | `equiv_groups.csv` | 16 | `equiv_group`,`impl_id` | 同一機能の別形態を束ねる |
