@@ -176,6 +176,7 @@ hobby / 非商用のエコシステムにはこれが重い。そして **この
 
 ## 参照
 
+- **§5-1(backend の capability 宣言)への回答**: [builtin-probe-and-self-update.ja.md](builtin-probe-and-self-update.ja.md) — `attach` と `self_update` を `caps` に足せば、**役割の違いで PID を増やさずに済む**(PID を分ける基準は descriptor が変わるかどうか、§4.3)
 - probe 側の汎用化: [generic-probe-design.ja.md](generic-probe-design.ja.md)
 - target 自身の BL と内蔵ライタ MCU: [bootloader-design-space.ja.md](bootloader-design-space.ja.md)(UIAPduino V006 の実例と限界は §6b)
 - ID 衝突の実例(LinkE IAP = factory ISP): [../protocols/pc-to-device-isp.ja.md](../protocols/pc-to-device-isp.ja.md)
