@@ -229,6 +229,7 @@ build 時に成立した構成の中でも、**同時にできないことは残
 - 土台の protocol(caps / lane / profile / L1 契約): [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)
 - board 別の実力(ピン・PIO・PIOC・PSRAM・E9): [harness-board-survey.ja.md](harness-board-survey.ja.md)
 - 計測 probe の構想(何をやりたいか): [dut-harness-design.ja.md](dut-harness-design.ja.md)
+- **ビルドイン型(内蔵ライタ)と自己書換えの capability 化**: [builtin-probe-and-self-update.ja.md](builtin-probe-and-self-update.ja.md)
 - 汎用 probe の設計背景と transport 比較: [generic-probe-design.ja.md](generic-probe-design.ja.md)
 - 実測の規則(計画を先に commit・証拠の水準): [../experiments/README.ja.md](../experiments/README.ja.md) / 台帳 [../experiments/LEDGER.ja.md](../experiments/LEDGER.ja.md)
 - 出力の置き場と規則: [../captures/README.ja.md](../captures/README.ja.md)

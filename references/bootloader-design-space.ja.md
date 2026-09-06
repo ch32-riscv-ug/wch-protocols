@@ -177,6 +177,8 @@ PC ──USB── [内蔵 V003 = probe firmware(software USB HID + SWIO/RVSWD b
 
 → **「内蔵ライタ MCU」は entry 問題を消す最も堅い構成だが、実装は (a) 内蔵 MCU を HW USB 持ちにする、(b) 制御 pin を target と分離、(c) 共通 protocol で host を選べるようにする、の 3 点で完成度が決まる。**
 
+→ (c) の続き(**内蔵ライタと外付け probe を同じ PID・同じ host コードで扱うための capability 設計**、X035 と V003 の載せ方): [builtin-probe-and-self-update.ja.md](builtin-probe-and-self-update.ja.md)
+
 ## 7. 推奨構成(案)
 
 | | V003 / V00x(software USB) | V20x / L103 / X035 / V30x(HW USB) |
