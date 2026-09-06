@@ -3,7 +3,7 @@
 状態: **attested**(EVT 12 series の IAP 13 project + 副対象 9 + OSS BL 3 + stub 51 を実ソースから機械抽出。**BL のビルドサイズと stub の逆アセンブルは実測 = `verified`**。実機 capture 未)。
 調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(19 テーブル・約 1,600 行 + stub の hex/逆アセンブル 34 対)
 
-この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F34`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
+この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F35`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
 
 ---
 
@@ -144,11 +144,11 @@ RM に明文があり、**WCH は各 series で正しく書き分けている**�
 
 > 中文 RM の原文: 「注：擦除成功后，字读- 0xe339e339，半字读- 0xe339，偶地址字节读- 0x39，奇地址读0xe3。」/「注：擦除成功后，字读- 0xFF。」
 
-**RM の系統と EVT IAP の判定値は 10/10 一致**。値は [`flash_erased_read.csv`](data/bootloader-survey/flash_erased_read.csv)(暫定。`ch32-device-data` へ移管依頼中 → [request-ch32-device-data.ja.md](data/bootloader-survey/request-ch32-device-data.ja.md))。
+**独立 3 系統が一致**する — ① RM の明文(zh/en)② WCH 自身の EVT IAP の判定値(**10/10**)③ **実機 debug read**(`ch32rv` の WCH-Link/LinkE 実装、**6 family / 6 一致**)。V003 と V103 は RM に記述が無いが、実機読みで A 系と確定した。**値の一次ソースは `ch32-device-data` の `evidence/flash_geometry.csv`**(依頼 `R-31` として反映済み。経緯と RM ページ番号は [request-ch32-device-data.ja.md](data/bootloader-survey/request-ch32-device-data.ja.md))。当方の暫定 CSV は役目を終えたので削除した。
 
 → 統一 BL では **family から引く定数**にすればよく、`#if` の分岐ですらない。**段階 C ではなく段階 A に降格**する。
 
-**V003 と V103 は RM に記述が無いが、実シリコンの debug read で A と確定**(V003F4P6 / V103R8T6 とも erase 後 `0xff` fill。ch32rv の実機検証由来)。系統 B も V203/V307 の実読み `39 e3 39 e3` が RM の偶 `0x39` / 奇 `0xe3` とバイト位置まで一致する。→ **RM(文書)・EVT IAP(コード)・実シリコンの 3 系統が一致**。詳細は [request-ch32-device-data.ja.md](data/bootloader-survey/request-ch32-device-data.ja.md) §7b。
+系統 B は byte の並びまで裏が取れている — V203/V307 の実読み `39 e3 39 e3` が RM の偶 `0x39` / 奇 `0xe3` と一致する(実測の内訳は [request-ch32-device-data.ja.md](data/bootloader-survey/request-ch32-device-data.ja.md) §7b)。
 
 > `0xe339e339` を「WCH-Link が消去済みセルに返す placeholder(実セルは 0xff)」とする読みは**誤り**だった。RM のとおり**チップ自身の消去後の読み出し値**である。
 
@@ -393,7 +393,7 @@ generated : … 14 c1 | 82 80 (ret) | 01 00 (nop)
 | ~~U4~~ | ~~scratchpad の引数配置~~ → **解決**(F26/F27、`stub_args.csv` 97 行 + `stub_framing.csv`) | — |
 | **U5** | `reg_ops.csv` を検証セット(5 実装)から全 project へ展開 | Q1 / Q2 |
 | ~~U6~~ | ~~副対象が未収録~~ → **一部解決**(`subordinate_targets.csv` 9 行)。残: HOST_IAP 13 project の個別差分 | Q5 |
-| **U8** | **`ch32-device-data` への移管依頼**([request-ch32-device-data.ja.md](data/bootloader-survey/request-ch32-device-data.ja.md))。完了したら `flash_erased_read.csv` を削除して join に切り替える | F25 |
+| ~~U8~~ | ~~`ch32-device-data` への移管依頼~~ → **完了**(`R-31`)。`evidence/flash_geometry.csv` に `erased_read_*` 4 列 + `blank_check_word` が入り、当方の暫定 CSV は削除した | — |
 | **U9** | BLE IAP の slot 定義が品種容量を超える件(F32)。どの製品向けの流用かを特定する | Q5 |
 | **U7** | 未取得の OSS BL(`wch-uf2` / Swindle DFU / PlumBL / tinyboot) | Q6 |
 
