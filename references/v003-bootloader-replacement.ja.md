@@ -151,7 +151,96 @@
 
 **2 が最優先**。他は全部「入れ替えない」という結論を動かさないが、2 だけは動かしうる。
 
-## 8. 参照
+## 8. サイズ削減の調査項目(**UIAPduino へ還元する前提**)
+
+§2 の「ほぼ 1,920 B」は upstream README の記述で、**実測値ではない**。§4 で唯一残った動機(entry 方式の同時搭載)は「**あと何 byte あれば載るか**」に還元されるので、**まず測り、次に削る**。新 BL を作るのではなく、**削減が効いたら UIAPduino / upstream に還元する**のが狙い。
+
+なお手元の checkout(`/home/mt/dev_wch/rv003usb`)の origin は **`YuukiUmeta-UIAP/rv003usb`= UIAPduino fork** で、`usb_config.h` の PID も `0xB803`。**調査対象がそのまま手元にある**。
+
+### 8.1 既に適用済みの最適化(提案しても無駄なもの)
+
+削減案を出す前に、**upstream が既にやっていること**を押さえる。ここを重複提案すると信用を落とす。
+
+| 分類 | 適用済みの内容 | 出典 |
+|---|---|---|
+| コンパイルフラグ | **`-Os -flto -ffunction-sections -fdata-sections -msmall-data-limit=8 -fno-tree-loop-distribute-patterns`**、`-nostdlib` | ch32fun `ch32fun.mk` |
+| アーキ | **`-march=rv32ec -mabi=ilp32e`**(16 レジスタ + 圧縮命令) | 同上 |
+| リンク | **`-Wl,--gc-sections`**、`-lgcc` | 同上 |
+| 計測 | **`-Wl,--print-memory-usage -Wl,-Map=$(TARGET).map`**(= **map は既に出ている**) | 同上 |
+| startup | **`USE_TINY_BOOT`** — 手書き asm の最小 startup。`csrw mtvec, 3` でベクタ表を番地 0 に置き、**未使用のベクタスロット(`0x04`–`0x4F`)に startup コード自体を詰め込んでいる**。`0x50` が `EXTI7_0_IRQHandler` の 1 word | `rv003usb.S` |
+| USB stack | **`RV003USB_OPTIMIZE_FLASH 1`**(`.h`/`.c`/`.S` の 5 箇所で分岐) | `usb_config.h` / stack |
+| 除外 | `SYSTEM_C:=`(ch32fun の system.c を外す)、`FUNCONF_USE_DEBUGPRINTF 0` | Makefile / funconfig.h |
+| libc / libgcc | **`memcpy` / `memset` / `strlen` / `printf` の呼び出しが無い**。C 側に **乗除算が無い**(シフトのみ)ので `__mulsi3` / `__divsi3` を引かない | grep で確認 |
+| 命令選択 | asm 側で圧縮命令を明示(`c.sw` / `c.li` / `c.addi` / `c.j` / `c.nop`) | `rv003usb.S` |
+| 属性 | `boot_usercode` に `noreturn`(「**2–4 byte 節約できる**」とコメント) | `bootloader.c` |
+
+→ **「`-Os` にしましょう」「`--gc-sections` を」の類は全部済み。** 残っているのは下の A–E。
+
+### 8.2 まず測る(実機不要。**ビルドするだけ**)
+
+| # | 測ること | 手段 | なぜ最初か |
+|---|---|---|---|
+| **A1** | **関数別サイズと残り byte** | `.map` と `--print-memory-usage` は**既に有効**。ビルドして読むだけ | **これ無しに A2 以降は判断できない**。「大きい関数」の順位が削減の優先順になる |
+| **A2** | **`0x00`–`0x4F`(ベクタ領域)に startup が何 byte 使っているか** | map + 逆アセンブル | 余っていれば**死んだ隙間**。小関数を置ける |
+| **A3** | **構成別の差分**(timeout のみ / button のみ / 両方 / `KEEP_PORT_CFG` 有無) | 構成を変えてビルドし直す | **§4 の唯一の動機が「あと何 byte」に確定する** |
+
+**A1–A3 は実機も target も要らない。** [experiments/README.ja.md §3.1](../experiments/README.ja.md) の梯子で言えば最下段(実機なし)で答えが出る問いなので、上の段に持ち上げない。
+
+### 8.3 削減の候補
+
+見込みは**すべて推定**で、A1 の実測前は当てにしない。「還元」列は upstream(cnlohr)へ出せるか、fork 固有かの区別。
+
+#### B. フラグ level(リスク低)
+
+| # | 案 | 見込み | リスク | 還元 |
+|---|---|---|---|---|
+| **B1** | **`-Oz`**(GCC 12+)を `-Os` の代わりに | 数十 byte(C 部分の数 %) | ほぼ無し。**ISR 本体は asm なので timing に影響しない** | **upstream**(ch32fun.mk のオプション追加) |
+| **B2** | **`-msave-restore`** — prologue/epilogue を libgcc の `__riscv_save_N`/`__riscv_restore_N` 呼び出しに置換 | 関数数に比例。十〜数十 byte | **C 側の呼出 latency が増える**。USB の C 部分が 40 サイクル制約に触れないか要確認 | upstream(要検証つき) |
+| **B3** | **新しい GCC(13/14)でビルド** | 不定(数十 byte 動くことがある) | 無し(ただし asm の `.option arch, +zicsr` 分岐は既に GCC>10 対応済み) | **報告のみで価値がある** |
+| **B4** | LTO のインライン判断を絞る(`-finline-limit` / `--param max-inline-insns-*` の掃引) | 不定 | 掃引結果が構成依存 | upstream(数値の提案) |
+
+**B4 は掃引なので自動化できる**。この repo の実験の型([README.ja.md §7](../experiments/README.ja.md) の「1 関数の中でループする」)にそのまま乗る。
+
+#### C. リンカ / レイアウト level
+
+| # | 案 | 見込み | リスク | 還元 |
+|---|---|---|---|---|
+| **C1** | **BL 専用 ld から未使用セクションを削る** — `.preinit_array` / `.init_array` / `.fini_array` / `.ctors` / `.dtors` / `.fini` は `-nostdlib` + C++ 無しで**中身が空**だが、`KEEP` が付いていて各々に `. = ALIGN(4)` がある。**RV32EC は 2 byte 命令なので、境界ごとに最大 2 byte 捨てている**可能性 | 境界 6–8 箇所 × 最大 2 B = **10–20 byte** | 低(BL 専用 ld なので app の ld に影響しない) | **upstream**(BL の ld のみ) |
+| **C2** | `.text` 内の関数順序を alignment padding が最小になるよう並べる | 数〜十数 byte | LTO が並べ替えるので効果が読みにくい | upstream(効果が出れば) |
+| **C3** | `.boot_firmware` / `_boot_firmware_xor` の配置の padding 回収 | 数 byte | secret の XOR 計算に依存するので慎重に | upstream |
+
+**C1 が「カリカリ」の本命**。空セクションの `ALIGN(4)` は誰も疑わない場所で、しかも **A1 の map にそのまま出る**(セクション先頭番地の飛びを見れば分かる)。
+
+#### D. USB descriptor / protocol level(**効きが大きい可能性**)
+
+| # | 案 | 見込み | リスク | 還元 |
+|---|---|---|---|---|
+| **D1** | **string descriptor の短縮** — USB string は **UTF-16LE = 1 文字 2 byte**。manufacturer / product / serial の 3 つがある。product を短くする、serial index を `0` にする | **数十 byte**(16 文字の product を削れば 34 B) | ⚠ [ecosystem §4.2](ecosystem-any-hardware.ja.md) の「**serial string に UID を載せて個体識別**」と衝突する。**BL では個体識別の必要性が低い**ので許容できるかの判断が要る | **fork 固有**(UIAPduino の patch が触った箇所そのもの) |
+| **D2** | **EP1 IN を省けるか** — BL の protocol は **control transfer だけ**(`SET_REPORT` / `GET_REPORT`)。`ENDPOINTS 2`(EP0 + 1)を **1** にできれば、endpoint descriptor 7 B + endpoint 処理コード + buffer が消える | **当たれば最大**(数十〜百 byte + RAM) | ⚠⚠ **HID class は interrupt IN endpoint を持つのが通例で、Windows が列挙を拒否する可能性がある**。**3 OS での受容性を確認する実機実験が必須** | **upstream の設計判断**(大きいので相談案件) |
+| **D3** | HID report descriptor の最小化(feature report だけなので不要な usage / collection を削る) | 十数 byte | host 側の report 解釈が変わる。3 host 実装(minichlink / webflasher / WebLink)で確認 | upstream |
+| **D4** | config / interface descriptor の共有・圧縮 | 数〜十数 byte | 低 | upstream |
+
+**D2 が唯一「実機と 3 OS が要る」項目**。他は全部ビルドだけで判定できる。
+
+#### E. コード level(効くが PR 規模が大きい)
+
+| # | 案 | 見込み | リスク | 還元 |
+|---|---|---|---|---|
+| **E1** | rv003usb.c の残り ~250 行のうち **descriptor dispatch を asm に落とす** | 不定(A1 で大きければ狙う) | 保守性が落ちる。upstream が嫌がる可能性 | upstream(要相談) |
+| **E2** | `boot_usercode` の `asmDelay(1000000)` の見直し | 数 byte | D− を LOW にしてから host が切断を認識するまでの待ちなので、**短くすると再列挙に失敗しうる** | upstream |
+| **E3** | **entry 判定の共通化** — timeout / button / host 検出で重複している GPIO 設定を 1 本化 | 十〜数十 byte | 3 方式の組合せテストが要る | **upstream**。**§4 の唯一の動機に対する直接の手段** |
+
+### 8.4 進め方
+
+1. **A1 → A2 → A3**(ビルドのみ)。ここで「残り byte」と「両方載せるのに足りない byte」が数字になる。
+2. **C1 → B1 → B3**(リスク低・還元しやすい順)。A3 の不足分が埋まるか見る。
+3. 埋まらなければ **D1**(fork 固有なので UIAPduino 側で即入れられる)。
+4. まだ足りなければ **E3**、それでも足りなければ **D2**(実機 + 3 OS)。
+5. **どの段で足りたかを記録して、その内容を UIAPduino / upstream に出す**。
+
+**2 の時点で「実は 200 byte 空いていた」なら §4 の結論(entry 同時搭載は容量で無理)が覆る。** 逆に **1 で「残り 4 byte」だったら、この節の残りは全部やらなくていい**。だから A1 が最優先。
+
+## 9. 参照
 
 - software USB の物理・timing・BL の位置づけ: [../protocols/software-usb.ja.md](../protocols/software-usb.ja.md)
 - **HID scratchpad BL の protocol と stub 一覧**(本メモの根拠の中心): [../protocols/custom-bootloader.ja.md §2b](../protocols/custom-bootloader.ja.md)

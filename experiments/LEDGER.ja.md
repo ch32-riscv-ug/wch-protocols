@@ -53,6 +53,13 @@
 | `wch-iap-capture` | WCHMcuIAP_WinAPP.exe の UART(460800)/ USB(`1A86:55E0`)実 frame は [wch-iap](../protocols/wch-iap.ja.md) §3–§4 の転記(sync・checksum・VERIFY の addr・END 無応答・順序)と一致するか | **一時**(capture) | Windows + WCHMcuIAP + IAP を焼いた V003 または X035 + USBPcap / UART capture | 不明 | [wch-iap](../protocols/wch-iap.ja.md) §7、P2-4 |
 | `boot-area-selfwrite` | V00X / X035 で、user code から `BOOT_MODEKEYR` 解錠後に BOOT 領域(`0x1FFF0000`、3,328 B)を erase / program できるか(V003 は `ch32_user_bootloader_flasher` で実証済み) | **一時** | X035 or V006 + probe(復旧用) | 不明 | [custom-bootloader](../protocols/custom-bootloader.ja.md) §2a、[bootloader-design-space](../references/bootloader-design-space.ja.md) §2 |
 | `hid-bl-capture` | rv003usb / ch32fun bootloader と minichlink の HID feature report(ID・scratchpad 構造・`0x1234ABCD`・完了印 `0xFF`)は [custom-bootloader](../protocols/custom-bootloader.ja.md) §2b の転記と一致するか | **一時**(capture) | BL を焼いた V003 or X035 + minichlink + usbmon | 不明 | [custom-bootloader](../protocols/custom-bootloader.ja.md) §2b |
+| `bl-size-baseline` | **現行の UIAPduino BL(fork `B803`)は実際に何 byte で、1,920 B のうち残りは幾らか。**関数別の内訳と、`0x00`–`0x4F` のベクタ領域の空きは | **実機なし**(ビルドのみ) | RISC-V toolchain のみ(`.map` と `--print-memory-usage` は既に有効) | 有 | [v003-bootloader-replacement](../references/v003-bootloader-replacement.ja.md) §8.2 |
+| `bl-size-entry-budget` | timeout / button / host 検出を **同時に**載せるには何 byte 足りないか(構成別ビルドの差分) | **実機なし**(ビルドのみ) | 同上 | 有 | 同 §4 / §8.2 — **入れ替え可否の唯一の争点** |
+| `bl-size-linker` | BL 専用 ld から未使用セクション(`.init_array` / `.ctors` 等)と `ALIGN(4)` の padding を削ると何 byte 戻るか | **実機なし**(ビルドのみ) | 同上 | 有 | 同 §8.3-C |
+| `bl-size-flags` | `-Oz` / `-msave-restore` / 新 GCC / inline 掃引で何 byte 縮むか。`-msave-restore` は USB の C 部分の **40 サイクル制約**に触れないか | **実機なし**(縮み量)+ **一時**(動作確認) | toolchain 複数版 / UIAPduino | 有 / 不明 | 同 §8.3-B |
+| `bl-size-descriptor` | string descriptor の短縮と HID report descriptor の最小化で何 byte 戻るか。**3 host 実装**(minichlink / rv003usb-webflasher / WebLink_USB)は通るか | **実機なし**(サイズ)+ **一時**(host 3 実装) | UIAPduino + minichlink + Chromium | 不明 | 同 §8.3-D |
+| `bl-no-ep1` | BL の protocol は control transfer だけなので **EP1 IN を省けるか**。**Windows / macOS / Linux が HID device として列挙するか** | **一時** | UIAPduino + 3 OS | 不明 | 同 §8.3-D2(当たれば最大の削減) |
+| `sw-usb-app-footprint` | **app 側** rv003usb の flash / RAM 実消費は幾らか(`demo_terminal` の `.bss` / `.data`)。V003 の 2 KB RAM のうち何 byte 残るか | **実機なし**(ビルドのみ) | toolchain のみ | 有 | 同 §5.1 / §7-1 |
 | `iap-order` | WCH IAP の host↔device 往復順序 | **一時**(capture) | WCHMcuIAP + 対応 chip | 不明 | [serial-and-print](../protocols/serial-and-print.ja.md) §6、P2-4 |
 | `dap-mode` | DAP mode の切替 byte 手順と CMSIS-DAP v1/v2 判定 | **常設**(capture) | LinkE + usbmon | 有 | [dap](../protocols/dap.ja.md)、P2-5 |
 | `uart-dtr-reset` | port open の DTR auto-reset で probe は reset するか。host は `hello` をいつから撃てるか | **一時** | Uno / ESP32 DevKit / Pico | 不明 | [ecosystem-any-hardware](../references/ecosystem-any-hardware.ja.md) §4.5 |
@@ -72,6 +79,8 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 
 - **SWIO セッション**: `swio-threshold` + `5v-swio`(どちらも SWIO 1 本 + marker。V003 のまま抵抗と board を差し替えるだけ)
 - **RVSWD セッション**: `rvswd-frame`(3ch。SWIO セッションとは配線が違うので分ける)
+
+- **BL サイズのセッション**: `bl-size-baseline` / `bl-size-entry-budget` / `bl-size-linker` / `bl-size-flags` / `sw-usb-app-footprint` は **実機も target も要らず、ビルドして `.map` を読むだけ**。設営ゼロなのでまとめて 1 回で消化できる。実機が要るのは `bl-no-ep1` と `bl-size-descriptor` の host 確認だけ。**`bl-size-baseline` の結果次第で残りが不要になる**([v003-bootloader-replacement](../references/v003-bootloader-replacement.ja.md) §8.4)ので、必ず先に 1 本だけ回す。
 
 セッションを組む直前に、そのとき残っている候補をもう一度見て「ついでに取れるもの」を足す。
 
