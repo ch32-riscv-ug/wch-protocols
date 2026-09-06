@@ -1,0 +1,11 @@
+function,series_count,distinct_sequences,groups,#,confidence,basis
+FLASH_BufLoad,7,4,"evt-v003-iap // evt-l103-iap,evt-v00x-iap,evt-v205-iap,evt-x035-iap // evt-v103-iap // evt-m030-iap",#,attested,computed:extract7.py
+FLASH_BufReset,7,2,"evt-m030-iap,evt-v003-iap,evt-v103-iap // evt-l103-iap,evt-v00x-iap,evt-v205-iap,evt-x035-iap",#,attested,computed:extract7.py
+FLASH_ErasePage_Fast,9,3,"evt-v003-iap,evt-v20x-iap,evt-v30x-iap // evt-l103-iap,evt-v00x-iap,evt-v205-iap,evt-x035-iap // evt-m030-iap,evt-v103-iap",#,attested,computed:extract7.py
+FLASH_Lock,12,1,"evt-h417-v3f-iap,evt-l103-iap,evt-m030-iap,evt-v003-iap,evt-v00x-iap,evt-v103-iap,evt-v205-iap,evt-v20x-iap,evt-v30x-iap,evt-v407-iap,evt-x035-iap,evt-x315-iap",#,attested,computed:extract7.py
+FLASH_Lock_Fast,12,1,"evt-h417-v3f-iap,evt-l103-iap,evt-m030-iap,evt-v003-iap,evt-v00x-iap,evt-v103-iap,evt-v205-iap,evt-v20x-iap,evt-v30x-iap,evt-v407-iap,evt-x035-iap,evt-x315-iap",#,attested,computed:extract7.py
+FLASH_ProgramPage_Fast,12,4,"evt-v003-iap // evt-l103-iap,evt-v00x-iap,evt-v205-iap,evt-x035-iap // evt-m030-iap,evt-v103-iap // evt-h417-v3f-iap,evt-v20x-iap,evt-v30x-iap,evt-v407-iap,evt-x315-iap",#,attested,computed:extract7.py
+FLASH_ROM_ERASE,12,2,"evt-l103-iap,evt-m030-iap,evt-v003-iap,evt-v00x-iap,evt-v103-iap,evt-v205-iap,evt-v20x-iap,evt-v30x-iap,evt-v407-iap,evt-x035-iap,evt-x315-iap // evt-h417-v3f-iap",#,attested,computed:extract7.py
+FLASH_ROM_WRITE,12,5,"evt-v003-iap // evt-l103-iap,evt-v00x-iap,evt-v205-iap,evt-x035-iap // evt-v103-iap // evt-h417-v3f-iap,evt-v20x-iap,evt-v30x-iap,evt-v407-iap,evt-x315-iap // evt-m030-iap",#,attested,computed:extract7.py
+FLASH_Unlock,12,1,"evt-h417-v3f-iap,evt-l103-iap,evt-m030-iap,evt-v003-iap,evt-v00x-iap,evt-v103-iap,evt-v205-iap,evt-v20x-iap,evt-v30x-iap,evt-v407-iap,evt-x035-iap,evt-x315-iap",#,attested,computed:extract7.py
+FLASH_Unlock_Fast,12,1,"evt-h417-v3f-iap,evt-l103-iap,evt-m030-iap,evt-v003-iap,evt-v00x-iap,evt-v103-iap,evt-v205-iap,evt-v20x-iap,evt-v30x-iap,evt-v407-iap,evt-x035-iap,evt-x315-iap",#,attested,computed:extract7.py

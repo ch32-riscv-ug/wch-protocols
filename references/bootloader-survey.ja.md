@@ -1,9 +1,9 @@
 # bootloader 横断調査 — 分析結果(第 2 回・深堀り)
 
 状態: **attested**(EVT 12 series の IAP 13 project + 副対象 9 + OSS BL 3 + stub 51 を実ソースから機械抽出。**BL のビルドサイズと stub の逆アセンブルは実測 = `verified`**。実機 capture 未)。
-調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(20 テーブル・1,704 行 + stub の hex/逆アセンブル 34 対)
+調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(25 テーブル・3,236 行 + stub の hex/逆アセンブル 34 対)
 
-この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F36`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
+この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F43`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
 
 ---
 
@@ -12,7 +12,7 @@
 | 問い | 答え |
 |---|---|
 | **Q1** 差はどの軸から生まれるか | **series 軸ではない。「EVT サンプルの系譜」軸**。設計クラスタは 7 群で、`CH32V407` と `CH32X315` が完全一致、`CH32V205` と `CH32L103` が完全一致など、**系列名を横断して束になる**(F04/F05) |
-| **Q2** 統一 BL は作れるか | **protocol 層は作れる**。8 project 以上に現れる `#define` のうち **13 個が全 project 同一値、割れるのは 5 個だけ**(F02)。難所は protocol ではなく **entry/exit と flash driver** |
+| **Q2** 統一 BL は作れるか | **作れる**。protocol の `#define` は **13 個が全 project 同一・割れるのは 5 個だけ**(F02)、flash driver は **12 series → 5 class**、unlock は**分岐不要**(F42/F43)。残る難所は **entry/exit の極性反転 1 件**(F07) |
 | **Q3** V003 は特殊か | **特殊。ただし「V003 が」ではなく「V003+V00X が」**。この 2 つだけ BOOT 領域常駐・`==` 極性・BOOT_MODE レジスタ経由の jump(F07/F08/F13)。V003 単独で特殊なのは flash 粒度 64 B と inline 実装だけ(F09/F10) |
 | **Q4** stub にどこまで差を押し出せるか | **押し出せている**。b003 系 stub **47 本すべてが x0–x15 のみ**で RV32EC/IMAC 両対応(F17)。機能 1 個 = **8〜120 B** で BL の flash 予算を消費しない(F19) |
 | **Q5** 容量に何が入るか | BL 本体は 1,920 B(V003)〜 20 KB。**拡張余地は flash ではなく RAM の scratchpad** にあり、ch32fun では **BL 本体の 1.9 倍**(F20) |
@@ -211,7 +211,12 @@ erase 粒度は **4 種**: 64 B(v003)/ 128 B(m030, v103)/ 256 B(v00x, v205, v20x
 - **M030 の `FLASH_BufLoad(adr+4*j, buf[j], buf[j+1])` は 2 word ずつ**渡す。x035 は `FLASH_BufLoad(adr+4*i, buf[i])` で 1 word。**同じ関数名で引数の数が違う**
 - v407 / x315 だけ erase が 4 KB。**「256 B 書きたいのに 4 KB 消す」**ので read-modify-write が要る
 
-→ 差替が必要なのは **`erase(addr, size)` / `program(addr, buf, size)` / `wait()` の 3 本 + 粒度定数 2 個(erase_gran, program_gran)**。API 名の違いは薄いラッパで吸収でき、**本質的な差は粒度だけ**。
+→ 差替が必要なのは **`erase(addr, size)` / `program(addr, buf, size)` / `wait()` の 3 本 + 粒度定数 2 個**。
+
+> **第 2 回で精密化(§6b.10)**: この節は API 名で数えているが、**レジスタ操作列で正規化すると 12 series は
+> 5 driver class に収束する**({v003} / {v00x,v205,x035,l103} / {v20x,v30x,v407,x315,h417} / {v103} / {m030})。
+> さらに **unlock/lock は 12 series で完全に同一**なので、分岐が要るのは program/erase の中身だけ。
+> **本質的な差は粒度だけ」は言い過ぎで、正しくは「5 実装 + 粒度定数」**。
 
 ---
 
@@ -421,6 +426,70 @@ wlink 由来の flash loader 5 本を `stubs.csv` に追加(**51 → 56 行**)�
 → **wlink 系と minichlink 系という 2 系統の loader が同じ family(V20x/V30x)に並存**している。どちらが WCH 純正に近いかは未決(依頼への逆質問として投げた)。
 
 
+
+### 6b.10 U5 解決 — **レジスタ操作列で測ると 12 series は 5 driver class**(F42/F43)
+
+EVT IAP が呼ぶ flash 関数の実体は SDK(`EVT/EXAM/SRC/Peripheral/src/ch32*_flash.c`)にある。
+その関数本体を MMIO 操作列へ正規化(§4.1 の共通座標系)し、**署名が一致する series をまとめた**。
+
+| 関数 | series 数 | 相異なる操作列 |
+|---|---:|---:|
+| `FLASH_Unlock` / `_Unlock_Fast` / `_Lock` / `_Lock_Fast` | 12 | **1**(全 series 同一) |
+| `FLASH_ROM_ERASE` | 12 | 2 |
+| `FLASH_BufReset` | 7 | 2 |
+| `FLASH_ErasePage_Fast` | 9 | 3 |
+| `FLASH_ProgramPage_Fast` | 12 | **4** |
+| `FLASH_BufLoad` | 7 | 4 |
+| `FLASH_ROM_WRITE` | 12 | **5** |
+
+**4 つの主要関数すべてで同じ群が再現する**:
+
+| driver class | series |
+|---|---|
+| **A** | `v003` |
+| **B** | `v00x`, `v205`, `x035`, `l103` |
+| **C** | `v20x`, `v30x`, `v407`, `x315`, `h417` |
+| **D** | `v103` |
+| **E** | `m030` |
+
+→ **これは §1.3 の 7 クラスタとは別の軸**。§1.3 は *IAP サンプルの系譜*(どこからコピーされたか)、
+こちらは *silicon の flash controller 世代*。統一 BL の flash driver を書くときに効くのは**こちら**で、
+**5 実装で 12 series を覆える**。
+
+→ さらに **unlock / lock は 12 series で完全に同一**(KEYR に KEY1,KEY2 → MODEKEYR に KEY1,KEY2)。
+**統一 BL の unlock 経路は分岐が要らない**。差替が必要なのは program / erase の中身だけ。
+
+データ: [`reg_ops_sdk.csv`](data/bootloader-survey/reg_ops_sdk.csv)(593 行)/ [`reg_ops_signature.csv`](data/bootloader-survey/reg_ops_signature.csv)
+
+### 6b.11 U6 完了 — HOST_IAP 13 project(F37〜F41)
+
+| 項目 | 結果 |
+|---|---|
+| image ファイル名 | **`/APP.BIN` が 13/13 で完全一致** |
+| BL 予約サイズ | 4 種 — 20 KB(v103, v20x)/ 24 KB(v30x, x035)/ 32 KB(v205, v407, x315, l103, m030)/ **48 KB**(h417) |
+| APP 検証方式 | UART/USB IAP の `CalAddr`(flash 末尾 −4、4 B)と**別物**。`DEF_VERIFY_CODE_START_ADDR`〜`_END_ADDR` の **256 B 領域**(実使用 16 B)を APP 先頭の直下に置く |
+
+**同じ series でも HOST_IAP は UART/USB IAP より BL 予約が大きい**(USB host stack のぶん):
+
+| series | UART/USB IAP | HOST_IAP | 差 |
+|---|---|---|---|
+| v20x | `0x08005000` | `0x08005000` | 同じ |
+| v30x / x035 | `0x08005000` | `0x08006000` | +4 KB |
+| v205 / v407 / x315 / l103 / m030 | `0x08005000` | `0x08008000` | **+12 KB** |
+| h417 | `0x08006000` | `0x0800C000` | **+24 KB** |
+
+→ **「20 KB 予約」は UART/USB IAP に限った話**で、transport を変えると崩れる(F38)。
+
+**欠陥を 2 件発見**:
+
+- **F40(X035)**: `DEF_APP_CODE_START_ADDR = 0x08006000` / `_END_ADDR = 0x08010000` に対し
+  `DEF_VERIFY_CODE_START_ADDR = 0x08007F00` / `_END_ADDR = 0x08008000`。
+  **verify 領域が APP の +0x1F00 に食い込む**。他 12 project は verify 領域が APP 先頭の直下(`END == APP_START`)。
+  `0x08008000` 基準の値を APP_START だけ変えた際の取り残しと見られる
+- **F41(V20x)**: BL は `0x08005000` へ書くのに、同梱の `APP/Ld_APP/Link.ld` が `ORIGIN = 0x00000000, LENGTH = 32K`。
+  他 12 project は APP ld の ORIGIN が APP_START と一致
+
+
 ---
 
 ## 7. 副産物 — 既存文書の更新が必要な点
@@ -445,8 +514,8 @@ wlink 由来の flash loader 5 本を `stubs.csv` に追加(**51 → 56 行**)�
 | ~~U2~~ | ~~`erase_block` の 2 byte 差~~ → **解決**(F30。`nop`/`ret` の順序。機能は同一) | — |
 | ~~U3~~ | ~~H2 の定量化~~ → **解決**(F28/F29、§6b.1-2)。残: fork の `ch32v003fun` submodule を正しく checkout して**絶対値を upstream と一致させる** | Q7 |
 | ~~U4~~ | ~~scratchpad の引数配置~~ → **解決**(F26/F27、`stub_args.csv` 97 行 + `stub_framing.csv`) | — |
-| **U5** | `reg_ops.csv` を検証セット(5 実装)から全 project へ展開 | Q1 / Q2 |
-| ~~U6~~ | ~~副対象が未収録~~ → **一部解決**(`subordinate_targets.csv` 9 行)。残: HOST_IAP 13 project の個別差分 | Q5 |
+| ~~U5~~ | ~~`reg_ops` の全展開~~ → **解決**(§6b.10、F42/F43)。**12 series → 5 driver class**、unlock は分岐不要 | — |
+| ~~U6~~ | ~~副対象が未収録~~ → **完了**(§6b.11)。HOST_IAP 13 project を `host_iap.csv` / `host_iap_constants.csv`(900 行)に収録。**欠陥 2 件を発見**(F40/F41) | — |
 | ~~U8~~ | ~~`ch32-device-data` への移管依頼~~ → **完了**(`R-31`)。`evidence/flash_geometry.csv` に `erased_read_*` 4 列 + `blank_check_word` が入り、当方の暫定 CSV は削除した | — |
 | ~~U9~~ | ~~BLE IAP の slot の出自~~ → **解決**(§6b.8、F32)。**CH32V307 級(480 KB)向け**。V20x では使えない | — |
 | **U7** | 未取得の OSS BL(`wch-uf2` / Swindle DFU / PlumBL / tinyboot) | Q6 |

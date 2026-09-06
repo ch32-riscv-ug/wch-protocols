@@ -11,6 +11,8 @@ python3 extract2.py   # P2: protocol / entry_exit / flash_ops / usb / clock_uart
 python3 extract3.py   # P3: stubs / stubs_hex / stub_disasm
 python3 extract4.py   # P3: stub_args / stub_framing(extract3 の出力に依存)
 python3 extract5.py   # 依頼 0005: wlink 系 loader の取り込み(ch32rv を読むだけ)
+python3 extract6.py   # U6: HOST_IAP 13 project
+python3 extract7.py   # U5: SDK の flash 関数を MMIO 操作列へ正規化
 ```
 
 `extract3.py` は RISC-V の objdump を使う。既定は
@@ -58,11 +60,16 @@ python3 extract5.py   # 依頼 0005: wlink 系 loader の取り込み(ch32rv を
 | `build_sizes.csv` | 17 | `project_id`,`config`,`toolchain` | **rv003usb BL の実測サイズ**。機能フラグ 14 構成 × 予算 1,916 B、および toolchain 3 種の比較 |
 | `caladdr_validity.csv` | 12 | `project_id` | `CalAddr` を **Code FLASH 総容量**と突き合わせた結果(U1)。`parts.csv` の `flash_bytes` は零等待領域なので使わない |
 | `wlink_stub_comparison.csv` | 17 | `question` | 依頼 0005 の Q1〜Q3 の突き合わせ(同一性・使用レジスタ・共通接頭辞)を機械計算したもの |
+| `host_iap.csv` | 13 | `project_id` | HOST_IAP 13 project(USB host が `/APP.BIN` を読む経路)の controller / image 名 / 書込先 / APP ld |
+| `host_iap_constants.csv` | 900 | `project_id`,`name` | 同 13 project の `#define` 全ダンプ(GB18030 も読む) |
+| `iap_reserve_compare.csv` | 9 | `series` | UART/USB IAP と HOST_IAP の BL 予約サイズ比較 |
+| `reg_ops_sdk.csv` | 593 | `impl_id`,`function`,`seq` | **SDK の flash 関数を MMIO 操作列へ正規化**(U5)。12 series × 10 関数 |
+| `reg_ops_signature.csv` | 10 | `function` | 上の署名比較。**どの series が同じ操作列か**= driver class の根拠 |
 | `subordinate_targets.csv` | 9 | `project_id` | 副対象(ETH_IAP 2 / BLE IAP・OTA 3 / HOST_IAP 1 / BootAsUser 3)の領域構成と magic |
 | `reg_ops.csv` | 41 | `impl_id`,`seq` | **言語をまたぐ比較の共通座標系**。C / asm / hex を MMIO 操作列に正規化。検証セットのみ |
 | `equiv_groups.csv` | 16 | `equiv_group`,`impl_id` | 同一機能の別形態を束ねる |
 | `files.csv` | 467 | `path` | 解析した全ファイルの `bytes` / `lines` / `sha256`。EVT 更新時の差分検出用 |
-| `findings.csv` | 36 | `finding_id` | 所見。`axis` は調査設計 §2 の軸 ID |
+| `findings.csv` | 43 | `finding_id` | 所見。`axis` は調査設計 §2 の軸 ID |
 | `stubs_hex/*.hex` | 34 | — | stub の生バイト(space 区切り 16 進)。**劣化なし** |
 | `stub_disasm/*.asm` | 34 | — | 上を `riscv-none-elf-objdump -D -b binary -m riscv:rv32 -M numeric` した結果 |
 
@@ -92,10 +99,9 @@ toolchain は `$WCH_ROOT/tools/` 配下の 4 種を使った(`riscv-none-embed-g
 
 ## 既知の穴
 
-- `reg_ops.csv` は検証セット(V003 の 64 B fast program、5 実装)だけ。全 project 展開は未(U5)。
+- `reg_ops.csv` は検証セット(V003 の 64 B fast program、5 実装)だけ。**全 series 展開は `reg_ops_sdk.csv` が別テーブルで持つ**(手作業版と自動版の二本立て)。
 - `flash_ops.csv` の `granularity_bytes` は program 側が空の project がある
   (`FLASH_BufLoad` ループ回数から導出していないため)。
-- 副対象のうち **HOST_IAP は 13 project あるうち 1 つしか見ていない**(U6 残)。
 - wlink 系 loader の `a0` bit2/bit3 と作業 RAM の意味は未確定(U10)。逆アセンブルだけでは出ない。
 - **GB18030 のヘッダがある**(BLE の `ota.h` 等)。`grep` が binary 扱いして黙って取り落とすので、
   抽出スクリプトを広げるときは `iconv -f GB18030` を通すこと(F34)。
