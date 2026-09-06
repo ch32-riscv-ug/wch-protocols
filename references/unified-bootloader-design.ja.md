@@ -1,25 +1,28 @@
-# 統一 bootloader の設計 — 調査結果を実装境界に落とす
+# 統一 bootloader の設計空間 — 調査結果から「どこで分けられるか」を見る
 
-状態: **draft**(解読ではなく**自前設計**。実装・実測は未)。
+状態: **draft**(解読ではなく**自前設計の検討**。実装・実測は未)。
+
+**この文書は決定書ではありません。** 「何が事実として分かったか」と「その結果どういう選択肢が残るか」を並べるところまで。
+選ぶのは後の工程。§9 では**事実で決着したもの**と**まだ選択肢のままのもの**を分けてある。
 根拠はすべて [bootloader-survey.ja.md](bootloader-survey.ja.md) の所見 ID(`F01`〜`F58`)と
 [data/bootloader-survey/](data/bootloader-survey/) の 28 テーブルにある。設計判断のたびに ID を引く。
 
-この文書が答えるのは **「Q2 = 統一 BL は作れるか」の続き**、すなわち **どこで分けるのが最小の分割か**。
+この文書が扱うのは **「Q2 = 統一 BL は作れるか」の続き**、すなわち **どこで分けられる可能性があるか**。
 
 ---
 
-## 0. 結論(先に)
+## 0. 分かったこと(先に)
 
-| 判断 | 内容 | 根拠 |
+| 事実 | 内容 | 根拠 |
 |---|---|---|
 | **分割の主軸は series ではなく制御レジスタ列** | flash driver は **5 関数 + 4 パラメータ**で 12 series を覆える(erase 1 形 / program 2 形 / unlock は分岐なし) | F42 / F43 / **F44** |
 | **protocol 層は分岐不要** | 8 project 以上に出る `#define` の **13 個が全 series 同一、割れるのは実質 2 個**(`FLASH_Base` / `CalAddr`) | F01 / F02 |
-| **blank pattern は分岐にしない** | chip の仕様値なので `ch32-device-data` から引く定数。しかも §3.2 の entry 設計を採れば**参照すら不要になる** | F25 |
+| **blank pattern は分岐ではなく定数** | chip の仕様値なので `ch32-device-data` から引ける。**entry 設計次第では参照すら不要にできる**(§3.2) | F25 |
 | **真の障害は 1 つだけ** | `CheckNum` の**判定極性が反転**している(V003/V00X は「APP 正当の印」、他は「BL に留まれの要求」)。**意味が逆なので `#if` では吸収できず、仕様として一本化するしかない** | F07 |
-| **言語は層で分ける** | 線上信号 = asm 必須 / BL 本体 = C / stub = asm | H1〜H3、§6 |
-| **拡張は stub 側でやる** | BL 本体は固定。scratchpad は ch32fun で BL 本体の 1.9 倍 | H4 / F19 / F20 |
-| **サイズ上限は自前で持ち込む** | EVT は 13 project 中 5 つしか強制していない | F13 |
-| **移植の config は 13 定数 + 2 選択** | §9b。うち 6 個は `ch32-device-data` から引くだけ | F42〜F58 |
+| **言語は層で分かれている** | 既存実装はどれも 線上信号 = asm / BL 本体 = C / stub = asm | H1〜H3、§1 |
+| **拡張余地は flash でなく RAM 側にある** | BL 本体は固定。scratchpad は ch32fun で BL 本体の 1.9 倍 | H4 / F19 / F20 |
+| **サイズ上限は EVT が強制していない** | 13 project 中 5 つだけ。自作するなら自前で linker assert が要る | F13 |
+| **移植 config は 11〜13 定数 + 2 選択に収まりそう** | §9b。数は §3.2 の選択で動く。うち 6 個は `ch32-device-data` から引くだけ | F42〜F58 |
 
 ---
 
@@ -31,7 +34,7 @@
 | **L-b. BL 本体**(state machine / transport / entry・exit / flash 呼出) | **C** | rv003usb・ch32fun とも C で成立(H2) |
 | **L-c. host が送り込む stub** | **asm** | RV32EC 制約(x0–x15)・位置独立・特殊な呼出規約・最小 8 B(H3 / F17) |
 
-**L-b を asm 化しない**。§7 の実測どおり、BL 本体を縮めても得られる余地は数百 B。拡張は L-c で稼ぐ(H4)。
+**L-b を asm 化しても割に合わない**。§5 の実測どおり、BL 本体を縮めて得られる余地は数百 B。一方 scratchpad は ch32fun で BL 本体の 1.9 倍ある(H4)。
 
 ---
 
@@ -86,24 +89,40 @@ if (*(u32*)FLASH_Base != blank)          // APP らしきものがある
 同じ `CheckNum = 0x5aa55aa5` を使いながら**意味が逆**。`#if` で切り替えると、
 **host 側(WCHMcuIAP 相当)の書き込む値も切り替わる**ので、契約が 2 つに割れたままになる。
 
-### 3.2 提案: **「APP 正当の印」(V003 側の意味論)に一本化する**
+### 3.2 2 群は完全な鏡像 — 誰が印を書き、誰が消すか
 
-理由は互換性ではなく**フェイルセーフ性**。
-
-| | `==`(APP 正当の印) | `!=`(BL に留まれの要求) |
+| | **`==` 群**(V003 / V00X) | **`!=` 群**(他 10 series) |
 |---|---|---|
-| flash が blank のとき | `blank != CheckNum` → **印なし → BL に留まる**。安全 | `blank != CheckNum` → **APP へ跳ぶ**。APP は無いので暴走 |
-| 暴走を防ぐ手段 | 不要 | `FLASH_Base != blank` の外側チェックが**必須** |
-| **blank pattern への依存** | **無い** | **ある**(family ごとに `0xFFFFFFFF` / `0xe339e339` を正しく選ぶ必要) |
+| 印の意味 | **「APP は正当」** | **「BL に留まれ」** |
+| BL が書込完了時に | page 消去 → **`FLASH_ProgramWord(CalAddr, CheckNum)`**(印を立てる) | page 消去のみ(印を消す) |
+| APP が BL へ落ちたいとき | **page 消去**(印を消す) | **page の read-modify-write**(印を立てる) |
 
-→ **`==` を採ると、entry 判定から blank pattern 依存が消える**。F25 で「family から引く定数」に降格させた項目が、
-設計次第で**参照すら不要**になる。§2 の config surface から 1 項目減らせる。
+出典: V003 = `IAP/User/iap.c:124-125` / `APP/User/iap.c:82`、X035 = `IAP/User/iap.c:121` / `APP/User/iap.c:56-66,104-105`。
 
-代償: **既存の WCHMcuIAP と非互換になる**(10 series ぶん)。統一 BL は host も自作する前提なので許容できるが、
-「EVT の host をそのまま使いたい」場合は `!=` 側に倒すことになる。**その場合は blank pattern が必須依存に戻る**。
+`!=` 群の APP は印が page 内にあるため `Program_Buf_Modify()` で**周囲 63 word を読んで保存**してから焼き直す。
+`==` 群は 1 word 書くだけ。**実装量は `==` のほうが軽い**。
 
-> **決めること**: host も自作するか、WCHMcuIAP 互換を残すか。ここが設計の分岐点で、
-> 他のすべては定数で吸収できる。
+### 3.2a 選択肢と帰結(**まだ選ばない**)
+
+| 案 | 内容 | blank flash | probe 直焼き | config 数 | EVT host 互換 |
+|---|---|:-:|:-:|:-:|---|
+| **A** | **`!=` のまま**(EVT 多数派に合わせる) | △ 外側の `FLASH_Base != blank` が必須 | ✓ 起動する | 13 | **WCHMcuIAP が使える** |
+| **B** | **`==`** + 印を **APP イメージに埋める**(linker section) | ✓ 印が無い → BL に留まる | ✓ イメージに印が含まれる | 12 | 不可 |
+| **C** | B + 印を **flash 末尾でなく APP 先頭のヘッダ**へ | ✓ | ✓ | **11** | 不可 |
+
+各案で何が起きるか:
+
+- **A の弱点**: blank flash で `blank != CheckNum` が成立して **APP へ跳んでしまう**。
+  外側の `FLASH_Base != blank` チェックが暴走の唯一の歯止めなので、**blank pattern が必須依存**になる(F25)
+- **`==` を素朴に採ると別の穴が開く**: BL が印を書く方式だと、**debug probe で APP を直焼きしたとき印が付かず起動しない**。
+  開発中は毎回これに当たる。→ **B はこれを「印を APP イメージ自身に含める」ことで塞ぐ**
+  (`.app_valid : { LONG(0x5aa55aa5); } > FLASH`)。BL は印を書く処理すら不要になる
+- **B が残す弱点**: `CalAddr` は Code FLASH 末尾 −4 なので、① **`.bin` に穴が開く**(`.hex`/`.elf` なら可)
+  ② **総容量を知る必要がある** — F15 の「`parts.csv` は零等待領域」問題が設計に入ってくる。→ **C はこれを塞ぐ**
+- **C の代償**: EVT からさらに離れる。WCHMcuIAP は完全に使えない
+
+**共通する軸は「印を誰が書くか」**。BL が書く(EVT 両群)/ **イメージ自身が持つ**(B・C)の 2 系統で、
+後者にすると **BL・probe・host のどこから焼いても同じ契約**になる。ここが可能性として一番大きい。
 
 ### 3.3 exit は配置から自動的に決まる(F08)
 
@@ -178,13 +197,19 @@ CTLR &= ~PAGE_PG
 > **確度**: 制御列の一致は SDK ソースの正規化から導いた `attested`。
 > **1 本の C 実装が全 series で同じバイナリ挙動になるかは未検証**(実機で確認するまで `verified` にしない)。
 
-### 4.5 read-modify-write は driver の上に置く(D3)
+### 4.5 read-modify-write の置き場(D3 — 選択肢)
 
 `fast erase` を持たない **V407 / X315 / H417** は、256 B を書くのに **4 KB 消す**必要がある。
 これを driver に入れると driver がバッファと状態を持ち、§4.4 の「5 関数」が崩れる。
 
-→ **driver はレジスタの薄い包みのまま**にし、`erase_gran > program_gran` の吸収は**上位の page cache 層**で行う。
-この層は series 非依存で、`erase_gran` / `program_gran` の 2 定数だけを見る。
+選択肢は 2 つ:
+
+| 案 | 内容 | 帰結 |
+|---|---|---|
+| **driver の中** | `program()` が消去粒度との差を自分で吸収 | driver がバッファと状態を持ち、**§4.4 の「5 関数」が崩れる** |
+| **driver の上** | `erase_gran > program_gran` を**上位の page cache 層**で吸収 | driver はレジスタの薄い包みのまま。この層は series 非依存で `erase_gran` / `program_gran` の 2 定数だけ見る |
+
+**「5 関数」という数え方を保ちたいなら後者**、という関係にある。どちらを採るかは実装時の判断。
 
 ## 5. サイズ予算
 
@@ -220,9 +245,9 @@ CTLR &= ~PAGE_PG
 
 ---
 
-## 7. 拡張は stub 側 — scratchpad の契約
+## 7. 拡張余地は stub 側 — scratchpad の契約
 
-BL 本体を固定したまま能力を足す(H4)。契約は minichlink の HID scratchpad 方式に合わせるのが実績があって安全。
+BL 本体を固定したまま能力を足せる(H4)。実績があるのは minichlink の HID scratchpad 方式なので、まずそれを基準に置く。
 
 ```
 scratchpad: [0..3] report ID + "00 00 00"   [4..] stub 本体   [4+len..] 引数   … [pad-4..] 0x1234ABCD
@@ -241,7 +266,7 @@ HID report ID = 0xAA + pad_size/1024,  pad_size ∈ {128, 1152, 2176, 3200, 4096
 
 ---
 
-### 7.1 stub 契約の選択肢は 3 つになった(D4)
+### 7.1 stub 契約の選択肢(D4 — 選択肢)
 
 | 契約 | 出所 | 特徴 |
 |---|---|---|
@@ -249,39 +274,54 @@ HID report ID = 0xAA + pad_size/1024,  pad_size ∈ {128, 1152, 2176, 3200, 4096
 | **(ii) WCH 純正 loader ABI** | WCH OpenOCD の 18 loader(F45/F56) | `a0` = 操作ビットマスク(unlock / mass erase / page erase / program / verify)、`a1` = addr、`a2` = len、buffer 固定、戻り値 0\|16。**能力が 5 操作に固定** |
 | (iii) 自前 | — | 自由だが host も全部自作 |
 
-**(i) を採る**。理由は §7 冒頭のとおりで、**(ii) は能力が 5 操作に固定される**から。
-統一 BL の設計目標は「BL を小さく保ったまま**能力を後から足せる**」ことなので、
-固定 5 操作の ABI はその目標と噛み合わない。
+**軸は「能力を後から足せるか」**。(i) は host が任意の機械語を送れるので能力が開いている。
+(ii) は 5 操作に閉じているぶん契約が単純で、**WCH 純正 probe 経路がそのまま使える**。
 
-ただし **(ii) を知っている価値は大きい**: 同じ target に対して WCH 純正 probe 経路でも書けるので、
-**BL が壊れたときの復旧路**として (ii) が使える(BL を焼き直す側の経路)。両立する。
+そして **(i) と (ii) は排他ではありません**。(ii) は probe 側の経路なので、
+**BL が壊れたときの復旧路**として同じ target に併存できる。「BL 経由は (i)、救出は (ii)」という組み合わせも取れる。
 
-## 8. 作らないもの(non-goals)
+## 8. 費用対効果が悪い候補(non-goals の候補)
 
-- **WCHMcuIAP 互換**。§3.2 で `==` に倒すなら互換は捨てる。倒さないなら §3.2 の利点も捨てる
-- **V103 対応を最初から入れる**。protocol 世代が単独で違い(sync head `57 AB`、`CMD_JUMP_IAP` 無し、`CalAddr` 無し。F03)、
-  driver も単独 class(D)。**費用対効果が最も悪い**ので後回しにする
-- **BLE / Ethernet transport**。EVT の実装は A/B slot 前提で BL が 16〜40 KB あり、別設計(F31/F32)
+切り捨てを決めたわけではなく、**コストが偏っている箇所**の記録。
+
+- **WCHMcuIAP 互換**。§3.2a の A を選べば得られ、B/C を選べば失う。**D1 と同じ判断の裏表**
+- **V103**。protocol 世代が単独で違い(sync head `57 AB`、`CMD_JUMP_IAP` 無し、`CalAddr` 無し。F03)、
+  driver も単独形。**1 series のために protocol と driver の両方に分岐が要る**ので、単位コストが最も高い
+- **BLE / Ethernet transport**。EVT の実装は A/B slot 前提で BL が 16〜40 KB あり、UART/USB とは別設計(F31/F32)
+- **HOST_IAP(USB host)**。BL 予約が UART/USB より +12〜24 KB(F38)。「20 KB 予約」の前提が通らない
 
 ---
 
-## 9. 決定と未決
+## 9. 事実で決着したもの / まだ選択肢のもの
 
-| # | 内容 | 状態 |
+**この 2 つは性質が違う**ので分けて置く。前者は調べれば答えが 1 つに決まるもの、後者は設計判断。
+
+### 9.1 事実で決着(選ぶ余地なし)
+
+| # | 問い | 答え |
 |---|---|---|
-| **D1** | §3.2 の極性(`==` = APP 正当の印 / `!=` = BL に留まれの要求) | **仮決め: `==`**。フェイルセーフ性で優る(blank pattern 依存が消える)。代償は WCHMcuIAP 非互換。**host も自作する前提。覆すなら §3.2 の表を読み替えるだけで戻せる** |
-| ~~D2~~ | class D と E を畳めるか | **解決**(F44)。制御列で測れば同形。差は `words_per_bufload`(4 vs 2)だけ |
-| ~~D3~~ | read-modify-write の置き場 | **決めた**: driver の上(§4.5)。driver を薄く保つのが 5 関数化の前提 |
-| ~~D4~~ | scratchpad の契約 | **決めた**(§7.1): minichlink HID scratchpad 互換。WCH 純正 ABI は 5 操作固定で拡張目標と噛み合わない。純正経路は**復旧路**として併存 |
-| **D5** | BOOT 領域配置と user flash 配置を同一ソースで両対応にするか | 差は (a) linker script (b) exit 方式 (c) `FLASH_Base` の **3 点だけ**でいずれも定数/マクロ。**論理的には両対応可**だが、V003 の 1,920 B では BOOT 側だけで予算が尽きる(§5)ので**ビルド構成としては分ける**のが現実的。最終判断は実装時 |
-| ~~D6~~ | commit 副作用の範囲 | **解決**(F58)。**V103 と M030 の 2 series だけ**。XOR マスクも違う(`0x1000` / `0x100`)。config 定数 1 個で表せる |
+| **D2** | driver class D と E を畳めるか | **畳める**(F44)。制御列で測れば同形で、差は `words_per_bufload`(4 vs 2)だけ。全体も **erase 1 形 + program 2 形**に縮む |
+| **D6** | commit 副作用 `*(0x40022034)` はどこまで要るか | **V103 と M030 の 2 series だけ**(F58)。XOR マスクも違う(`0x1000` / `0x100`)。config 定数 1 個で表せる |
+
+### 9.2 まだ選択肢(設計判断。**この文書では選ばない**)
+
+| # | 論点 | 選択肢 | 何で決まるか |
+|---|---|---|---|
+| **D1** | APP 存在フラグの極性と置き場 | **A** `!=` のまま / **B** `==` + 印を APP イメージに埋める / **C** B + 印を APP 先頭ヘッダへ(§3.2a) | **EVT host(WCHMcuIAP)を使い続けるか**。使うなら A 一択。使わないなら B/C で blank pattern 依存と `.bin` の穴が消える |
+| **D3** | read-modify-write の置き場 | driver の中 / **driver の上(page cache 層)** | 「driver 5 関数」という粒度を保ちたいか(§4.5) |
+| **D4** | stub 契約 | (i) minichlink HID scratchpad / (ii) WCH 純正 loader ABI / (iii) 自前 | **能力を後から足したいか**。(i) は開いている、(ii) は 5 操作固定だが純正 probe 経路が使える。**排他ではなく併存可**(§7.1) |
+| **D5** | BOOT 領域配置と user flash 配置 | 同一ソース両対応 / ビルド構成を分ける | 差は (a) linker script (b) exit 方式 (c) `FLASH_Base` の **3 点だけ**でいずれも定数。論理的には両対応可。ただし **V003 の 1,920 B は BOOT 側だけで予算が尽きる**(§5) |
+
+**D1 が他に波及する**: B/C を採ると §9b の config から `blank_pattern`(と C なら `APP_MARKER_ADDR` も)が落ちる。
+それ以外の D3〜D5 は互いに独立。
 
 ---
 
-## 9b. config surface の確定版
+## 9b. config surface の見積り
 
-移植 1 件に必要なのは **13 個の定数と 2 個の選択**だけ。値は [`port_matrix.csv`](data/bootloader-survey/port_matrix.csv) と
-`ch32-device-data` `evidence/flash_geometry.csv` から引く(§2)。
+移植 1 件に必要なのは **11〜13 個の定数と 2 個の選択**。**数は D1 の選び方で動く**。
+値は [`port_matrix.csv`](data/bootloader-survey/port_matrix.csv) と
+`ch32-device-data` `evidence/flash_geometry.csv` から引ける(§2)。
 
 | # | 名前 | 出所 | 取りうる値 |
 |---|---|---|---|
@@ -304,8 +344,13 @@ HID report ID = 0xAA + pad_size/1024,  pad_size ∈ {128, 1152, 2176, 3200, 4096
 | S1 | **BL の配置** | BOOT 領域 / user flash 先頭 → §3.3 の exit が自動的に決まる |
 | S2 | **program の形** | (a) buffer-then-commit / (b) inline-write-then-commit → §4.3 |
 
-**`blank_pattern` は D1 を `==` に倒したので config に要らない**(§3.2)。
-`!=` に戻す場合だけ 14 個目として `BLANK_WORD`(`0xFFFFFFFF` / `0xe339e339`)が復活する。
+**D1 による増減**:
+
+| D1 の案 | 定数の数 | 差分 |
+|---|:-:|---|
+| **A**(`!=` のまま) | **13** | 上の 13 に加えて `BLANK_WORD`(`0xFFFFFFFF` / `0xe339e339`)が**必須**。逆に `APP_MARKER_*` は EVT 準拠 |
+| **B**(`==` + イメージに埋める) | **12** | `BLANK_WORD` が落ちる |
+| **C**(B + 先頭ヘッダ) | **11** | さらに `APP_MARKER_ADDR` が落ちる(Code FLASH 総容量への依存も消える) |
 
 ---
 
