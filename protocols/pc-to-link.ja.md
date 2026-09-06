@@ -52,6 +52,10 @@ payload は「cmd の後」を示す。応答が生バイト(frame 無し)の場
 | `0x0b` | — | Reset(target) | attested |
 | `0x0b` | `0x01` | soft reset して実行 | verified |
 | `0x0c` | `[family, speed]` | **SetSpeed**。attach 前は family 不明のため `0x01` を送る。speed は high=`0x01` / medium=`0x02` / low=`0x03`(**逆順注意**) | **verified** |
+| `0x0d` | `0x01 0x04` | **GetRomRam**(CODE/RAM 分割の照会)。応答 4B、**`rxbuf[3]` が構成番号**で、chip_type ごとに意味が変わる(V307/V317 系・V20x 系で表が別) | **verified**(WCH OpenOCD `wlinke.c` L758-772) |
+| `0x0d` | `0x01 0x13` / `0x01 0x14` | **RstOut** ON / OFF(NRST 出力の駆動) | **verified**(同 L1394-1400) |
+| `0x0e` | `0x01 0x01` | **DisableDebug**(target の debug 機能を落とす) | **verified**(同 L1781-1786) |
+| `0x0b` | `0x02` | **ChipReset**(`0x0b` の sub `0x02`。`0x01` = soft reset して実行 とは別) | **verified**(同 L1057-1060) |
 | `0xff` | `0x01 0x41` / `0x01 0x52` | **モード切替**。RISC-V→DAP は `81 ff 01 41` を通常の command EP へ、DAP→RISC-V は **DAP device(PID `0x8012`)の interface 0 の OUT EP `0x02`** へ `81 ff 01 52`。どちらも応答は返らず probe が再列挙する(PID `0x8010` ⇔ `0x8012`)。**LinkE 専用**(CH549 は不可) | **verified**(両方向を WCH-LinkE 実機で確認。再列挙後に新 PID を確認) |
 | `0x08` | `[addr, data_be32, op]`(6B) | **DmiOp**。op=0 nop / 1 read / 2 write。応答 6B `[addr, data_be32, status]`(status=0 success / 2 failed / 3 busy)。busy は再試行 | **verified**(DM 経由で全 GPR・PC・flash/RAM を読み wlink dump とバイト一致) |
 
@@ -398,7 +402,9 @@ WCH-LinkUtility の `Firmware_Link/` に平文で入っている。**全ファ�
 
 ## 12. 未解読(todo)
 
-`wlink_disabledebug`、`wlink_getromram`(CODE/RAM split)、`wlink_rstout`、`wlink_chip_reset`、`wlink_armversion`。frame エラー応答の体系。→ 先行実装から転記 → capture で verified 化。
+~~`wlink_disabledebug`、`wlink_getromram`、`wlink_rstout`、`wlink_chip_reset`~~ → **§4 に転記して verified**(WCH 純正 OpenOCD のソース [`wlinke.c`](tools/riscv-openocd-wch/src/jtag/drivers/wlinke.c) から byte 確定。2026-09-06)。
+
+残り: `wlink_armversion`(ソースにも無い)。**frame エラー応答の体系**。→ capture で確定する。
 
 ~~mode 切替(RV↔ARM)~~ → **§4 で verified**(`81 ff 01 41` / `81 ff 01 52`、両方向を実機確認)。
 

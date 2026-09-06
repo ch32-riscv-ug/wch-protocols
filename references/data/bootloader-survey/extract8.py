@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """bootloader 横断調査 — WCH 純正 OpenOCD から flash loader を全数抽出(U11)
 
+出力は**事実だけ**(symbol / サイズ / hash / family / ABI / page 定数)。
+WCH 配布バイナリ由来の生バイトと逆アセンブルは既定で保存しない。
+手元で中身を見たいときだけ `EMIT_BLOBS=1 python3 extract8.py`。
+
 WCH が配布する Linux 版 OpenOCD(`tools/OpenOCD/OpenOCD/bin/openocd`)の .rodata に、
 target RAM で走らせる flash loader blob が **0xff padding 区切りで並んでいる**。
 wlink / minichlink が持っているのはこの一部。
@@ -105,15 +109,18 @@ for off, b in uniq:
     match = [k for k, v in known.items() if v == b or (len(v) > len(b) and v.startswith(b))
              or (len(b) > len(v) and b.startswith(v))]
     sid = f"wchocd-{off:06X}"
-    hexs = " ".join(f"{x:02x}" for x in b)
-    (HEXDIR / f"{sid}.hex").write_text(hexs + "\n", encoding="utf-8")
     asm, regs = disasm(b)
-    (ASMDIR / f"{sid}.asm").write_text(
-        f"# {sid}  ({len(b)} bytes)  @0x{off:X}  fnv1a64={fnv1a64(b)}\n"
-        f"# source: {PROV}\n"
-        f"# 既知 blob との一致: {','.join(match) if match else '(新規)'}\n"
-        f"# riscv-none-elf-objdump -D -b binary -m riscv:rv32 -M numeric\n{asm}\n",
-        encoding="utf-8")
+    # WCH 配布バイナリ由来の生バイトは既定では保存しない(§ライセンス)。
+    # 手元で中身を見たいときは EMIT_BLOBS=1 を付ける。
+    if os.environ.get("EMIT_BLOBS") == "1":
+        (HEXDIR / f"{sid}.hex").write_text(
+            " ".join(f"{x:02x}" for x in b) + "\n", encoding="utf-8")
+        (ASMDIR / f"{sid}.asm").write_text(
+            f"# {sid}  ({len(b)} bytes)  @0x{off:X}  fnv1a64={fnv1a64(b)}\n"
+            f"# source: {PROV}\n"
+            f"# 既知 blob との一致: {','.join(match) if match else '(新規)'}\n"
+            f"# riscv-none-elf-objdump -D -b binary -m riscv:rv32 -M numeric\n{asm}\n",
+            encoding="utf-8")
     if not match:
         new_count += 1
     rows.append([sid, f"0x{off:X}", len(b), fnv1a64(b), dg,

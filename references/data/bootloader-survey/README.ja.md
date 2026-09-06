@@ -13,6 +13,7 @@ python3 extract4.py   # P3: stub_args / stub_framing(extract3 の出力に依存
 python3 extract5.py   # 依頼 0005: wlink 系 loader の取り込み(ch32rv を読むだけ)
 python3 extract6.py   # U6: HOST_IAP 13 project
 python3 extract7.py   # U5: SDK の flash 関数を MMIO 操作列へ正規化
+python3 extract8.py   # U11: WCH 純正 OpenOCD の loader 目録(事実のみ)
 ```
 
 `extract3.py` は RISC-V の objdump を使う。既定は
@@ -55,7 +56,7 @@ python3 extract7.py   # U5: SDK の flash 関数を MMIO 操作列へ正規化
 | `usb.csv` | 15 | `project_id` | descriptor の形式(生バイト / マクロ)・VID・PID(vendor/HID)・`DEF_USB_IAP_MODE` |
 | `clock_uart.csv` | 15 | `project_id` | UART port / baud / BRR 直値 / printf の baud |
 | `stubs.csv` | 56 | `stub_id` | 拡張可能な stub。`source_form` / `is_generated` / `generated_from` / `blob_bytes` / **`reg_set`** / **`rv32ec_safe`** / `active` |
-| `stub_args.csv` | 105 | `stub_name`,`scratchpad_offset` | scratchpad の引数配置。`ResetOp`→`WriteOpArb`→`WriteOp4`→`CommitOp` を追って**計算した offset**。`meaning` にはソースのコメント原文を残してあるが、**write_block 系はコメント側が誤り**(`@76` と書いてあるが実際は `@108`。逆アセンブルで確認) |
+| `stub_args.csv` | 109 | `stub_name`,`scratchpad_offset` | scratchpad の引数配置。`ResetOp`→`WriteOpArb`→`WriteOp4`→`CommitOp` を追って**計算した offset**。`meaning` にはソースのコメント原文を残してあるが、**write_block 系はコメント側が誤り**(`@76` と書いてあるが実際は `@108`。逆アセンブルで確認) |
 | `stub_framing.csv` | 13 | `pad_size_bytes` | HID feature report の pad サイズと report ID(`0xAA + pad_size/1024`)の対応 |
 | `build_sizes.csv` | 17 | `project_id`,`config`,`toolchain` | **rv003usb BL の実測サイズ**。機能フラグ 14 構成 × 予算 1,916 B、および toolchain 3 種の比較 |
 | `caladdr_validity.csv` | 12 | `project_id` | `CalAddr` を **Code FLASH 総容量**と突き合わせた結果(U1)。`parts.csv` の `flash_bytes` は零等待領域なので使わない |
@@ -66,11 +67,14 @@ python3 extract7.py   # U5: SDK の flash 関数を MMIO 操作列へ正規化
 | `reg_ops_sdk.csv` | 593 | `impl_id`,`function`,`seq` | **SDK の flash 関数を MMIO 操作列へ正規化**(U5)。12 series × 10 関数 |
 | `reg_ops_signature.csv` | 10 | `function` | 上の署名比較。**どの series が同じ操作列か**= driver class の根拠 |
 | `port_matrix.csv` | 13 | `series` | **統一 BL の移植パラメータ 1 枚**。protocol/entry は本調査、chip の事実は `ch32-device-data` から join(`*_cdd` 列)。→ [unified-bootloader-design.ja.md](../../unified-bootloader-design.ja.md) |
+| `wch_openocd_loaders.csv` | 19 | `stub_id` | **WCH 純正 OpenOCD が持つ flash loader 18 種**。symbol / 宣言サイズ / 実体 / fnv1a64 / family / `a0_bits` / `buffer_base` / `page_bytes` |
+| `wch_loader_dispatch.csv` | 21 | `riscvchip` | AttachChip family byte → loader の dispatch(バイナリの jump table + 明示比較)。`source_coverage` が「バイナリのみ」= 公開 GPL ソースに無い |
+| `wlink_stub_comparison.csv` | 17 | `question` | 依頼 0005 の Q1〜Q3 の突き合わせ |
 | `subordinate_targets.csv` | 9 | `project_id` | 副対象(ETH_IAP 2 / BLE IAP・OTA 3 / HOST_IAP 1 / BootAsUser 3)の領域構成と magic |
 | `reg_ops.csv` | 41 | `impl_id`,`seq` | **言語をまたぐ比較の共通座標系**。C / asm / hex を MMIO 操作列に正規化。検証セットのみ |
 | `equiv_groups.csv` | 16 | `equiv_group`,`impl_id` | 同一機能の別形態を束ねる |
 | `files.csv` | 467 | `path` | 解析した全ファイルの `bytes` / `lines` / `sha256`。EVT 更新時の差分検出用 |
-| `findings.csv` | 43 | `finding_id` | 所見。`axis` は調査設計 §2 の軸 ID |
+| `findings.csv` | 57 | `finding_id` | 所見。`axis` は調査設計 §2 の軸 ID |
 | `stubs_hex/*.hex` | 34 | — | stub の生バイト(space 区切り 16 進)。**劣化なし** |
 | `stub_disasm/*.asm` | 34 | — | 上を `riscv-none-elf-objdump -D -b binary -m riscv:rv32 -M numeric` した結果 |
 
@@ -88,6 +92,19 @@ toolchain は `$WCH_ROOT/tools/` 配下の 4 種を使った(`riscv-none-embed-g
 
 > **注意**: fork の `ch32v003fun` submodule が未チェックアウトだったため upstream HEAD で代替した。
 > **絶対値は upstream の CI と一致しない可能性がある。差分(`delta_vs_baseline`)は同一条件なので頑健**。
+
+## WCH 配布物由来の生バイトは置かない
+
+`wch_openocd_loaders.csv` は WCH 純正 OpenOCD(GPL バイナリ)から抽出した loader の**事実だけ**を持つ
+— symbol 名・サイズ・`fnv1a64`・family 対応・`a0` ビット・buffer 番地・page 定数。
+**生バイトと逆アセンブルは既定では保存しない**。手元で中身を見たいときだけ:
+
+```sh
+EMIT_BLOBS=1 python3 extract8.py     # stubs_hex/wchocd-*.hex と stub_disasm/wchocd-*.asm を生成
+```
+
+再生成できるので**再現性は落ちない**。`stubs_hex/` に残してあるのは、**既に MIT/Apache で公開されている**
+wlink 由来の 5 本と minichlink 由来の blob だけ。
 
 ## 他 repo が持つデータ(ここには置かない)
 

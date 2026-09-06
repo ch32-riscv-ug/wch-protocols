@@ -179,6 +179,8 @@ PC ──USB── [内蔵 V003 = probe firmware(software USB HID + SWIO/RVSWD b
 
 → (c) の続き(**内蔵ライタと外付け probe を同じ PID・同じ host コードで扱うための capability 設計**、X035 と V003 の載せ方): [builtin-probe-and-self-update.ja.md](builtin-probe-and-self-update.ja.md)
 
+→ **V003 側の BL を実際に入れ替えるべきか**(標準 rv003usb BL は既に stub 実行型・1,920 B の限界。入れ替えるなら V003 でなく V006): [v003-bootloader-replacement.ja.md](v003-bootloader-replacement.ja.md)
+
 ## 7. 推奨構成(案)
 
 | | V003 / V00x(software USB) | V20x / L103 / X035 / V30x(HW USB) |
