@@ -1,0 +1,39 @@
+# b003stub-write_block_v20x  (104 bytes)
+# riscv-none-elf-objdump -D -b binary -m riscv:rv32 -M numeric
+   0:	300027f3          	csrr	x15,mstatus
+   4:	f777f793          	andi	x15,x15,-137
+   8:	30079073          	csrw	mstatus,x15
+   c:	06c50713          	addi	x14,x10,108
+  10:	430c                	lw	x11,0(x14)
+  12:	435c                	lw	x15,4(x14)
+  14:	00871283          	lh	x5,8(x14)
+  18:	00a71303          	lh	x6,10(x14)
+  1c:	932e                	add	x6,x6,x11
+  1e:	000106b7          	lui	x13,0x10
+  22:	c3d4                	sw	x13,4(x15)
+  24:	00558633          	add	x12,x11,x5
+  28:	4394                	lw	x13,0(x15)
+  2a:	8a85                	andi	x13,x13,1
+  2c:	fef5                	bnez	x13,0x28
+  2e:	4394                	lw	x13,0(x15)
+  30:	8a89                	andi	x13,x13,2
+  32:	fef5                	bnez	x13,0x2e
+  34:	4754                	lw	x13,12(x14)
+  36:	c194                	sw	x13,0(x11)
+  38:	4394                	lw	x13,0(x15)
+  3a:	8a89                	andi	x13,x13,2
+  3c:	fef5                	bnez	x13,0x38
+  3e:	0591                	addi	x11,x11,4
+  40:	0711                	addi	x14,x14,4
+  42:	fec5c9e3          	blt	x11,x12,0x34
+  46:	002006b7          	lui	x13,0x200
+  4a:	c3d4                	sw	x13,4(x15)
+  4c:	ffc5a683          	lw	x13,-4(x11)
+  50:	fc65cae3          	blt	x11,x6,0x24
+  54:	56fd                	li	x13,-1
+  56:	c114                	sw	x13,0(x10)
+  58:	300027f3          	csrr	x15,mstatus
+  5c:	0887e793          	ori	x15,x15,136
+  60:	30079073          	csrw	mstatus,x15
+  64:	8082                	ret
+  66:	0001                	nop

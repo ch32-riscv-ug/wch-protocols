@@ -1,0 +1,12 @@
+equiv_group,label,impl_id,source_form,role,notes,#,confidence,basis
+eg-v003-fastprog-64,V003 の 64 B fast program,evt-v003-iap,c,reference,EVT 公式。BUF_RST と BSY 待ちを自前で行う,#,single-source,evt:CH32V003/EVT/EXAM/USART_IAP/CH32V003_IAP/User/flash.c
+eg-v003-fastprog-64,V003 の 64 B fast program,oss-uiap-flasher,c,variant,ADDR を先に書く。BSY 待ちのコメントに「RAM 実行時のみ必要」,#,single-source,oss:ch32_user_bootloader_flasher/v003_flash.c
+eg-v003-fastprog-64,V003 の 64 B fast program,b003-write64_flash,hex-array,variant,48 B。BUF_RST と BSY 待ちが無い(host が事前に CTLR を設定),#,attested,oss:ch32fun/minichlink/pgm-b003fun.c(L71)
+eg-v003-fastprog-64,V003 の 64 B fast program,asm-write_block-attic,asm,variant,page ループ版。割込み全禁止から始まる,#,attested,oss:ch32fun/misc/attic/rv003usb_bootloader_stubs_for_minichlink/write_block.asm
+eg-v003-fastprog-64,V003 の 64 B fast program,b003-write_block,hex-array,variant,上の asm と同一機能。104 B,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+eg-write-block,page ループ書込み(inline hex と 生成 header),b003-write_block,hex-array,reference,104 B,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+eg-write-block,page ループ書込み(inline hex と 生成 header),b003stub-write_block,generated-header,generated,104 B。**inline 版とバイト完全一致**,#,verified,diff:stubs_hex/b003-write_block.hex==stubs_hex/b003stub-write_block.hex
+eg-write-block-v20x,V20x/V30x 版 page ループ書込み,b003-write_block_v20x_v30x,hex-array,reference,104 B,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+eg-write-block-v20x,V20x/V30x 版 page ループ書込み,b003stub-write_block_v20x,generated-header,generated,104 B。**inline 版とバイト完全一致**,#,verified,diff:stubs_hex/b003-write_block_v20x_v30x.hex==stubs_hex/b003stub-write_block_v20x.hex
+eg-erase-block,page ループ消去,b003-erase_block,hex-array,reference,52 B,#,attested,oss:ch32fun/minichlink/pgm-b003fun.c
+eg-erase-block,page ループ消去,b003stub-erase_block,generated-header,generated,52 B だが **inline 版と 2 byte ずれる**(末尾の 01 00 の位置)。要確認,#,conflict,diff:stubs_hex/b003-erase_block.hex!=stubs_hex/b003stub-erase_block.hex

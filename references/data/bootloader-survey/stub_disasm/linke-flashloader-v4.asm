@@ -1,0 +1,494 @@
+# linke-flashloader-v4  (1280 bytes)
+# riscv-none-elf-objdump -D -b binary -m riscv:rv32 -M numeric
+   0:	7179                	addi	x2,x2,-48
+   2:	d422                	sw	x8,40(x2)
+   4:	d04a                	sw	x18,32(x2)
+   6:	cc52                	sw	x20,24(x2)
+   8:	d606                	sw	x1,44(x2)
+   a:	d226                	sw	x9,36(x2)
+   c:	ce4e                	sw	x19,28(x2)
+   e:	ca56                	sw	x21,20(x2)
+  10:	c85a                	sw	x22,16(x2)
+  12:	c65e                	sw	x23,12(x2)
+  14:	00157793          	andi	x15,x10,1
+  18:	842a                	mv	x8,x10
+  1a:	8a2e                	mv	x20,x11
+  1c:	8932                	mv	x18,x12
+  1e:	ef9d                	bnez	x15,0x5c
+  20:	00247793          	andi	x15,x8,2
+  24:	cb99                	beqz	x15,0x3a
+  26:	000786b7          	lui	x13,0x78
+  2a:	4601                	li	x12,0
+  2c:	4581                	li	x11,0
+  2e:	4505                	li	x10,1
+  30:	2269                	addiw	x4,x4,26 # 0x1a
+  32:	0ff57793          	zext.b	x15,x10
+  36:	4509                	li	x10,2
+  38:	eb9d                	bnez	x15,0x6e
+  3a:	00447793          	andi	x15,x8,4
+  3e:	cb91                	beqz	x15,0x52
+  40:	6685                	lui	x13,0x1
+  42:	4601                	li	x12,0
+  44:	85d2                	mv	x11,x20
+  46:	4505                	li	x10,1
+  48:	2a8d                	addiw	x21,x21,3
+  4a:	0ff57793          	zext.b	x15,x10
+  4e:	4511                	li	x10,4
+  50:	ef99                	bnez	x15,0x6e
+  52:	01847793          	andi	x15,x8,24
+  56:	e79d                	bnez	x15,0x84
+  58:	4501                	li	x10,0
+  5a:	a811                	j	0x6e
+  5c:	4681                	li	x13,0
+  5e:	4601                	li	x12,0
+  60:	4581                	li	x11,0
+  62:	4521                	li	x10,8
+  64:	2a99                	addiw	x21,x21,6
+  66:	0ff57793          	zext.b	x15,x10
+  6a:	4505                	li	x10,1
+  6c:	dbd5                	beqz	x15,0x20
+  6e:	50b2                	lw	x1,44(x2)
+  70:	5422                	lw	x8,40(x2)
+  72:	5492                	lw	x9,36(x2)
+  74:	5902                	lw	x18,32(x2)
+  76:	49f2                	lw	x19,28(x2)
+  78:	4a62                	lw	x20,24(x2)
+  7a:	4ad2                	lw	x21,20(x2)
+  7c:	4b42                	lw	x22,16(x2)
+  7e:	4bb2                	lw	x23,12(x2)
+  80:	6145                	addi	x2,x2,48
+  82:	9002                	ebreak
+  84:	200054b7          	lui	x9,0x20005
+  88:	0ff90913          	addi	x18,x18,255
+  8c:	10048493          	addi	x9,x9,256 # 0x20005100
+  90:	00847b93          	andi	x23,x8,8
+  94:	00895913          	srli	x18,x18,0x8
+  98:	4a81                	li	x21,0
+  9a:	409a0a33          	sub	x20,x20,x9
+  9e:	8841                	andi	x8,x8,16
+  a0:	009a0b33          	add	x22,x20,x9
+  a4:	020b9063          	bnez	x23,0xc4
+  a8:	c021                	beqz	x8,0xe8
+  aa:	f0048993          	addi	x19,x9,-256
+  ae:	10000693          	li	x13,256
+  b2:	864e                	mv	x12,x19
+  b4:	85da                	mv	x11,x22
+  b6:	450d                	li	x10,3
+  b8:	2209                	addiw	x4,x4,2 # 0x2
+  ba:	0ff57513          	zext.b	x10,x10
+  be:	cd19                	beqz	x10,0xdc
+  c0:	4541                	li	x10,16
+  c2:	b775                	j	0x6e
+  c4:	10000693          	li	x13,256
+  c8:	f0048613          	addi	x12,x9,-256
+  cc:	85da                	mv	x11,x22
+  ce:	4509                	li	x10,2
+  d0:	20ed                	addiw	x1,x1,27
+  d2:	0ff57513          	zext.b	x10,x10
+  d6:	d969                	beqz	x10,0xa8
+  d8:	4521                	li	x10,8
+  da:	bf51                	j	0x6e
+  dc:	0009a783          	lw	x15,0(x19)
+  e0:	0991                	addi	x19,x19,4
+  e2:	9abe                	add	x21,x21,x15
+  e4:	fe999ce3          	bne	x19,x9,0xdc
+  e8:	197d                	addi	x18,x18,-1
+  ea:	10048493          	addi	x9,x9,256
+  ee:	fa0919e3          	bnez	x18,0xa0
+  f2:	d03d                	beqz	x8,0x58
+  f4:	200067b7          	lui	x15,0x20006
+  f8:	4b9c                	lw	x15,16(x15)
+  fa:	f5578fe3          	beq	x15,x21,0x58
+  fe:	b7c9                	j	0xc0
+ 100:	80040323          	sb	x0,-2042(x8)
+ 104:	4795                	li	x15,5
+ 106:	80f40323          	sb	x15,-2042(x8)
+ 10a:	80a40223          	sb	x10,-2044(x8)
+ 10e:	8082                	ret
+ 110:	80640783          	lb	x15,-2042(x8)
+ 114:	fe07cee3          	bltz	x15,0x110
+ 118:	80040323          	sb	x0,-2042(x8)
+ 11c:	8082                	ret
+ 11e:	80640783          	lb	x15,-2042(x8)
+ 122:	fe07cee3          	bltz	x15,0x11e
+ 126:	80444503          	lbu	x10,-2044(x8)
+ 12a:	8082                	ret
+ 12c:	80640783          	lb	x15,-2042(x8)
+ 130:	fe07cee3          	bltz	x15,0x12c
+ 134:	80a40223          	sb	x10,-2044(x8)
+ 138:	8082                	ret
+ 13a:	1141                	addi	x2,x2,-16
+ 13c:	c426                	sw	x9,8(x2)
+ 13e:	c24a                	sw	x18,4(x2)
+ 140:	c04e                	sw	x19,0(x2)
+ 142:	c606                	sw	x1,12(x2)
+ 144:	0bf57713          	andi	x14,x10,191
+ 148:	47ad                	li	x15,11
+ 14a:	89aa                	mv	x19,x10
+ 14c:	892e                	mv	x18,x11
+ 14e:	4495                	li	x9,5
+ 150:	00f70663          	beq	x14,x15,0x15c
+ 154:	4519                	li	x10,6
+ 156:	376d                	addiw	x14,x14,-5
+ 158:	3f65                	addiw	x30,x30,-7
+ 15a:	448d                	li	x9,3
+ 15c:	854e                	mv	x10,x19
+ 15e:	374d                	addiw	x14,x14,-13
+ 160:	59fd                	li	x19,-1
+ 162:	14fd                	addi	x9,x9,-1
+ 164:	01349863          	bne	x9,x19,0x174
+ 168:	40b2                	lw	x1,12(x2)
+ 16a:	44a2                	lw	x9,8(x2)
+ 16c:	4912                	lw	x18,4(x2)
+ 16e:	4982                	lw	x19,0(x2)
+ 170:	0141                	addi	x2,x2,16
+ 172:	8082                	ret
+ 174:	01095513          	srli	x10,x18,0x10
+ 178:	0ff57513          	zext.b	x10,x10
+ 17c:	3f45                	addiw	x30,x30,-15
+ 17e:	0922                	slli	x18,x18,0x8
+ 180:	b7cd                	j	0x162
+ 182:	1101                	addi	x2,x2,-32
+ 184:	cc26                	sw	x9,24(x2)
+ 186:	ce06                	sw	x1,28(x2)
+ 188:	000804b7          	lui	x9,0x80
+ 18c:	3751                	addiw	x14,x14,-12
+ 18e:	4515                	li	x10,5
+ 190:	3f85                	addiw	x31,x31,-31
+ 192:	3771                	addiw	x14,x14,-4
+ 194:	3769                	addiw	x14,x14,-6
+ 196:	c62a                	sw	x10,12(x2)
+ 198:	3fa5                	addiw	x31,x31,-23
+ 19a:	4532                	lw	x10,12(x2)
+ 19c:	00157793          	andi	x15,x10,1
+ 1a0:	eb89                	bnez	x15,0x1b2
+ 1a2:	00156513          	ori	x10,x10,1
+ 1a6:	0ff57513          	zext.b	x10,x10
+ 1aa:	40f2                	lw	x1,28(x2)
+ 1ac:	44e2                	lw	x9,24(x2)
+ 1ae:	6105                	addi	x2,x2,32
+ 1b0:	8082                	ret
+ 1b2:	14fd                	addi	x9,x9,-1 # 0x7ffff
+ 1b4:	fce9                	bnez	x9,0x18e
+ 1b6:	4501                	li	x10,0
+ 1b8:	bfcd                	j	0x1aa
+ 1ba:	7139                	addi	x2,x2,-64
+ 1bc:	dc26                	sw	x9,56(x2)
+ 1be:	da4a                	sw	x18,52(x2)
+ 1c0:	d84e                	sw	x19,48(x2)
+ 1c2:	d652                	sw	x20,44(x2)
+ 1c4:	d456                	sw	x21,40(x2)
+ 1c6:	d25a                	sw	x22,36(x2)
+ 1c8:	d05e                	sw	x23,32(x2)
+ 1ca:	de06                	sw	x1,60(x2)
+ 1cc:	ce62                	sw	x24,28(x2)
+ 1ce:	cc66                	sw	x25,24(x2)
+ 1d0:	e000e7b7          	lui	x15,0xe000e
+ 1d4:	577d                	li	x14,-1
+ 1d6:	0007aa83          	lw	x21,0(x15) # 0xe000e000
+ 1da:	c622                	sw	x8,12(x2)
+ 1dc:	0047aa03          	lw	x20,4(x15)
+ 1e0:	18e7a023          	sw	x14,384(x15)
+ 1e4:	18e7a223          	sw	x14,388(x15)
+ 1e8:	400017b7          	lui	x15,0x40001
+ 1ec:	05700713          	li	x14,87
+ 1f0:	04e78023          	sb	x14,64(x15) # 0x40001040
+ 1f4:	fa800713          	li	x14,-88
+ 1f8:	04e78023          	sb	x14,64(x15)
+ 1fc:	0447c783          	lbu	x15,68(x15)
+ 200:	ff750913          	addi	x18,x10,-9
+ 204:	84b6                	mv	x9,x13
+ 206:	07e2                	slli	x15,x15,0x18
+ 208:	0ff97913          	zext.b	x18,x18
+ 20c:	4685                	li	x13,1
+ 20e:	89aa                	mv	x19,x10
+ 210:	8bae                	mv	x23,x11
+ 212:	8b32                	mv	x22,x12
+ 214:	40002437          	lui	x8,0x40002
+ 218:	87e1                	srai	x15,x15,0x18
+ 21a:	5701                	li	x14,-32
+ 21c:	0126fa63          	bgeu	x13,x18,0x230
+ 220:	00d50863          	beq	x10,x13,0x230
+ 224:	4689                	li	x13,2
+ 226:	02000713          	li	x14,32
+ 22a:	00d51363          	bne	x10,x13,0x230
+ 22e:	5701                	li	x14,-32
+ 230:	8fd9                	or	x15,x15,x14
+ 232:	0ff7f793          	zext.b	x15,x15
+ 236:	40001cb7          	lui	x25,0x40001
+ 23a:	04fc8223          	sb	x15,68(x25) # 0x40001044
+ 23e:	4711                	li	x14,4
+ 240:	80e40323          	sb	x14,-2042(x8) # 0x40001806
+ 244:	0ff00513          	li	x10,255
+ 248:	3d65                	addiw	x26,x26,-7
+ 24a:	4c09                	li	x24,2
+ 24c:	35d1                	addiw	x11,x11,-12
+ 24e:	112c6963          	bltu	x24,x18,0x360
+ 252:	000707b7          	lui	x15,0x70
+ 256:	9bbe                	add	x23,x23,x15
+ 258:	00078737          	lui	x14,0x78
+ 25c:	5579                	li	x10,-2
+ 25e:	02ebfe63          	bgeu	x23,x14,0x29a
+ 262:	009b87b3          	add	x15,x23,x9
+ 266:	02f76a63          	bltu	x14,x15,0x29a
+ 26a:	47a9                	li	x15,10
+ 26c:	06f99963          	bne	x19,x15,0x2de
+ 270:	e489                	bnez	x9,0x27a
+ 272:	4481                	li	x9,0
+ 274:	3d71                	addiw	x26,x26,-4
+ 276:	8526                	mv	x10,x9
+ 278:	a00d                	j	0x29a
+ 27a:	85de                	mv	x11,x23
+ 27c:	4509                	li	x10,2
+ 27e:	3d75                	addiw	x26,x26,-3
+ 280:	0b05                	addi	x22,x22,1
+ 282:	fffb4503          	lbu	x10,-1(x22)
+ 286:	14fd                	addi	x9,x9,-1
+ 288:	0b85                	addi	x23,x23,1
+ 28a:	354d                	addiw	x10,x10,-13
+ 28c:	c481                	beqz	x9,0x294
+ 28e:	0ffbf793          	zext.b	x15,x23
+ 292:	f7fd                	bnez	x15,0x280
+ 294:	35fd                	addiw	x11,x11,-1
+ 296:	fd69                	bnez	x10,0x270
+ 298:	557d                	li	x10,-1
+ 29a:	400017b7          	lui	x15,0x40001
+ 29e:	05700713          	li	x14,87
+ 2a2:	04e78023          	sb	x14,64(x15) # 0x40001040
+ 2a6:	fa800713          	li	x14,-88
+ 2aa:	04e78023          	sb	x14,64(x15)
+ 2ae:	0447c703          	lbu	x14,68(x15)
+ 2b2:	8b41                	andi	x14,x14,16
+ 2b4:	04e78223          	sb	x14,68(x15)
+ 2b8:	50f2                	lw	x1,60(x2)
+ 2ba:	e000e7b7          	lui	x15,0xe000e
+ 2be:	1157a023          	sw	x21,256(x15) # 0xe000e100
+ 2c2:	1147a223          	sw	x20,260(x15)
+ 2c6:	54e2                	lw	x9,56(x2)
+ 2c8:	4432                	lw	x8,12(x2)
+ 2ca:	5952                	lw	x18,52(x2)
+ 2cc:	59c2                	lw	x19,48(x2)
+ 2ce:	5a32                	lw	x20,44(x2)
+ 2d0:	5aa2                	lw	x21,40(x2)
+ 2d2:	5b12                	lw	x22,36(x2)
+ 2d4:	5b82                	lw	x23,32(x2)
+ 2d6:	4c72                	lw	x24,28(x2)
+ 2d8:	4ce2                	lw	x25,24(x2)
+ 2da:	6121                	addi	x2,x2,64
+ 2dc:	8082                	ret
+ 2de:	47a5                	li	x15,9
+ 2e0:	06f99563          	bne	x19,x15,0x34a
+ 2e4:	6985                	lui	x19,0x1
+ 2e6:	0ff00913          	li	x18,255
+ 2ea:	009906b3          	add	x13,x18,x9
+ 2ee:	012bf4b3          	and	x9,x23,x18
+ 2f2:	94b6                	add	x9,x9,x13
+ 2f4:	fff94913          	not	x18,x18
+ 2f8:	009974b3          	and	x9,x18,x9
+ 2fc:	6b41                	lui	x22,0x10
+ 2fe:	01797933          	and	x18,x18,x23
+ 302:	6b85                	lui	x23,0x1
+ 304:	fff98793          	addi	x15,x19,-1 # 0xfff
+ 308:	0127f7b3          	and	x15,x15,x18
+ 30c:	e399                	bnez	x15,0x312
+ 30e:	0134fc63          	bgeu	x9,x19,0x326
+ 312:	0049d993          	srli	x19,x19,0x4
+ 316:	47c1                	li	x15,16
+ 318:	ff37e6e3          	bltu	x15,x19,0x304
+ 31c:	bf99                	j	0x272
+ 31e:	6905                	lui	x18,0x1
+ 320:	69c1                	lui	x19,0x10
+ 322:	197d                	addi	x18,x18,-1 # 0xfff
+ 324:	b7d9                	j	0x2ea
+ 326:	0d800513          	li	x10,216
+ 32a:	01698863          	beq	x19,x22,0x33a
+ 32e:	02000513          	li	x10,32
+ 332:	01798463          	beq	x19,x23,0x33a
+ 336:	08100513          	li	x10,129
+ 33a:	85ca                	mv	x11,x18
+ 33c:	3bfd                	addiw	x23,x23,-1 # 0xfff
+ 33e:	3591                	addiw	x11,x11,-28
+ 340:	dd21                	beqz	x10,0x298
+ 342:	994e                	add	x18,x18,x19
+ 344:	413484b3          	sub	x9,x9,x19
+ 348:	b7d9                	j	0x30e
+ 34a:	85de                	mv	x11,x23
+ 34c:	452d                	li	x10,11
+ 34e:	33f5                	addiw	x7,x7,-3
+ 350:	94da                	add	x9,x9,x22
+ 352:	f29b00e3          	beq	x22,x9,0x272
+ 356:	0b05                	addi	x22,x22,1 # 0x10001
+ 358:	33d9                	addiw	x7,x7,-10
+ 35a:	feab0fa3          	sb	x10,-1(x22)
+ 35e:	bfd5                	j	0x352
+ 360:	fff98793          	addi	x15,x19,-1 # 0xffff
+ 364:	0ff7f793          	zext.b	x15,x15
+ 368:	08fc6c63          	bltu	x24,x15,0x400
+ 36c:	045cc703          	lbu	x14,69(x25)
+ 370:	000807b7          	lui	x15,0x80
+ 374:	02077713          	andi	x14,x14,32
+ 378:	e319                	bnez	x14,0x37e
+ 37a:	000787b7          	lui	x15,0x78
+ 37e:	5579                	li	x10,-2
+ 380:	f0fbfde3          	bgeu	x23,x15,0x29a
+ 384:	009b8733          	add	x14,x23,x9
+ 388:	f0e7e9e3          	bltu	x15,x14,0x29a
+ 38c:	4789                	li	x15,2
+ 38e:	04f99063          	bne	x19,x15,0x3ce
+ 392:	8089                	srli	x9,x9,0x2
+ 394:	4955                	li	x18,21
+ 396:	ec048ee3          	beqz	x9,0x272
+ 39a:	85de                	mv	x11,x23
+ 39c:	4509                	li	x10,2
+ 39e:	3b71                	addiw	x22,x22,-4
+ 3a0:	0b11                	addi	x22,x22,4
+ 3a2:	ffcb2703          	lw	x14,-4(x22)
+ 3a6:	4791                	li	x15,4
+ 3a8:	80e42023          	sw	x14,-2048(x8)
+ 3ac:	80640703          	lb	x14,-2042(x8)
+ 3b0:	fe074ee3          	bltz	x14,0x3ac
+ 3b4:	81240323          	sb	x18,-2042(x8)
+ 3b8:	17fd                	addi	x15,x15,-1 # 0x77fff
+ 3ba:	fbed                	bnez	x15,0x3ac
+ 3bc:	14fd                	addi	x9,x9,-1
+ 3be:	0b91                	addi	x23,x23,4
+ 3c0:	c481                	beqz	x9,0x3c8
+ 3c2:	0ffbf793          	zext.b	x15,x23
+ 3c6:	ffe9                	bnez	x15,0x3a0
+ 3c8:	3b6d                	addiw	x22,x22,-5
+ 3ca:	f571                	bnez	x10,0x396
+ 3cc:	b5f1                	j	0x298
+ 3ce:	4785                	li	x15,1
+ 3d0:	f4f987e3          	beq	x19,x15,0x31e
+ 3d4:	85de                	mv	x11,x23
+ 3d6:	452d                	li	x10,11
+ 3d8:	338d                	addiw	x7,x7,-29
+ 3da:	fff48913          	addi	x18,x9,-1
+ 3de:	e8048ae3          	beqz	x9,0x272
+ 3e2:	3b35                	addiw	x22,x22,-19
+ 3e4:	00397793          	andi	x15,x18,3
+ 3e8:	eb91                	bnez	x15,0x3fc
+ 3ea:	80042683          	lw	x13,-2048(x8)
+ 3ee:	000b2703          	lw	x14,0(x22)
+ 3f2:	004b0793          	addi	x15,x22,4
+ 3f6:	e6e69fe3          	bne	x13,x14,0x274
+ 3fa:	8b3e                	mv	x22,x15
+ 3fc:	84ca                	mv	x9,x18
+ 3fe:	bff1                	j	0x3da
+ 400:	47a1                	li	x15,8
+ 402:	04f99263          	bne	x19,x15,0x446
+ 406:	3bb5                	addiw	x23,x23,-19
+ 408:	4481                	li	x9,0
+ 40a:	000b8d63          	beqz	x23,0x424
+ 40e:	478d                	li	x15,3
+ 410:	03c00493          	li	x9,60
+ 414:	00fb8863          	beq	x23,x15,0x424
+ 418:	05000493          	li	x9,80
+ 41c:	018b8463          	beq	x23,x24,0x424
+ 420:	04400493          	li	x9,68
+ 424:	07c57513          	andi	x10,x10,124
+ 428:	e49505e3          	beq	x10,x9,0x272
+ 42c:	4519                	li	x10,6
+ 42e:	39c9                	addiw	x19,x19,-14
+ 430:	31c5                	addiw	x3,x3,-15
+ 432:	4505                	li	x10,1
+ 434:	31f1                	addiw	x3,x3,-4
+ 436:	8526                	mv	x10,x9
+ 438:	39d5                	addiw	x19,x19,-11
+ 43a:	4509                	li	x10,2
+ 43c:	39c5                	addiw	x19,x19,-15
+ 43e:	3391                	addiw	x7,x7,-28
+ 440:	e20519e3          	bnez	x10,0x272
+ 444:	bd91                	j	0x298
+ 446:	e20986e3          	beqz	x19,0x272
+ 44a:	54f1                	li	x9,-4
+ 44c:	b525                	j	0x274
+ 44e:	ffff                	.insn	2, 0xffff
+ 450:	ffff                	.insn	2, 0xffff
+ 452:	ffff                	.insn	2, 0xffff
+ 454:	ffff                	.insn	2, 0xffff
+ 456:	ffff                	.insn	2, 0xffff
+ 458:	ffff                	.insn	2, 0xffff
+ 45a:	ffff                	.insn	2, 0xffff
+ 45c:	ffff                	.insn	2, 0xffff
+ 45e:	ffff                	.insn	2, 0xffff
+ 460:	ffff                	.insn	2, 0xffff
+ 462:	ffff                	.insn	2, 0xffff
+ 464:	ffff                	.insn	2, 0xffff
+ 466:	ffff                	.insn	2, 0xffff
+ 468:	ffff                	.insn	2, 0xffff
+ 46a:	ffff                	.insn	2, 0xffff
+ 46c:	ffff                	.insn	2, 0xffff
+ 46e:	ffff                	.insn	2, 0xffff
+ 470:	ffff                	.insn	2, 0xffff
+ 472:	ffff                	.insn	2, 0xffff
+ 474:	ffff                	.insn	2, 0xffff
+ 476:	ffff                	.insn	2, 0xffff
+ 478:	ffff                	.insn	2, 0xffff
+ 47a:	ffff                	.insn	2, 0xffff
+ 47c:	ffff                	.insn	2, 0xffff
+ 47e:	ffff                	.insn	2, 0xffff
+ 480:	ffff                	.insn	2, 0xffff
+ 482:	ffff                	.insn	2, 0xffff
+ 484:	ffff                	.insn	2, 0xffff
+ 486:	ffff                	.insn	2, 0xffff
+ 488:	ffff                	.insn	2, 0xffff
+ 48a:	ffff                	.insn	2, 0xffff
+ 48c:	ffff                	.insn	2, 0xffff
+ 48e:	ffff                	.insn	2, 0xffff
+ 490:	ffff                	.insn	2, 0xffff
+ 492:	ffff                	.insn	2, 0xffff
+ 494:	ffff                	.insn	2, 0xffff
+ 496:	ffff                	.insn	2, 0xffff
+ 498:	ffff                	.insn	2, 0xffff
+ 49a:	ffff                	.insn	2, 0xffff
+ 49c:	ffff                	.insn	2, 0xffff
+ 49e:	ffff                	.insn	2, 0xffff
+ 4a0:	ffff                	.insn	2, 0xffff
+ 4a2:	ffff                	.insn	2, 0xffff
+ 4a4:	ffff                	.insn	2, 0xffff
+ 4a6:	ffff                	.insn	2, 0xffff
+ 4a8:	ffff                	.insn	2, 0xffff
+ 4aa:	ffff                	.insn	2, 0xffff
+ 4ac:	ffff                	.insn	2, 0xffff
+ 4ae:	ffff                	.insn	2, 0xffff
+ 4b0:	ffff                	.insn	2, 0xffff
+ 4b2:	ffff                	.insn	2, 0xffff
+ 4b4:	ffff                	.insn	2, 0xffff
+ 4b6:	ffff                	.insn	2, 0xffff
+ 4b8:	ffff                	.insn	2, 0xffff
+ 4ba:	ffff                	.insn	2, 0xffff
+ 4bc:	ffff                	.insn	2, 0xffff
+ 4be:	ffff                	.insn	2, 0xffff
+ 4c0:	ffff                	.insn	2, 0xffff
+ 4c2:	ffff                	.insn	2, 0xffff
+ 4c4:	ffff                	.insn	2, 0xffff
+ 4c6:	ffff                	.insn	2, 0xffff
+ 4c8:	ffff                	.insn	2, 0xffff
+ 4ca:	ffff                	.insn	2, 0xffff
+ 4cc:	ffff                	.insn	2, 0xffff
+ 4ce:	ffff                	.insn	2, 0xffff
+ 4d0:	ffff                	.insn	2, 0xffff
+ 4d2:	ffff                	.insn	2, 0xffff
+ 4d4:	ffff                	.insn	2, 0xffff
+ 4d6:	ffff                	.insn	2, 0xffff
+ 4d8:	ffff                	.insn	2, 0xffff
+ 4da:	ffff                	.insn	2, 0xffff
+ 4dc:	ffff                	.insn	2, 0xffff
+ 4de:	ffff                	.insn	2, 0xffff
+ 4e0:	ffff                	.insn	2, 0xffff
+ 4e2:	ffff                	.insn	2, 0xffff
+ 4e4:	ffff                	.insn	2, 0xffff
+ 4e6:	ffff                	.insn	2, 0xffff
+ 4e8:	ffff                	.insn	2, 0xffff
+ 4ea:	ffff                	.insn	2, 0xffff
+ 4ec:	ffff                	.insn	2, 0xffff
+ 4ee:	ffff                	.insn	2, 0xffff
+ 4f0:	ffff                	.insn	2, 0xffff
+ 4f2:	ffff                	.insn	2, 0xffff
+ 4f4:	ffff                	.insn	2, 0xffff
+ 4f6:	ffff                	.insn	2, 0xffff
+ 4f8:	ffff                	.insn	2, 0xffff
+ 4fa:	ffff                	.insn	2, 0xffff
+ 4fc:	ffff                	.insn	2, 0xffff
+ 4fe:	ffff                	.insn	2, 0xffff
