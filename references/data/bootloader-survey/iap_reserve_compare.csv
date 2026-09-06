@@ -1,0 +1,10 @@
+series,uart_usb_iap_app_start,host_iap_app_start,delta,#,confidence,basis
+v20x,0x08005000,0x08005000,同じ,#,attested,evt:iap.h + evt:usb_host_iap.h
+v30x,0x08005000,0x08006000,+4 KB,#,attested,evt:iap.h + evt:usb_host_iap.h
+v205,0x08005000,0x08008000,+12 KB,#,attested,evt:iap.h + evt:usb_host_iap.h
+v407,0x08005000,0x08008000,+12 KB,#,attested,evt:iap.h + evt:usb_host_iap.h
+x035,0x08005000,0x08006000,+4 KB,#,attested,evt:iap.h + evt:usb_host_iap.h
+x315,0x08005000,0x08008000,+12 KB,#,attested,evt:iap.h + evt:usb_host_iap.h
+l103,0x08005000,0x08008000,+12 KB,#,attested,evt:iap.h + evt:usb_host_iap.h
+m030,0x08005000,0x08008000,+12 KB,#,attested,evt:iap.h + evt:usb_host_iap.h
+h417-v3f,0x08006000,0x0800C000,+24 KB,#,attested,evt:iap.h + evt:usb_host_iap.h
