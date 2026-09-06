@@ -1,9 +1,9 @@
-# bootloader 横断調査 — 分析結果(第 1 回)
+# bootloader 横断調査 — 分析結果(第 2 回・深堀り)
 
-状態: **attested**(WCH 公式 EVT 12 series の IAP 13 project + OSS BL 3 + stub 51 を実ソースから機械抽出。実機 capture 未)。
-調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(15 テーブル・約 1,400 行 + stub の hex/逆アセンブル 34 対)
+状態: **attested**(EVT 12 series の IAP 13 project + 副対象 9 + OSS BL 3 + stub 51 を実ソースから機械抽出。**BL のビルドサイズと stub の逆アセンブルは実測 = `verified`**。実機 capture 未)。
+調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md) / 生データ: [data/bootloader-survey/](data/bootloader-survey/)(19 テーブル・約 1,600 行 + stub の hex/逆アセンブル 34 対)
 
-この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F24`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
+この文書の主張はすべて `data/bootloader-survey/findings.csv` の行(`F01`〜`F34`)に対応し、各行は CSV 経由で原典の行番号まで辿れる。
 
 ---
 
@@ -19,7 +19,7 @@
 | **Q6** protocol は 3 世代で足りるか | **足りない。4 世代**。UART 世代 A / V103 世代 B / UART+USB 生バイト descriptor 世代 C / **USB マクロ + Vendor·HID 切替の世代 D**(F11) |
 | **Q7** どの言語で書くべきか | **層で分ける。BL 本体は C、stub は asm**。H1〜H4 は棄却されず、H3 は実測で裏付いた(§6) |
 
-**いちばん効く発見**: 統一 BL を阻むのは series の多さではなく、**同じ定数 `CheckNum` の判定極性が反転している**(F07)ことと、**APP 存在判定の blank pattern が 2 系統ある**(F06)こと。どちらも series では説明できず、`#if` で吸収するとき最初に踏む地雷。
+**いちばん効く発見**: 統一 BL を阻む本当の障害は **`CheckNum` の判定極性が反転していること**(F07)だけ。もう 1 つの候補だった blank pattern 2 系統は、第 2 回で **RM に明文のあるハードウェア特性**と判明し(F25)、family から引く定数に降格した。
 
 ---
 
@@ -116,9 +116,9 @@
 
 | 段階 | 項目 | 対処 |
 |---|---|---|
-| **A: 定数で吸収**(易) | `FLASH_Base`, `CalAddr`, sync head, UART port(3 通り), baud(2 通り), VID(2 通り), GPIO pin(3 通り), scratchpad 番地 | `#if` / linker symbol / 設定ヘッダ 1 枚 |
+| **A: 定数で吸収**(易) | `FLASH_Base`, `CalAddr`, **blank pattern**(F25)、sync head, UART port(3 通り), baud(2 通り), VID(2 通り), GPIO pin(3 通り), scratchpad 番地 | `#if` / linker symbol / 設定ヘッダ 1 枚 |
 | **B: 関数差替で吸収**(中) | flash erase/program(**4 API × 4 粒度**)、USB descriptor(生バイト / マクロ)、周辺 de-init 列 | driver 関数 3 本(`erase` / `program` / `wait`)+ 粒度定数。→ §4 |
-| **C: 構造が違う**(難) | **極性反転**(`==` vs `!=`)、**blank pattern 2 系統**、**exit 方式 2 系統**(BOOT_MODE レジスタ vs Software IRQ)、V103 の protocol 世代 | ここだけは条件分岐ではなく**仕様として一本化を決める**しかない |
+| **C: 構造が違う**(難) | **極性反転**(`==` vs `!=`)、**exit 方式 2 系統**(BOOT_MODE レジスタ vs Software IRQ)、V103 の protocol 世代 | ここだけは条件分岐ではなく**仕様として一本化を決める**しかない |
 
 ### 2.3 段階 C の中身(統一 BL の実際の障害)
 
@@ -133,12 +133,24 @@ if (*(uint32_t*)CalAddr != CheckNum) { IAP_2_APP(); }
 
 同じ `CheckNum = 0x5aa55aa5` を使いながら**意味が逆**。前者は「フラグが立っていたら APP」、後者は「フラグが立っていたら BL に留まる」。host 側(WCHMcuIAP)は書き込む値でこれを制御するので、**BL と host の契約がクラスタで違う**。
 
-**(b) blank pattern 2 系統**
+**(b) blank pattern 2 系統 — これは系譜ではなく<ins>ハードウェア特性</ins>だった**(第 2 回で判明・F25)
 
-`0xFFFFFFFF`(消去後の生値)= v003, v00x, v205, x035, l103, m030
-`0xe339e339` = v20x, v30x, v407, x315, h417×2
+RM に明文があり、**WCH は各 series で正しく書き分けている**。
 
-後者は「消去後」ではなく**特定の命令パターン**。統一するなら「両方を空とみなす」で吸収できるが、**片方だけ実装すると起動しない**。
+| 系統 | word 読み | half | 偶 byte | 奇 byte | family |
+|---|---|---|---|---|---|
+| A | `0xFFFFFFFF` | — | — | — | V006, V205, X035, L103, M030 |
+| **B** | **`0xe339e339`** | `0xe339` | `0x39` | `0xe3` | V20x, V30x, V407, X315, H417 |
+
+> 中文 RM の原文: 「注：擦除成功后，字读- 0xe339e339，半字读- 0xe339，偶地址字节读- 0x39，奇地址读0xe3。」/「注：擦除成功后，字读- 0xFF。」
+
+**RM の系統と EVT IAP の判定値は 10/10 一致**。値は [`flash_erased_read.csv`](data/bootloader-survey/flash_erased_read.csv)(暫定。`ch32-device-data` へ移管依頼中 → [request-ch32-device-data.ja.md](data/bootloader-survey/request-ch32-device-data.ja.md))。
+
+→ 統一 BL では **family から引く定数**にすればよく、`#if` の分岐ですらない。**段階 C ではなく段階 A に降格**する。
+
+**V003 と V103 は RM に記述が無いが、実シリコンの debug read で A と確定**(V003F4P6 / V103R8T6 とも erase 後 `0xff` fill。ch32rv の実機検証由来)。系統 B も V203/V307 の実読み `39 e3 39 e3` が RM の偶 `0x39` / 奇 `0xe3` とバイト位置まで一致する。→ **RM(文書)・EVT IAP(コード)・実シリコンの 3 系統が一致**。詳細は [request-ch32-device-data.ja.md](data/bootloader-survey/request-ch32-device-data.ja.md) §7b。
+
+> `0xe339e339` を「WCH-Link が消去済みセルに返す placeholder(実セルは 0xff)」とする読みは**誤り**だった。RM のとおり**チップ自身の消去後の読み出し値**である。
 
 **(c) exit 方式 2 系統**
 
@@ -255,11 +267,105 @@ erase 粒度は **4 種**: 64 B(v003)/ 128 B(m030, v103)/ 256 B(v00x, v205, v20x
 | 仮説 | 判定 | 根拠 |
 |---|---|---|
 | **H1** 層ごとに言語が決まる | **支持** | `rv003usb.S`(23,474 B、サイクル精度の bit-bang)+ `rv003usb.c`(11,643 B、state machine)の分業が実在。BL 本体は 2 実装とも C |
-| **H2** C で BL 本体は成立するが V003 では予算ギリギリ | **支持**(定量は未) | rv003usb は C で 1,916 B に収まる。ただし `noreturn` に *"saves 2-4 bytes"*、`Delay_Ms` を 2 命令の inline asm に置換して *"helps to fit into a tight BOOT area"* とコメント。**機能フラグ 1 個あたりの増分バイト実測は未実施** |
+| **H2** C で BL 本体は成立するが V003 では予算ギリギリ | **実測で支持**(§6b.1) | rv003usb は C で 1,916 B に収まる。ただし `noreturn` に *"saves 2-4 bytes"*、`Delay_Ms` を 2 命令の inline asm に置換して *"helps to fit into a tight BOOT area"* とコメント。**実測**: 全機能 off = 1,896 B / 予算 1,916 B / 残り **20 B**。機能単体 +4〜+12 B、組合せは非加算(PWR+USB0 = +28)。fork 既定は 4 toolchain すべてで超過 |
 | **H3** stub は asm。理由はサイズより制約 | **実測で支持** | §5.1。47/47 が x0–x15(うち 30 本は逆アセンブルで実測)。C(`-march=rv32imac`)では compiler が x16+ を使い V003 で動かない。最小 stub は **8 B**(`run_app_new` = `lw a3,-4(a0); jr a3`)で、C の関数フレームが成立しない規模 |
 | **H4** 機能を足す余地は asm ではなく stub 側で稼ぐ | **支持** | §5.2。BL 本体 3,328 B に対し scratchpad 6,272 B。stub 1 個 8〜120 B。**BL を asm 化して 30 % 縮めても得られる余地は約 1 KB、stub 方式なら 6 KB が最初からある** |
 
 > **Q7 の答え**: **BL 本体は C、stub は asm、線上信号は asm**。言語を統一する理由は無く、統一 BL の設計目標は「BL を小さく保つ」ではなく **「BL を小さく保ったまま scratchpad と stub の契約を series 間で統一する」**。
+
+---
+
+## 6b. 第 2 回で実測したこと
+
+### 6b.1 H2 の定量化 — **予算の残りは 20 B。2 機能で尽きる**(F28、`verified`)
+
+`rv003usb/bootloader` を実際にビルドして `.text` サイズを測った。予算は BOOT 領域 **1,916 B**。
+
+| 構成 | bytes | Δbaseline | 1,916 B に対して |
+|---|---:|---:|---|
+| **baseline(全機能 off)** | **1,896** | 0 | 残り 20 B |
+| + `BOOTLOADER_TIMEOUT_USB 0` | 1,900 | +4 | 残り 16 B |
+| + `BOOTLOADER_TIMEOUT_PWR 7` | 1,904 | +8 | 残り 12 B |
+| + `BOOTLOADER_BTN_*` | 1,904 | +8 | 残り 12 B |
+| + `BOOTLOADER_KEEP_PORT_CFG` | 1,904 | +8 | 残り 12 B |
+| + `BOOTLOADER_TIMEOUT_USB 20` | 1,908 | +12 | 残り 8 B |
+| + BTN + `_PULL` | 1,908 | +12 | 残り 8 B |
+| + BTN + `SOFT_REBOOT` | 1,916 | +20 | **ちょうど 0** |
+| + PWR + KEEP / BTN + KEEP | 1,916 | +20 | **ちょうど 0** |
+| + BTN + PULL + SOFT | 1,920 | +24 | **超過 +4** |
+| **+ PWR + USB0(fork 既定)** | **1,924** | **+28** | **超過 +8** |
+| + PWR + USB0 + KEEP | 1,932 | +36 | 超過 +16 |
+| + PWR + `USB 20` | 1,936 | +40 | 超過 +20 |
+
+**機能コストは加算できない**。`PWR`(+8)と `USB0`(+4)は単体では 12 B のはずが、**組み合わせると +28 B**(相互作用 +16 B)。
+
+→ 既存文書の「timeout / button / host 検出は択一に近い」は**定量的に裏付けられた**。実際には「baseline + 20 B」= **機能 1〜2 個**が上限で、しかも組合せ次第で予算を割る。
+
+> `SOFT_REBOOT_TO_BOOTLOADER` 単体は **0 B**。このフラグは `#if defined(BOOTLOADER_BTN_PORT)` の内側にしか効かないため、BTN 無効時は消える(コストは BTN 有効時に +8 B)。
+
+### 6b.2 §4.1 の裏付け — **コンパイラ版だけで 4 B 動く**(F29、`verified`)
+
+fork の既定構成を 4 つの toolchain でビルド:
+
+| toolchain | gcc | bytes | 1,916 B に対して |
+|---|---|---:|---|
+| `riscv-none-embed-gcc` | 8.2.0 | 1,924 | **+8** |
+| `riscv-none-elf-gcc`(xPack) | 14.3.0 | 1,924 | **+8** |
+| `riscv32-wch-elf-gcc`(WCH) | 15.2.0 | 1,928 | **+12** |
+
+**同じソース・同じフラグで 4 B の差**。予算の残りが 20 B しかない世界では、これは機能 1 個ぶんに相当する。
+→ §4.1 の「C のサイズは同一ビルド条件でしか比較しない」は方針ではなく**実測された制約**。
+
+> **測定条件**: `-Os -flto -march=rv32ec -mabi=ilp32e`。`ch32fun` は fork の submodule が未チェックアウトのため `cnlohr/ch32fun` HEAD で代替した。**絶対値は upstream と一致しない可能性があるが、差分(Δ)は同一条件なので頑健**。
+
+### 6b.3 stub の引数配置を確定 — **ソースのコメントが誤っている**(F26/F27、`verified`)
+
+`ResetOp` → `WriteOpArb` → `WriteOp4` → `CommitOp` の framing を読み、逆アセンブルで裏を取った。
+
+```
+scratchpad: [0..3] "AA 00 00 00"   [4..] stub 本体   [4+len..] 引数   … [pad_size-4..] 0x1234ABCD
+HID report ID = 0xAA + pad_size/1024,  pad_size ∈ {128, 1152, 2176, 3200, 4096, 5248, 6272}
+```
+
+| stub | blob | 引数の実 offset | ソースのコメント |
+|---|---:|---|---|
+| `write64_flash` | 48 B | `@52` addr / `@56` STATR base / `@60` 64 B data | `@52/@56/@60` ✓ |
+| `erase_block_bin` | 52 B | `@56` addr / `@60` STATR / `@64` `sector｜len<<16` | (記載なし) |
+| `write_block_bin` | 104 B | **`@108`** addr / **`@112`** STATR / **`@116`** `sector｜len<<16` / **`@120`** data | **`@76/@80/@84`(誤)** |
+
+逆アセンブルが決定打: `write_block` は `addi x14, x10, 108`、`erase_block` は `addi x14, x10, 56`。
+attic の `write_block.asm` のコメント `scratchpad + 88` も誤り(コード自身は `108`)。
+
+→ **`protocols/custom-bootloader.ja.md` §2b の `@76/@80/@84` は、この誤ったコメントを転記していた**。訂正が要る。
+
+### 6b.4 二重管理の実態(F30、`verified`)
+
+`erase_block` の inline hex(52 B)と生成 header(52 B)の 2 byte 差は、**`nop` と `ret` の順序入れ替え**:
+
+```
+inline    : … 14 c1 | 01 00 (nop) | 82 80 (ret)
+generated : … 14 c1 | 82 80 (ret) | 01 00 (nop)
+```
+
+**機能は同一**(どちらも正しく戻る)。ただし inline 側が現行 `.S` から再生成されていないことの証拠。`write_block` / `write_block_v20x` は**バイト完全一致**なので、ずれているのは `erase_block` だけ。
+
+### 6b.5 副対象 9 件を収録(F31〜F33)
+
+| project | BL 領域 | slot 構成 |
+|---|---:|---|
+| V20x `ETH_IAP` | 40 KB | BIM 40K / USER **44K** `@0x0800A000` / BACKUP **44K** `@0x08015000` / flag `0x0801FF00`(計 128K) |
+| V30x `ETH_IAP` | 40 KB | BIM 40K / USER **108K** `@0x0800A000` / BACKUP **108K** `@0x08025000` / flag `0x0803FF00`(計 256K) |
+| V20x BLE `BackupUpgrade_IAP` | 16 KB | IAP 16K / A **216K** / B **216K** / DATAFLASH `0x08077000` |
+| V20x BLE `OnlyUpdateApp_IAP` | 16 KB | IAP 16K / A 240K / DATAFLASH `0x08077000` |
+| `BootAsUser` ×3 | 1,920 / 3,328 / 3,328 B | `BFLASH` + 通常 `FLASH` の 2 領域構成 |
+
+- **ETH_IAP の slot 寸法は V20x と V30x で違う**。magic は共通 `IMAGE_FLAG_UPDATE = 0x57434820`(`'W','C','H',' '`)。既存文書は V30x の数値だけを両者の値として書いていた(F31)
+- **BLE `BackupUpgrade_IAP` は合計 448 KB + DATAFLASH 476 KB を要求し、CH32V203 の最大品種 256 KB にも収まらない**。`ota.h` の日付は 2018/12/14 で、より大きい製品からの流用と見られる(F32、`conflict`)
+- CH32V006 の `BootAsUser` は `FLASH LENGTH = 16K`(V006 は 62K)。V003 からの写し(F33)
+
+### 6b.6 方法論の落とし穴(F34)
+
+**EVT のヘッダには GB18030 のものがある**(BLE の `ota.h` 等)。`grep` はこれを binary 扱いし、`-h` 指定時に**一致を黙って捨てる**。本調査でも一度「`IMAGE_A_START_ADD` はどこにも定義されていない」と誤判定した。`iconv -f GB18030 -t UTF-8` を通してから検索する必要がある。
 
 ---
 
@@ -271,6 +377,9 @@ erase 粒度は **4 種**: 64 B(v003)/ 128 B(m030, v103)/ 256 B(v00x, v205, v20x
 | **2** | **世代は 3 つではなく 4 つ**。世代 D(`DEF_USB_VID` マクロ + **Vendor / HID モード切替**、`PID_HID = 0xFE17`)が v205 / v407 / x315 / l103 / h417 に存在。既定は 4 つが HID、**x315 だけ VENDOR** | `protocols/wch-iap.ja.md` |
 | **3** | 「9 series が `FLASH_ProgramPage_Fast` に収束」は**誤り**。実際は 4 API に割れ、最大群は `FLASH_ROM_WRITE`(5) | 本 repo の従来メモ |
 | **4** | IAP 側の `.ld` が実際にサイズを縛るのは 13 中 **5 つだけ**(x315 と h417-v5f は `.ld` があるが series 既定と同値) | `bootloader-survey-plan.ja.md` §8.8(反映済み) |
+| **5** | **stub 引数 offset `@76/@80/@84` は誤り**。実際は `@108/@112/@116`(data `@120`)。`pgm-b003fun.c` の古いコメントを転記していた(F26) | `protocols/custom-bootloader.ja.md` §2b |
+| **6** | **`ETH_IAP` の slot 寸法は V20x と V30x で別物**。「BIM 40 KB / USER 108 KB / BACKUP 108 KB @`0x08025000`」は **V30x の値**。V20x は USER/BACKUP とも 44 KB、BACKUP は `@0x08015000`(F31) | `protocols/custom-bootloader.ja.md` §2 |
+| **7** | **blank pattern は RM に明文のあるハードウェア特性**。`0xe339e339` は「消去後の読み出し値」であって命令パターンではない(F25) | `protocols/wch-iap.ja.md` / `custom-bootloader.ja.md` |
 
 ---
 
@@ -278,12 +387,14 @@ erase 粒度は **4 種**: 64 B(v003)/ 128 B(m030, v103)/ 256 B(v00x, v205, v20x
 
 | # | 内容 | 効く問い |
 |---|---|---|
-| **U1** | **`CalAddr` の妥当性**。`ch32-device-data/index/parts.csv` と突き合わせると v20x の `CalAddr`(223 KB)は family 最小品種(32 KB)の flash 外。v30x / v407 / x315 は parts.csv の `flash_bytes` を超える(parts.csv が zero-wait 領域のみを数えている可能性)。**RM と突合が必要**(F15、`confidence=conflict`) | Q2 / Q5 |
-| **U2** | `erase_block` の inline hex と生成 header の **2 byte 差**(F18)。どちらが正か | Q4 |
-| **U3** | H2 の定量化。rv003usb の機能フラグ(timeout / button / host 検出)を 1 つずつ有効にして**増分バイトを実測**。toolchain は `riscv32-wch-elf-gcc 15.2.0`(`rv32ec_zca` 対応)が使える | Q7 |
-| **U4** | `stub_args.csv` が 2 行しか埋まっていない。scratchpad の引数配置を `pgm-b003fun.c` の呼び出し側から起こす | Q4 |
+| **U1** | (継続)**`CalAddr` の妥当性**。`ch32-device-data/index/parts.csv` と突き合わせると v20x の `CalAddr`(223 KB)は family 最小品種(32 KB)の flash 外。v30x / v407 / x315 は parts.csv の `flash_bytes` を超える(parts.csv が zero-wait 領域のみを数えている可能性)。**RM と突合が必要**(F15、`confidence=conflict`) | Q2 / Q5 |
+| ~~U2~~ | ~~`erase_block` の 2 byte 差~~ → **解決**(F30。`nop`/`ret` の順序。機能は同一) | — |
+| ~~U3~~ | ~~H2 の定量化~~ → **解決**(F28/F29、§6b.1-2)。残: fork の `ch32v003fun` submodule を正しく checkout して**絶対値を upstream と一致させる** | Q7 |
+| ~~U4~~ | ~~scratchpad の引数配置~~ → **解決**(F26/F27、`stub_args.csv` 97 行 + `stub_framing.csv`) | — |
 | **U5** | `reg_ops.csv` を検証セット(5 実装)から全 project へ展開 | Q1 / Q2 |
-| **U6** | 副対象(ETH_IAP 2 / HOST_IAP 13 / BLE IAP 4 / BootAsUser 3)が未収録 | Q5 |
+| ~~U6~~ | ~~副対象が未収録~~ → **一部解決**(`subordinate_targets.csv` 9 行)。残: HOST_IAP 13 project の個別差分 | Q5 |
+| **U8** | **`ch32-device-data` への移管依頼**([request-ch32-device-data.ja.md](data/bootloader-survey/request-ch32-device-data.ja.md))。完了したら `flash_erased_read.csv` を削除して join に切り替える | F25 |
+| **U9** | BLE IAP の slot 定義が品種容量を超える件(F32)。どの製品向けの流用かを特定する | Q5 |
 | **U7** | 未取得の OSS BL(`wch-uf2` / Swindle DFU / PlumBL / tinyboot) | Q6 |
 
 ---

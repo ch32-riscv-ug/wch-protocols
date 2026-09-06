@@ -8,14 +8,17 @@
 export WCH_ROOT=<各 repo を clone した親ディレクトリ>
 python3 extract.py    # P1: projects / memory_map / series_memory / constants / files
 python3 extract2.py   # P2: protocol / entry_exit / flash_ops / usb / clock_uart
-python3 extract3.py   # P3: stubs / stub_args / stubs_hex / stub_disasm
+python3 extract3.py   # P3: stubs / stubs_hex / stub_disasm
+python3 extract4.py   # P3: stub_args / stub_framing(extract3 の出力に依存)
 ```
 
 `extract3.py` は RISC-V の objdump を使う。既定は
 `$WCH_ROOT/tools/xpack-riscv-none-elf-gcc/14.3.0-1/bin/riscv-none-elf-objdump`。
 別のものを使うなら `RISCV_OBJDUMP=<path>` を渡す。
 
-`reg_ops.csv` / `equiv_groups.csv` / `findings.csv` は**人手で作った**(`basis` を参照)。
+`reg_ops.csv` / `equiv_groups.csv` / `findings.csv` / `flash_erased_read.csv` /
+`subordinate_targets.csv` は**人手で作った**(`basis` を参照)。
+`build_sizes.csv` は**実際にビルドして測った**(手順は §ビルド実測)。
 
 ### 必要な repo
 
@@ -50,19 +53,39 @@ python3 extract3.py   # P3: stubs / stub_args / stubs_hex / stub_disasm
 | `usb.csv` | 15 | `project_id` | descriptor の形式(生バイト / マクロ)・VID・PID(vendor/HID)・`DEF_USB_IAP_MODE` |
 | `clock_uart.csv` | 15 | `project_id` | UART port / baud / BRR 直値 / printf の baud |
 | `stubs.csv` | 51 | `stub_id` | 拡張可能な stub。`source_form` / `is_generated` / `generated_from` / `blob_bytes` / **`reg_set`** / **`rv32ec_safe`** / `active` |
-| `stub_args.csv` | 2 | `stub_id`,`scratchpad_offset` | scratchpad の引数配置(ソース中のコメント由来。**未完**) |
+| `stub_args.csv` | 97 | `stub_name`,`scratchpad_offset` | scratchpad の引数配置。`ResetOp`→`WriteOpArb`→`WriteOp4`→`CommitOp` を追って**計算した offset**。`meaning` にはソースのコメント原文を残してあるが、**write_block 系はコメント側が誤り**(`@76` と書いてあるが実際は `@108`。逆アセンブルで確認) |
+| `stub_framing.csv` | 13 | `pad_size_bytes` | HID feature report の pad サイズと report ID(`0xAA + pad_size/1024`)の対応 |
+| `build_sizes.csv` | 17 | `project_id`,`config`,`toolchain` | **rv003usb BL の実測サイズ**。機能フラグ 14 構成 × 予算 1,916 B、および toolchain 3 種の比較 |
+| `flash_erased_read.csv` | 12 | `family` | **暫定**。flash 消去後の読み出し値(系統 A = `0xFFFFFFFF` / B = `0xe339e339`)。→ `ch32-device-data` へ[移管依頼中](request-ch32-device-data.ja.md)。**完了したら削除して join に切り替える** |
+| `subordinate_targets.csv` | 9 | `project_id` | 副対象(ETH_IAP 2 / BLE IAP・OTA 3 / HOST_IAP 1 / BootAsUser 3)の領域構成と magic |
 | `reg_ops.csv` | 41 | `impl_id`,`seq` | **言語をまたぐ比較の共通座標系**。C / asm / hex を MMIO 操作列に正規化。検証セットのみ |
 | `equiv_groups.csv` | 11 | `equiv_group`,`impl_id` | 同一機能の別形態を束ねる |
 | `files.csv` | 467 | `path` | 解析した全ファイルの `bytes` / `lines` / `sha256`。EVT 更新時の差分検出用 |
-| `findings.csv` | 24 | `finding_id` | 所見。`axis` は調査設計 §2 の軸 ID |
+| `findings.csv` | 34 | `finding_id` | 所見。`axis` は調査設計 §2 の軸 ID |
 | `stubs_hex/*.hex` | 34 | — | stub の生バイト(space 区切り 16 進)。**劣化なし** |
 | `stub_disasm/*.asm` | 34 | — | 上を `riscv-none-elf-objdump -D -b binary -m riscv:rv32 -M numeric` した結果 |
 
+## ビルド実測(`build_sizes.csv` の再現)
+
+`rv003usb` の fork を作業ディレクトリへ複製し、`ch32v003fun` submodule の位置に
+`cnlohr/ch32fun` を置いてから `bootloader.c` の機能 `#define` を切り替えてビルドする。
+
+```sh
+make bootloader.elf PREFIX=riscv-none-elf     # FLASH: <n> B / 1916 B が出る
+```
+
+toolchain は `$WCH_ROOT/tools/` 配下の 4 種を使った(`riscv-none-embed-gcc 8.2.0` /
+`riscv-none-elf-gcc 14.3.0` / `riscv32-wch-elf-gcc 15.2.0` / `riscv-wch-elf-gcc 12.2.0`)。
+
+> **注意**: fork の `ch32v003fun` submodule が未チェックアウトだったため upstream HEAD で代替した。
+> **絶対値は upstream の CI と一致しない可能性がある。差分(`delta_vs_baseline`)は同一条件なので頑健**。
+
 ## 既知の穴
 
-- `stub_args.csv` は 2 行しか埋まっていない。minichlink の stub 引数配置は `pgm-b003fun.c` の
-  呼び出し側コードを読む必要があり、P3 では未着手。
-- `reg_ops.csv` は検証セット(V003 の 64 B fast program、5 実装)だけ。全 project 展開は未。
+- `reg_ops.csv` は検証セット(V003 の 64 B fast program、5 実装)だけ。全 project 展開は未(U5)。
 - `flash_ops.csv` の `granularity_bytes` は program 側が空の project がある
   (`FLASH_BufLoad` ループ回数から導出していないため)。
-- 副対象(ETH_IAP / HOST_IAP / BLE IAP / BootAsUser)は未収録。
+- 副対象のうち **HOST_IAP は 13 project あるうち 1 つしか見ていない**(U6 残)。
+- `flash_erased_read.csv` は `ch32-device-data` に置くべきデータの**暫定コピー**(U8)。
+- **GB18030 のヘッダがある**(BLE の `ota.h` 等)。`grep` が binary 扱いして黙って取り落とすので、
+  抽出スクリプトを広げるときは `iconv -f GB18030` を通すこと(F34)。
