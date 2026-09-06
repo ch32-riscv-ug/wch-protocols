@@ -569,13 +569,13 @@ loader がシンボル名付きで並んでいた。
 
 ## 9. 次の一手
 
-この調査の結論を実装境界に落とした設計案 → **[unified-bootloader-design.ja.md](unified-bootloader-design.ja.md)**(status: draft)。
+この調査の結論から**どこで分けられる可能性があるか**を並べたもの → **[unified-bootloader-design.ja.md](unified-bootloader-design.ja.md)**(status: draft。**決定書ではない**)。
 要点:
 
 - **分割の主軸は series ではなく制御レジスタ列** — flash driver は **5 関数 + 4 パラメータ**で 12 series を覆える(F44)
-- **真の障害は極性反転 1 件だけ**(F07)。しかも `==` に倒せば blank pattern 依存まで消える
-- **拡張は stub 側で稼ぐ**(H4)。WCH 純正 loader ABI は 5 操作固定なので、拡張目標には minichlink 方式を採る
-- **移植 1 件の config は 13 定数 + 2 選択**。うち 6 個は `ch32-device-data` から引くだけ
+- **構造的に割れているのは極性反転 1 件だけ**(F07)。ここの選び方で blank pattern 依存の有無まで決まる
+- **拡張余地は stub 側にある**(H4)。minichlink 方式は能力が開いており、WCH 純正 ABI は 5 操作固定。**併存も可**
+- **移植 1 件の config は 11〜13 定数 + 2 選択**に収まりそう。数は極性の選び方で動く。うち 6 個は `ch32-device-data` から引くだけ
 
 ## 10. 参照
 
