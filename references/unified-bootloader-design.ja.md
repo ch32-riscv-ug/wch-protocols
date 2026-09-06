@@ -12,7 +12,7 @@
 
 | 判断 | 内容 | 根拠 |
 |---|---|---|
-| **分割の主軸は series ではなく driver class** | flash driver は **12 series → 5 class**。unlock/lock は**全 series 同一で分岐不要** | F42 / F43 |
+| **分割の主軸は series ではなく制御レジスタ列** | flash driver は **5 関数 + 4 パラメータ**で 12 series を覆える(erase 1 形 / program 2 形 / unlock は分岐なし) | F42 / F43 / **F44** |
 | **protocol 層は分岐不要** | 8 project 以上に出る `#define` の **13 個が全 series 同一、割れるのは実質 2 個**(`FLASH_Base` / `CalAddr`) | F01 / F02 |
 | **blank pattern は分岐にしない** | chip の仕様値なので `ch32-device-data` から引く定数。しかも §3.2 の entry 設計を採れば**参照すら不要になる** | F25 |
 | **真の障害は 1 つだけ** | `CheckNum` の**判定極性が反転**している(V003/V00X は「APP 正当の印」、他は「BL に留まれの要求」)。**意味が逆なので `#if` では吸収できず、仕様として一本化するしかない** | F07 |
@@ -115,28 +115,74 @@ if (*(u32*)FLASH_Base != blank)          // APP らしきものがある
 
 ---
 
-## 4. flash driver — 5 class(F42/F43)
+## 4. flash driver — **program 2 形 + erase 1 形**(F42/F43/F44)
+
+§6b.10 の「5 class」は API 名と生の語書き込み回数まで含めた粒度だった。**制御レジスタ列だけで測り直すと
+もっと縮む**(D2 の答え)。
+
+### 4.1 unlock / lock — 分岐なし(F43)
 
 ```
-flash_unlock()  /  flash_lock()     ← 12 series で完全同一。分岐なし
-flash_erase(addr, size)             ← class ごとに実装
-flash_program(addr, buf, size)      ← class ごとに実装
+KEYR     <- KEY1, KEY2
+MODEKEYR <- KEY1, KEY2      # 12 series で完全同一
 ```
 
-| class | series | program の形 |
+### 4.2 erase — **1 実装**(F44)
+
+```
+CTLR &= ~(OPTER | PAGE_ER)   # ← 防御的クリア。x035 群だけが持つが、
+CTLR |=  PAGE_ER             #    既に 0 のビットを落とすだけなので他群に足しても無害
+ADDR  =  addr
+CTLR |=  STRT
+wait STATR & BSY
+CTLR &= ~PAGE_ER
+```
+
+2 群あった差は**先頭 1 行だけ**。常に入れれば **erase は 1 本で 12 series を覆える**。
+
+### 4.3 program — **2 形**(F44)
+
+| 形 | series | 制御列 |
 |---|---|---|
-| **A** | V003 | `CTLR` 直叩き(BUFRST → 16×BUFLOAD → ADDR → STRT)。粒度 64 B |
-| **B** | V00X / V205 / X035 / L103 | `ROM_WRITE(adr, buf, 256)` 相当 |
-| **C** | V20x / V30x / V407 / X315 / H417 | `ProgramPage_Fast(adr, buf)` 相当(2 引数) |
-| **D** | V103 | `BufLoad` を 4 word ずつ 8 回 + `ProgramPage_Fast(adr)`。粒度 128 B |
-| **E** | M030 | `BufLoad` を **2 word ずつ** + `ProgramPage_Fast(adr)`。粒度 128 B |
+| **(a) buffer-then-commit** | v003, v103, m030, v00x, v205, x035, l103 | 語は別途 `BufLoad` で buffer へ。この関数は `CTLR\|=PAGE_PG` → `ADDR=a` → `CTLR\|=STRT` → `wait BSY` → `CTLR&=~PAGE_PG` |
+| **(b) inline-write-then-commit** | v20x, v30x, v407, x315, h417 | 関数内で語を書く。`CTLR\|=PAGE_PG` → `wait BSY,WR_BSY` → `loop{ *a=*buf; wait WR_BSY }` → `CTLR\|=PG_STRT` → `wait BSY` → `CTLR&=~PAGE_PG` |
 
-**D と E は `ErasePage_Fast` / `ProgramPage_Fast` では同群**になり、`BufLoad` と `ROM_WRITE` で分かれる。
-`BufLoad` を使わない実装にできれば **4 class に縮む**可能性がある(要検証)。
+**(a) は buffer 充填が別関数**なので、`BufLoad` 側にもう 1 形が要る:
 
-粒度は §2 の config から引く。**class と粒度は独立**(同じ class でも粒度が違う: B の V00X=256 / …)。
+```
+CTLR |= PAGE_PG
+<N 語を buffer へ>          # N はパラメータ: v003=1 / m030=2 / v103=4 / 他=1
+CTLR |= BUF_LOAD
+wait STATR & BSY
+CTLR &= ~PAGE_PG
+*(0x40022034) = ...          # ★ 未文書の commit 副作用。v103 と m030 が持つ
+```
 
----
+> **`0x40022034` への書き込みは未文書**。`protocols/pc-to-link.ja.md` §6 が V103 について
+> 「無いと無反応(実測)」と書いているもので、**M030 も同じものを持っている**(本調査で判明)。
+> **(a) 形を実装するなら必ず入れる**。
+
+### 4.4 まとめ — driver の実装本数
+
+| 部品 | 本数 | パラメータ |
+|---|:-:|---|
+| unlock / lock | **1** | — |
+| erase | **1** | 粒度(64 / 128 / 256 / 4096 B) |
+| program | **2**(buffer-then-commit / inline-write-then-commit) | 粒度 |
+| buffer 充填(形 a のみ) | **1** | `words_per_bufload`(1 / 2 / 4)、commit 副作用の有無 |
+
+→ **合計 5 関数で 12 series**。「5 driver class」ではなく「**5 関数 + 4 パラメータ**」が正しい定式化。
+
+> **確度**: 制御列の一致は SDK ソースの正規化から導いた `attested`。
+> **1 本の C 実装が全 series で同じバイナリ挙動になるかは未検証**(実機で確認するまで `verified` にしない)。
+
+### 4.5 read-modify-write は driver の上に置く(D3)
+
+`fast erase` を持たない **V407 / X315 / H417** は、256 B を書くのに **4 KB 消す**必要がある。
+これを driver に入れると driver がバッファと状態を持ち、§4.4 の「5 関数」が崩れる。
+
+→ **driver はレジスタの薄い包みのまま**にし、`erase_gran > program_gran` の吸収は**上位の page cache 層**で行う。
+この層は series 非依存で、`erase_gran` / `program_gran` の 2 定数だけを見る。
 
 ## 5. サイズ予算
 
@@ -207,8 +253,9 @@ HID report ID = 0xAA + pad_size/1024,  pad_size ∈ {128, 1152, 2176, 3200, 4096
 | # | 内容 | 決め方 |
 |---|---|---|
 | **D1** | §3.2 の極性。**host も自作するか、WCHMcuIAP 互換を残すか** | 設計判断。他のすべてがこれに従属する |
-| **D2** | driver class D と E を `BufLoad` 非依存の実装で 1 本に畳めるか | 実装して `reg_ops` で等価性を確認 |
-| **D3** | V407 / X315 / H417 の read-modify-write(fast erase 非対応)をどこに置くか。driver 内か上位か | 実装判断 |
+| ~~D2~~ | ~~class D と E を畳めるか~~ → **解決**(F44)。制御列で測れば D/E は同形で、差は `words_per_bufload`(4 vs 2)だけ。全体も 5 関数に縮んだ | — |
+| ~~D3~~ | ~~read-modify-write の置き場~~ → **決めた**: **driver の上**(§4.5)。driver を「レジスタの薄い包み」に保つことが 5 関数化の前提なので、消去粒度と書込粒度の食い違いは上位の page cache 層で吸収する | — |
+| **D6** | `0x40022034` の commit 副作用は V103・M030 以外にも要るか。SDK に書かれていない series で本当に不要かは未確認 | 実機で確認 |
 | **D4** | scratchpad の契約を minichlink 互換にするか、自前にするか | 互換なら既存 host が使える。自前なら `a0` の使い方を自由にできる |
 | **D5** | BOOT 領域配置と user flash 配置を**同一ソースで両対応**にするか、別ターゲットにするか | §3.3 の exit と linker が連動する |
 
