@@ -3,7 +3,7 @@
 - **依頼元**: `ch32rv`(`docs/data-requests/0005-flash-stub-inventory.ja.md`)
 - **回答**: `wch-protocols` `references/data/bootloader-survey/`
 - **日付**: 2026-09-06
-- **状態**: **納品済み**。§2 の 4 問すべてに答えた。`ch32rv` 側には**一切書き込んでいない**(`crates/flash/src/stub.rs` を読んだだけ)。
+- **状態**: **納品済み**(2026-09-06 追記で Q4 と純正判定を確定)。§2 の 4 問すべてに答えた。`ch32rv` 側には**一切書き込んでいない**(`crates/flash/src/stub.rs` を読んだだけ)。
 
 ## 1. 納品物
 
@@ -101,34 +101,70 @@ CH32L103 : 512 B = CH643 の 488 B  +  0xff × 24
 → **「1 本を source 化すれば何本ぶんカバーできるか」への答え: 4 本書けば 5 blob = 9 family byte 全部**。うち V003 版だけは `-march=rv32ec` の別ビルドが要ります。
 42 B / 79 B の共通接頭辞は**共通 preamble**(unlock 判定まで)と見られるので、source 化するなら **共通部 + family 差分**の構成が自然です。ただし接尾辞がほぼ共通でない(0〜1 B)ので、**共通化できるのは前半だけ**です。
 
-### Q4. stub の ABI
+### Q4. stub の ABI — **確定しました**(2026-09-06 追記、F45)
 
-逆アセンブルから読めた範囲です。`stub_args.csv` の `wlink_flash_op` 行に入れました。
+`a0` が USB に現れないというご指摘のとおり capture では埋まりませんでしたが、**probe firmware を読むまでもなく
+stub 自身の逆アセンブルで全ビットが確定**しました。分岐先が何をするかを追えば意味は一意に決まります。
 
-| 項目 | 内容 | 確度 |
-|---|---|---|
-| エントリ | **blob 先頭(offset 0)**。probe firmware が直接呼ぶ | verified |
-| prologue | `addi x2,x2,-32`(V003 版は `-28` + x8/x9 退避)→ **SP が有効な状態で呼ばれる前提**。stub 自身はスタックを張らない | verified |
-| **`a0` = 動作フラグのビットマスク** | 先頭から `andi x15,x10,1` → `,2` → `,4` → `,8` の順に 4 つの分岐 | verified |
-| `a0` bit0 | **flash unlock**。`KEYR`(`0x40022004`)へ `0x45670123`,`0xCDEF89AB`、続いて `MODEKEYR`(`0x40022024`)へ同じ 2 語 | **verified**(定数がそのまま出ている) |
-| `a0` bit1 | `CTLR`(`0x40022010`)を read → `ori 0x4` → write。消去系と見られる | attested |
-| `a0` bit2 / bit3 | 分岐は存在するが意味未確定 | single-source |
-| **戻り値** | 終盤に `andi a0,a0,16` があり **0 か 16 を返す**。成否フラグと見られる | attested |
-| 作業 RAM | `0x20001xxx` / `0x20002xxx` を触る。probe が data EP から流したデータの置き場と見られる | single-source |
+| 項目 | 内容 |
+|---|---|
+| エントリ | **blob 先頭(offset 0)**。probe firmware が target の `a0`/`a1`/`a2` を設定して走らせる |
+| prologue | `addi x2,x2,-32`(V003 版は `-28` + s0/s1 退避)→ **SP が有効な状態で呼ばれる前提** |
+| **`a0`** | **操作ビットマスク**(下記) |
+| **`a1`** | **対象アドレス**(bit2 / bit3 / bit4 が使う) |
+| **`a2`** | **長さ(byte)**。ページ数 = `(a2+255)>>8`、比較語数 = `(a2+3)>>2` |
+| **データ buffer** | **`0x20001000`** 固定。probe が data EP から受けた内容を置く |
+| **戻り値** | `a0` に **0 = 成功 / 16 = verify 不一致**。bit4 が立っていなければ無条件で 0 |
 
-**自前ビルドの stub が満たすべき契約**は、少なくとも次の 3 点です:
+| bit | 意味 | 実際のレジスタ操作 | host API 対応 |
+|:-:|---|---|---|
+| **0** | **unlock** | `KEYR <- KEY1,KEY2` / `MODEKEYR <- KEY1,KEY2` | WriteFlashOP ✓(ご提示のヒントと一致) |
+| **1** | **mass erase** | `CTLR \|= 0x4`(MER) | EraseFlash ✓(同上) |
+| **2** | **fast page erase ループ** | `(a2+255)>>8` 回: `CTLR \|= 0x20000`(FTER)→ `ADDR = addr` → `CTLR \|= 0x40`(STRT)→ `wait STATR&1` → `CTLR &= ~0x20000`、addr += 256 | — |
+| **3** | **program ループ** | `(a2+255)>>8` 回: `CTLR \|= 0x10000`(FTPG)→ buffer `0x20001000` から **64 語 = 256 B** ずつ | WriteFlash と推定 |
+| **4** | **verify** | buffer `0x20001000` と `a1` 以降を 4 byte 単位で比較。不一致で `a0 = 16` | — |
 
-1. **エントリは blob の先頭**(オフセットや header 無し)
-2. **`a0` のビットマスクを解釈する**(最低でも bit0 = unlock)
-3. **`a0` に 0/16 を返す**
+**自前ビルドの stub が満たすべき契約**:
 
-bit2/bit3 と RAM の使い方は**逆アセンブルだけでは確定できません**。probe firmware 側が `a0` に何を積むかを見るか、`0x02`/`0x0c` サブコマンドの往復を capture するのが確実です。
+1. エントリは blob の先頭(オフセットや header 無し)
+2. **`a0` のビットマスク 5 ビットを解釈する**
+3. **`a1` / `a2` をアドレスと長さとして受ける**
+4. **データは `0x20001000` から読む**
+5. **`a0` に 0(成功)/ 16(verify 不一致)を返す**
+
+出典は [`stub_args.csv`](stub_args.csv) の `wlink_flash_op` 行(12 行)と
+[`stub_disasm/wlink-CH32V307.asm`](stub_disasm/wlink-CH32V307.asm)。
+
+### Q3-bis. 「どちらが純正か」— **probe firmware では決着しない**(F46)
+
+ご提案の「LinkE が loader を内蔵しているかどうか」を実施しました。**内蔵していません**。
+
+WCH-LinkUtility(MounRiver 同梱)の firmware image **10 本すべて**を、既知 9 blob の
+**全長 / 先頭 64 B / 先頭 32 B** で検索して**全て不一致**でした。
+
+| firmware | size | loader |
+|---|---:|---|
+| `FIRMWARE_CH32V203.bin` | 28,100 | — |
+| `FIRMWARE_CH32V208.bin` | 114,264 | — |
+| `FIRMWARE_CH32V305.bin` | 109,544 | — |
+| `FIRMWARE_CH549.bin` / `FIRMWARE_DAP_CH549.bin` | 42,712 / 24,662 | — |
+| `WCH-LinkE-APP-IAP.bin` / `WCH-LinkW-APP-IAP.bin` | 117,736 / 122,456 | — |
+| `WCH-Link_APP_IAP_RV.bin` / `_ARM.bin` / `WCH-DAPLink_APP_IAP.bin` | 45,784 / 27,734 / 36,292 | — |
+
+→ **loader は host が供給する**。protocol(`WriteFlashOP` → data EP へ送出)と整合します。
+
+> `FIRMWARE_CH32V305.bin` には FLASH KEY の `lui` 対が 10 箇所、FLASH base(`0x40022`)参照が 116 箇所ありますが、
+> これは **probe 自身(CH32V305)の自己書換**用と解されます。target の flash は DMI 経由で叩くので、
+> probe が自分の FLASH controller を触るのは firmware IAP のためです。
+
+→ **「純正」の意味は「probe firmware から抽出したもの」ではなく「WCH-LinkUtility 本体か WCH EVT の flash ルーチン由来」**
+に絞られました。次に読むなら **WCH-LinkUtility の実行ファイル本体**です(こちらは未取得)。
 
 ## 3. こちらから逆に確認したいこと
 
-1. **ch32rv は `a0` に何を積んでいますか**。probe firmware が積むのか host が指定するのかで、bit2/bit3 の意味が絞れます。§Q4 を `verified` に上げられます。
-2. **`CH643` と `CH32L103` を 1 本に統合してよいか**。バイト同一なので `ch32rv` 側も 1 本にできますが、`stub_digest()` の値が変わるので判断はそちらでお願いします。
-3. minichlink 側の `linke-flashloader-v1..v4`(512 / 512 / 1536 / 1280 B)は **CH58x/59x/57x/570 向け**を含みます。wlink 系と用途が重なるのは v1/v2(V20x/V30x)だけで、そこは §Q1 のとおり**別 blob**でした。**同じ family に 2 系統の loader が存在する**ことになるので、どちらが WCH 純正に近いかは未決です。
+1. ~~`a0` に何を積んでいるか~~ → **解決**。`a0` が USB に現れないというご指摘は正しく、代わりに **stub 自身の逆アセンブル**で 5 ビット全部と `a1`/`a2`/buffer/戻り値まで確定しました(§Q4)。ご提示の bit0↔WriteFlashOP / bit1↔EraseFlash も裏付けられました
+2. ~~`CH643` と `CH32L103` の統合~~ → そちらで実施済みとのこと、了解です
+3. ~~どちらが純正か~~ → **probe firmware では決着しない**ことが判明(§Q3-bis)。firmware 10 本に loader は入っていません。**次に読むなら WCH-LinkUtility の実行ファイル本体**ですが、こちらは未取得です。もし手元にあれば教えてください
 
 ## 4. 出所とライセンス
 
