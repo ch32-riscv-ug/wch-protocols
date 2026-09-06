@@ -223,68 +223,71 @@ ADC を 4ch 全部観測に回して DAC を全部外付けにする案もある
 
 ## 8. CH32 family 側の配線と衝突
 
-**このデータは生成物**。一次データは [`ch32-device-data`](https://github.com/openwch/ch32-device-data) の `evidence/`、抽出スクリプトと出力は [`data/harness-wiring/`](data/harness-wiring/README.ja.md)。**手書きしない**(ピン表は必ず腐る)。
+**生成物**。一次データは [`ch32-device-data`](https://github.com/openwch/ch32-device-data) の **`index/`**、スクリプトと出力は [`data/harness-wiring/`](data/harness-wiring/README.ja.md)。**手書きしない**。
 
-| 項目 | 値 | confidence |
+`ch32-device-data` は 3 層に分かれていて(`docs/data-layout.ja.md`)、**引くのは `index/`**(`evidence/` から `build_index.py` が組み直し、`check_tables.py` が「索引の行は証拠に戻せる」ことを毎回検証している層)。初版は `evidence/` を読んでいて網羅も confidence も劣っていた(§8.3)。
+
+| 項目 | 値 | 出典 / confidence |
 |---|---|---|
-| debug 線(SWDIO/SWCLK、1/2 線の別) | **26 series** | **`confirmed`**(WCH-Link User Manual、ページ番号つき) |
-| 周辺の route(USART/SPI/I2C/PIOC) | 20 series / 1,655 route | `reference`(datasheet ピン表からの候補) |
-| debug pad の衝突 | **30 件** | `confirmed` + `reference` |
+| debug 線(1 線 / 2 線 / 両対応 + pad) | **27 series** | `index/debug_interfaces.csv` — **`confirmed`**(各 DS + WCH-Link User Manual、章・ページつき) |
+| 役割 → pad の route | **5,243 組 / 103 型番** | `index/pinout.csv` — **24,828 行が `confirmed`**(pin table zh+en)。uart/spi/i2c/pioc/clock/analog/timer に絞って抽出 |
+| pad の衝突 | **1,118 組**(うち **debug 絡み 47 組**) | 上記からの導出 |
+
+**穴は無い。27 series すべてに uart/spi/i2c の route がある。**
 
 ### 8.1 debug 線と、その pad に来る他の役割
 
 | series | wire | SWDIO/SWIO | SWCLK | debug pad と食い合う役割 |
 |---|---|---|---|---|
-| CH32H415 | **1/2 線** | PB9 | PB8 | *(route データ無し)* |
-| CH32H416 | **1/2 線** | PB9 | PB8 | *(route データ無し)* |
-| CH32H417 | **1/2 線** | PB9 | PB8 | *(route データ無し)* |
-| CH32L103 | 2 線 | PA13 | PA14 | **PA13**: I2C1_SCL, USART1_RTS<br>**PA14**: USART1_CTS |
-| CH32M007 | **1/2 線** | PD1 | PB3 | **PB3**: I2C_SCL, SPI_MISO, USART1_RX, USART1_TX, USART2_RTS, USART2_RX<br>**PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX, USART2_RX |
-| CH32M030 | **1/2 線** | PA3 | PA2 | **PA2**: I2C_SCL, SPI_NSS, UART_CTS, UART_RX, UART_TX<br>**PA3**: I2C_SDA, UART_RX, UART_TX |
-| CH32V002 | **1/2 線** | PD1 | PB3 | **PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX |
-| CH32V003 | 1 線 | PD1 | — | *(route データ無し)* |
-| CH32V004 | **1/2 線** | PD1 | PB3 | **PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX |
-| CH32V005 | **1/2 線** | PD1 | PB3 | **PB3**: I2C_SCL, SPI_MISO, USART1_RX, USART1_TX, USART2_RTS, USART2_RX<br>**PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX, USART2_RX |
-| CH32V006 | **1/2 線** | PD1 | PB3 | **PB3**: I2C_SCL, SPI_MISO, USART1_RX, USART1_TX, USART2_RTS, USART2_RX<br>**PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX, USART2_RX |
-| CH32V007 | **1/2 線** | PD1 | PB3 | **PB3**: I2C_SCL, SPI_MISO, USART1_RX, USART1_TX, USART2_RTS, USART2_RX<br>**PD1**: I2C_SCL, I2C_SDA, USART1_RX, USART1_TX, USART2_RX |
-| CH32V103 | 2 線 | PA13 | PA14 | — |
-| CH32V203 | 2 線 | PA13 | PA14 | — |
-| CH32V205 | **1/2 線** | PA13 | PA14 | *(route データ無し)* |
-| CH32V208 | 2 線 | PA13 | PA14 | — |
-| CH32V303 | 2 線 | PA13 | PA14 | **PA13**: USART3_TX<br>**PA14**: UART8_TX, USART3_RX |
-| CH32V305 | 2 線 | PA13 | PA14 | **PA13**: USART3_TX<br>**PA14**: UART8_TX, USART3_RX |
-| CH32V307 | 2 線 | PA13 | PA14 | **PA13**: USART3_TX<br>**PA14**: UART8_TX, USART3_RX |
-| CH32V317 | 2 線 | PA13 | PA14 | **PA13**: USART3_TX<br>**PA14**: UART8_TX, USART3_RX |
-| CH32V407 | **1/2 線** | PA13 | PA14 | **PA13**: USART3_TX, USART4_CTS, USART6_CK<br>**PA14**: USART3_RX, USART6_CTS, USART8_TX |
-| CH32V467 | **1/2 線** | PA13 | PA14 | **PA13**: USART3_TX, USART4_CTS, USART6_CK<br>**PA14**: USART3_RX, USART6_CTS, USART8_TX |
-| CH32X033 | 2 線 | PC18 | PC19 | **PC18**: PIOC_IO0<br>**PC19**: PIOC_IO1 |
-| CH32X035 | 2 線 | PC18 | PC19 | **PC18**: PIOC_IO0<br>**PC19**: PIOC_IO1 |
-| CH32X305 | **1/2 線** | PA13 | PA14 | *(route データ無し)* |
-| CH32X315 | **1/2 線** | PA13 | PA14 | *(route データ無し)* |
+| CH32H415 | **1/2 線** | PB9 | PB8 | **PB8**: I2C1.SCL, I2C4.SCL, PIOC.IO0, TIM10.CH3, TIM4.CH3, USART6.RX<br>**PB9**: I2C1.SDA, I2C4.SDA, I2C4.SMBA, PIOC.IO1, SPI2.NSS, TIM10.CH4, TIM4.CH4, USART6.TX |
+| CH32H416 | **1/2 線** | PB9 | PB8 | **PB8**: I2C1.SCL, I2C4.SCL, PIOC.IO0, TIM10.CH3, TIM4.CH3, USART6.RX<br>**PB9**: I2C1.SDA, I2C4.SDA, I2C4.SMBA, PIOC.IO1, SPI2.NSS, TIM10.CH4, TIM4.CH4, USART6.TX |
+| CH32H417 | **1/2 線** | PB9 | PB8 | **PB8**: I2C1.SCL, I2C4.SCL, PIOC.IO0, TIM10.CH3, TIM4.CH3, USART6.RX<br>**PB9**: I2C1.SDA, I2C4.SDA, I2C4.SMBA, PIOC.IO1, SPI2.NSS, TIM10.CH4, TIM4.CH4, USART6.TX |
+| CH32L103 | rvswd | PA13 | PA14 | **PA13**: I2C1.SCL, TIM1.BKIN, TIM1.ETR, USART1.RTS<br>**PA14**: TIM1.CH1N, TIM1.CH3, USART1.CTS |
+| CH32M007 | **1/2 線** | PD1 | PB3 | **PB3**: CMP1.P1, I2C1.SCL, SPI1.MISO, TIM1.BKIN, TIM2.CH2, USART1.RX, USART1.TX, USART2.RTS, USART2.RX<br>**PD1**: ADC1.IETR, I2C1.SCL, I2C1.SDA, OPA.P3, TIM1.CH3N, TIM1.CH4, USART1.RX, USART1.TX, USART2.RX |
+| CH32M030 | **1/2 線** | PA3 | PA2 | **PA2**: ADC1.IN15, I2C1.SCL, SPI1.NSS, TIM3.CH1_ETR, USART1.CTS, USART1.RX, USART1.TX<br>**PA3**: ADC1.IN16, CMP3.P0, I2C1.SDA, TIM2.CH1_ETR, USART1.RX, USART1.TX |
+| CH32M103 | rvswd | PA13 | PA14 | **PA13**: I2C1.SCL, TIM1.BKIN, TIM1.ETR, USART1.RTS<br>**PA14**: TIM1.CH1N, TIM1.CH3, USART1.CTS |
+| CH32V002 | swio | PD1 | — | **PD1**: ADC1.IETR, I2C1.SCL, I2C1.SDA, TIM1.CH3N, TIM1.CH4, USART1.RX, USART1.TX |
+| CH32V003 | swio | PD1 | — | **PD1**: ADC1.IETR, I2C1.SCL, TIM1.CH3N, USART1.RX |
+| CH32V004 | swio | PD1 | — | **PD1**: ADC1.IETR, I2C1.SCL, I2C1.SDA, TIM1.CH3N, TIM1.CH4, USART1.RX, USART1.TX |
+| CH32V005 | **1/2 線** | PD1 | PB3 | **PB3**: I2C1.SCL, SPI1.MISO, TIM1.BKIN, USART1.RX, USART1.TX, USART2.RTS, USART2.RX<br>**PD1**: ADC1.IETR, I2C1.SCL, I2C1.SDA, OPA.P3, TIM1.CH3N, TIM1.CH4, USART1.RX, USART1.TX, USART2.RX |
+| CH32V006 | **1/2 線** | PD1 | PB3 | **PB3**: I2C1.SCL, SPI1.MISO, TIM1.BKIN, USART1.RX, USART1.TX, USART2.RTS, USART2.RX<br>**PD1**: ADC1.IETR, I2C1.SCL, I2C1.SDA, OPA.P3, TIM1.CH3N, TIM1.CH4, USART1.RX, USART1.TX, USART2.RX |
+| CH32V007 | **1/2 線** | PD1 | PB3 | **PB3**: CMP1.P1, I2C1.SCL, SPI1.MISO, TIM1.BKIN, TIM2.CH2, USART1.RX, USART1.TX, USART2.RTS, USART2.RX<br>**PD1**: ADC1.IETR, I2C1.SCL, I2C1.SDA, OPA.P3, TIM1.CH3N, TIM1.CH4, USART1.RX, USART1.TX, USART2.RX |
+| CH32V103 | rvswd | PA13 | PA14 | — |
+| CH32V203 | rvswd | PA13 | PA14 | **PA13**: I2C1.SDA, TIM1.CH1N, TIM2.CH3, USART3.TX<br>**PA14**: I2C1.SCL, TIM1.CH2N, TIM2.CH4, USART3.RX, USART4.TX, USART8.TX |
+| CH32V205 | **1/2 線** | PA13 | PA14 | **PA13**: I2C1.SDA, TIM1.CH1N, TIM2.CH3, USART3.TX<br>**PA14**: I2C1.SCL, TIM1.CH2N, TIM2.CH4, USART3.RX, USART4.TX, USART8.TX |
+| CH32V208 | rvswd | PA13 | PA14 | — |
+| CH32V303 | rvswd | PA13 | PA14 | **PA13**: TIM10.CH2N, TIM8.CH1N, USART3.TX<br>**PA14**: TIM10.CH3N, TIM8.CH2N, USART3.RX, USART8.TX |
+| CH32V305 | rvswd | PA13 | PA14 | **PA13**: TIM10.CH2N, TIM8.CH1N, USART3.TX<br>**PA14**: TIM10.CH3N, TIM8.CH2N, USART3.RX, USART8.TX |
+| CH32V307 | rvswd | PA13 | PA14 | **PA13**: TIM10.CH2N, TIM8.CH1N, USART3.TX<br>**PA14**: TIM10.CH3N, TIM8.CH2N, USART3.RX, USART8.TX |
+| CH32V317 | rvswd | PA13 | PA14 | **PA13**: TIM10.CH2N, TIM8.CH1N, USART3.TX<br>**PA14**: TIM10.CH3N, TIM8.CH2N, USART3.RX, USART8.TX |
+| CH32V407 | **1/2 線** | PA13 | PA14 | **PA13**: TIM8.CH1N, USART3.TX, USART4.CTS, USART6.CK<br>**PA14**: TIM8.CH2N, USART3.RX, USART6.CTS, USART8.TX |
+| CH32V467 | **1/2 線** | PA13 | PA14 | **PA13**: TIM8.CH1N, USART3.TX, USART4.CTS, USART6.CK<br>**PA14**: TIM8.CH2N, USART3.RX, USART6.CTS, USART8.TX |
+| CH32X033 | rvswd | PC18 | PC19 | **PC18**: I2C1.SCL, I2C1.SDA, PIOC.IO0, TIM1.ETR, TIM2.CH1N, TIM3.CH2, USART3.TX<br>**PC19**: CMP1.P0, I2C1.SCL, I2C1.SDA, PIOC.IO1, TIM2.CH1, TIM3.CH1, USART3.RX, USART4.RX |
+| CH32X035 | rvswd | PC18 | PC19 | **PC18**: I2C1.SCL, I2C1.SDA, PIOC.IO0, TIM1.ETR, TIM2.CH1N, TIM3.CH2, USART3.TX<br>**PC19**: CMP1.P0, I2C1.SCL, I2C1.SDA, PIOC.IO1, TIM2.CH1, TIM3.CH1, USART3.RX, USART4.RX |
+| CH32X305 | **1/2 線** | PA13 | PA14 | **PA13**: I2C1.SDA, SPI1.SCK, TIM1.CH1N, USART2.RX, USART3.TX<br>**PA14**: I2C1.SCL, SPI1.MOSI, TIM1.CH2N, USART2.TX, USART3.RX |
+| CH32X315 | **1/2 線** | PA13 | PA14 | **PA13**: I2C1.SDA, SPI1.SCK, TIM1.CH1N, USART2.RX, USART3.TX<br>**PA14**: I2C1.SCL, SPI1.MOSI, TIM1.CH2N, USART2.TX, USART3.RX |
 
-### 8.2 データの穴と、EVT 由来で残しているもの
+### 8.2 harness としての読み方
 
-**7 series は `remap_routes.csv` に USART/SPI/I2C の route が無い**: H415, H416, H417, V003, V205, X305, X315。**V003 と X035 が含まれるのが痛い**(harness の主要ターゲット)。→ [データ依頼](data/harness-wiring/README.ja.md#依頼)。
+1. **1/2 線を選べることが「使える pad を選べる」ことになる**(13 series が両対応: H415, H416, H417, M007, M030, V005, V006, V007, V205, V407, V467, X305, X315)。**1 線のみは  だけ**。
+   例: **V005/V006/V007/M007 は 2 線だと SWCLK = PB3 が SPI1.MISO と食い合う**が、**1 線なら PB3 が空く**。SPI slave エミュと debug の同時成立は「線の本数を選ぶ」ことで解ける。
+2. **X033 / X035 の PC18/PC19 が最悪**。**PIOC.IO0/IO1 = DEBUG.SWDIO/SWCLK = I2C1.SCL/SDA** が同じ 2 本に乗り、PC19 は **9 役**(CMP1.P0 / TIM2.CH1 / TIM3.CH1 / USART3.RX / USART4.RX も)。→ **PIOC を probe の phy に使うと、その chip 自身の debug port と I2C1 が同時に潰れる**。
+3. **X315 は SPI1.SCK/MOSI が PA13/PA14 = debug と衝突**。V205 は I2C1.SDA/SCL が同じ場所。**2 線系だから安全、とは言えない**。
+4. **harness に最も素直なのは V103 / V203 / V208**(debug pad の衝突 0)。次が V303/V305/V307/V317(USART3 + UART8 の remap 先だけ)。
+5. **V003 の PD1(SWIO)には I2C1.SCL / USART1.RX / TIM1.CH3N / ADC1.IETR が乗る**。1 線しか無いので逃げ道が無い — §1 の「1 device 専有」がここで具体的な形になる。
 
-この 7 series については、**EVT サンプルの `@Note` から拾った初版の事実が依然として唯一の情報源**。生成物に無いので、ここに残す:
+### 8.3 初版(EVT `@Note` grep)の検証 — **4 件のうち 2 件が誤り**
 
-| series | 事実 | 出典 | 水準 |
-|---|---|---|---|
-| **V003** | SPI1 `NSS = PC1` と I2C1 `SDA = PC1` が重複 → **SPI(hw NSS)と I2C は同居不可** | EVT `@Note` | 弱い(サンプルが選んだ組) |
-| **V307 / V407** | **DAC ch0 = PA4 = SPI1_NSS** → target の DAC を観測するなら NSS はソフト制御に | EVT `DAC/*/main.c` | 同 |
-| **X035** | I2C1 `SCL = PA10` と USART1 `RX = PA10` が重複 → USART1 を PB10/PB11 へ remap 必須 | EVT `@Note` | 同 |
-| **M030** | USART1 `TX = PC1`(remap)と I2C1 `SDA = PC1` が重複 | EVT `@Note` | 同 |
+初版は EVT サンプルのコメントから 4 つの衝突を挙げていた。`index/pinout.csv`(`confirmed`)と突き合わせた結果:
 
-**DAC は `bus_routes.csv` の対象外**(USART/SPI/I2C/PIOC のみ)なので、V307/V407 の DAC 衝突は route データが増えても出てこない。別途拾う必要がある。
+| 初版の主張 | 検証結果 |
+|---|---|
+| **V003**: `SPI1.NSS = I2C1.SDA = PC1` | ✅ **確認**(+ TIM1.BKIN / TIM2.CH1_ETR / TIM2.CH4 / USART1.RX) |
+| **V307 / V407**: `DAC1.OUT = SPI1.NSS = PA4` | ✅ **確認**(+ ADC1.IN4 / SPI3.NSS / TIM9.CH3 / USART2.CK) |
+| **X035**: `I2C1.SCL(PA10)` が `USART1.RX(PA10)` と衝突 | ⚠ **方向が誤り**。PA10 は **I2C1.SCL(default) + USART1.TX(remap-1)** + SPI1.MOSI(remap-2) + USART4.RX(remap-3)。**USART1.RX の default は PB11**(PA11 が remap-1)。衝突自体は存在する |
+| **M030**: `USART1.TX(remap) = I2C1.SDA = PC1` | ❌ **取り下げ**。M030 の PC1 は USART1.TX と TIM のみで、**I2C1 は PC1 に出ない**(default PB2/PB3、remap-1 PB6/PA2、remap-2 PA14/PA15、remap-3 PA3/PA2) |
 
-### 8.3 harness としての読み方
-
-1. **1/2 線を選べることが「使える pad を選べる」ことになる**(15 series が両対応: H415, H416, H417, M007, M030, V002, V004, V005, V006, V007, V205, V407, V467, X305, X315)。
-   例: **V005/V006/V007/M007 は 2 線だと SWCLK = PB3 が SPI_MISO と食い合う**が、**1 線を選べば PB3 が空く**。SPI slave エミュと debug を同時に成立させたいなら 1 線を選ぶ。**これは初版の EVT 表では見えなかった設計レバー**。
-2. **X033 / X035 は PIOC の既定ピンが debug ピンそのもの**(`PC18`/`PC19`)。X035 の remap でも **IO0 が PC7 に移るだけで IO1 は PC19 = SWCLK のまま**。→ **PIOC を probe の phy に使うと、その chip 自身の debug port が塞がる**([harness-board-survey.ja.md §3.5](harness-board-survey.ja.md) の推論がデータで裏付けられた)。
-3. **harness に最も素直なのは V103 / V203 / V208**(debug pad の衝突 0 件)。次が **V303/V305/V307/V317**(USART3 の remap 先だけなので、USART3 を使わなければ衝突ゼロ)。
-4. **いちばん苦しいのは V00x 系**。PD1(SWIO)に **I2C 両線 + USART1 両方向 + USART2_RX** が重なる。**V003 は「1 線のみ」で唯一逃げ道が無い** — §1 の「1 device 専有」がここで具体的な形になる。
-5. **`pin_conflicts.csv` は 372 行あり、うち debug 絡みは 30 行**。残り(bus 同士の衝突)は「その 2 つを同時に使えない」という意味なので、**harness の 16ch 窓に何を載せるかを決めるときの制約表**として使える。
+**誤った 2 件はどちらも「EVT のコメントが他 series からコピペされていた」形**に見える(M030 に書かれていた `I2C1_SCL(PC2)/I2C1_SDA(PC1)` は V003 の配置)。→ **EVT の `@Note` を一次情報にしてはいけない**、が実例で確定した。
 
 ## 9. 未決事項(実測してから決める)
 
@@ -298,8 +301,9 @@ ADC を 4ch 全部観測に回して DAC を全部外付けにする案もある
 8. **target 5V 時の扱い**(直列抵抗だけで済む線と、レベル変換が要る線の切り分け)。
 9. **エミュが駆動した時刻と firmware の指示時刻のずれ**。大きければ §3.3 の「Pico が駆動する線は窓から落とす」原則を見直す。
 10. **名前**。DUT harness / bench probe / DUT scope など仮。[dmi-bridge §8.1](../protocols/dmi-bridge.ja.md) に既に `Bench` プロファイルがあるので、`bench` は避けた方がよいかもしれない。
-11. **`ch32-device-data` の route データの穴を埋めるか**(§8.2)。USART/SPI/I2C の route が無い 7 series(**V003 / V205 / X035 / X033 / X315 / X305 / H41x**)。埋まるまで V003 と X035 は EVT 由来の弱いデータのまま。→ [依頼案](data/harness-wiring/README.ja.md#依頼)
-12. **CH32X033 の `afio-pioc-remap` value 1 は存在するか**。X035 には remap 行があるが X033 には無い。**データの穴か、X033 では PIOC が debug pad に固定なのか**で、X033 を probe に使えるかが変わる(§8.3-2)。
+11. ~~`ch32-device-data` の route データの穴~~ → **穴は無かった**。`index/pinout.csv` に 27 series 全部ある(初版が `evidence/` を読んでいたのが原因。[data/harness-wiring/](data/harness-wiring/README.ja.md) 参照)。
+12. **`debug_if = both` の series で 1 線モードに入る手順**(option byte / レジスタ)。`debug_interfaces.csv` は「両対応」までしか言わない。→ [custom-bootloader §2a](../protocols/custom-bootloader.ja.md) の切替レジスタと突き合わせる。
+12b. **MCO をキャプチャ窓に入れて「絶対時間」を「比率」に落とすか**。DUT の MCO(`class = clock`、`pinout.csv` にあり)を同じ窓で撮れば、UART の bit 幅などを **DUT の実コア clock 何周期分**として測れる。HSI ±1% と probe の水晶 ±30 ppm を分離できるので、**timing tolerance の決め方が「両者の誤差を分ける」問題から「比率を測る」問題になる**。1ch 消費。
 13. **[link-to-target](../protocols/link-to-target.ja.md) §1 の「1/2 線 切替可」の列挙に V205 / V407 / V467 / X305 / X315 / H41x を反映するか**。`debug_wiring.csv` は `confirmed` で 15 series を挙げている(§8.3-1)。→ protocol 側の記述変更なので別判断。
 14. **窓に NRST を入れるか**。ArduinoCore-CH32 側の論理信号は 13 本(`MARKER` / `GPIO_OUT` / `INT_IN` / `PWM` / `UART_TX` / `UART_RX` / `I2C_SCL` / `I2C_SDA` / `SPI_SCK` / `SPI_MOSI` / `SPI_MISO` / `SPI_CS` / `MCO`)で、**debug 2 本 + NRST = 16 でちょうど埋まり空きゼロ**。§3.3 の優先順位規則では NRST(Pico 駆動)は窓から落とす候補だが、**測定原点に reset 時刻を使いたい要求**があるので衝突する。→ **Pico(23ch 窓)なら消える**。
 
