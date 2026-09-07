@@ -112,7 +112,7 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 |---|---|---|---|
 | **A. CH32 上で自前 USB を出すか** | **A1 出す** | V003 単体 probe / X035 の driver レス | **pid.codes の 1 個を消費**(K2 より他に手が無い) |
 | | **A2 出さない**(UART / IP に逃がす) | **pid.codes を消費しない** | 「挿すだけ」の体験を CH32 build で出せない |
-| **B. V003(low-speed)を USB-native の対象に含めるか** | **B1 含める** | **$0.1 の chip が単体 probe**。連鎖 bootstrap の下端 | K5 より **descriptor が HID 固定**になり、その ID では帯域を上げられない |
+| **B. V003(low-speed)を USB-native の対象に含めるか**<br>⚠ **役割で答えが違う** → [定義 §5.6](harness-tool-definition.ja.md) | **B1 含める** | **$0.1 の chip が単体 probe**(= **probe としての V003**。連鎖 bootstrap の苗)。**target としての V003 は既にエコシステムが揃っているので理由にならない** | K5 より **descriptor が HID 固定**になり、その ID では帯域を上げられない |
 | | **B2 含めない**(**V003 を諦める**) | descriptor に **CDC / bulk / composite** が選べる。**帯域が出せる** | 最も安い入口を失う。UIAPduino 系の資産も外れる |
 | **C. 1 個の PID で mode(BL / app / probe)を跨ぐか** | **C1 跨ぐ** | PID 1 個で済む。[設計原則 4](../protocols/dmi-bridge.ja.md)(正体は handshake)と整合 | K4 より **descriptor を永久固定**。「enumeration だけで mode が分かる」を失う |
 | | **C2 跨がない** | mode が enumeration で分かる(§4.3 の利点) | **PID が複数要る** → K1 と衝突。**複数申請 / 別 project として申請 / vendor program** のどれかが要る |
