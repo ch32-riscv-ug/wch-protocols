@@ -149,7 +149,7 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 
 [dmi-bridge §8.1](../protocols/dmi-bridge.ja.md) の最小は **Core**(`hello` `caps` `info` `ping` / `lane_attach` `lane_detach` `line_reset` / `dmi_read` `dmi_write` / `batch` 8 op 以上)。**これでも V003 の BL には入らない**(BL は `FLASH 1,916 B` + secret 4 B で**既に埋まっている**。[v003-bootloader-replacement](v003-bootloader-replacement.ja.md) §2)。
 
-→ **Core の下にもう 1 段**(仮に **Nano**)を置く案。**「幅の下端をどこに取るか」が決まってから採否を決める**(下端に V003 の BL や 8 bit 級を含めないなら、この段は要らない):
+→ **Core の下にもう 1 段**(仮に **Nano**)を置く案。**「幅の下端をどこに取るか」が決まってから採否を決める**。⚠ **[定義 §5.8](harness-tool-definition.ja.md) が V003 の BL を対象外にする方向を出したので、この案の主な動機は消えている** — 残るのは **AVR / 8 bit 級**のためだけで、それは **ardulink 互換モードで足りる可能性**がある:
 
 | | Nano(案) | Core |
 |---|---|---|
@@ -162,6 +162,9 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 **ヘッダ(`type` / `lane` / `tag` / `cmd`)と L1 framing は変えない。** そうすれば **同じ host コードが Nano も Core も扱える**(`hello` の応答で見分ける)。
 
 ## 4. V003 の BL に載せるか
+
+> ⚠ **[定義 §5.8](harness-tool-definition.ja.md) が「BL は捨て、APP は取る」を方向の候補として出した。** それを採るなら本節は**不要になる**(BL に載せない)。以下は「載せる」を検討する場合のためだけに残す。
+
 
 #### 方向 — 2 方向あり、どちらも未定
 

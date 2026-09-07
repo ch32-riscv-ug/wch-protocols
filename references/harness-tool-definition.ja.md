@@ -215,6 +215,48 @@
 
 → **方向 A(標準先行)を採るとしても、その主戦場は V003 ではなく 2 線**。「口を増やす作業(ch32rv の backend)」と「2 線の phy を書く作業(新 firmware)」は**別物で、後者が本体**。
 
+### 5.8 V003 の境目 — **BL は捨て、APP は取る**(方向の候補。**結論ではない**)
+
+§5.6 の 3 役割は、**もう 1 軸(firmware がどこに住むか)を掛けると更にはっきりする**。
+
+| | **APP 領域**(user flash 16 KB) | **BOOT 領域**(1,920 B) |
+|---|---|---|
+| **probe**(他の chip を書く) | **◎ 対応したい。** basic HID ≈ 2 kB + protocol が 16 KB に余裕で入る。rvswdio が実証済み | — (probe を BOOT に置く理由が無い) |
+| **target**(書かれる側) | — | **既存で足りる**(§5.5)。優先度低 |
+| **self**(同一 chip が自分を書く) | app 側 updater は既に実証済み(BOOT 領域書換) | **✗ 捨てる。** rv003usb BL + B003 が既にあり、**置き換える利得が無い** |
+
+**「捨てる」の根拠は既に出ている** — [v003-bootloader-replacement.ja.md](v003-bootloader-replacement.ja.md) の結論そのもの: 標準 BL は**既に stub 実行型**で、**1,920 B に対して実サイズがほぼ 1,920 B**、**host 実装が 3 つある**。入れ替えは「完全上位」の 6 条件を満たさない。
+
+#### この境目を引くと 3 つ楽になる
+
+| # | 楽になること |
+|---|---|
+| 1 | **Nano profile の主な存在理由が消える。** [harness-choices](harness-choices.ja.md) §3 の Nano は「V003 の BL 1,920 B に入れるため」に出した案だった。**APP なら 16 KB あるので Core が入る。** → Nano が要るのは **AVR / 8 bit 級のため**だけになり、それは **ardulink 互換モードで足りるかもしれない**(別の解がある) |
+| 2 | **他人の PID を名乗る必要が消える。** BL に相乗りしないなら `1209:B003` を名乗る話が消え、**N4 / K3 の懸念がそもそも発生しない** |
+| 3 | **BL と APP が同じ chip で共存できる。** BL は B003(cnlohr の project)、APP は我々の protocol。**mode ごとに ID が別なのは §4.3 と整合**で、無理が無い |
+
+#### 代わりに残る問い
+
+**APP としての V003 を、どの transport で host に繋ぐか。**
+
+| 案 | 中身 | 効く制約 |
+|---|---|---|
+| **software USB(HID)** | rvswdio と同じ形。**挿すだけ**が成立する | **K5 が残る**(low-speed は bulk が無く HID 固定)。**自前 PID が要る**。Windows 不安定・ケーブル長敏感の実地報告あり(UIAPduino) |
+| **UART**(V003 の USART 1 本を host link に使う) | ardulink 形。**PID が要らない**([K6](harness-choices.ja.md)) | USART が塞がるので **target の serial を橋渡しできない**。USB-serial 変換が別に要る |
+
+→ **K5(HID 固定)の縛りは「BL のため」ではなく「APP の V003 を USB で使うため」に移る。** [choices](harness-choices.ja.md) の軸 A / B はこの形で読み直す必要がある。
+
+#### 用語が未定(整理が要る)
+
+いま 2 つの別物が同じ語で呼ばれている。**呼び分けが決まらないと `caps` の設計も決まらない**。
+
+| 概念 | 中身 | 現状の呼び方 |
+|---|---|---|
+| **別 chip・同一基板** | probe MCU と target MCU が別の chip で、同じ board に載っている | 「内蔵ライタ」「built-in」「ビルドイン」 |
+| **同一 chip** | 同じ chip が自分自身を書く(BOOT ↔ user 領域) | 「セルフ」「self-update」「in_place」 |
+
+⚠ **[builtin-probe-and-self-update.ja.md](builtin-probe-and-self-update.ja.md) はファイル名で両者を並べているが、本文では `attach`(lane の向こう側 = external / onboard / socket / self)と `self_update`(自分をどう書くか)という別の 2 軸で扱っている。** **概念は分かれているが、名前が揃っていない。** → 取りまとめの第 2 部で語彙を固定する対象。
+
 ## 6. 方向性の候補(**まだ選ばない**)
 
 **幅は L0〜L8 で取る**としても、**どちらの端から作るか**で性格がまるで変わる。
