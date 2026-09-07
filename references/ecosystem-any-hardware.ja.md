@@ -81,7 +81,7 @@ host は backend ごとの **capability** を問い合わせて挙動を変え�
 | 項目 | 方針 | 根拠 / 事例 |
 |---|---|---|
 | **VID** | **`0x1209`(pid.codes)** | open-source hardware/firmware に無償で PID を配る仕組み。**UIAPduino V006 が `0x1209:0xB806`** で採用。代替: `0x1D50`(OpenMoko、同趣旨)。USB-IF 正規取得は数千ドル・企業向け |
-| **PID** | エコシステムで **複数取る**: (a) BL mode、(b) Core app 既定(CDC 等)、(c) probe firmware。最低 3 つ | pid.codes は project 単位で PID を申請(公開 repo と OSS license が条件)。1 PID を用途で使い分けず、mode ごとに分ける(§4.3) |
+| **PID** | ⚠ **要再検討**。初版は「(a) BL mode / (b) Core app / (c) probe firmware で最低 3 つ」としたが、**§4.2b の「1 project 1 PID が原則」と衝突する**。→ [harness-tool-definition.ja.md](harness-tool-definition.ja.md) §5.7 が**制約(K1〜K6)と選択軸(A〜D)を整理**している。**結論はまだ出していない**(幅をどこまで取るかが決まらないと決まらない) | pid.codes は project 単位で PID を申請(公開 repo と OSS license が条件)。1 PID を用途で使い分けず、mode ごとに分ける(§4.3) |
 | **serial string** | **chip UID(ESIG の unique ID。ChipInfo の UUID と同源)を hex で載せる** | 個体識別が **抜き差し・port 変更・複数台で安定**。ch32rv は既に USB serial で probe を識別(lock も serial 単位)。software USB(rv003usb)でも string descriptor は自由に生成できる |
 | **product / manufacturer string** | エコシステム名 + board 名(board 側で override 可) | host の表示・GUI 選択用。識別には使わない |
 | **bcdDevice** | BL/probe firmware の版 | host が「古い BL」を検出して更新を促せる |
