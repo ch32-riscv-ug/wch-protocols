@@ -12,7 +12,7 @@ PC 側からは [pc-to-link.ja.md](pc-to-link.ja.md) の `DmiOp` を送るだけ
 | **2 線 RVSWD** | data + clock(SWDIO/SWCLK) | CH32V103(V3)、CH32V20x/V30x/V317・X03x・L103・CH643(V4)ほか | WCH 固有の RISC-V debug transport。**pin 名が ARM SWD に似るが protocol は非互換** |
 | 1/2 線 切替可 | option/config で変わる | V00X・M007、M030、CH564、CH584/585、CH570/572 等 | family 条件で interface が変わる |
 
-- 「CMSIS-DAP 対応」「ARM SWD 対応」は **CH32 RISC-V の 2 線 RVSWD 対応を意味しない**(別 protocol)。
+- 「CMSIS-DAP 対応」「ARM SWD 対応」は **CH32 RISC-V の 2 線 RVSWD 対応を意味しない**(別 protocol)。**なぜ別 protocol になったのかは §3b**。
 - core 世代と線の対応: V2A/V2C = 1 線、V3/V4 = 2 線([serial-and-print.ja.md](serial-and-print.ja.md) の core 表と一致)。
 
 ## 2. USB protocol 層には現れない
@@ -70,7 +70,63 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 
 - (RVSWD)STOP 条件の波形詳細(SWDIO 遷移のタイミング)、クロック周波数、複数トランザクション間のアイドル規則。
 - (RVSWD)7bit addr が RISC-V 標準 DTM(通常 abits 可変)とどう対応するか(WCH は 7bit 固定と観測)。
+  - **新しい材料(2026-09-07、Swindle の source 読解)**: BMDA 側は **`dmi->address_width = 8U`** と宣言し、probe 側の responder は **`address as u8`** で受けている(`blackmagic_addon/hosted/remote_rv_protocol.c` / `rs_swindle/src/native/rpc_target/mod.rs`)。→ **8 bit 幅で上位未使用**か、**Swindle が余裕を取っている**かのどちらか。**線上が 7 か 8 かは依然未測定**。
 - (SWIO)LOW パルス幅の 0/1 閾値・start/frame・turnaround の実値。
+
+## 3b. なぜ ARM SWD と別 protocol なのか
+
+状態: **解説**(一次資料は ARM ADI/SWD 仕様と RISC-V Debug Spec = どちらも公開標準。RVSWD 側は §3 の観測。**「JTAG scan の時間多重」という読みは本書の解釈**)。
+
+**動機は同じ(ピン数削減)だが、載せている上位アーキテクチャが違う。**
+
+### 何をシリアライズしているか
+
+| | **ARM SWD** | **RVSWD** |
+|---|---|---|
+| 上位 | **ADIv5 の DP/AP レジスタ空間**(バス) | **RISC-V DTM の `dmi` レジスタ**(1 本) |
+| 運ぶもの | 「どの AP の、どのレジスタを read/write」 | **`(addr, data32, op)` の 1 組**(= §3) |
+| 元の姿 | **SWD 自体が ADI の正式な 2 線 transport** | **JTAG の `dmi` スキャン** |
+| framing の性格 | **packet protocol**(アドレス・応答・データが framing の構造) | **shift protocol**(framing に構造は無く、アドレスは payload) |
+
+- **SWD のフレーム**: 8 bit の packet request(Start / APnDP / RnW / A[3:2] / Parity / Stop / Park)→ turnaround → **3 bit ACK**(OK/WAIT/FAULT)→ turnaround → data 32 + parity。
+- **RVSWD のフレーム**(§3): `addr7 + data32 + op2 + parity1` を送り、続けて `addr7 + data32 + status2 + parity1` を受ける。これは **RISC-V 標準 DTM の `dmi` DR(`abits + 32 + 2`)そのもの**。
+
+> **読み**: JTAG は TDI と TDO が別線なので押し込みと吐き出しが同時に起きる。**RVSWD は線が 1 本なので、それを前後に時間分割しただけ**。つまり **SWD は「ADI のバスアクセスを 2 線に詰めた packet protocol」、RVSWD は「JTAG の dmi スキャンを 2 線に時間多重した shift protocol」**。
+
+### なぜ WCH が自分で作る必要があったか
+
+**RISC-V Debug Spec は DM と DMI の"インタフェース"は標準化したが、DTM(transport)は JTAG しか具体的に規定していない。** 「2 線でやりたい」なら**各ベンダが発明するしかない**。ARM は SWD を ADI の一部として自分で規定したので全社共通 — **ここが非対称**。
+
+ピン数が動機なのは共通で、**ARM は 4→2(SWD)、WCH は 4→2(RVSWD)と 4→1(SWIO)**で解いた。8〜20 ピンの chip に JTAG の 4〜5 本は重い。
+
+### SWD が背負っている要件は RVSWD には要らない
+
+| SWD が持つもの | なぜ要るか | RVSWD |
+|---|---|---|
+| **multi-drop**(SWD v2 の `TARGETSEL`) | 1 バスに複数 target | **不要** |
+| **JTAG↔SWD 切替シーケンス**(`0xE79E`) | 既存 JTAG との後方互換・両対応パッド | **不要**(§3 の初期化は「IO HIGH で 100 クロック + STOP」だけ) |
+| **3 状態 ACK**(OK / WAIT / FAULT) | AP の先が AHB/APB ブリッジで stall しうるので、**待ちを framing に持つ**必要がある | **不要。** DMI の **`busy`(status=3)** が **RISC-V DMI のセマンティクスに元から入っている = payload 側にある** |
+
+### これが §3 末尾の「turnaround が文書化されていない」を説明する
+
+§3 は「**明示の turnaround bit は文書化されていない(位相の並びで暗黙に切替)**」と記録した。理由は上表の 3 行目:
+
+- **SWD が turnaround を明示的に持つのは、ACK をフレーム途中で読むから**(方向が 2 回変わる)。
+- **RVSWD はフレーム途中で何も判断しない**(全部押し込んでから全部読む)。**方向が変わる境界は host 位相 → target 位相の 1 箇所だけ**。→ **仕様に書く turnaround bit が存在しない。**
+
+⚠ ただし**その 1 箇所の電気的な振る舞い**(どちらがいつ線を放すか)は**依然未測定**。§3 末尾の「STOP 条件の波形詳細」と同じ枠に残る。
+
+### pin 名だけ借りている
+
+`SWDIO` / `SWCLK` という名前とコネクタ配置は ARM から借りている。**基板設計者とプローブのヘッダが既にその形を知っているので便利**で、実際 WCH-Link の 4 ピンは SWD ヘッダに見える。→ **§1 の警告(pin 名が似るが非互換)はこのため。名前が一番の罠。**
+
+### 実装上の帰結(自作 probe に効く)
+
+| | |
+|---|---|
+| **bit-bang しやすい** | フレーム途中に turnaround のタイミングハザードが無い |
+| **効率は悪い** | nop でも常に 42 + 42 bit 流れる。SWD は 8 bit の request で「読むだけ」が済む |
+| **PIO / PIOC 向き** | 「N bit 押し込んで N bit 読む」だけなので状態機械が小さい。**CH32X035 の PIOC が「2 ピンのプロトコル制御」用に作られている**のと噛み合う(→ [../references/harness-board-survey.ja.md](../references/harness-board-survey.ja.md) §2.1) |
 
 ## 4. 第三者実装(解読の一次資料)
 
