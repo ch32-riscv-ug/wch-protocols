@@ -32,6 +32,8 @@
 | **P0c** | **DIY probe は 10 種以上あるのに、横展開できない** | PicoRVD / Swindle / rvswdio / funprog / NHC-Link042 / ardulink / WebLink …。だが **MCU × transport × host tool が 1 対 1 に固定**されていて、「手元の board で、好きな host から」ができない([probe-ecosystem](probe-ecosystem.ja.md) §1、[generic-probe-design](generic-probe-design.ja.md) §1) |
 | **P0d** | **リモートにしたいだけなのに 2 台要る** | WCH-LinkW(CH32V208)は **PC↔probe 間が無線**になる装置。だが **dongle + probe の 2 台構成**で、値段も 2 台分。**「間の線が無いだけ」なのに** |
 | **P0e** | **書けても printf が見えない / 見るのに別の道具が要る** | `SerialSDI` は LinkE 専用、`SerialRTT` は ELF が要る、`SerialDMDATA` は minichlink 専用(P13 と同根だが、入口では「Arduino 体験が成立しない」という形で出る) |
+| **P0f** | **情報が「装置を持っている人」の側にしか無い** | 知識が 10 以上の project・vendor 資料・非公式解析に分散していて、**LinkE を既に持っている人しか到達できない場所**にある。**最初の 1 台を作りたい人が最も情報に届かない** |
+| **P0g** | **どの probe が何に対応しているのか分からない** | 「1 線だけ」「V003 だけ」「read-back 未実装」「GDB は別」…が project ごとにバラバラで、**買う/焼く前に判定できない**。host 側も型番の表で対処するしかない |
 
 > **P0b/P0c の要点は「hardware が無い」ではなく「標準 protocol が無い」。** firmware は既にたくさんある。**足りないのは、どの firmware でも同じ host から使える共通の口**で、それが [dmi-bridge](../protocols/dmi-bridge.ja.md) の存在理由。CMSIS-DAP が ARM で解いた問題が、CH32 RISC-V で未解決のまま残っている。
 
@@ -226,9 +228,106 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 | コスト | backend ごとの実装 + **限界 2 の表の保守** | firmware を書く。普及に時間がかかる |
 | 関係 | — | **dmibridge は ch32rv の backend の 1 つになる**(`ch32rv-probe-dmibridge`) |
 
-**「まず ch32rv が口を増やして幅を取り、dmi-bridge が上の段を開ける」**が素直な順序。**L0 を先に普及させたいなら ch32rv 側の作業のほうが速い**し、それは dmi-bridge の価値を下げない — **上の段は dmi-bridge でしか登れない**ことが限界 4 で確定しているから。
+**両者は並行して置ける。優先度は未定**(どちらを先に出すかは決まっていない)。確かなのは 2 点だけ:
 
-⚠ **ただし限界 2 は先に効く。** backend を増やすほど「probe × できること」の手書き表が育つ。**`caps` を持つ backend(dmibridge)が 1 つあると、その表が「申告に従う」1 行で済む**ので、**増やす前に caps の形を決めておく**ほうが後で楽になる。
+- **L0 の幅を今日広げたいなら ch32rv 側の作業のほうが速い**(firmware が要らない)。
+- **それは dmi-bridge の価値を下げない** — **上の段は dmi-bridge でしか登れない**ことが限界 4 で確定しているから。
+
+⚠ **ただし限界 2 は先に効く。** backend を増やすほど「probe × できること」の手書き表が育つ。**`caps` を持つ backend(dmibridge)が 1 つあると、その表が「申告に従う」1 行で済む**ので、**増やす前に caps の形を決めておく**ほうが後で楽になる。→ これは §5.7 の PID の話とも同じ結論になる。
+
+### 5.7 USB と PID — **最も希少な資源からの逆算**
+
+**USB に対応したい理由は「便利さ」**。挿すだけで driver レスに使える(CDC / HID / WinUSB はどれも class driver で VID を問わない)。だが**自前 descriptor を名乗る = PID が要る**。
+
+> **本節は結論を出さない。** PID は幅の議論に**制約として効く**ので、**動かせない事実**と**選択の軸**だけを並べる。**どこまでの幅を取るかが決まってから**、この軸の上で選ぶ。
+
+#### 動かせない事実
+
+| # | 事実 | 出どころ |
+|---|---|---|
+| **K1** | **pid.codes は「1 project 1 PID が原則」**(複数は理由付きで) | [ecosystem](ecosystem-any-hardware.ja.md) §4.2b |
+| **K2** | **WCH には vendor community program が無い**。Raspberry Pi `0x2E8A` / Espressif `0x303A` は**その silicon 上でのみ**無償・公認 | 同 §4.2b |
+| **K3** | **他人の PID を自分の firmware が名乗るのは NG**。同じ ID を別の device が使うと host が判別できなくなる — **この repo に実例がある**(LinkE の IAP mode と factory ISP がどちらも `4348:55E0`)。**共有 ID(`0x1209:0x0001`〜、`0x6666`、`0xCAFE`)も配布物では同じ理由で不可** | 同 §4.1 / §4.2b |
+| **K4** | **Windows は VID:PID(+MI_xx)単位で driver 割当を cache する**。同じ ID で **interface 構成**を変えると壊れる | 同 §4.3 |
+| **K5** | **低速 USB は control と interrupt しか持たない**(bulk が無い)。→ **V003 の software USB では CDC が成立せず、HID しか選べない** | [software-usb](../protocols/software-usb.ja.md) / B003 が HID である理由 |
+| **K6** | **既存 USB-serial bridge 上の UART と IP は、自前 descriptor を持たないので PID を消費しない** | [ecosystem](ecosystem-any-hardware.ja.md) §4.5 |
+
+> **K3 の帰結(切り分け)**: **host が他人の protocol を喋るのは自由**(host は誰の ID も名乗らない)。**禁じられるのは、自分の firmware が他人の PID を名乗ること**。→ 「dmibridge の **host** が B003 protocol を喋る」は問題なし。「dmibridge の **firmware** が `1209:B003` を名乗る」は不可。
+
+#### 選択の軸(**決めない**)
+
+| 軸 | 選択肢 | 得るもの | 失うもの |
+|---|---|---|---|
+| **A. CH32 上で自前 USB を出すか** | **A1 出す** | V003 単体 probe / X035 の driver レス | **pid.codes の 1 個を消費**(K2 より他に手が無い) |
+| | **A2 出さない**(UART / IP に逃がす) | **pid.codes を消費しない** | 「挿すだけ」の体験を CH32 build で出せない |
+| **B. V003(low-speed)を USB-native の対象に含めるか** | **B1 含める** | **$0.1 の chip が単体 probe**。連鎖 bootstrap の下端 | K5 より **descriptor が HID 固定**になり、その ID では帯域を上げられない |
+| | **B2 含めない**(**V003 を諦める**) | descriptor に **CDC / bulk / composite** が選べる。**帯域が出せる** | 最も安い入口を失う。UIAPduino 系の資産も外れる |
+| **C. 1 個の PID で mode(BL / app / probe)を跨ぐか** | **C1 跨ぐ** | PID 1 個で済む。[設計原則 4](../protocols/dmi-bridge.ja.md)(正体は handshake)と整合 | K4 より **descriptor を永久固定**。「enumeration だけで mode が分かる」を失う |
+| | **C2 跨がない** | mode が enumeration で分かる(§4.3 の利点) | **PID が複数要る** → K1 と衝突。**複数申請 / 別 project として申請 / vendor program** のどれかが要る |
+| **D. 高帯域(capture)をどう出すか** | **D1 自前 USB bulk** | 速い | PID が要る(**silicon が RP2040 / S3 なら vendor program で 0**) |
+| | **D2 既存 bridge の UART** | **0** | 遅い |
+| | **D3 IP** | **0**。遠隔も同時に得る | Wi-Fi 機に限る |
+
+#### 軸を組むと出てくる案(**並べるだけ。選ばない**)
+
+| 案 | A | B | C | D | pid.codes の消費 | 幅への影響 |
+|---|:--:|:--:|:--:|:--:|:--:|---|
+| **P-1** | A1 | B1 | C1 | D1(vendor program) | **1** | 全段。ただし CH32 build は HID 固定なので**その ID では L5 以上を出せない** |
+| **P-2** | A1 | **B2** | C1 | D1 | **1** | **V003 を諦める**代わりに CH32 build も CDC/bulk が使え、**同じ ID で上の段まで出せる** |
+| **P-3** | **A2** | — | — | D2 / D3 | **0** | **pid.codes を一切使わない**。CH32 は UART / ardulink 経由。RP2040 / S3 は vendor program |
+| **P-4** | A1 | B1 | **C2** | D1 | **複数** | K1 と衝突。**複数申請の交渉が要る**(BL と probe を別 project と主張しうる) |
+
+**どれも幅を狭める判断を含む**。P-1 は「CH32 の自前 USB を L0/L1 に限る」、P-2 は「V003 を切る」、P-3 は「挿すだけの体験を捨てる」、P-4 は「交渉に賭ける」。**幅をどこまで取るかが決まる前に選ぶと、幅の方が PID に引きずられる。**
+
+#### 決めるために要る情報
+
+| # | 要る情報 | 効く軸 |
+|---|---|---|
+| 1 | **pid.codes に複数申請が実際どこまで通るか**(前例を調べる) | C / P-4 |
+| 2 | **V003 単体 probe の需要はどれくらいか**。UIAPduino 以外に配線した board があるか | B |
+| 3 | **「挿すだけ(driver レス)」と「UART で 1 手間」の体験差**が、L0 の普及にどれだけ効くか | A |
+| 4 | RP2040 / ESP32-S3 の vendor program 申請の実際の手間 | D |
+| 5 | **CH32 build に L5 以上を求めるか**(求めないなら B1 の代償が小さくなる) | B / D |
+
+**5 が幅の議論そのもの。** ここが決まらないうちは PID も決まらない。
+
+#### L0 の低減策 — Core より下の profile を置く案(**採否は未定**)
+
+[dmi-bridge §8.1](../protocols/dmi-bridge.ja.md) の最小は **Core**(`hello` `caps` `info` `ping` / `lane_attach` `lane_detach` `line_reset` / `dmi_read` `dmi_write` / `batch` 8 op 以上)。**これでも V003 の BL には入らない**(BL は `FLASH 1,916 B` + secret 4 B で**既に埋まっている**。[v003-bootloader-replacement](v003-bootloader-replacement.ja.md) §2)。
+
+→ **Core の下にもう 1 段**(仮に **Nano**)を置く案。**「幅の下端をどこに取るか」が決まってから採否を決める**(下端に V003 の BL や 8 bit 級を含めないなら、この段は要らない):
+
+| | Nano(案) | Core |
+|---|---|---|
+| コマンド | **`hello` / `dmi_read` / `dmi_write` のみ** | + `caps` `info` `ping` `lane_*` `batch` |
+| `caps` | **固定の最小応答**(数個の TLV を定数で返す) | TLV で申告 |
+| lane | **0 固定**(ヘッダの `lane` は無視) | 0..N |
+| batch | **無し**(per-op。遅い) | 8 op 以上 |
+| 想定 | **下端に含めるなら**: V003 の BL、AVR、8 bit 級 | 通常の probe |
+
+**ヘッダ(`type` / `lane` / `tag` / `cmd`)と L1 framing は変えない。** そうすれば **同じ host コードが Nano も Core も扱える**(`hello` の応答で見分ける)。
+
+#### V003 の BL に載せるか — 2 方向あり、どちらも未定
+
+**制約**: V003 の BL は **1,920 B に対して実サイズがほぼ 1,920 B** で、**新しい protocol を足す余地はほぼ無い**([v003-bootloader-replacement](v003-bootloader-replacement.ja.md) §2)。
+
+| 方向 | 中身 | 得失 |
+|---|---|---|
+| **(i) protocol を BL に入れる** | Nano profile を BL に実装 | BL が dmibridge を喋る。**ただし 1,920 B に入るかは未検証**(→ `bl-size-baseline`)。入れるには何かを削る |
+| **(ii) protocol が既存実装に歩み寄る** | **host 側**が B003 の HID scratchpad protocol を喋る([custom-bootloader](../protocols/custom-bootloader.ja.md) §2b、**byte 単位で解読済み**)。[dmi-bridge §7](../protocols/dmi-bridge.ja.md) の **ardulink 互換モード**と同じ発想 | **BL を触らない**。§5.6 の「ch32rv が口を増やす」と同じ性質の作業 |
+
+⚠ **(ii) は host 側の互換モードであって、PID の話ではない。** **K3 のとおり、自分の firmware が `1209:B003` を名乗ることは不可**(それは他人の project の ID)。**host が B003 を喋るのは自由**(host は誰の ID も名乗らない)。前版でここを混同していた。
+
+**どちらを採るか、そもそも V003 を下端に含めるかは未定**(§5.7 の軸 B)。
+
+#### `caps` は 2 つの問題を同時に解く
+
+| 問題 | `caps` がどう効くか |
+|---|---|
+| **P0g** どの probe が何に対応しているか分からない | **個体が自分で申告する**。`ch32rv probe info` が「この個体は何ができるか」を出す。**型番の表を host が持たなくてよい**(§5.6 の限界 2) |
+| **PID の希少性** | **役割・board・段を PID で区別しなくてよくなる**([builtin-probe-and-self-update](builtin-probe-and-self-update.ja.md) §2.2)。ただし **§5.7 の軸 C(mode を跨ぐか)は別問題**で、`caps` があっても K4(Windows の cache)は消えない |
+
+**同じ 1 つの仕組みが、ユーザ体験(何ができるか分かる)と資源制約(PID を増やさない)の両方に効く。** **幅をどこに取っても `caps` は要る**ので、ここは幅の議論と独立に固められる数少ない部分。
 
 ## 6. やらないこと(永久の非目標)
 
@@ -249,6 +348,7 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 | 段 | 一言 |
 |---|---|
 | **L0〜L2** | **買わなくていい。** 手持ちの board が書込器になり、Wi-Fi 付きなら 1 枚でリモートになる。**実装ではなく標準の口が足りていないだけ**なので、最も安く最も多くの人に届く |
+| 全段 | **分散した情報を 1 か所に刈り取る。** いま知識は 10 以上の project に散り、**LinkE を持っている人しか到達できない**(P0f)。**「どの probe が何をできるか」を個体が自分で申告する**(P0g / `caps`)ので、買う前・焼く前に判定できる |
 | **L5〜L8** | **既存品の組み合わせでは作れない機能が 5 つある**(U1〜U5)。統合の対価はここで回収される |
 | 共通 | **観測と刺激だけなら、リリース経路にリスクをゼロで足せる**(LinkE を残したまま harness を観測専用で入れる) |
 
