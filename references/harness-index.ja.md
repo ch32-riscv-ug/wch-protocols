@@ -25,6 +25,7 @@
 | 文書 | 何が書いてあるか | 状態 |
 |---|---|---|
 | **[harness-tool-definition.ja.md](harness-tool-definition.ja.md)** | **取りまとめ第 1 部**。何の道具か / 3 つの壁 / **他では解決できない強み(S1 統合・S2 標準)** / 幅 L0〜L8 / **方向性 A・B・C** / 非目標 | **定義**(方向性は未選択) |
+| **[harness-existing-standards.ja.md](harness-existing-standards.ja.md)** | **既存標準で足りるものの調査**。ch32rv が既に吸収する予定のもの(UF2/DFU/HID BL/ISP/GDB/DAP/RTT/semihosting…)/ **計画に無い候補 3 つ**(GDB RSP client・**BMP の RISC-V remote protocol**・WCH IAP)/ 吸収できない 4 + 1 | **調査**(実装検証は未) |
 | **[harness-choices.ja.md](harness-choices.ja.md)** | **各論の選択肢集**。既存 protocol 対応の限界 / **PID の制約 K1〜K6 と軸 A〜D** / profile の下端 / V003 BL | **決めない** |
 | [dut-harness-design.ja.md](dut-harness-design.ja.md) | **構想の本体**。同一時間軸・cross-domain trigger・障害注入・RP2040-Zero のピン割当・**§8 = family 別の配線衝突表**(生成物) | アイデアメモ |
 | [harness-board-survey.ja.md](harness-board-survey.ja.md) | **board 別の到達範囲を 8 軸で比較**。RP2040 / RP2350 / ESP32-S3 / CH32X035 / X033。**X03x の PIOC**、**S3 の LCD_CAM + PSRAM**、**RP2350 errata E9** | 調査メモ |
