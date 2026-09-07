@@ -1050,6 +1050,9 @@ OUT: 1 + n     ≤ 15  →  制約にならない
 
 ## 8. 参照
 
+- **本書の内側**(1 本の物理 IF の中でどう論理的に分けるか): [harness-virtual-if.ja.md](harness-virtual-if.ja.md)
+
+
 - L2 ヘッダの多重化(M1): [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md) §3
 - HID adapter の分割/再組立: 同 §2.4
 - transport ごとの境界と完全性: 同 §2.2
