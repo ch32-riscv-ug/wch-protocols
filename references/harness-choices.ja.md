@@ -245,7 +245,63 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 
 **2 が「PID を増やさずに descriptor の違いを分離する」唯一安い手**。**PID は 1 個のまま、`bcdDevice` で descriptor 世代を分ける。** ただし上の弱点 1・2 を承知の上で。
 
-##### ただし `bcdDevice` の使い道が衝突する
+##### `bcdDevice` の割り方(**綺麗に整理できる**)
+
+**衝突しない。** `bcdDevice` は **USB 仕様で「BCD の device release number」**で、慣習的に `0xJJMN` を **JJ.MN** と読む。そこに **semver と同じ意味を入れればよい**:
+
+> **`bcdDevice = 0x<major(BCD 2 桁)><minor(BCD 2 桁)>`**
+> - **major = descriptor 世代。** interface 構成 / class / composite の有無 / IAD グループが変わったら上げる。
+> - **minor = firmware の版。** descriptor に触らない変更で上げる。
+
+**これは hack ではなく意味的に正しい。** **descriptor が変わることは host に対する破壊的変更**なので、**「major を上げる」は semver の定義そのもの**。[ecosystem §4.2](ecosystem-any-hardware.ja.md) の「`bcdDevice` = firmware の版」とも矛盾しない — **版の付け方を決めただけ**。
+
+##### major の割当(案)
+
+| major | descriptor | 実装できる silicon |
+|:--:|---|---|
+| **1** | **HID 単機能**(low-speed でも可) | **V003(software USB)/ X03x / 8 bit 級** |
+| **2** | **composite: CDC + HID (+ 予約)** | RP2040 / RP2350 / ESP32-S3 / X03x |
+| **3** | composite + bulk(capture 帯域) | RP2040 級以上 |
+| … | | |
+
+- **同じ major を複数の silicon が共有してよい**(descriptor が同じなら)。**能力差は `caps` が名乗る** — 設計原則どおり。
+- **V003 は major 1、RP2040 は major 2** で**同じ PID に共存できる**。**「V003 を入れると拡張余地を失う」は起きない**(major 2 を別に育てられる)。
+- **BL / app / probe の mode も自然に入る**: descriptor が違えば別 major、同じなら同 major で `hello` / `caps` が区別する。
+  → **これは [ecosystem §4.3](ecosystem-any-hardware.ja.md) が「mode ごとに PID を分けろ」と言っていた目的(driver cache の分離)を、PID を増やさずに達成する。**
+
+##### 弱点はどこまで残るか
+
+| 弱点 | 残るか |
+|---|---|
+| **1. USB 仕様の趣旨から外れる** | **ほぼ解消**。`bcdDevice` を版として使い、**major bump = 破壊的変更**は仕様の趣旨に沿う |
+| **2. VID:PID だけ見るツール** | **ツール次第で残る**(下記) |
+| 3. generic な hardware ID が残る | 残る。**INF を出すなら `&REV_` に対して書く** |
+| **4. 未確認** | **残る。実機で混ぜて確認する価値が高い** |
+
+**弱点 2 の内訳**:
+
+| ツール | 区別できるか |
+|---|---|
+| **udev(Linux)** | **できる**。`ATTR{version}`(= `bcdDevice` を `"1.41"` 形式で公開)や `ATTR{bcdDevice}` が使える |
+| **我々の host(ch32rv)** | **できる**。descriptor と `caps` を読む |
+| Windows の driver binding | **できる**(`&REV_` が hardware ID) |
+| **Arduino IDE の board 検出** | ✗(`boards.txt` は `vid`/`pid` のみ)。→ **probe は board ではないので実害は小さい**。upload tool 側が見分ける |
+| **sigrok** | ✗(VID:PID で driver を選ぶ)。→ **capture build 以外も同じ VID:PID で見えてしまう**。**SUMP を serial 経由で出すなら VID:PID の話にならない**ので、そこで避けられる |
+
+→ **実害があるのは「VID:PID しか見ない自動検出」だけで、主要な経路は全部区別できる。**
+
+##### 残る作業
+
+| # | やること | 重さ |
+|---|---|---|
+| 1 | **major の割当表を持つ**(descriptor 世代のレジストリ。数行) | 軽い |
+| 2 | **`bcdDevice` を build 時に自動で埋める**(major は descriptor 定義から、minor は版から) | 軽い |
+| 3 | **実機で混ぜて確認**(major 1 と major 2 を同一 Windows に同時接続し、binding / COM / `usbflags` を見る) | **要ベンチ。最優先** |
+| 4 | pid.codes 申請時に「1 PID で複数 descriptor 世代」の運用を説明できるようにする | 軽い(OSS なので説明は容易) |
+
+→ **3 が通れば、PID の壁はかなり低い。** 「1 project 1 PID」の制約下でも、**mode / silicon / descriptor 世代を分離しつつ 1 個で回せる**。
+
+##### (旧) `bcdDevice` の使い道が衝突する — 上記で解消
 
 [ecosystem §4.2](ecosystem-any-hardware.ja.md) は **`bcdDevice` = BL / probe firmware の版**としている。上の規則 2 は **`bcdDevice` = descriptor 世代**として使う。**同じ 16 bit を 2 つの意味で使うことになる。**
 
