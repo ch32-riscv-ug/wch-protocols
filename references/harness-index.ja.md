@@ -25,7 +25,8 @@
 | 文書 | 何が書いてあるか | 状態 |
 |---|---|---|
 | **[harness-tool-definition.ja.md](harness-tool-definition.ja.md)** | **取りまとめ第 1 部**。何の道具か / 3 つの壁 / **他では解決できない強み(S1 統合・S2 標準)** / 幅 L0〜L8 / **方向性 A・B・C** / 非目標 | **定義**(方向性は未選択) |
-| **[harness-requirement-triage.ja.md](harness-requirement-triage.ja.md)** | **各要望の個別判定**(`H-001`〜`H-191` 全 143 件)。**91 件(63%)が無理なく対応**、`D` 条件付き 28、`E` 個別判定 21(**束ねると 6 つ**)、`F` 範囲外 3 | **判定済** |
+| **[harness-scope-decisions.ja.md](harness-scope-decisions.ja.md)** | **大枠の決定軸 D1〜D12**。**軸ごとに粒度が違う**(全体 / MCU 別 / **series 別**)。**D4(APP/BL)は BOOT 領域サイズで 3 通りに決まる**。**H-list に無い軸が 6 つ**。落とす候補も | **決定待ち** |
+| **[harness-requirement-triage.ja.md](harness-requirement-triage.ja.md)** | **各要望の個別判定**(`H-001`〜`H-191` 全 143 件)。**91 件(63%)が無理なく対応**、`D` 条件付き 28、`E` 個別判定 21、`F` 範囲外 3。⚠ **細かすぎるので大枠(scope-decisions)が決まってから使う** | **判定済(要再読)** |
 | **[harness-existing-standards.ja.md](harness-existing-standards.ja.md)** | **既存標準で足りるものの調査**。ch32rv が既に吸収する予定のもの(UF2/DFU/HID BL/ISP/GDB/DAP/RTT/semihosting…)/ **計画に無い候補 3 つ**(GDB RSP client・**BMP の RISC-V remote protocol**・WCH IAP)/ 吸収できない 4 + 1 | **調査**(実装検証は未) |
 | **[harness-choices.ja.md](harness-choices.ja.md)** | **各論の選択肢集**。既存 protocol 対応の限界 / **PID の制約 K1〜K6 と軸 A〜D** / profile の下端 / V003 BL | **決めない** |
 | [dut-harness-design.ja.md](dut-harness-design.ja.md) | **構想の本体**。同一時間軸・cross-domain trigger・障害注入・RP2040-Zero のピン割当・**§8 = family 別の配線衝突表**(生成物) | アイデアメモ |
