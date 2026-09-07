@@ -24,6 +24,8 @@
 
 | 文書 | 何が書いてあるか | 状態 |
 |---|---|---|
+| **[harness-tool-definition.ja.md](harness-tool-definition.ja.md)** | **取りまとめ第 1 部**。何の道具か / 3 つの壁 / **他では解決できない強み(S1 統合・S2 標準)** / 幅 L0〜L8 / **方向性 A・B・C** / 非目標 | **定義**(方向性は未選択) |
+| **[harness-choices.ja.md](harness-choices.ja.md)** | **各論の選択肢集**。既存 protocol 対応の限界 / **PID の制約 K1〜K6 と軸 A〜D** / profile の下端 / V003 BL | **決めない** |
 | [dut-harness-design.ja.md](dut-harness-design.ja.md) | **構想の本体**。同一時間軸・cross-domain trigger・障害注入・RP2040-Zero のピン割当・**§8 = family 別の配線衝突表**(生成物) | アイデアメモ |
 | [harness-board-survey.ja.md](harness-board-survey.ja.md) | **board 別の到達範囲を 8 軸で比較**。RP2040 / RP2350 / ESP32-S3 / CH32X035 / X033。**X03x の PIOC**、**S3 の LCD_CAM + PSRAM**、**RP2350 errata E9** | 調査メモ |
 | [probe-pattern-coexistence.ja.md](probe-pattern-coexistence.ja.md) | **書込のみ / 複数 target / 書込+LA / harness / LA のみ / monitor のみ**の共存可否。**能力は build 時、役割は実行時** | 設計検討メモ |
@@ -171,7 +173,8 @@
 
 | # | 何 | 置き場(予定) | 状態 |
 |---|---|---|---|
-| 1 | **取りまとめ・第 1 部(道具の定義とユースケース)** | この repo | **✅ [harness-tool-definition.ja.md](harness-tool-definition.ja.md)**(2026-09-06) |
+| 1 | **取りまとめ・第 1 部(何の道具か・強み・方向性)** | この repo | **✅ [harness-tool-definition.ja.md](harness-tool-definition.ja.md)**。**高い視座のみ**。方向性 A/B/C は**未選択** |
+| 1a | **各論の選択肢集**(PID / 既存 protocol / profile / V003 BL) | この repo | **✅ [harness-choices.ja.md](harness-choices.ja.md)**。**結論を出さない**。方向性が決まってから選ぶ |
 | 1b | **取りまとめ・第 2 部(相反の裁定)** | この repo | **未作成**。`C-12` が最優先(§5) |
 | 2 | 一意な要求 ID の正本を形式的に決めるか | (§4) | 未決(運用は成立している) |
 | 3 | probe firmware の実装 | `ch32rv-probe` | `LICENSE` のみ |
