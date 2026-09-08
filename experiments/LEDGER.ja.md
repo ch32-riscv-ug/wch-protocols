@@ -189,7 +189,7 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 
 ### E026 ESP32-P4: SUMP pre/post trigger停止 — 完了 2026-09-09
 
-全文: [e026_p4_sump_prepost_stop/README.ja.md](e026_p4_sump_prepost_stop/README.ja.md)。採用run: `_runs/E026_20260908T155117Z_default/`。
+全文: [e026_p4_sump_prepost_stop/README.ja.md](e026_p4_sump_prepost_stop/README.ja.md)。採用run: `_runs/E026_20260908T155118Z_default/`。
 
 **事実**
 
@@ -203,7 +203,7 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 
 ### E025 ESP32-P4: SUMP基本trigger rate境界 — 完了 2026-09-09
 
-全文: [e025_p4_sump_trigger_rate_boundary/README.ja.md](e025_p4_sump_trigger_rate_boundary/README.ja.md)。採用run: `_runs/E025_20260908T154523Z_default/`。
+全文: [e025_p4_sump_trigger_rate_boundary/README.ja.md](e025_p4_sump_trigger_rate_boundary/README.ja.md)。採用run: `_runs/E025_20260908T154529Z_default/`。
 
 **事実**
 
@@ -217,7 +217,7 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 
 ### E024 ESP32-P4: SUMP基本trigger 32-bit検索 80 MHz — 完了 2026-09-09
 
-全文: [e024_p4_sump_swar_trigger_80mhz/README.ja.md](e024_p4_sump_swar_trigger_80mhz/README.ja.md)。採用run: `_runs/E024_20260908T153928Z_default/`。
+全文: [e024_p4_sump_swar_trigger_80mhz/README.ja.md](e024_p4_sump_swar_trigger_80mhz/README.ja.md)。採用run: `_runs/E024_20260908T153929Z_default/`。
 
 **事実**
 

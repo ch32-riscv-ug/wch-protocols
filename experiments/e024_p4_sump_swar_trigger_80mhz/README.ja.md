@@ -60,7 +60,7 @@ software基本triggerを80 MHz capabilityに含められるか、trigger付きca
 
 実施日: 2026-09-09
 
-採用run: `_runs/E024_20260908T153928Z_default/test_sump_swar_trigger_80mhz/dut.log`
+採用run: `_runs/E024_20260908T153929Z_default/test_sump_swar_trigger_80mhz/dut.log`
 
 | mode | match | 最初のindex | scan | scan throughput | capture実効rate | queue overflow |
 |---|---:|---:|---:|---:|---:|---:|

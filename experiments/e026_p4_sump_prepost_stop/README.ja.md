@@ -59,7 +59,7 @@ SUMPのcapture delayに相当するpre/post配置を、PARLIOのchunk受信上�
 
 実施日: 2026-09-09
 
-採用run: `_runs/E026_20260908T155117Z_default/test_sump_prepost_stop/dut.log`
+採用run: `_runs/E026_20260908T155118Z_default/test_sump_prepost_stop/dut.log`
 
 | pre/post | trigger index | 総取得sample | 要求stop | overshoot |
 |---:|---:|---:|---:|---:|
