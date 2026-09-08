@@ -36,6 +36,7 @@
 | **E025** | 32-bit software基本trigger付き8-bit captureがdropなしで成立するsample rate境界はどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 全条件24 MHz、28 MHzで分岐**([e025_p4_sump_trigger_rate_boundary/](e025_p4_sump_trigger_rate_boundary/README.ja.md)) |
 | **E026** | 20 MHz captureをtrigger後の指定sample数で停止し、25/75・50/50・75/25のpre/post windowを構成できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 3比率、停止誤差<1 chunk**([e026_p4_sump_prepost_stop/](e026_p4_sump_prepost_stop/README.ja.md)) |
 | **E027** | 1 MiB PSRAM circular ringを複数回wrapした後も20 MHzで50/50 pre/post windowを再構成できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 1/2/4 wrap、3回連続成功**([e027_p4_sump_circular_pretrigger/](e027_p4_sump_circular_pretrigger/README.ja.md)) |
+| **E028** | pattern・edge・occurrence countを組み合わせた4-stage software triggerからpost取得・停止まで成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **計画**([e028_p4_sump_four_stage_trigger/](e028_p4_sump_four_stage_trigger/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -65,7 +66,6 @@
 | `tool-fast-capture` | 受信を SPI slave / レジスタ直読み / 割り込みにすれば、実 RVSWD 速度で bit を拾えるか(E005 は 100 kbps が上限) | **常設 v2** | peer 対 2 枚 | 有 | (道具) |
 | `p4-parlio-rate` | PARLIO TX等の既知patternを信号源にして、internal RAMへの8-bit有限長PARLIO RX captureが欠落・化けなしで成立するsample rate上限はどこか | **一時・配線なし** | ESP32-P4 1枚 | 有 | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 |
 | `p4-parlio-spool-rate` | internal DMA ringからPSRAMへ退避するとき、dropなしで継続できる8-bit sample rate、ring/chunk size、capture時間の境界はどこか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有(E016で32 MiB確認) | 同上。E021の8 MHz成立後 |
-| `p4-trigger-staged` | mask/value条件、edge、発生回数、段階遷移を組み合わせた4-stage相当triggerをdropなしで評価できるrate上限はどこか | **一時・配線なし** | ESP32-P4 1枚、内部生成pattern | 有 | 同上。SUMP multi-stage trigger相当 |
 | `p4-rmt-capture` | 同じPWM/RMT信号をRMT RXのpulse-duration列で取得すると、PARLIO raw sampleより少ないdata量で何channel・何edge/sまで保持できるか | **一時・配線なし** | ESP32-P4 1枚 | 有 | 同上 |
 | `p4-adc-continuous` | ESP32-P4のADC continuous DMAでanalog pinを連続captureでき、実効sample rate・欠落・noiseはどの程度か | **一時** | ESP32-P4 1枚、PWMまたはSDM出力、ADC pinへのjumper、必要ならRC | 有 | 同上 |
 | `linke-error-frame` | WCH-Link の異常系 error 応答 frame の形式(target 無し等) | **常設**(capture) | LinkE + usbmon | 有 | [pc-to-link](../protocols/pc-to-link.ja.md) §3、P1-1 |
