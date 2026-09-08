@@ -1,10 +1,8 @@
-# ESP32-P4 PARLIO RXからPSRAMへの直接DMA
+# E016 ESP32-P4 PARLIO RXからPSRAMへの直接DMA
 
-状態: **候補・未採番**
+状態: **計画**
 
-規則: [実測の規則](../../README.ja.md) / 台帳: [LEDGER](../../LEDGER.ja.md) / 先行実験: [E015](../../e015_p4_parlio_routing_order/README.ja.md)
-
-結果によって後続のPSRAM退避方式が変わるため、実行を決めるまでは採番しない。
+規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行実験: [E015](../e015_p4_parlio_routing_order/README.ja.md)
 
 ## 問い
 
@@ -49,7 +47,7 @@ PSRAMが実機で利用可能なのに、整列済みPSRAM payloadを使う有�
 8. 全laneのhigh/low、edge数、duty比をinternal RAMとPSRAMで比較する
 9. build・upload・monitorはpytest harness経由だけで行う
 
-まず小さいbufferでAPI経路の成立を確認し、成立後にPSRAMらしい大きさへ広げる。buffer容量やsample rate上限を同時に掃引しない。
+capture sizeはE015と同じ8,192 byteに固定する。PSRAMを使った事実はpointerの所在で確認できるため、この実験ではbuffer容量やsample rateを掃引しない。
 
 ## 分岐
 
@@ -72,14 +70,14 @@ PSRAMが実機で利用可能なのに、整列済みPSRAM payloadを使う有�
 - ESP32-P4 rev 1.3、MAC `e8:f6:0a:e0:aa:24`
 - stable port alias `/run/board-identify/by-id/esp32-p4-e8f60ae0aa24`
 - Arduino-ESP32 3.3.11
-- board上のPSRAM。容量は実験開始時に確認する
+- boardは接続確認済み。PSRAMの有無・容量はUSB識別情報から確定できないため、実験開始時のpreflightで確認する
 - 外部配線・target・logic analyzerは不要
 
 portとGPIO番号は`experiments/.env`だけに置く。pytest harnessのdevice lockを無効化しない。
 
 ## 完了条件
 
-- controlのinternal RAM captureが成功している
-- PSRAM bufferの所在とalignmentを実測している
-- PSRAMを直接payloadにした有限長PARLIO RXが成功するか、拒否・timeout・data不一致のどれかをraw logで確定している
-- 結果に応じた後続候補を一つに絞れる
+次のどちらかを満たす。
+
+1. PSRAMが存在しない場合: 容量0と初期化状態をraw logへ残し、直接DMAを評価せず「環境不成立」として中断する
+2. PSRAMが存在する場合: internal RAM controlが成功し、PSRAM bufferの所在・alignmentと、直接payloadにした有限長PARLIO RXの成功・拒否・timeout・data不一致のいずれかをraw logで確定し、結果に応じた後続候補を一つに絞る

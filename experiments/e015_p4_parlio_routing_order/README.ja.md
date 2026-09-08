@@ -108,7 +108,7 @@ pytest結果: **1 passed in 12.80 s**。
 ## 未決
 
 - sample rate上限: 未採番候補`p4-parlio-rate`
-- PARLIOからPSRAMへの直接DMA: 未採番候補`p4-parlio-psram-direct`
+- PARLIOからPSRAMへの直接DMA: [E016](../e016_p4_parlio_psram_direct/README.ja.md)
 - PSRAM帯域とinternal RAMからの退避限界: 未採番候補`p4-psram-bandwidth` / `p4-parlio-psram-spool`
 - 外部pad上の電気的波形とsample clockの実周波数は未測定。本結果は配線なしの内部経路についての`attested`であり、外部信号capture全般を`verified`にはしない
 
