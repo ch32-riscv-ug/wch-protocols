@@ -24,6 +24,9 @@
 
 | 文書 | 何が書いてあるか | 状態 |
 |---|---|---|
+| **[probe-product-concept.ja.md](probe-product-concept.ja.md)** | **基本コンセプト**。自作 probe が共通 VID:PID を共有し、必要な service を自由に構成できる protocol 基盤。descriptor pattern、`bcdDevice`、capability discovery、USB/serial/IP 共通化、拡張原則を整理 | **企画仮説**(決定前の判断基準) |
+| **[probe-feasibility-gates.ja.md](probe-feasibility-gates.ja.md)** | **実現性ゲート**。MCU非依存のPID割当候補、申請条件、`bcdDevice`のprofile数とopaqueな連番管理、Windows実機検証条件 | **調査中** |
+| **[oss-usb-pid-application-report.ja.md](oss-usb-pid-application-report.ja.md)** | **PID申請調査**。Openmokoとpid.codesの条件、申請PRの作り方、review事例、類似割当、複数MCU・descriptor profile構想で確認すべき点 | **調査済み** |
 | **[harness-tool-definition.ja.md](harness-tool-definition.ja.md)** | **取りまとめ第 1 部**。何の道具か / 3 つの壁 / **他では解決できない強み(S1 統合・S2 標準)** / 幅 L0〜L8 / **方向性 A・B・C** / 非目標 | **定義**(方向性は未選択) |
 | **[harness-channels.ja.md](harness-channels.ja.md)** | **harness を通る信号の分離**。**論理 IF 5 種**(control / capture / target UART / event / bulk)× **物理 IF 9 種**の成立表。**多重化 3 方式**。**素の serial が使えなくなる問題と回避策**、**HID の遅さがどこに効くか** | **整理** |
 | **[harness-frontier.ja.md](harness-frontier.ja.md)** | **core を広げても届かない対象**。**置き場所(V003 の BOOT 1,920 B / M030 は領域なし)/ probe になる silicon(V003・X03x は capture に届かない)/ series(未発売 9・V103)/ 配布と制度**。**資源の取り合いは「後で調整できる」ので対象外** | **見積り** |
