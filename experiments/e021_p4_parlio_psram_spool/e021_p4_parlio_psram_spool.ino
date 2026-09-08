@@ -28,6 +28,14 @@
 #define SAMPLE_RATE_HZ 8000000
 #endif
 
+#ifndef SAMPLE_RATE_FOR_RUN
+#define SAMPLE_RATE_FOR_RUN(run) SAMPLE_RATE_HZ
+#endif
+
+#ifndef EXPERIMENT_RUNS
+#define EXPERIMENT_RUNS 3
+#endif
+
 #ifndef BEFORE_CAPTURE
 #define BEFORE_CAPTURE(run) do { } while (0)
 #endif
@@ -50,7 +58,7 @@ constexpr size_t kRingSize = 64 * 1024;
 constexpr size_t kDestinationSize = 1024 * 1024;
 constexpr size_t kDelimiterSize = 65408;
 constexpr size_t kQueueDepth = 64;
-constexpr size_t kRuns = 3;
+constexpr size_t kRuns = EXPERIMENT_RUNS;
 constexpr uint32_t kDuties[kLaneCount] = {
     16, 48, 80, 112, 144, 176, 208, 240,
 };
@@ -128,14 +136,15 @@ bool IRAM_ATTR on_partial_receive(parlio_rx_unit_handle_t,
 }
 
 esp_err_t create_receiver(parlio_rx_unit_handle_t *rx_unit,
-                          parlio_rx_delimiter_handle_t *delimiter) {
+                          parlio_rx_delimiter_handle_t *delimiter,
+                          uint32_t sample_rate_hz) {
   parlio_rx_unit_config_t unit_config = {};
   unit_config.trans_queue_depth = 1;
   unit_config.max_recv_size = kRingSize;
   unit_config.dma_burst_size = 0;
   unit_config.data_width = kLaneCount;
   unit_config.clk_src = PARLIO_CLK_SRC_DEFAULT;
-  unit_config.exp_clk_freq_hz = kSampleRateHz;
+  unit_config.exp_clk_freq_hz = sample_rate_hz;
   unit_config.clk_in_gpio_num = GPIO_NUM_NC;
   unit_config.clk_out_gpio_num = GPIO_NUM_NC;
   unit_config.valid_gpio_num = GPIO_NUM_NC;
@@ -161,6 +170,7 @@ esp_err_t create_receiver(parlio_rx_unit_handle_t *rx_unit,
 }
 
 void run_case(size_t run) {
+  const uint32_t sample_rate_hz = SAMPLE_RATE_FOR_RUN(run);
   xQueueReset(capture_state.queue);
   capture_state.callback_count = 0;
   capture_state.callback_bytes = 0;
@@ -174,7 +184,8 @@ void run_case(size_t run) {
 
   parlio_rx_unit_handle_t rx_unit = nullptr;
   parlio_rx_delimiter_handle_t delimiter = nullptr;
-  const esp_err_t config_result = create_receiver(&rx_unit, &delimiter);
+  const esp_err_t config_result =
+      create_receiver(&rx_unit, &delimiter, sample_rate_hz);
   esp_err_t enable_result = ESP_FAIL;
   if (config_result == ESP_OK) {
     enable_result = parlio_rx_unit_enable(rx_unit, true);
