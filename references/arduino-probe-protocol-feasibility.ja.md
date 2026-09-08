@@ -324,3 +324,25 @@ PID申請までのdebug実証は、従来案の「JTAGまたはSWDのどちら�
 4. 共通のhost bridgeを介したOpenOCDのhalt、register/memory read、resume
 
 IDCODEは信号層の成立確認であり、実装例の完成とはみなさない。SWDとJTAGの双方をOpenOCDから利用できれば、Open Embedded Probeが単なるUSB-UART adapterでも専用test programでもなく、異なるMCU上で実用的なdebug serviceを提供できることを示せる。
+
+## 追加TODO — SUMP系logic capture
+
+PID申請用の最小実装とは分けて、SUMP protocolに近い操作modelを持つlogic capture機能を追加できるか検討する。
+
+- sample rate、channel、trigger、sample countを設定してcaptureを開始する
+- probe内のRAMまたはPSRAMへ収集し、capture完了後にhostへdownloadする
+- host側でraw dataをtextまたはsigrokが読めるファイル形式へ保存する
+- 連続的なreal-time streamingを前提にせず、まずは有限長のbatch captureとして成立させる
+- SUMPとの完全互換を必須にせず、既存toolとの接続価値と共通protocolへ自然に載せられる範囲を比較する
+
+ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的な構成を候補とする。Picoでは内蔵RAMに収まる小さなsample数に限定し、同じ操作modelの最小実装が成立するかを確認する。buffer容量、最大sample rate、channel数、trigger能力は固定仕様にせずcapabilityとして申告する。
+
+検討時には、少なくとも次を分けて評価する。
+
+1. SUMP commandとの互換範囲
+2. capture dataのprobe内表現とdownload方法
+3. text、sigrok session等へのhost側変換
+4. ESP32-P4のPSRAM帯域・容量と、PicoのRAM上限
+5. capture中のUSB/IP処理、SWD/JTAG等とのresource競合
+
+このTODOはprotocol coreへlogic analyzer固有仕様を組み込む決定ではない。logic captureを独立した追加機能として表現できるかを確認するための検討項目とする。
