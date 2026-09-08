@@ -1,6 +1,6 @@
 # E015 ESP32-P4 PARLIO routing初期化順
 
-状態: **計画**
+状態: **完了**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行実験: [E014](../e014_p4_parlio_internal_capture/README.ja.md)
 
@@ -82,4 +82,37 @@ portとGPIO番号は`experiments/.env`だけに置く。pytest harnessのdevice 
 
 ## 結果
 
-未実行。
+採用run: `_runs/E015_20260908T095518Z_default/test_routing_orders/dut.log`
+
+pytest結果: **1 passed in 12.80 s**。
+
+| variant | 最終SigOut | 最終SigIn | capture | duty誤差の最大値 | edge範囲 |
+|---|---|---|---:|---:|---:|
+| LEDC → PARLIO | 126〜133 (LEDC) | 188〜195 (PARLIO RX) | 8,192 byte × 3回、全lane成功 | 2,198 ppm | 204〜206 |
+| PARLIO → LEDC | 126〜133 (LEDC) | 188〜195 (PARLIO RX) | 8,192 byte × 3回、全lane成功 | 1,832 ppm | 204〜207 |
+
+両variantとも、最終状態ではGPIO 2〜9の`InputEn=1`、`OutputEn=[periph_sig_ctrl]`となった。LEDCの実周波数表示は全lane 100 kHz。PARLIO RXは8 MHzに設定し、各laneの観測dutyは設定値`16/256`〜`240/256`と一致した。
+
+最初のrun (`E015_20260908T095217Z_default`) はhost側tuple indexの誤り、次のrun (`E015_20260908T095248Z_default`) は行末を待たない正規表現が`937744`を受信途中の`9377`で確定したため、判定コードを修正した。いずれもdevice側のcapture失敗ではない。採用runでは正規表現を改行まで一致させ、全48観測を完全な行として検査した。
+
+## 事実
+
+1. **`io_loop_back=false`なら、同一GPIOにLEDC出力とPARLIO RX入力を公開APIだけで共存させられる。** 初期化順はどちらでも成立した。
+2. **E014で出力経路がsimple GPIOへ変わった原因は初期化順ではなく`io_loop_back=true`である。** 既に別peripheralが駆動するpinを内部観測するとき、PARLIO側に出力loopback設定は不要。
+3. 8 MHz設定・8-bit・8,192 sampleでは、8 laneすべての100 kHz PWM dutyとedgeを3回連続で取得できた。
+
+## 候補
+
+既存peripheralの内部観測では、信号源を先に固定せず、PARLIO RXを`io_loop_back=false`で入力経路だけに接続する。
+
+## 未決
+
+- sample rate上限: 未採番候補`p4-parlio-rate`
+- PARLIOからPSRAMへの直接DMA: 未採番候補`p4-parlio-psram-direct`
+- PSRAM帯域とinternal RAMからの退避限界: 未採番候補`p4-psram-bandwidth` / `p4-parlio-psram-spool`
+- 外部pad上の電気的波形とsample clockの実周波数は未測定。本結果は配線なしの内部経路についての`attested`であり、外部信号capture全般を`verified`にはしない
+
+## 反映
+
+- [実験台帳](../LEDGER.ja.md)へ結果と未採番候補を記録した。
+- [Arduino向けprobe protocol実現性](../../references/arduino-probe-protocol-feasibility.ja.md)の採否は変更しない。速度・PSRAM・外部信号が未決のため。
