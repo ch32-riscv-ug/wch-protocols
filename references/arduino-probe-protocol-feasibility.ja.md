@@ -358,6 +358,8 @@ ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的�
 
 [E028](../experiments/e028_p4_sump_four_stage_trigger/README.ja.md)ではlane 7 high、lane 7 falling、lane 0 rising 4回、low nibble zeroを順に評価する固定4-stage triggerを16 MHzで試した。3/3回でstage順序とcountが正しく、queue最大0、overflow 0、data正常のままfinal trigger後256 Ki sampleを取得して停止した。これによりmulti-stage triggerの実装可能性は確認できたが、汎用stage command、全条件を長時間検索するrate、SUMP wire互換は未確認である。
 
+[E029](../experiments/e029_p4_circular_ring_soak/README.ja.md)ではE027の1 / 2 / 4 wrapを10組、個別にupload/resetした2実行で繰り返した。合計60/60 capture、178,393,600 sampleでqueue最大1、overflow 0、実効19.954〜19.985 MB/s、ring全体と論理windowのdataが正常だった。E027の最初に一度だけ見えた異常は再現せず、20 MHz circular captureをhost download統合の基準構成へ進められる短期再現性を確認した。
+
 検討時には、少なくとも次を分けて評価する。
 
 1. SUMP commandとの互換範囲
