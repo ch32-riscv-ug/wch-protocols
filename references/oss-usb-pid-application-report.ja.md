@@ -83,7 +83,7 @@ GitHubを使わない場合は、README記載のmail addressへ連絡できる�
 <Project name> extensible debug and measurement probe
 ```
 
-名称は未決定なので、実際の文字列はproject名確定後に決める。
+project名はOpen Embedded Probeとした。実際の登録文字列は、申請時の実装範囲に合わせて最終決定する。
 
 ### 1.4 今回に近い前例
 
@@ -261,8 +261,8 @@ current WCH-related repository
 | license | protocol、firmware、host software、reference hardwareのlicense境界 |
 | protocol draft | identity、capability discovery、extension、transportの基本 |
 | descriptor profile registry | profile番号、descriptor構成、変更規則 |
-| reference firmware | 少なくとも一つのCH32 RISC-V probe実装 |
-| client implementation | 列挙と一つ以上のprobe機能を実行できるもの |
+| reference firmware | Raspberry Pi PicoとESP32-S3で動く二つのprobe実装 |
+| client implementation | `uv run`で実行でき、列挙と一つ以上のprobe機能を端末から操作できるPython source |
 | 動作記録 | build手順、USB列挙結果、実targetでの操作結果 |
 | Windows検証 | 同一VID:PID・異なる`bcdDevice`でprofileが分離する証拠 |
 | PID利用方針 | 誰が、どの条件でproject PIDを使用できるか |
@@ -301,8 +301,9 @@ only to distinguish descriptor layouts; clients inspect the descriptors and
 protocol capabilities rather than deriving features from that number.
 
 The repository contains the protocol specification, descriptor profile
-registry, conformance rules, a working CH32 RISC-V reference firmware, and
-a client implementation under <licenses>.
+registry, conformance rules, working reference firmware for Raspberry Pi
+Pico and ESP32-S3, and a Python client that can be run directly from source
+with uv under <licenses>.
 
 Please confirm that the allocation may be used by conforming implementations
 on different MCUs, including third-party implementations governed by the

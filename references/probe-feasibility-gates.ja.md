@@ -6,7 +6,7 @@
 
 | ゲート | 判定 | 要点 |
 |---|---|---|
-| project名と公開場所 | **未決定** | PID申請前に恒久的なidentityとsource URLが必要 |
+| project名と公開場所 | **一部確定** | `Open Embedded Probe`とGitHub Organizationを確保。canonical repositoryは未作成 |
 | MCU非依存でPIDを取得できるか | **候補あり** | Openmokoとpid.codesが候補 |
 | 一つのPIDを複数hardwareで使えるか | **見込みあり・要確認** | OpenmokoはhardwareごとにPIDを取らないよう明記 |
 | 第三者の準拠実装も同じPIDを使えるか | **未確認** | 割当団体へ利用範囲の確認が必要 |
@@ -17,7 +17,7 @@
 
 PIDはproject名、owner、source URLと結び付けて登録されるため、申請前にprojectのidentityと恒久的な公開場所を決める必要がある。
 
-現在の`wch-protocols`は検討場所として利用できるが、名称がWCHに限定されて見えるため、MCU非依存protocolの公開場所には適さない。申請時までに、中立的なproject名の専用repositoryへ切り出す案を基本とする。
+project名は **Open Embedded Probe** とし、GitHub Organizationとして[`Open-Embedded-Probe`](https://github.com/Open-Embedded-Probe)を確保した。現在の`wch-protocols`は引き続き検討場所として利用し、申請時までにcanonical repositoryを専用organizationへ公開する。
 
 | 配置 | 評価 |
 |---|---|
@@ -52,7 +52,7 @@ Openmokoは、一つのsoftwareが対応するhardwareごとにPIDを要求せ�
 このゲートは、次を満たした時点で通過とする。
 
 - protocol、license、利用目的を公開する
-- CH32 RISC-V向けreference implementationが動作する
+- Raspberry Pi PicoとESP32-S3向けreference implementationが動作する
 - project PIDを使用するprobe firmwareに、認知されたFOSS licenseを必須とする
 - 一つのPIDで複数のMCUとdescriptor profileを扱う計画を申請時に説明する
 - 第三者による準拠実装を含むPIDの利用範囲について、割当団体の了承を得る
