@@ -1,6 +1,6 @@
 # E018 ESP32-P4 PARLIO PSRAM cache log抑制
 
-状態: **計画**
+状態: **完了 — 1 MiB soft delimiterはAPI上限で拒否**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行実験: [E017](../e017_p4_parlio_psram_cache_sync/README.ja.md)
 
@@ -68,3 +68,33 @@ E017では8,192 byteでtransactionごとに2件のcache errorが出た一方、�
 ## 影響
 
 実用的なbatch logic captureをstock Arduino環境で評価し続けられるかのgate。成功しても容量・sample rate・host downloadは別実験で測る。
+
+## 結果
+
+実施日: 2026-09-08
+
+採用run: `_runs/E018_20260908T144655Z_default/test_psram_cache_log_suppression/dut.log`
+
+1 MiB payloadの確保とPARLIO RX unitの作成は成功した。しかし、`eof_data_len = 1,048,576`のsoft delimiter作成は次のerrorで`ESP_ERR_INVALID_ARG`となった。
+
+```text
+parlio_new_rx_soft_delimiter: EOF data length is 0 or exceed the max value 65535
+```
+
+同じunitに対する8,192 byteのcontrol delimiterは`ESP_OK`だった。pytestはこの拒否を期待結果として確認し、1件成功した。最初のrun (`E018_20260908T144344Z_default`) は1 MiB delimiterを受理すると仮定したassertで失敗し、採用runでは実測した上限拒否をassertした。
+
+公開されているESP-IDF 5.5の[PARLIO RX source](https://github.com/espressif/esp-idf/blob/release/v5.5/components/esp_driver_parlio/src/parlio_rx.c)も、soft delimiterの`eof_data_len`を`PARLIO_LL_RX_MAX_BYTES_PER_FRAME`以下に制限している。ESP32-P4 headerでこの値は`0xFFFF`である。
+
+## 判定
+
+仮説の前提を反証した。stock driverのsoft delimiterを使う**単一の有限長transaction**では1 MiB captureを表現できないため、この経路でのcache log抑制と1 MiB data検証は実行できなかった。
+
+これはPSRAM容量やGDMAの上限ではなく、frame終端長のAPI上限である。深い連続captureには、`partial_rx_en`によるring transactionと停止処理、level/pulse delimiterによる外部終端、または複数の有限長transactionのいずれかが必要になる。隙間のないlogic captureという目的から、次は`partial_rx_en`を優先して切り分ける。
+
+## 事実・候補・未決
+
+**事実**: 1 MiB PSRAM payloadは確保でき、PARLIO unitも`max_recv_size = 1 MiB`で作成できた。soft delimiterのEOF長だけが65,535 byte上限で拒否された。
+
+**候補**: 1 MiB PSRAMをdirect DMA ringとしてmountし、partial callbackで一周を検出して停止する。
+
+**未決**: partial direct mountがPSRAMで動くか / 公開APIだけで正確に停止できるか / cache log抑制が効くか / 一周後のpayload全体syncでdataが正しいか。
