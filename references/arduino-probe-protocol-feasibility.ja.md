@@ -331,8 +331,9 @@ PID申請用の最小実装とは分けて、SUMP protocolに近い操作model�
 
 - sample rate、channel、trigger、sample countを設定してcaptureを開始する
 - probe内のRAMまたはPSRAMへ収集し、capture完了後にhostへdownloadする
+- real-time modeではprobeから共通protocolのstreamとしてsampleをhostへ送る
 - host側でraw dataをtextまたはsigrokが読めるファイル形式へ保存する
-- 連続的なreal-time streamingを前提にせず、まずは有限長のbatch captureとして成立させる
+- 最初の成立確認は有限長のbatch captureとし、real-time modeは独立した追加modeとして扱う
 - SUMPとの完全互換を必須にせず、既存toolとの接続価値と共通protocolへ自然に載せられる範囲を比較する
 
 ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的な構成を候補とする。Picoでは内蔵RAMに収まる小さなsample数に限定し、同じ操作modelの最小実装が成立するかを確認する。buffer容量、最大sample rate、channel数、trigger能力は固定仕様にせずcapabilityとして申告する。
@@ -346,3 +347,22 @@ ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的�
 5. capture中のUSB/IP処理、SWD/JTAG等とのresource競合
 
 このTODOはprotocol coreへlogic analyzer固有仕様を組み込む決定ではない。logic captureを独立した追加機能として表現できるかを確認するための検討項目とする。
+
+### sigrok real-time連携の候補
+
+PC側applicationが提供する互換出力として、**BeagleLogic TCP**を候補に加える。
+
+```text
+probe ── 共通protocolのlogic sample stream ──> PC application
+                                                   └─ BeagleLogic TCP互換server ──> sigrok / PulseView
+```
+
+probe firmwareがBeagleLogic TCPを実装する構成にはしない。probeはtransportに依存しない共通protocolでsample、sample rate、channel構成、連番、drop等を送り、PC側applicationがBeagleLogicの制御commandとraw sample列へ変換する。
+
+この分離により、同じprobe streamから次を並行して提供できる。
+
+- BeagleLogic TCP経由のsigrok real-time表示
+- text、sigrok session、VCD等への保存
+- 共通protocolを直接扱う別applicationへの配信
+
+BeagleLogic TCPはsigrok互換adapterの候補であり、共通protocolのwire formatやcapability modelを制約しない。BeagleLogic側で表現できないchannel数、timestamp、drop情報等はPC側applicationが保持し、変換不能な条件では明示的に拒否またはcaptureを終了する。
