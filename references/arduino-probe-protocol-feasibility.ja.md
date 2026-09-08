@@ -348,6 +348,8 @@ ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的�
 
 [E023](../experiments/e023_p4_sump_basic_trigger_80mhz/README.ja.md)ではSUMP基本trigger相当のpattern/mask・edge条件をcopy taskで1 byteずつ全sample検索した。検索は15.078〜24.555 MB/sに留まり、80 MHz入力ではqueue overflowが722〜1,286件発生した。したがってtriggerなし80 MHzは成立するが、素朴なsoftware trigger付き80 MHzは成立しない。32-bit並列検索、専用core、またはtrigger mode時のsample rate制限を比較する必要がある。
 
+[E024](../experiments/e024_p4_sump_swar_trigger_80mhz/README.ja.md)では4 sampleを32-bit word内で並列評価したが、検索は25.605〜30.926 MB/sで、80 MHz入力では537〜683件overflowした。整数software検索を最適化するだけでは80 MHzに届かず、trigger付きcaptureの成立rateを独立したcapabilityとして測る必要がある。別core化だけでも検索単体のthroughput不足は残るため、同じalgorithmのcore移動を次の解決策とはしない。
+
 検討時には、少なくとも次を分けて評価する。
 
 1. SUMP commandとの互換範囲
