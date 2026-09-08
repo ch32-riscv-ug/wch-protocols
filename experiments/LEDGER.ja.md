@@ -23,7 +23,7 @@
 | **E012** | 銘板の版情報を conftest から build 時に自動で埋められるか。再ビルドのコストは | **常設 v0**(実機なし) | [README.ja.md §5](README.ja.md) | **完了**([e012_banner_autofill/](e012_banner_autofill/README.ja.md)) |
 | **E013** | 同一VID:PID・異なる`bcdDevice`でHID-onlyとHID + Vendor + CDC × 1をWindowsが分離でき、Linuxでも各経路が通信できるか | **一時・専用機材**(別途用意するESP32-S3 native USB、Windows 11、Linux) | [probe-feasibility-gates](../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 4 | **計画**([e013_usb_descriptor_profiles/](e013_usb_descriptor_profiles/README.ja.md)) |
 | **E014** | ESP32-P4で8本のGPIOをLEDC出力に使ったまま、同じGPIOをPARLIO RXへ接続して配線なしで同時captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **中断 — 選んだ初期化方法は反証**([e014_p4_parlio_internal_capture/](e014_p4_parlio_internal_capture/README.ja.md)) |
-| **E015** | `io_loop_back`を使わず入力だけを追加するか、PARLIO→LEDCの順にすれば、同じ8 GPIOでLEDC PWMとPARLIO RXを共存できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **計画**([e015_p4_parlio_routing_order/](e015_p4_parlio_routing_order/README.ja.md)) |
+| **E015** | `io_loop_back`を使わず入力だけを追加するか、PARLIO→LEDCの順にすれば、同じ8 GPIOでLEDC PWMとPARLIO RXを共存できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了**([e015_p4_parlio_routing_order/](e015_p4_parlio_routing_order/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -52,6 +52,7 @@
 | `wire-bitstream` | SWIO / RVSWD の **bit 列**(start・addr7・data32・op2・parity)は [link-to-target](../protocols/link-to-target.ja.md) §3 の仕様どおりか。**タイミングは見ない** | **常設 v0**(実機なし)または **常設 v2**(E005 の道具で実線上を確認。半周期 5 us 以上) | host Arduino core / peer 対 | 有 | [link-to-target](../protocols/link-to-target.ja.md) §3 |
 | `tool-fast-capture` | 受信を SPI slave / レジスタ直読み / 割り込みにすれば、実 RVSWD 速度で bit を拾えるか(E005 は 100 kbps が上限) | **常設 v2** | peer 対 2 枚 | 有 | (道具) |
 | `p4-parlio-rate` | PARLIO TX等の既知patternを信号源にして、internal RAMへの8-bit有限長PARLIO RX captureが欠落・化けなしで成立するsample rate上限はどこか | **一時・配線なし** | ESP32-P4 1枚 | 有 | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 |
+| `p4-parlio-psram-direct` | Arduino環境からESP-IDF PARLIO driverを直接呼び、有限長PARLIO RXのDMA先をPSRAMにして8-bit captureできるか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有と推定・実機確認待ち | 同上。計画: [plans/p4-parlio-psram-direct/](plans/p4-parlio-psram-direct/README.ja.md) |
 | `p4-psram-bandwidth` | 搭載PSRAMの容量は幾らで、internal RAM→PSRAM write、PSRAM→internal RAM read、PSRAM内CPU accessの帯域はchunk sizeごとに幾らか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有と推定・実機確認待ち | 同上 |
 | `p4-parlio-psram-spool` | PARLIO RXのinternal DMA ping-pong bufferをPSRAMへ退避するとき、dropなしで継続できる8-bit sample rate、chunk size、capture時間の境界はどこか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有と推定・実機確認待ち | 同上 |
 | `p4-rmt-capture` | 同じPWM/RMT信号をRMT RXのpulse-duration列で取得すると、PARLIO raw sampleより少ないdata量で何channel・何edge/sまで保持できるか | **一時・配線なし** | ESP32-P4 1枚 | 有 | 同上 |
@@ -145,6 +146,21 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E015 ESP32-P4: LEDC出力とPARLIO RX入力の同一GPIO共存 — 完了 2026-09-08
+
+全文: [e015_p4_parlio_routing_order/README.ja.md](e015_p4_parlio_routing_order/README.ja.md)。採用run: `_runs/E015_20260908T095518Z_default/`。
+
+**事実**
+
+1. **`io_loop_back=false`なら、GPIO 2〜9でLEDC出力とPARLIO RX入力を公開APIだけで共存させられる。** LEDC→PARLIOとPARLIO→LEDCの両方で成立。
+2. 最終GPIO mappingは両variantともLEDC SigOut 126〜133、PARLIO SigIn 188〜195、`InputEn=1`、peripheral output enabled。
+3. 8 MHz設定・8-bit・8,192 sample × 3回で、全laneの100 kHz PWM dutyを取得。最大duty誤差は2,198 ppm、edgeは204〜207。
+4. E014の失敗要因は初期化順ではなく`io_loop_back=true`による出力経路の上書きだった。
+
+**候補**: 既存peripheralを内部観測するとき、PARLIOは`io_loop_back=false`で入力経路だけを追加する。
+
+**未決**: sample rate上限(`p4-parlio-rate`) / PSRAMへの直接DMA(`p4-parlio-psram-direct`) / PSRAM帯域と退避限界(`p4-psram-bandwidth` / `p4-parlio-psram-spool`) / 外部pad上の電気的確認。
 
 ### E012 銘板: 版情報の自動埋め込み — 完了 2026-09-04
 
