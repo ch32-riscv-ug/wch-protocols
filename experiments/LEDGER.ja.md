@@ -27,7 +27,7 @@
 | **E016** | Arduino環境からESP-IDF PARLIO driverを直接呼び、有限長PARLIO RXのDMA先をPSRAMにして8-bit captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 直接DMA成立、cache警告あり**([e016_p4_parlio_psram_direct/](e016_p4_parlio_psram_direct/README.ja.md)) |
 | **E017** | stock PARLIO driverでPSRAM有限長captureのdescriptor cache警告を避けられるburst size / capture size条件はあるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — burst sizeでは回避不能**([e017_p4_parlio_psram_cache_sync/](e017_p4_parlio_psram_cache_sync/README.ja.md)) |
 | **E018** | `cache` tagのruntime logを抑制し、stock PARLIO driverで1 MiB PSRAM direct captureを正しく完了できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — soft delimiter上限で前提反証**([e018_p4_parlio_psram_log_suppression/](e018_p4_parlio_psram_log_suppression/README.ja.md)) |
-| **E019** | `partial_rx_en`で1 MiB PSRAMをdirect ringにし、一周を検出して公開APIだけで停止後、正しい連続captureを得られるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **計画**([e019_p4_parlio_psram_partial_ring/](e019_p4_parlio_psram_partial_ring/README.ja.md)) |
+| **E019** | `partial_rx_en`で1 MiB PSRAMをdirect ringにし、一周を検出して公開APIだけで停止後、正しい連続captureを得られるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — cache errorでInterrupt WDT**([e019_p4_parlio_psram_partial_ring/](e019_p4_parlio_psram_partial_ring/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -149,6 +149,21 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E019 ESP32-P4: PARLIO PSRAM partial ring — 完了 2026-09-08
+
+全文: [e019_p4_parlio_psram_partial_ring/README.ja.md](e019_p4_parlio_psram_partial_ring/README.ja.md)。採用run: `_runs/E019_20260908T145625Z_default/`。
+
+**事実**
+
+1. 1 MiB PSRAM direct partial transactionはAPIに受理され、開始した。
+2. `esp_log_level_set("cache", ESP_LOG_NONE)`後も、4,032-byte descriptorの不整列cache sync errorが出力された。
+3. 27 error後にCore 1がInterrupt WDTでpanicした。2 runで再現した。
+4. stack上のaddressは`esp_cache_msync` → `parlio_rx_default_desc_done_callback` → `gdma_default_rx_isr`へ復号でき、ISR内のdescriptor sync errorと一致した。
+
+**候補**: external-memory alignmentを使うdriver修正、またはinternal DMA ringからPSRAMへのtask退避。
+
+**未決**: PSRAM copy帯域 / spool方式のdropなしrate / driver修正のArduino組込み / 修正版ringの停止精度。
 
 ### E018 ESP32-P4: PARLIO PSRAM cache log抑制 — 完了 2026-09-08
 
