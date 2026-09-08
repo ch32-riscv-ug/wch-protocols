@@ -352,6 +352,8 @@ ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的�
 
 [E025](../experiments/e025_p4_sump_trigger_rate_boundary/README.ja.md)で16 / 20 / 24 / 28 / 32 MHzを掃引した。no-match / rising / patternの全条件がqueue最大1以下、overflow 0、data正常で成立したのは24 MHzまでだった。28 MHzではpatternだけが成立し、no-match / risingはqueueが32 / 43まで滞留した。32 MHzではno-match / risingがoverflowし、patternも入力に追従しなかった。したがって現在の共通software basic-trigger tierは測定済み上限24 MHz、保守的default候補20 MHzである。
 
+[E026](../experiments/e026_p4_sump_prepost_stop/README.ja.md)では20 MHzで512 Ki sampleの25/75・50/50・75/25 pre/post windowを試した。全比率でqueue最大1、overflow 0、data正常となり、trigger後の要求位置を含むdescriptorで停止できた。物理停止は要求位置を2,834〜2,961 sample超えたが、最大chunk 4,032 sample未満であり、論理windowをsample単位でtrimすれば要求長と比率を正確に返せる。PSRAM circular ringでの長時間trigger待機は未確認である。
+
 検討時には、少なくとも次を分けて評価する。
 
 1. SUMP commandとの互換範囲

@@ -48,6 +48,10 @@
 #define AFTER_CAPTURE(run) do { } while (0)
 #endif
 
+#ifndef CAPTURE_COMPLETE
+#define CAPTURE_COMPLETE(copied) ((copied) >= kDestinationSize)
+#endif
+
 namespace {
 
 constexpr size_t kLaneCount = 8;
@@ -211,7 +215,7 @@ void run_case(size_t run) {
     start_result =
         parlio_rx_soft_delimiter_start_stop(rx_unit, delimiter, true);
   }
-  while (start_result == ESP_OK && copied < kDestinationSize) {
+  while (start_result == ESP_OK && !CAPTURE_COMPLETE(copied)) {
     Chunk chunk = {};
     if (xQueueReceive(capture_state.queue, &chunk,
                       pdMS_TO_TICKS(500)) != pdTRUE) {
@@ -239,7 +243,7 @@ void run_case(size_t run) {
   const esp_err_t disable_result = parlio_rx_unit_disable(rx_unit);
 
   int64_t sync_us = 0;
-  if (!timed_out && copied == kDestinationSize && disable_result == ESP_OK) {
+  if (!timed_out && copied <= kDestinationSize && disable_result == ESP_OK) {
     const int64_t sync_begin = esp_timer_get_time();
     sync_result = esp_cache_msync(
         destination, kDestinationSize, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
@@ -264,19 +268,20 @@ void run_case(size_t run) {
   uint32_t max_error_ppm = 0;
   size_t min_edges = SIZE_MAX;
   size_t max_edges = 0;
+  const size_t validation_size = min(copied, kDestinationSize);
   if (result == ESP_OK) {
     for (size_t lane = 0; lane < kLaneCount; ++lane) {
       const uint8_t mask = 1U << lane;
       size_t high = 0;
       size_t edges = 0;
-      for (size_t sample = 0; sample < kDestinationSize; ++sample) {
+      for (size_t sample = 0; sample < validation_size; ++sample) {
         high += (destination[sample] & mask) != 0;
         if (sample != 0 &&
             ((destination[sample - 1] ^ destination[sample]) & mask) != 0) {
           ++edges;
         }
       }
-      const uint32_t ratio_ppm = high * 1000000ULL / kDestinationSize;
+      const uint32_t ratio_ppm = high * 1000000ULL / validation_size;
       const uint32_t expected_ppm = kDuties[lane] * 1000000ULL / 256;
       const uint32_t error_ppm = ratio_ppm > expected_ppm
                                      ? ratio_ppm - expected_ppm
