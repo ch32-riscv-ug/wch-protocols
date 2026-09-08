@@ -152,6 +152,35 @@ USB / serial / IP transport
 
 RP2040ではPIOがSWD/JTAGのclock生成とsamplingに適する。ESP32-S3の[RMT](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/rmt.html)は正確なpulse列の生成・受信に利用できるが、SWDのACKに応じた即時の方向転換やJTAGの同時samplingまで一つのperipheralで自然に処理できるとは限らない。したがってESP32-S3の初版は、低速で検証しやすいGPIO backendを作り、測定後に専用GPIO、SPI、RMT等へ置き換える。
 
+### GPIO fallbackとHALの境界
+
+JTAGとSWDはprobeがclockを生成する同期式interfaceなので、targetが許容するclock high/low時間を守れば、通常GPIOによるsoftware駆動でも成立する。CPU処理やinterruptでedge間隔が不均一になっても、最小pulse幅を破らない低速動作から始められる。JTAGでは指定edgeでTDOをsampleし、SWDではSWDIOのturnaround時に方向を正しく切り替える必要がある。
+
+ただしHALを`set_pin()`、`get_pin()`だけで切ると、上位層が一bitずつ呼び出す構造になり、PIO、DMA、SPI等へ置き換えても高速化できない。HALは**bit列をまとめて実行するsequence engine**として定義する。
+
+```text
+OEP service command
+    │  transfer / scanのbatch
+    ▼
+SWD engine              JTAG TAP engine
+DP/AP、ACK、retry        TAP state、IR/DR scan
+    │                         │
+    └──── wire sequence HAL ──┘
+              │
+      ┌───────┼──────────┐
+      ▼       ▼          ▼
+  GPIO実装   RP2040 PIO  ESP32専用実装
+  （基準）   + DMA       GPIO/SPI/RMT等
+```
+
+wire sequence HALが扱う単位は、概ね次のようにする。
+
+- JTAG: TMS/TDI列、bit数、TDO capture指定をまとめたshift
+- SWD: drive/read方向、bit列、turnaroundをまとめたsequence
+- 共通: clock設定、idle cycle、reset pin制御、完了結果と途中error
+
+GPIO backendは最初の正しさを確認する基準実装と、PIO等を利用できないMCUへのfallbackになる。高速backendも同じHAL contractを実装し、`max_clock_hz`、最大sequence長、DMA可否等をcapabilityとして申告する。この構造ならprotocol仕様とSWD/JTAGの上位logicを変えずに高速化できる。
+
 ## CMSIS-DAP等との関係
 
 CMSIS-DAPは、SWD/JTAG/SWOのcommand境界と既存debug toolとの接続に利用価値が高い。ただし、OEPの共通protocolをCMSIS-DAPそのものに限定すると、UART、GPIO、logic capture、将来の未知service、serial/IP transportを同じmodelで扱う目的から外れる。
