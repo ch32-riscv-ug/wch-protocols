@@ -5,20 +5,41 @@ void copy_to_capture_ring(uint8_t *destination, const uint8_t *data,
                           size_t length, size_t offset);
 void report_capture_ring(size_t run, size_t copied);
 
+#ifndef EXPERIMENT_ID
 #define EXPERIMENT_ID "E027"
+#endif
+#ifndef SAMPLE_RATE_HZ
 #define SAMPLE_RATE_HZ 20000000
+#endif
+#ifndef TRIGGER_MODE_FOR_RUN
 #define TRIGGER_MODE_FOR_RUN(run) 1
+#endif
+#ifndef WRAPS_FOR_RUN
+#define WRAPS_FOR_RUN(run) (1U << (run))
+#endif
+#ifndef TRIGGER_MIN_INDEX_FOR_RUN
 #define TRIGGER_MIN_INDEX_FOR_RUN(run) \
-  (((1U << (run)) * 1024U + 256U) * 1024U)
+  ((WRAPS_FOR_RUN(run) * 1024U + 256U) * 1024U)
+#endif
+#ifndef POST_SAMPLES_FOR_RUN
 #define POST_SAMPLES_FOR_RUN(run) (256U * 1024U)
+#endif
+#ifndef CAPTURE_COMPLETE
 #define CAPTURE_COMPLETE(copied)                                      \
   (trigger_test::metrics.found &&                                    \
    (copied) >= trigger_test::metrics.first_index +                   \
                    POST_SAMPLES_FOR_RUN(trigger_test::metrics.run))
+#endif
+#ifndef COPY_SIZE_FOR_CHUNK
 #define COPY_SIZE_FOR_CHUNK(chunk_length, copied) (chunk_length)
+#endif
+#ifndef COPY_CAPTURE_CHUNK
 #define COPY_CAPTURE_CHUNK(destination, data, length, offset) \
   copy_to_capture_ring((destination), (data), (length), (offset))
+#endif
+#ifndef AFTER_CAPTURE_SAMPLES
 #define AFTER_CAPTURE_SAMPLES(run, copied) report_capture_ring((run), (copied))
+#endif
 #include "../e024_p4_sump_swar_trigger_80mhz/e024_p4_sump_swar_trigger_80mhz.ino"
 
 void copy_to_capture_ring(uint8_t *buffer, const uint8_t *data, size_t length,

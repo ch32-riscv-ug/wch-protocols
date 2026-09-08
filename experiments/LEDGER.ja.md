@@ -37,7 +37,7 @@
 | **E026** | 20 MHz captureをtrigger後の指定sample数で停止し、25/75・50/50・75/25のpre/post windowを構成できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 3比率、停止誤差<1 chunk**([e026_p4_sump_prepost_stop/](e026_p4_sump_prepost_stop/README.ja.md)) |
 | **E027** | 1 MiB PSRAM circular ringを複数回wrapした後も20 MHzで50/50 pre/post windowを再構成できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 1/2/4 wrap、3回連続成功**([e027_p4_sump_circular_pretrigger/](e027_p4_sump_circular_pretrigger/README.ja.md)) |
 | **E028** | pattern・edge・occurrence countを組み合わせた4-stage software triggerからpost取得・停止まで成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 16 MHz、固定4-stage 3/3成功**([e028_p4_sump_four_stage_trigger/](e028_p4_sump_four_stage_trigger/README.ja.md)) |
-| **E029** | circular pre-trigger ringを1/2/4 wrap × 10組、独立reset 2回の計60 captureで再現性確認できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **計画**([e029_p4_circular_ring_soak/](e029_p4_circular_ring_soak/README.ja.md)) |
+| **E029** | circular pre-trigger ringを1/2/4 wrap × 10組、独立reset 2回の計60 captureで再現性確認できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 独立reset 2回、60/60成功**([e029_p4_circular_ring_soak/](e029_p4_circular_ring_soak/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -158,6 +158,20 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E029 ESP32-P4: circular ring soak — 完了 2026-09-09
+
+全文: [e029_p4_circular_ring_soak/README.ja.md](e029_p4_circular_ring_soak/README.ja.md)。採用run: `_runs/E029_20260908T213123Z_default/`、`_runs/E029_20260908T213209Z_default/`。
+
+**事実**
+
+1. 個別にupload/resetした2実行で、1 / 2 / 4 wrapを各10組、合計60/60 captureに成功した。
+2. 合計178,393,600 sampleでqueue最大1、overflow 0、実効19.954〜19.985 MB/s、ring/window data正常。
+3. E027の最初に一度だけ見えた異常は再現しなかった。
+
+**候補**: 20 MHz circular captureをhost download統合の基準構成にする。
+
+**未決**: captureとUSB downloadの同時実行 / 数時間soak / 電源cycle / 外部pad入力。
 
 ### E028 ESP32-P4: SUMP 4-stage trigger — 完了 2026-09-09
 
