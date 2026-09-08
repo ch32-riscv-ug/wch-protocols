@@ -22,6 +22,7 @@
 | **E003** | peer は使えるか(**環境確認のみ**)— 2 台同時 upload / 2 台の間で実際に繋がっている線はどれか | **常設 v2**(peer 対 2 枚、配線変更なし) | [README.ja.md §4.4/§4.5](README.ja.md) | **完了**([e003_smoke_peer/](e003_smoke_peer/README.ja.md)) |
 | **E012** | 銘板の版情報を conftest から build 時に自動で埋められるか。再ビルドのコストは | **常設 v0**(実機なし) | [README.ja.md §5](README.ja.md) | **完了**([e012_banner_autofill/](e012_banner_autofill/README.ja.md)) |
 | **E013** | 同一VID:PID・異なる`bcdDevice`でHID-onlyとHID + Vendor + CDC × 1をWindowsが分離でき、Linuxでも各経路が通信できるか | **一時・専用機材**(別途用意するESP32-S3 native USB、Windows 11、Linux) | [probe-feasibility-gates](../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 4 | **計画**([e013_usb_descriptor_profiles/](e013_usb_descriptor_profiles/README.ja.md)) |
+| **E014** | ESP32-P4で8本のGPIOをLEDC出力に使ったまま、同じGPIOをPARLIO RXへ接続して配線なしで同時captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **計画**([e014_p4_parlio_internal_capture/](e014_p4_parlio_internal_capture/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -49,6 +50,11 @@
 | `device-lock` | device lock は 2 プロセス間で実際に効くか(片方が待つか) | **常設 v1** | 実機 1 枚 | 有 | [README.ja.md §7-9](README.ja.md) |
 | `wire-bitstream` | SWIO / RVSWD の **bit 列**(start・addr7・data32・op2・parity)は [link-to-target](../protocols/link-to-target.ja.md) §3 の仕様どおりか。**タイミングは見ない** | **常設 v0**(実機なし)または **常設 v2**(E005 の道具で実線上を確認。半周期 5 us 以上) | host Arduino core / peer 対 | 有 | [link-to-target](../protocols/link-to-target.ja.md) §3 |
 | `tool-fast-capture` | 受信を SPI slave / レジスタ直読み / 割り込みにすれば、実 RVSWD 速度で bit を拾えるか(E005 は 100 kbps が上限) | **常設 v2** | peer 対 2 枚 | 有 | (道具) |
+| `p4-parlio-rate` | PARLIO TX等の既知patternを信号源にして、internal RAMへの8-bit有限長PARLIO RX captureが欠落・化けなしで成立するsample rate上限はどこか | **一時・配線なし** | ESP32-P4 1枚 | 有 | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 |
+| `p4-psram-bandwidth` | 搭載PSRAMの容量は幾らで、internal RAM→PSRAM write、PSRAM→internal RAM read、PSRAM内CPU accessの帯域はchunk sizeごとに幾らか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有と推定・実機確認待ち | 同上 |
+| `p4-parlio-psram-spool` | PARLIO RXのinternal DMA ping-pong bufferをPSRAMへ退避するとき、dropなしで継続できる8-bit sample rate、chunk size、capture時間の境界はどこか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有と推定・実機確認待ち | 同上 |
+| `p4-rmt-capture` | 同じPWM/RMT信号をRMT RXのpulse-duration列で取得すると、PARLIO raw sampleより少ないdata量で何channel・何edge/sまで保持できるか | **一時・配線なし** | ESP32-P4 1枚 | 有 | 同上 |
+| `p4-adc-continuous` | ESP32-P4のADC continuous DMAでanalog pinを連続captureでき、実効sample rate・欠落・noiseはどの程度か | **一時** | ESP32-P4 1枚、PWMまたはSDM出力、ADC pinへのjumper、必要ならRC | 有 | 同上 |
 | `linke-error-frame` | WCH-Link の異常系 error 応答 frame の形式(target 無し等) | **常設**(capture) | LinkE + usbmon | 有 | [pc-to-link](../protocols/pc-to-link.ja.md) §3、P1-1 |
 | `isp-usb-verify` | factory ISP の USB 実 frame を capture し、minichlink 転記の byte(XOR key = ΣUID・Erase sector 数・Program 56 B chunk・config 12 B の補数位置)と一致するか | **一時**(capture) | WCHISPTool(Windows)+ USBPcap、または minichlink `-c` ISP + usbmon | 不明 | [pc-to-device-isp](../protocols/pc-to-device-isp.ja.md) §3–§4、P2-3(**算法は転記で埋まった。確認待ち**) |
 | `wch-iap-capture` | WCHMcuIAP_WinAPP.exe の UART(460800)/ USB(`1A86:55E0`)実 frame は [wch-iap](../protocols/wch-iap.ja.md) §3–§4 の転記(sync・checksum・VERIFY の addr・END 無応答・順序)と一致するか | **一時**(capture) | Windows + WCHMcuIAP + IAP を焼いた V003 または X035 + USBPcap / UART capture | 不明 | [wch-iap](../protocols/wch-iap.ja.md) §7、P2-4 |
