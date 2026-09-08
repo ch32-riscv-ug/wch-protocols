@@ -2,6 +2,18 @@
 #include <Arduino.h>
 #include <esp_timer.h>
 
+#ifndef EXPERIMENT_ID
+#define EXPERIMENT_ID "E024"
+#endif
+
+#ifndef SAMPLE_RATE_HZ
+#define SAMPLE_RATE_HZ 80000000
+#endif
+
+#ifndef TRIGGER_MODE_FOR_RUN
+#define TRIGGER_MODE_FOR_RUN(run) (run)
+#endif
+
 namespace trigger_test {
 
 struct Metrics {
@@ -19,7 +31,7 @@ const char *const mode_names[] = {"nomatch", "rising", "pattern"};
 
 void before(size_t run) {
   metrics = {};
-  metrics.mode = run;
+  metrics.mode = TRIGGER_MODE_FOR_RUN(run);
 }
 
 inline __attribute__((always_inline)) uint32_t load_word(const uint8_t *data) {
@@ -138,10 +150,14 @@ void after(size_t run) {
 
 }  // namespace trigger_test
 
-#define EXPERIMENT_ID "E024"
-#define SAMPLE_RATE_HZ 80000000
+#ifndef BEFORE_CAPTURE
 #define BEFORE_CAPTURE(run) trigger_test::before(run)
+#endif
+#ifndef PROCESS_CHUNK
 #define PROCESS_CHUNK(data, length, offset) \
   trigger_test::scan(data, length, offset)
+#endif
+#ifndef AFTER_CAPTURE
 #define AFTER_CAPTURE(run) trigger_test::after(run)
+#endif
 #include "../e021_p4_parlio_psram_spool/e021_p4_parlio_psram_spool.ino"
