@@ -340,6 +340,8 @@ ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的�
 
 [E016](../experiments/e016_p4_parlio_psram_direct/README.ja.md)で、Arduino-ESP32 3.3.11からESP-IDF PARLIO APIを直接呼び、8-bit・8 MHz設定・8,192 sampleの有限長RXを32 MiB PSRAMへ直接DMAできることを確認した。PSRAM payloadはexternal-DMA-capableで、全8 laneを3回取得できた。[E017](../experiments/e017_p4_parlio_psram_cache_sync/README.ja.md)では、driver内部のdescriptor単位cache sync警告はburst size 0 / 64 / 128 byteで変わらず、7,936 byteまでは無警告、8,064 byte以上では各run 2件となった。全45 captureは完了後のpayload全体sync後に正しいdataを保持した。[E018](../experiments/e018_p4_parlio_psram_log_suppression/README.ja.md)では、soft delimiterのEOF長が最大65,535 byteであり、単一有限長transactionでは1 MiBを開始できないことが分かった。[E019](../experiments/e019_p4_parlio_psram_partial_ring/README.ja.md)では1 MiB PSRAM direct partial transactionを開始できたが、runtime log抑制後も4,032-byte descriptorの不整列cache sync errorが続き、27件でInterrupt WDTになった。したがってstock driverの成立範囲は**65,535 byte以下で、受信完了後にpayload全体を明示syncする有限長batch capture**までである。深いcaptureにはexternal-memory alignmentを使うdriver修正、またはinternal DMA ringからPSRAMへの退避が必要で、sample rate上限も未確認。
 
+[E020](../experiments/e020_p4_psram_copy_bandwidth/README.ja.md)では、8 MiBを使うCPU `memcpy`単体で、internal RAM→PSRAMのflush込みwriteが138.590〜182.746 MB/s、PSRAM→internal readが170.917〜183.815 MB/sだった。16 KiB chunkのwriteは8-bit 80 MS/sに対して2.28倍あるため、internal DMA ringからPSRAMへ退避する方式はmemory帯域上の候補として残る。PARLIO、trigger検索、USBとの同時動作時のdropは未確認。
+
 検討時には、少なくとも次を分けて評価する。
 
 1. SUMP commandとの互換範囲

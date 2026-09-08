@@ -1,6 +1,6 @@
 # E020 ESP32-P4 PSRAM copy帯域
 
-状態: **計画**
+状態: **完了 — CPU copy単体は80 MB/sを上回る**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行実験: [E019](../e019_p4_parlio_psram_partial_ring/README.ja.md)
 
@@ -68,3 +68,33 @@ MB/sは10進のbyte/sで計算する。
 ## 影響
 
 E019で残った2候補のうち、internal DMA ring→PSRAM退避を実測する価値があるかを決める。帯域成立はPARLIOとの同時動作成立を意味しない。
+
+## 結果
+
+実施日: 2026-09-09
+
+採用run: `_runs/E020_20260908T150231Z_default/test_psram_copy_bandwidth/dut.log`
+
+ESP32-P4 rev 1.3の32 MiB PSRAMから8 MiBを確保し、全9条件でcache syncと全chunkのbyte比較が成功した。帯域は10進MB/s。
+
+| chunk | internal→PSRAM copy | flush込みwrite | PSRAM→internal read | 8 MiB flush |
+|---:|---:|---:|---:|---:|
+| 4 KiB | 183.353〜183.389 MB/s | 181.085〜181.128 MB/s | 182.591〜182.646 MB/s | 571〜575 us |
+| 16 KiB | 184.942〜185.031 MB/s | 182.654〜182.746 MB/s | 183.787〜183.815 MB/s | 567〜568 us |
+| 64 KiB | 139.894〜139.917 MB/s | 138.590〜138.622 MB/s | 170.917〜170.941 MB/s | 560〜565 us |
+
+16 KiBが今回の最大write/read帯域だった。64 KiBではwriteが約24%低下したが、最小値でもflush込み138.590 MB/sだった。write / readとも全runでmismatchは0件。
+
+## 判定
+
+CPU `memcpy`単体の帯域だけを見れば、16 KiB chunkのflush込みwriteは8-bit 80 MS/sに対して2.28倍、40 MS/sに対して4.57倍、8 MS/sに対して22.8倍ある。したがってinternal DMA ringからPSRAMへ退避する候補は、少なくともmemory帯域だけを理由に棄却する必要はない。
+
+ただし、この測定はPARLIO ISR、DMA、trigger検索、USB処理と同時実行していない。80 MS/sで2.28倍は有望だが十分条件ではなく、実際のspoolでdropとCPU占有率を測る必要がある。
+
+## 事実・候補・未決
+
+**事実**: 8 MiBのinternal RAM↔PSRAM CPU copyは全条件で正しく、flush込みwriteの最小は138.590 MB/s、最大は182.746 MB/sだった。
+
+**候補**: 16 KiB前後のinternal ping-pong / ring bufferをtaskでPSRAMへ退避する。
+
+**未決**: PARLIO同時動作時のdropなしrate / internal buffer個数 / core分離 / trigger検索を同時に行った帯域 / GDMA memory copyとの比較。
