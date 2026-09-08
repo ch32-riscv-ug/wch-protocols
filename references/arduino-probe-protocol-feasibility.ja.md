@@ -181,6 +181,45 @@ wire sequence HALが扱う単位は、概ね次のようにする。
 
 GPIO backendは最初の正しさを確認する基準実装と、PIO等を利用できないMCUへのfallbackになる。高速backendも同じHAL contractを実装し、`max_clock_hz`、最大sequence長、DMA可否等をcapabilityとして申告する。この構造ならprotocol仕様とSWD/JTAGの上位logicを変えずに高速化できる。
 
+### header中心の構成
+
+reference firmwareの共通実装は、可能な範囲でheaderだけをincludeして構成できるlibraryにする。ただし、全機能を一つの巨大なheaderへ入れるのではなく、core、service、platform backendを分割し、sketchが使うものだけを明示的にincludeする。
+
+```text
+oep/
+  core/
+    message.h
+    dispatcher.h
+    capability.h
+  services/
+    gpio.h
+    uart.h
+    swd.h
+    jtag.h
+  backends/
+    generic/gpio_sequence.h
+    rp2040/pio_swd.h
+    rp2040/pio_jtag.h
+    esp32s3/gpio_swd.h
+    esp32s3/gpio_jtag.h
+  transports/
+    stream.h
+    usb_hid.h
+    usb_vendor.h
+    usb_cdc.h
+```
+
+たとえばSWDだけを持つfirmwareは`services/swd.h`と選択したSWD backendだけをincludeし、JTAG、UART、未使用transportを登録しない。capabilityは明示的に登録されたserviceから生成し、link時に偶然残ったcodeや自動登録には依存しない。
+
+header内の実装は`inline`、`constexpr`、template等を使い、複数translation unitからincludeしてもone-definition ruleに違反しない形にする。次のものは無理にheader-onlyへ押し込まず、必要なら小さなplatform固有`.cpp`または生成物を許容する。
+
+- C linkageで一つだけ必要なUSB descriptor callback
+- interrupt vectorやSDKが単一定義を要求するobject
+- PIO assembler等から生成するprogram data
+- compile時間やcode sizeを著しく悪化させる大きな固定実装
+
+「header中心」は配布形式そのものを目的にするのではなく、**必要なserviceだけを選んだprobeを小さなsketchから組み立てられること**を目的とする。`oep/all.h`のような便宜用umbrella headerを用意しても、reference firmwareとlibrary exampleでは個別headerを基本にする。
+
 ## CMSIS-DAP等との関係
 
 CMSIS-DAPは、SWD/JTAG/SWOのcommand境界と既存debug toolとの接続に利用価値が高い。ただし、OEPの共通protocolをCMSIS-DAPそのものに限定すると、UART、GPIO、logic capture、将来の未知service、serial/IP transportを同じmodelで扱う目的から外れる。
