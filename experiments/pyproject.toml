@@ -4,6 +4,10 @@ version = "0.1.0"
 description = "Measurement harness for the wch-protocols experiments (pytest + arduino-cli)"
 requires-python = ">=3.10"
 dependencies = [
+    "hidapi>=0.14",
+    "libusb-package>=1.0.26",
+    "pyserial>=3.5",
+    "pyusb>=1.3",
     "pytest>=8",
     "pytest-embedded>=2.0",
     "pytest-embedded-serial>=2.0",

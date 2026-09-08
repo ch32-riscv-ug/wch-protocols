@@ -129,6 +129,8 @@ registryは「番号から機能を調べる表」ではなく、firmware作成�
 
 ESP32-S3の現行USB device libraryで構成できる範囲を使い、二つの試験用profileを作る。
 
+実験計画、firmware、host test、実行手順は[E013 USB descriptor profile分離](../experiments/e013_usb_descriptor_profiles/README.ja.md)に置く。
+
 | 項目 | Profile A | Profile B |
 |---|---|---|
 | USB interface | HIDのみ | HID + vendor-specific + CDC ACM × 1 |
