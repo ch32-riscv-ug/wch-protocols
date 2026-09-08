@@ -1,6 +1,6 @@
 # E014 ESP32-P4 PARLIO内部capture
 
-状態: **計画**
+状態: **中断 — 選んだ初期化方法は反証**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md)
 
@@ -136,4 +136,49 @@ P4 hardwareはPSRAMへDMA accessできるが、Arduino-ESP32 3.3.11同梱構成�
 
 ## 結果
 
-未実行。
+2026-09-08、`esp32p4_parlio` profileをpytest harnessから1回実行した。
+
+run: `_runs/E014_20260908T093607Z_default/test_internal_parallel_capture/dut.log`
+
+| 項目 | 結果 |
+|---|---|
+| build | pass、flash 353,704 B、global 31,232 B |
+| upload | pass、ESP32-P4 rev 1.3、MAC `e8:f6:0a:e0:aa:24` |
+| LEDC設定 | Arduino APIは8 channelとも成功を返した |
+| PARLIO初期化 | `ESP_OK` |
+| PARLIO有限長capture | 8,192 byte × 3回、APIはいずれも`ESP_OK` |
+| sample | 全3回・全8 laneで`high=0`、`low=8192`、`edges=0` |
+| pytest | 1 failed、27.23 s |
+
+GPIO dumpでは全8 pinについて`InputEn: 1`で、PARLIO data lineに対応する`GPIO Matrix SigIn ID: 188`〜`195`が設定されていた。一方、出力は全pinとも`GPIO Matrix SigOut ID: 256 (simple GPIO output)`であり、LEDCのsignal IDは残っていなかった。したがって、全sampleが0だった直接の理由は、PARLIO RXが読めなかったことではなく、capture時点で観測対象のLEDC出力がGPIOへ接続されていなかったことと整合する。
+
+各capture開始時に、PARLIO driver内部からcache line alignmentに関する次のerrorも出た。ただしtransaction APIは`ESP_OK`を返した。
+
+```text
+cache: esp_cache_msync(...): start address ..., or the size: 0x38 is(are) not aligned with cache line size (0x40)B
+```
+
+### 事実
+
+1. Arduino-ESP32 3.3.11からPARLIO RX driverをbuild・linkでき、8-bit・8,192 byteの有限長DMA transactionは完了する。
+2. 計画した`LEDC設定 → PARLIO設定(io_loop_back=true)`では、PARLIO入力を追加した後にLEDC出力接続が維持されなかった。
+3. PARLIO入力の8 signalはGPIO matrixへ設定されていたが、入力値は全lane・全runで0だった。
+4. 実装はlane 7のdutyに`256/256`を指定しており、反証条件5の「全laneがhigh/lowを両方含む」を満たせない試験vectorだった。全lane 0という今回の主症状とは別だが、このvectorのまま追試には使えない。
+
+### 候補
+
+- `io_loop_back`を使わず、PARLIO側はinput enableとinput matrix接続だけを行う
+- PARLIOを先に初期化し、その後にLEDC outputを接続する
+- LEDC後とPARLIO後の二段階でGPIO dumpを取り、どのAPIでoutput signalが変わるか特定する
+
+これらは計画した方法の変更になるためE014内では試さない。未採番計画[`p4-parlio-routing-order`](../plans/p4-parlio-routing-order/README.ja.md)へ分離する。
+
+### 未決
+
+- 同じGPIOでLEDC出力とPARLIO入力を共存できるか → `p4-parlio-routing-order`
+- `esp_cache_msync()`のalignment errorがdata integrityまたは高sample rateに影響するか → 共存成立後の`p4-parlio-rate`
+- 外部padの実電圧とPARLIO入力値が一致するか → 今回は配線なしのため未測定
+
+## 反映
+
+選んだ初期化方法は反証されたが、PARLIO方式全体は不成立と判断しない。後続の速度・PSRAM実験は、未採番のrouting追試が成立してから採番可否を判断する。
