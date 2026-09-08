@@ -1,6 +1,6 @@
 # E021 ESP32-P4 PARLIO internal ringからPSRAM退避
 
-状態: **計画**
+状態: **完了 — 8 MHz / 1 MiBをdropなしで退避**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行実験: [E020](../e020_p4_psram_copy_bandwidth/README.ja.md)
 
@@ -72,3 +72,35 @@ internal RAMのcache alignmentは64 byteで、stock driverの4,032-byte descript
 ## 影響
 
 stock Arduino環境で深いbatch captureを実装する基本経路のgate。成功は8 MHzでの成立だけを意味し、rate上限とtrigger負荷は別実験で測る。
+
+## 結果
+
+実施日: 2026-09-09
+
+採用run: `_runs/E021_20260908T151406Z_default/test_parlio_psram_spool/dut.log`
+
+最終構成ではcaptureごとにPARLIO receiverを作成・破棄した。64 KiB internal DMA ringからcallbackでdescriptorをqueueへ渡し、taskで1 MiB PSRAMへcopyした結果は次のとおり。
+
+| run | callback / dequeue | callback byte | copied | stop時超過 | queue overflow | capture | 実効rate | duty最大誤差 | edge範囲 |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 273 / 273 | 1,050,560 | 1,048,576 | 1,984 byte | 0 | 131,362 us | 7.982 MB/s | 7 ppm | 26,215〜26,216 |
+| 1 | 273 / 273 | 1,050,560 | 1,048,576 | 1,984 byte | 0 | 131,361 us | 7.982 MB/s | 12 ppm | 26,214〜26,215 |
+| 2 | 273 / 273 | 1,050,560 | 1,048,576 | 1,984 byte | 0 | 131,361 us | 7.982 MB/s | 12 ppm | 26,214〜26,215 |
+
+全runでconfig / enable / receive / start / stop / disable / PSRAM syncが`ESP_OK`だった。descriptor長は2,432〜4,032 byte、観測時のqueue待ちは0、PSRAM全体syncは568〜571 us。cache alignment errorは出なかった。
+
+最初のrun (`E021_20260908T151240Z_default`) では計画どおりreceiverを保持してstop→disable→enableした。run 0は正しかったがrun 1はAPI成功・overflow 0にもかかわらず最大duty誤差53,494 ppm、edge数24,713〜25,023となった。receiverをcaptureごとに再生成すると上表のとおり3回一致したため、stock driverのpartial transaction再利用は暫定的に避ける。
+
+## 判定
+
+仮説は条件付きで成立した。**stock PARLIO driverでも、internal DMA ring→task copy→PSRAMという経路なら、8 MHz / 8-bitの連続1 MiB captureをdropなしで構成できる。** E019のPSRAM direct descriptor alignment問題を回避でき、soft delimiterの65,535 byte上限もpartial ringで越えられた。
+
+ただしreceiver再利用時に2回目のdataが崩れたため、現時点ではcaptureごとの再生成を必要条件とする。これはarm latencyや反復capture性能に影響する可能性があるが、batch logic analyzerの成立を妨げるものではない。
+
+## 事実・候補・未決
+
+**事実**: receiver再生成構成で1 MiB × 3回、overflow 0、実効7.982 MB/s、PWM data正常。receiver再利用構成では2回目だけ約5%相当の波形欠落が出た。
+
+**候補**: 64 KiB internal ringとtask copyをstock Arduino向けbatch captureの基準経路にし、各armでreceiverを再生成する。
+
+**未決**: sample rate上限 / rate別に必要なring・queue条件 / receiver再利用不良の原因 / basic trigger検索をcopy taskへ追加した負荷 / pre/post trigger。

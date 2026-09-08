@@ -29,7 +29,7 @@
 | **E018** | `cache` tagのruntime logを抑制し、stock PARLIO driverで1 MiB PSRAM direct captureを正しく完了できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — soft delimiter上限で前提反証**([e018_p4_parlio_psram_log_suppression/](e018_p4_parlio_psram_log_suppression/README.ja.md)) |
 | **E019** | `partial_rx_en`で1 MiB PSRAMをdirect ringにし、一周を検出して公開APIだけで停止後、正しい連続captureを得られるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — cache errorでInterrupt WDT**([e019_p4_parlio_psram_partial_ring/](e019_p4_parlio_psram_partial_ring/README.ja.md)) |
 | **E020** | internal RAM↔PSRAM copyは4 / 16 / 64 KiB chunkで8-bit logic captureを退避できる実効帯域を持つか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — flush込み138.6〜182.7 MB/s**([e020_p4_psram_copy_bandwidth/](e020_p4_psram_copy_bandwidth/README.ja.md)) |
-| **E021** | 8 MHz / 8-bit PARLIO RXを64 KiB internal ringへ連続取得し、taskから1 MiB PSRAMへdropなしで退避できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **計画**([e021_p4_parlio_psram_spool/](e021_p4_parlio_psram_spool/README.ja.md)) |
+| **E021** | 8 MHz / 8-bit PARLIO RXを64 KiB internal ringへ連続取得し、taskから1 MiB PSRAMへdropなしで退避できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — receiver再生成で3/3成功**([e021_p4_parlio_psram_spool/](e021_p4_parlio_psram_spool/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -153,6 +153,21 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E021 ESP32-P4: PARLIO internal ringからPSRAM退避 — 完了 2026-09-09
+
+全文: [e021_p4_parlio_psram_spool/README.ja.md](e021_p4_parlio_psram_spool/README.ja.md)。採用run: `_runs/E021_20260908T151406Z_default/`。
+
+**事実**
+
+1. receiverをcaptureごとに再生成すると、8 MHz / 8-bit / 1 MiBを3/3回、queue overflow 0でinternal 64 KiB ringからPSRAMへ退避できた。
+2. captureは131,361〜131,362 us、実効7.982 MB/s。callback / dequeueは273 / 273、停止時超過は1,984 byteで全run一致。
+3. 最大duty誤差12 ppm、edge 26,214〜26,216で全8 laneが正常。PSRAM syncは568〜571 us。
+4. receiver再利用構成はrun 0が正常、run 1が最大duty誤差53,494 ppmとなった。APIとqueue overflowだけでは検出できない再arm時のdata不良がある。
+
+**候補**: stock Arduino環境では64 KiB internal ring→task copy→PSRAMを使い、各armでreceiverを再生成する。
+
+**未決**: sample rate上限 / receiver再利用不良 / basic trigger検索負荷 / pre/post trigger。
 
 ### E020 ESP32-P4: PSRAM copy帯域 — 完了 2026-09-09
 
