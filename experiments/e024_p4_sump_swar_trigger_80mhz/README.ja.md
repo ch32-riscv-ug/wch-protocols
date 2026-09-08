@@ -1,6 +1,6 @@
 # E024 ESP32-P4 SUMP基本trigger 32-bit検索 80 MHz
 
-状態: **計画**
+状態: **完了 — 32-bit検索も80 MHzに追従不能**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行実験: [E023](../e023_p4_sump_basic_trigger_80mhz/README.ja.md)
 
@@ -55,3 +55,33 @@ E023と同じcapture/queue/data/trigger指標、およびscan throughputを各ru
 ## 影響
 
 software基本triggerを80 MHz capabilityに含められるか、trigger付きcaptureを別のrate tierとして扱うべきかを決めるgate。
+
+## 結果
+
+実施日: 2026-09-09
+
+採用run: `_runs/E024_20260908T153928Z_default/test_sump_swar_trigger_80mhz/dut.log`
+
+| mode | match | 最初のindex | scan | scan throughput | capture実効rate | queue overflow |
+|---|---:|---:|---:|---:|---:|---:|
+| no-match `FF/55` | なし | — | 40,126 us | 26.132 MB/s | 21.793 MB/s | 667 |
+| lane 0 rising | あり | 474 | 40,951 us | 25.605 MB/s | 21.447 MB/s | 683 |
+| pattern `0F/00` | あり | 0 | 33,905 us | 30.926 MB/s | 25.083 MB/s | 537 |
+
+各modeで1,048,576 sampleを走査した。trigger条件は期待どおり、存在しないpatternはmatchせず、risingとpatternはmatchした。しかし全条件でqueueが深さ64まで飽和し、537〜683件overflowした。APIとPSRAM syncは成功したが、capture data検証はoverflowにより対象外となった。
+
+最初の実装では4-byte loadとzero-byte判定が関数呼び出しになっていた。強制inline化前は19.890〜20.679 MB/sだったため採用せず、生成コードからhot loop内の呼び出しが除去された上記runを採用した。
+
+## 判定
+
+**32-bit SWAR検索だけでは80 MHzに追従できない。** E023の素朴な1-byte検索に対して改善する条件はあったが、最良でも30.926 MB/sで、80 MB/s入力の半分に届かなかった。
+
+この結果から、同種の整数software検索を別coreへ移すだけでは、検索単体のthroughput不足は解消しない。次はtrigger付きcaptureの成立rateを測ってcapability境界を定めるか、ESP32-P4固有のSIMD/hardware支援を別方式として調べる必要がある。
+
+## 事実・候補・未決
+
+**事実**: 32-bit検索は25.605〜30.926 MB/sで、80 MHz captureでは537〜683件overflowした。
+
+**候補**: trigger付きcaptureのrate tier、ESP32-P4固有SIMD、edgeだけのhardware支援。
+
+**未決**: software triggerの成立rate上限 / pre/post ring / multi-stage / hardware-assisted external trigger。

@@ -32,7 +32,7 @@
 | **E021** | 8 MHz / 8-bit PARLIO RXを64 KiB internal ringへ連続取得し、taskから1 MiB PSRAMへdropなしで退避できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — receiver再生成で3/3成功**([e021_p4_parlio_psram_spool/](e021_p4_parlio_psram_spool/README.ja.md)) |
 | **E022** | E021のinternal ring→PSRAM経路は80 MHz / 8-bit / 1 MiBでもdropなしで3回captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 79.6 MB/s、3/3成功**([e022_p4_parlio_spool_80mhz/](e022_p4_parlio_spool_80mhz/README.ja.md)) |
 | **E023** | 80 MHz captureと同時にSUMP基本trigger相当のpattern/mask・edge条件を全sampleでsoftware検索してもdropしないか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 15.1〜24.6 MB/s、overflow**([e023_p4_sump_basic_trigger_80mhz/](e023_p4_sump_basic_trigger_80mhz/README.ja.md)) |
-| **E024** | 32-bit word内の4 sampleを並列検索すれば、80 MHz captureと同時にpattern/mask・edgeを全sample評価してdropを避けられるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **計画**([e024_p4_sump_swar_trigger_80mhz/](e024_p4_sump_swar_trigger_80mhz/README.ja.md)) |
+| **E024** | 32-bit word内の4 sampleを並列検索すれば、80 MHz captureと同時にpattern/mask・edgeを全sample評価してdropを避けられるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 25.6〜31.0 MB/s、overflow**([e024_p4_sump_swar_trigger_80mhz/](e024_p4_sump_swar_trigger_80mhz/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -155,6 +155,20 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E024 ESP32-P4: SUMP基本trigger 32-bit検索 80 MHz — 完了 2026-09-09
+
+全文: [e024_p4_sump_swar_trigger_80mhz/README.ja.md](e024_p4_sump_swar_trigger_80mhz/README.ja.md)。採用run: `_runs/E024_20260908T153928Z_default/`。
+
+**事実**
+
+1. 32-bit SWAR検索はno-match 26.132、rising 25.605、pattern 30.926 MB/sだった。
+2. 80 MHz入力に対しqueueは64まで飽和し、overflowは667 / 683 / 537件。capture dataは不成立。
+3. 存在しないpatternはmatchせず、risingとpatternはmatchした。
+
+**候補**: trigger付きcaptureのrate tier、ESP32-P4固有SIMD、edgeだけのhardware支援。
+
+**未決**: software triggerの成立rate上限 / pre/post ring / multi-stage / hardware-assisted external trigger。
 
 ### E023 ESP32-P4: SUMP基本trigger検索 80 MHz — 完了 2026-09-09
 
