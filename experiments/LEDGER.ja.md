@@ -35,7 +35,7 @@
 | **E024** | 32-bit word内の4 sampleを並列検索すれば、80 MHz captureと同時にpattern/mask・edgeを全sample評価してdropを避けられるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 25.6〜31.0 MB/s、overflow**([e024_p4_sump_swar_trigger_80mhz/](e024_p4_sump_swar_trigger_80mhz/README.ja.md)) |
 | **E025** | 32-bit software基本trigger付き8-bit captureがdropなしで成立するsample rate境界はどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 全条件24 MHz、28 MHzで分岐**([e025_p4_sump_trigger_rate_boundary/](e025_p4_sump_trigger_rate_boundary/README.ja.md)) |
 | **E026** | 20 MHz captureをtrigger後の指定sample数で停止し、25/75・50/50・75/25のpre/post windowを構成できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 3比率、停止誤差<1 chunk**([e026_p4_sump_prepost_stop/](e026_p4_sump_prepost_stop/README.ja.md)) |
-| **E027** | 1 MiB PSRAM circular ringを複数回wrapした後も20 MHzで50/50 pre/post windowを再構成できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **計画**([e027_p4_sump_circular_pretrigger/](e027_p4_sump_circular_pretrigger/README.ja.md)) |
+| **E027** | 1 MiB PSRAM circular ringを複数回wrapした後も20 MHzで50/50 pre/post windowを再構成できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 1/2/4 wrap、3回連続成功**([e027_p4_sump_circular_pretrigger/](e027_p4_sump_circular_pretrigger/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -157,6 +157,21 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E027 ESP32-P4: SUMP circular pre-trigger ring — 完了 2026-09-09
+
+全文: [e027_p4_sump_circular_pretrigger/README.ja.md](e027_p4_sump_circular_pretrigger/README.ja.md)。採用run: `_runs/E027_20260908T155813Z_default/`。
+
+**事実**
+
+1. 1 MiB PSRAM ringを1 / 2 / 4回wrapした後、trigger前後256 Ki sampleのwindowを3回連続で再構成できた。
+2. 採用runはqueue最大1、overflow 0、実効19.953〜19.984 MB/s、window data正常。
+3. 停止overshootは929〜2,883 sampleで最大chunk 4,032未満。
+4. 最初のrun 0だけbase検証に異常値が出たが、ring検証前に停止して原因未確定。その後3回は再現なし。
+
+**候補**: PSRAM circular ringを内部実装とし、外部にはtrim済みの連続sample列を返す。
+
+**未決**: cold-run異常の長時間soak / multi-stage trigger / host転送 / 1 MiB超のring容量。
 
 ### E026 ESP32-P4: SUMP pre/post trigger停止 — 完了 2026-09-09
 

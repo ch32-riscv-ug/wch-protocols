@@ -52,6 +52,20 @@
 #define CAPTURE_COMPLETE(copied) ((copied) >= kDestinationSize)
 #endif
 
+#ifndef COPY_SIZE_FOR_CHUNK
+#define COPY_SIZE_FOR_CHUNK(chunk_length, copied) \
+  min((chunk_length), kDestinationSize - (copied))
+#endif
+
+#ifndef COPY_CAPTURE_CHUNK
+#define COPY_CAPTURE_CHUNK(destination, data, length, offset) \
+  memcpy((destination) + (offset), (data), (length))
+#endif
+
+#ifndef AFTER_CAPTURE_SAMPLES
+#define AFTER_CAPTURE_SAMPLES(run, copied) do { } while (0)
+#endif
+
 namespace {
 
 constexpr size_t kLaneCount = 8;
@@ -222,10 +236,9 @@ void run_case(size_t run) {
       timed_out = true;
       break;
     }
-    const size_t remaining = kDestinationSize - copied;
-    const size_t copy_size = min(chunk.length, remaining);
+    const size_t copy_size = COPY_SIZE_FOR_CHUNK(chunk.length, copied);
     PROCESS_CHUNK(chunk.data, copy_size, copied);
-    memcpy(destination + copied, chunk.data, copy_size);
+    COPY_CAPTURE_CHUNK(destination, chunk.data, copy_size, copied);
     copied += copy_size;
     ++dequeue_count;
     min_chunk = min(min_chunk, chunk.length);
@@ -243,7 +256,7 @@ void run_case(size_t run) {
   const esp_err_t disable_result = parlio_rx_unit_disable(rx_unit);
 
   int64_t sync_us = 0;
-  if (!timed_out && copied <= kDestinationSize && disable_result == ESP_OK) {
+  if (!timed_out && disable_result == ESP_OK) {
     const int64_t sync_begin = esp_timer_get_time();
     sync_result = esp_cache_msync(
         destination, kDestinationSize, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
@@ -348,6 +361,7 @@ void run_case(size_t run) {
   Serial.print(" max_edges=");
   Serial.println(max_edges);
   AFTER_CAPTURE(run);
+  AFTER_CAPTURE_SAMPLES(run, copied);
 
   if (delimiter != nullptr) parlio_del_rx_delimiter(delimiter);
   if (rx_unit != nullptr) parlio_del_rx_unit(rx_unit);

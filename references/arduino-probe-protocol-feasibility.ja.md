@@ -354,6 +354,8 @@ ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的�
 
 [E026](../experiments/e026_p4_sump_prepost_stop/README.ja.md)では20 MHzで512 Ki sampleの25/75・50/50・75/25 pre/post windowを試した。全比率でqueue最大1、overflow 0、data正常となり、trigger後の要求位置を含むdescriptorで停止できた。物理停止は要求位置を2,834〜2,961 sample超えたが、最大chunk 4,032 sample未満であり、論理windowをsample単位でtrimすれば要求長と比率を正確に返せる。PSRAM circular ringでの長時間trigger待機は未確認である。
 
+[E027](../experiments/e027_p4_sump_circular_pretrigger/README.ja.md)では1 MiB PSRAM circular ringを1 / 2 / 4回wrapした後、20 MHzでtrigger前後256 Ki sampleのwindowを再構成した。3回連続ですべてqueue最大1、overflow 0、window data正常となり、実効rateは採用runで19.953〜19.984 MB/sだった。これによりpre-trigger履歴、post-trigger停止、physical wrapを隠した論理windowの主要data pathは成立した。最初のrunで一度だけbase検証の異常があり再現しなかったため、長時間soakは未決として残る。
+
 検討時には、少なくとも次を分けて評価する。
 
 1. SUMP commandとの互換範囲
