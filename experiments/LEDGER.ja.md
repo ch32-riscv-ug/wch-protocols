@@ -25,7 +25,7 @@
 | **E014** | ESP32-P4で8本のGPIOをLEDC出力に使ったまま、同じGPIOをPARLIO RXへ接続して配線なしで同時captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **中断 — 選んだ初期化方法は反証**([e014_p4_parlio_internal_capture/](e014_p4_parlio_internal_capture/README.ja.md)) |
 | **E015** | `io_loop_back`を使わず入力だけを追加するか、PARLIO→LEDCの順にすれば、同じ8 GPIOでLEDC PWMとPARLIO RXを共存できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了**([e015_p4_parlio_routing_order/](e015_p4_parlio_routing_order/README.ja.md)) |
 | **E016** | Arduino環境からESP-IDF PARLIO driverを直接呼び、有限長PARLIO RXのDMA先をPSRAMにして8-bit captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 直接DMA成立、cache警告あり**([e016_p4_parlio_psram_direct/](e016_p4_parlio_psram_direct/README.ja.md)) |
-| **E017** | stock PARLIO driverでPSRAM有限長captureのdescriptor cache警告を避けられるburst size / capture size条件はあるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **計画**([e017_p4_parlio_psram_cache_sync/](e017_p4_parlio_psram_cache_sync/README.ja.md)) |
+| **E017** | stock PARLIO driverでPSRAM有限長captureのdescriptor cache警告を避けられるburst size / capture size条件はあるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — burst sizeでは回避不能**([e017_p4_parlio_psram_cache_sync/](e017_p4_parlio_psram_cache_sync/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -147,6 +147,21 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E017 ESP32-P4: PARLIO PSRAM cache sync境界 — 完了 2026-09-08
+
+全文: [e017_p4_parlio_psram_cache_sync/README.ja.md](e017_p4_parlio_psram_cache_sync/README.ja.md)。採用run: `_runs/E017_20260908T143447Z_default/`。
+
+**事実**
+
+1. burst size 0 / 64 / 128 byteで、driver内部のcache警告数に差はなかった。
+2. 3,968 / 4,096 / 7,936 byteは各3回とも無警告。8,064 / 8,192 byteは各runで2件警告した。
+3. 全45 captureで全APIと完了後のpayload全体M2C syncが`ESP_OK`。全8 laneを復元し、最大duty誤差は6,048 ppmだった。
+4. 8,064 byteでは`0xFC0` × 2、8,192 byteでは`0xFC0` + `0x800`のdescriptor callback syncが128-byte境界違反となった。
+
+**候補**: cache logを抑制し、有限長受信完了後にpayload全体を明示M2C syncして、大容量PSRAM direct captureを測る。
+
+**未決**: log抑制の可否 / 大容量時のdata一貫性・安定性・所要時間 / sample rate上限 / driver内部の分割条件。
 
 ### E016 ESP32-P4: PARLIO RXからPSRAMへの直接DMA — 完了 2026-09-08
 
