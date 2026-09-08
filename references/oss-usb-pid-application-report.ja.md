@@ -229,10 +229,14 @@ Openmokoと同じ6点に加え、次を明示する。
 
 ## 3. 申請前に揃えるもの
 
-どちらへ申請する場合も、次を先に公開する。
+どちらへ申請する場合も、先にproject名とcanonical repositoryを確定する。現在の`wch-protocols`は検討場所として使い、MCU非依存であることが伝わる名称の専用repositoryを、安定したownerまたはorganizationの下に置くのが望ましい。
+
+その上で、次を公開する。
 
 | 必要物 | 最低限示す内容 |
 |---|---|
+| project identity | MCU vendorに依存しない名称と短い説明 |
+| canonical repository | PID registryから恒久的に参照するsource URL |
 | project README | 問題、共通PIDの目的、protocolの適用範囲 |
 | license | protocol、firmware、host software、reference hardwareのlicense境界 |
 | protocol draft | identity、capability discovery、extension、transportの基本 |
