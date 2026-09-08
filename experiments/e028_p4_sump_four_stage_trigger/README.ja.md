@@ -1,6 +1,6 @@
 # E028 ESP32-P4 SUMP 4-stage trigger
 
-状態: **計画**
+状態: **完了 — 4-stage triggerを3/3回確認**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行実験: [E027](../e027_p4_sump_circular_pretrigger/README.ja.md)
 
@@ -58,3 +58,33 @@ stage 4成立位置をfinal triggerとし、さらに256 Ki sampleを含むdescr
 ## 影響
 
 SUMPのmulti-stage trigger conceptを共通protocolの拡張能力として表現できる実装根拠になる。
+
+## 結果
+
+実施日: 2026-09-09
+
+採用run: `_runs/E028_20260908T204111Z_default/test_sump_four_stage_trigger/dut.log`
+
+| run | stage 0 | stage 1 | stage 2 | stage 3/final | count | overshoot |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 262,144 | 262,250 | 262,740 | 262,810 | 4 | 2,342 |
+| 1 | 262,144 | 262,156 | 262,646 | 262,716 | 4 | 2,436 |
+| 2 | 262,144 | 262,294 | 262,784 | 262,854 | 4 | 2,298 |
+
+3 runとも4 stageが単調増加するindexで成立し、lane 0 risingの発生回数は正確に4だった。final trigger後256 Ki sampleを含むdescriptorで停止し、総取得は527,296 sample、停止overshootは2,298〜2,436 sampleで最大chunk 4,032未満だった。
+
+callback/dequeueは137/137、queue最大0、overflow 0、実効15.971〜15.973 MB/s。dataのduty誤差は最大61 ppm、edge数は6,591〜6,592だった。stage検索を含む計測上のscan throughputは76.176〜76.375 MB/sだが、final成立後は条件評価を省略しているため、これは未成立状態を永続検索する上限ではない。
+
+## 判定
+
+**pattern、edge、occurrence count、stage遷移を組み合わせた4-stage triggerからpost取得・停止まで16 MHzで実装可能。** 固定条件の実装例でありSUMPの全flagやserial trigger互換を証明するものではないが、共通protocolがmulti-stage triggerを将来拡張として表現することを妨げる実装上の制約は見つからなかった。
+
+汎用化するとstage定義の解釈や条件ごとの持続検索負荷が増える。実装例ではbasic triggerの24 MHz tierと同一性能を仮定せず、multi-stageを別capabilityまたは別rate tierとしてadvertiseするのが安全である。
+
+## 事実・候補・未決
+
+**事実**: 固定4-stage条件は16 MHzで3/3回、queue 0、overflow 0、data正常、count 4で成立。
+
+**候補**: multi-stage triggerを独立capabilityとし、対応stage数・条件種・最大rateを個別に示す。
+
+**未決**: 汎用stage command表現 / 全条件の持続検索rate / SUMP wire互換範囲 / circular ringとの統合。
