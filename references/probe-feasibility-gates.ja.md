@@ -1,4 +1,4 @@
-# Probe protocol 実現性ゲート — PID と `bcdDevice`
+# Probe protocol 実現性ゲート
 
 状態: **実現性調査**。基本コンセプトとは分離し、成立条件と未確認事項を管理する。
 
@@ -6,11 +6,28 @@
 
 | ゲート | 判定 | 要点 |
 |---|---|---|
+| project名と公開場所 | **未決定** | PID申請前に恒久的なidentityとsource URLが必要 |
 | MCU非依存でPIDを取得できるか | **候補あり** | Openmokoとpid.codesが候補 |
 | 一つのPIDを複数hardwareで使えるか | **見込みあり・要確認** | OpenmokoはhardwareごとにPIDを取らないよう明記 |
 | 第三者の準拠実装も同じPIDを使えるか | **未確認** | 割当団体へ利用範囲の確認が必要 |
 | `bcdDevice`のprofile数は足りるか | **問題なし** | `0000`を予約しても9,999 profile |
 | Windowsで異なるprofileが安全に共存するか | **未実証** | 実機試験が必要 |
+
+## Gate 0 — project名と公開場所
+
+PIDはproject名、owner、source URLと結び付けて登録されるため、申請前にprojectのidentityと恒久的な公開場所を決める必要がある。
+
+現在の`wch-protocols`は検討場所として利用できるが、名称がWCHに限定されて見えるため、MCU非依存protocolの公開場所には適さない。申請時までに、中立的なproject名の専用repositoryへ切り出す案を基本とする。
+
+| 配置 | 評価 |
+|---|---|
+| 現在の`wch-protocols`内 | 検討中は可。正式なproject identityには範囲が狭く見える |
+| 個人accountの専用repository | 実現可能だが、将来のowner移管でURLと管理主体が変わり得る |
+| 専用organization配下のrepository | **推奨**。protocol、PID、governanceのownerを安定させやすい |
+
+最初からrepositoryを細分化せず、protocol、descriptor profile、reference implementation、PID利用方針を一つのcanonical repositoryから辿れるようにする。
+
+通過条件は、中立的で重複・商標上の問題がない名称、安定したowner、公開repository、licenseが確定することである。
 
 ## Gate 1 — PIDを取得できるか
 
