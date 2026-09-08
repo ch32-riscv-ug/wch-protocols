@@ -58,7 +58,7 @@ ESP32-P4実装例がadvertiseする「software basic trigger付き8-bit capture�
 
 実施日: 2026-09-09
 
-採用run: `_runs/E025_20260908T154523Z_default/test_sump_trigger_rate_boundary/dut.log`
+採用run: `_runs/E025_20260908T154529Z_default/test_sump_trigger_rate_boundary/dut.log`
 
 表中は`capture実効rate / queue最大深さ`。`overflow`は件数を示す。
 
