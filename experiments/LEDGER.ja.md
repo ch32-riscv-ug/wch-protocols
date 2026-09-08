@@ -21,6 +21,7 @@
 | **E002** | 実機 1 枚で upload → monitor → assert が通り、実時間が取れるか | **常設 v1**(peer 対の HOST 側 `esp32-s3-d0cf1359101c`) | (規則そのもの) | **完了 — 反証**([e002_smoke_board/](e002_smoke_board/README.ja.md)) |
 | **E003** | peer は使えるか(**環境確認のみ**)— 2 台同時 upload / 2 台の間で実際に繋がっている線はどれか | **常設 v2**(peer 対 2 枚、配線変更なし) | [README.ja.md §4.4/§4.5](README.ja.md) | **完了**([e003_smoke_peer/](e003_smoke_peer/README.ja.md)) |
 | **E012** | 銘板の版情報を conftest から build 時に自動で埋められるか。再ビルドのコストは | **常設 v0**(実機なし) | [README.ja.md §5](README.ja.md) | **完了**([e012_banner_autofill/](e012_banner_autofill/README.ja.md)) |
+| **E013** | 同一VID:PID・異なる`bcdDevice`でHID-onlyとHID + Vendor + CDC × 1をWindowsが分離でき、Linuxでも各経路が通信できるか | **一時・専用機材**(別途用意するESP32-S3 native USB、Windows 11、Linux) | [probe-feasibility-gates](../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 4 | **計画**([e013_usb_descriptor_profiles/](e013_usb_descriptor_profiles/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
