@@ -20,12 +20,20 @@
 #define PARLIO_PINS "2,3,4,5,6,7,8,9"
 #endif
 
+#ifndef EXPERIMENT_ID
+#define EXPERIMENT_ID "E021"
+#endif
+
+#ifndef SAMPLE_RATE_HZ
+#define SAMPLE_RATE_HZ 8000000
+#endif
+
 namespace {
 
 constexpr size_t kLaneCount = 8;
 constexpr uint32_t kPwmFrequencyHz = 100000;
 constexpr uint8_t kPwmResolutionBits = 8;
-constexpr uint32_t kSampleRateHz = 8000000;
+constexpr uint32_t kSampleRateHz = SAMPLE_RATE_HZ;
 constexpr size_t kRingSize = 64 * 1024;
 constexpr size_t kDestinationSize = 1024 * 1024;
 constexpr size_t kDelimiterSize = 65408;
@@ -315,7 +323,7 @@ void run_case(size_t run) {
 }
 
 void run_experiment() {
-  Serial.print("# EXP E021 v1 git=");
+  Serial.print("# EXP " EXPERIMENT_ID " v1 git=");
   Serial.print(BANNER_GIT);
   Serial.print(" probe=esp32p4_parlio target=internal build=");
   Serial.println(__DATE__ " " __TIME__);
