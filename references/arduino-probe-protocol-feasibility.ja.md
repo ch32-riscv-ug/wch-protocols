@@ -338,6 +338,8 @@ PID申請用の最小実装とは分けて、SUMP protocolに近い操作model�
 
 ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的な構成を候補とする。Picoでは内蔵RAMに収まる小さなsample数に限定し、同じ操作modelの最小実装が成立するかを確認する。buffer容量、最大sample rate、channel数、trigger能力は固定仕様にせずcapabilityとして申告する。
 
+[E016](../experiments/e016_p4_parlio_psram_direct/README.ja.md)で、Arduino-ESP32 3.3.11からESP-IDF PARLIO APIを直接呼び、8-bit・8 MHz設定・8,192 sampleの有限長RXを32 MiB PSRAMへ直接DMAできることを確認した。PSRAM payloadはexternal-DMA-capableで、全8 laneを3回取得できた。一方、driver内部のdescriptor単位cache syncは128-byte境界を満たさず警告するため、現時点の成立範囲は**受信完了後にpayload全体を明示syncする有限長batch capture**である。continuous callback、sample rate上限、大容量時の安定性は未確認。
+
 検討時には、少なくとも次を分けて評価する。
 
 1. SUMP commandとの互換範囲

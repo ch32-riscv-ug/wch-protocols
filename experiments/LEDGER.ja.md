@@ -24,7 +24,7 @@
 | **E013** | 同一VID:PID・異なる`bcdDevice`でHID-onlyとHID + Vendor + CDC × 1をWindowsが分離でき、Linuxでも各経路が通信できるか | **一時・専用機材**(別途用意するESP32-S3 native USB、Windows 11、Linux) | [probe-feasibility-gates](../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 4 | **計画**([e013_usb_descriptor_profiles/](e013_usb_descriptor_profiles/README.ja.md)) |
 | **E014** | ESP32-P4で8本のGPIOをLEDC出力に使ったまま、同じGPIOをPARLIO RXへ接続して配線なしで同時captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **中断 — 選んだ初期化方法は反証**([e014_p4_parlio_internal_capture/](e014_p4_parlio_internal_capture/README.ja.md)) |
 | **E015** | `io_loop_back`を使わず入力だけを追加するか、PARLIO→LEDCの順にすれば、同じ8 GPIOでLEDC PWMとPARLIO RXを共存できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了**([e015_p4_parlio_routing_order/](e015_p4_parlio_routing_order/README.ja.md)) |
-| **E016** | Arduino環境からESP-IDF PARLIO driverを直接呼び、有限長PARLIO RXのDMA先をPSRAMにして8-bit captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **計画**([e016_p4_parlio_psram_direct/](e016_p4_parlio_psram_direct/README.ja.md)) |
+| **E016** | Arduino環境からESP-IDF PARLIO driverを直接呼び、有限長PARLIO RXのDMA先をPSRAMにして8-bit captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 直接DMA成立、cache警告あり**([e016_p4_parlio_psram_direct/](e016_p4_parlio_psram_direct/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -53,8 +53,9 @@
 | `wire-bitstream` | SWIO / RVSWD の **bit 列**(start・addr7・data32・op2・parity)は [link-to-target](../protocols/link-to-target.ja.md) §3 の仕様どおりか。**タイミングは見ない** | **常設 v0**(実機なし)または **常設 v2**(E005 の道具で実線上を確認。半周期 5 us 以上) | host Arduino core / peer 対 | 有 | [link-to-target](../protocols/link-to-target.ja.md) §3 |
 | `tool-fast-capture` | 受信を SPI slave / レジスタ直読み / 割り込みにすれば、実 RVSWD 速度で bit を拾えるか(E005 は 100 kbps が上限) | **常設 v2** | peer 対 2 枚 | 有 | (道具) |
 | `p4-parlio-rate` | PARLIO TX等の既知patternを信号源にして、internal RAMへの8-bit有限長PARLIO RX captureが欠落・化けなしで成立するsample rate上限はどこか | **一時・配線なし** | ESP32-P4 1枚 | 有 | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 |
-| `p4-psram-bandwidth` | 搭載PSRAMの容量は幾らで、internal RAM→PSRAM write、PSRAM→internal RAM read、PSRAM内CPU accessの帯域はchunk sizeごとに幾らか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有と推定・実機確認待ち | 同上 |
-| `p4-parlio-psram-spool` | PARLIO RXのinternal DMA ping-pong bufferをPSRAMへ退避するとき、dropなしで継続できる8-bit sample rate、chunk size、capture時間の境界はどこか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有と推定・実機確認待ち | 同上 |
+| `p4-parlio-psram-cache-sync` | PSRAM直接受信でdriver内部のdescriptor完了時`esp_cache_msync()`が128-byte境界違反になる問題は、burst/capture sizeの選択で避けられるか、driver修正が必要か | **一時・配線なし** | ESP32-P4 1枚 | 有 | 同上。E016でPSRAM transactionごとに2件観測 |
+| `p4-psram-bandwidth` | 搭載PSRAMの容量は幾らで、internal RAM→PSRAM write、PSRAM→internal RAM read、PSRAM内CPU accessの帯域はchunk sizeごとに幾らか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有(E016で32 MiB確認) | 同上 |
+| `p4-parlio-psram-spool` | PARLIO RXのinternal DMA ping-pong bufferをPSRAMへ退避するとき、dropなしで継続できる8-bit sample rate、chunk size、capture時間の境界はどこか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有(E016で32 MiB確認) | 同上。PSRAM direct DMA成立によりfallback |
 | `p4-rmt-capture` | 同じPWM/RMT信号をRMT RXのpulse-duration列で取得すると、PARLIO raw sampleより少ないdata量で何channel・何edge/sまで保持できるか | **一時・配線なし** | ESP32-P4 1枚 | 有 | 同上 |
 | `p4-adc-continuous` | ESP32-P4のADC continuous DMAでanalog pinを連続captureでき、実効sample rate・欠落・noiseはどの程度か | **一時** | ESP32-P4 1枚、PWMまたはSDM出力、ADC pinへのjumper、必要ならRC | 有 | 同上 |
 | `linke-error-frame` | WCH-Link の異常系 error 応答 frame の形式(target 無し等) | **常設**(capture) | LinkE + usbmon | 有 | [pc-to-link](../protocols/pc-to-link.ja.md) §3、P1-1 |
@@ -146,6 +147,21 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E016 ESP32-P4: PARLIO RXからPSRAMへの直接DMA — 完了 2026-09-08
+
+全文: [e016_p4_parlio_psram_direct/README.ja.md](e016_p4_parlio_psram_direct/README.ja.md)。採用run: `_runs/E016_20260908T125457Z_default/`。
+
+**事実**
+
+1. **Arduino-ESP32 3.3.11からESP-IDF PARLIO APIを直接使い、有限長RXをPSRAMへ直接DMAできる。** PSRAM payloadはexternal-DMA-capableで、8 MHz設定・8-bit・8,192 sample × 3回の全APIと全laneが成功。
+2. 搭載PSRAMは32 MiB。必要alignmentはinternal RAM 64 byte、external RAM 128 byte。
+3. internal RAMの最大duty誤差は1,832 ppm、PSRAMは2,197 ppm。edge範囲はそれぞれ204〜206、205〜207。
+4. PSRAMではdriver内部のdescriptor単位cache syncが128-byte境界違反となり、transactionごとに2件、計6件警告した。実験側の完了後payload全体M2C syncは`ESP_OK`で、dataも正しかった。
+
+**候補**: 有限長batchはPSRAMへ直接DMAし、wait後にpayload全体を明示M2C syncする。internal RAM→PSRAM copyはfallback。
+
+**未決**: cache警告の回避またはdriver修正(`p4-parlio-psram-cache-sync`) / direct DMAのrate・大容量安定性 / partial・continuous callback時のcoherency。
 
 ### E015 ESP32-P4: LEDC出力とPARLIO RX入力の同一GPIO共存 — 完了 2026-09-08
 
