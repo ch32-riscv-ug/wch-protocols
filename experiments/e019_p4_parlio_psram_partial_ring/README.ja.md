@@ -1,6 +1,6 @@
 # E019 ESP32-P4 PARLIO PSRAM partial ring
 
-状態: **計画**
+状態: **完了 — descriptor cache errorでInterrupt WDT**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行実験: [E018](../e018_p4_parlio_psram_log_suppression/README.ja.md)
 
@@ -73,3 +73,33 @@ E018でsoft delimiterのEOF長は65,535 byte以下に制限された。しかし
 ## 影響
 
 深いbatch logic captureの基本経路を決めるgate。成功しても実用性判定には容量、sample rate、trigger、host downloadを別に測る。
+
+## 結果
+
+実施日: 2026-09-08
+
+採用run: `_runs/E019_20260908T145625Z_default/test_psram_partial_ring/dut.log`
+
+1 MiB、128-byte整列、external-DMA-capableのPSRAM payloadを確保し、`partial_rx_en=true`、`indirect_mount=false`のtransaction開始までは成功した。しかし、`esp_log_level_set("cache", ESP_LOG_NONE)`を設定した後もdescriptorごとに次のerrorが出力された。
+
+```text
+cache: esp_cache_msync: ... size: 0xfc0 ... not aligned with cache line size (0x80)B
+```
+
+27件を出力した時点でCore 1が`Interrupt wdt timeout`となりpanicした。pytestは再実行でも同じ27件とWDTを期待結果として確認した。最初のrun (`E019_20260908T145407Z_default`) も同じ位置で失敗している。
+
+ELFを`addr2line`で復号すると、stack上の`0x4ff05de6`は`esp_cache_msync.c:122`、`0x4ff028ae`は`parlio_rx_default_desc_done_callback`、`0x4ff03566`は`gdma_default_rx_isr`だった。E017で確認した不整列syncがGDMA ISR内で繰り返され、serial error出力を伴ってInterrupt WDTへ至ったことと整合する。
+
+## 判定
+
+仮説は反証された。PSRAM direct partial ringはAPIに拒否されず開始できるが、runtime log levelでは`esp_cache_msync()`自身のerror出力を止められず、一周の通知より前にWDT resetする。したがって、**Arduino-ESP32 3.3.11のstock PARLIO driverをそのまま使う大容量PSRAM direct captureは実用経路にできない**。
+
+driver sourceでは大容量bufferを`0xFC0` (4,032) byte単位にmountする。一方、PSRAM cache lineは128 byteであり、4,032は128の倍数ではない。E017で7,936 byteが3,968 byte × 2へ分割され無警告だったことも合わせると、external-memory transactionのmount alignmentにinternal-memory側の64 byte条件を使う実装が直接の修正候補になる。
+
+## 事実・候補・未決
+
+**事実**: 1 MiB PSRAM direct partial transactionは開始した。`cache` tagを`ESP_LOG_NONE`にしても4,032-byte descriptorのerrorは止まらず、27件でInterrupt WDTになった。
+
+**候補**: (a) external-memory alignmentを使うようPARLIO driverを修正する、(b) internal DMA ringからPSRAMへtaskで退避する。stock driver direct経路の設定変更は候補から外す。
+
+**未決**: PSRAM copy帯域 / internal ringからdropなしで退避できるsample rate / driver修正をArduino buildへ組み込む最小方法 / 修正版direct ringの停止精度。
