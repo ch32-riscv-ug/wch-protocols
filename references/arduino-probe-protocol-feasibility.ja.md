@@ -7,12 +7,12 @@
 Arduino環境のESP32-S3とRaspberry Pi Pico（RP2040）の両方で、**UART、GPIO/reset、SWD、JTAGを実現できる**。このうち、最初のdebug protocolにはSWDが最も適している。
 
 - **SWDを先に実装する。** Pico側にはRaspberry Pi公式debugprobeというPIO実装と実機例があり、ESP32側にも既存のSWD host実装がある。別のPicoをtargetにすれば、両probeで同じDP IDCODE取得を試せる。
-- **JTAGを次に実装する。** 電気的には入出力線が分かれていてSWDより扱いやすいが、Pico用Arduinoでそのまま使える公式probe実装はない。まずTAP resetとIDCODE取得に限定すれば、両MCUで十分に実現可能である。
+- **JTAGを次に実装する。** 電気的には入出力線が分かれていてSWDより扱いやすいが、Pico用Arduinoでそのまま使える公式probe実装はない。TAP resetとIDCODE取得をbring-up条件、OpenOCDからのhalt・register/memory read・resumeをreference実装の完成条件とする。
 - **UARTとGPIO/resetを先に共通化する。** ESP32 ROM bootloaderとの同期やchip情報取得をclient側で行えば、低リスクな最初のend-to-end試験になる。
 - **Arduino APIだけで性能を共通化しない。** 共通化するのはserviceとcommandの意味であり、信号生成はRP2040ではPIO、ESP32-S3ではGPIOまたは専用peripheralを使う個別backendにする。
 - **一bitごとにhostと往復しない。** SWD transferやJTAG scanをprobe内でまとめて実行できるcommandが、USBだけでなくserial/IP transportにも必要である。
 
-したがって、最初のreference implementationが共通して持つ範囲は、**identity/capabilities、GPIO/reset、UART、SWDの最小操作**が妥当である。JTAGは設計には最初から含め、SWD成立後に第二の実証として追加する。
+したがって、最初のreference implementationが共通して持つ範囲は、**identity/capabilities、GPIO/reset、UART、SWD、JTAG**とする。SWDとJTAGの実装順序は分けるが、Pico版とESP32-S3版の両方で二つのdebug protocolが実用操作まで動く状態を目指す。
 
 ## 調査対象とArduinoの意味
 
@@ -106,7 +106,14 @@ RISC-V DTM/DMIや特定targetのflash操作は、このgeneric JTAG primitiveの
 
 ### 最初の試験
 
-既知のJTAG targetに対してTAP resetとIDCODE取得を行う。ESP32 boardは入手しやすいが、board設定やeFuseによってexternal JTAGが無効な場合があるため、最初は既知の設定を固定したtargetを使う。完全なOpenOCD sessionは初期合格条件にしない。
+JTAGには、次の二段階の合格条件を置く。
+
+1. **信号層のbring-up:** 既知targetに対するTAP reset、chain scan、IDCODE取得
+2. **probeとしての完成条件:** OpenOCDからtargetを認識し、halt、register read、memory read、resumeを実行
+
+ESP32 boardは入手しやすいが、board設定やeFuseによってexternal JTAGが無効な場合があるため、既知の設定を固定したtargetを使う。flash書込みはtarget別algorithmの検証まで含むため、最初の完成条件にはしない。
+
+OpenOCDを使わないJTAGにも、chain上のdevice識別、IEEE 1149.1 boundary scanによる基板接続検査、SVF等によるFPGA/CPLD設定という用途がある。ただしIDCODE取得だけではprobeの実用例として弱く、boundary scanにはdevice固有のBSDLやinstruction、FPGA設定にはvendor固有手順が必要になる。MCU用debug probeとして分かりやすく示す用途では、既存target supportを持つOpenOCDへ接続する方がよい。
 
 ## UART、GPIO、reset
 
@@ -149,15 +156,17 @@ RP2040ではPIOがSWD/JTAGのclock生成とsamplingに適する。ESP32-S3の[RM
 
 CMSIS-DAPは、SWD/JTAG/SWOのcommand境界と既存debug toolとの接続に利用価値が高い。ただし、OEPの共通protocolをCMSIS-DAPそのものに限定すると、UART、GPIO、logic capture、将来の未知service、serial/IP transportを同じmodelで扱う目的から外れる。
 
-次のいずれかを後から追加できる構造にする。
+次のいずれかを追加できる構造にする。
 
 - probeがCMSIS-DAP用USB interfaceを追加する
 - host adapterがOEP commandをCMSIS-DAP/OpenOCD側へ変換する
 - OEP SWD/JTAG backendの適合試験にCMSIS-DAPと同等のsequenceを用いる
 
+reference implementationでは、**host上のCMSIS-DAP-over-TCP bridge**を第一候補とする。現在の[OpenOCD adapter configuration](https://openocd.org/doc/html/Debug-Adapter-Configuration.html)はCMSIS-DAPのTCP backendを備えている。bridgeはOpenOCDから受け取ったCMSIS-DAP packetをOEPのbatched SWD/JTAG commandへ変換する。これならprobeのUSB descriptorにCMSIS-DAP interfaceを必須化せず、同じbridgeからPico版、ESP32-S3版、将来のserial/IP版を利用できる。
+
 [CMSIS-DAP reference implementation](https://github.com/ARM-software/CMSIS-DAP)はApache-2.0である。OEP自身のcodeをMITで統一する方針と矛盾はしないが、codeを取り込む場合は第三者componentとしてlicenseとnoticeを保持する。既存projectを参照して独自実装する場合にも、由来を曖昧にしない。
 
-OpenOCD remote-bitbangやXilinx Virtual CableはJTAG backendの動作確認には便利だが、bit単位のnetwork往復は性能が低く、OEPの中心protocolにはしない。特にremote-bitbangのSWD対応範囲はtool/versionによる確認が必要なため、JTAG用の任意互換機能として扱う。
+OpenOCD remote-bitbangやXilinx Virtual Cableもbackendの動作確認には便利である。現在のOpenOCD remote-bitbangはJTAGとSWDを扱えるが、ASCIIのbit単位操作であり、OEP transportまで細かい往復にすると性能が出ない。bring-up用の簡易bridgeには使えても、完成例の主経路はbatchを保てるCMSIS-DAP TCP bridgeとする。
 
 ## USB実装に関する成立条件
 
@@ -202,9 +211,10 @@ ESP32-S3とPicoのGPIOは3.3 V系であり、開発boardをそのまま汎用の
 | 1 | GPIO/reset、UART | 両probeから別のESP32 targetのROM bootloaderへ接続し、chip情報を取得できる |
 | 2 | SWD低速backend | 両probeからPico targetのDP IDCODEを同じcommandで取得できる |
 | 3 | SWD batch | DP/AP transferとmemory readを、bitごとのhost往復なしで実行できる |
-| 4 | JTAG低速backend | 両probeから既知targetのTAP resetとIDCODE取得ができる |
-| 5 | 性能backend | PIO、Dedicated GPIO、SPI、RMT等を比較し、最大clockとbatch上限をcapabilityに反映する |
-| 6 | 任意の互換入口 | CMSIS-DAP、OpenOCD adapter、XVC等から一つを追加して再利用性を確認する |
+| 4 | JTAG低速backend | 両probeから既知targetのTAP reset、chain scan、IDCODE取得ができる |
+| 5 | OpenOCD bridge | host上のCMSIS-DAP TCP bridgeを介し、SWD/JTAG targetのhalt、register/memory read、resumeができる |
+| 6 | 性能backend | PIO、Dedicated GPIO、SPI、RMT等を比較し、最大clockとbatch上限をcapabilityに反映する |
+| 7 | 任意の追加互換入口 | native CMSIS-DAP USB、remote-bitbang、XVC等から必要なものを追加する |
 
 flash書込み、breakpoint、GDB server、全targetのdebug algorithmは、この成立性実証の必須条件にしない。それらはgeneric SWD/JTAG primitiveが成立した後にclientまたは追加serviceとして選択できる。
 
@@ -214,8 +224,8 @@ flash書込み、breakpoint、GDB server、全targetのdebug algorithmは、こ�
 |---|---|---|---|
 | Pico | Pico | SWD | DP IDCODE |
 | ESP32-S3 | Pico | SWD | 同じDP IDCODE |
-| Pico | ESP32または既知JTAG device | JTAG | IDCODE |
-| ESP32-S3 | 同じJTAG target | JTAG | 同じIDCODE |
+| Pico | ESP32または既知JTAG MCU | JTAG | IDCODE、OpenOCD経由のhalt/read/resume |
+| ESP32-S3 | 同じJTAG target | JTAG | 同じIDCODE、halt/read/resume |
 | Pico | ESP32 | UART + boot/reset GPIO | ROM同期、chip情報 |
 | ESP32-S3 | ESP32 | UART + boot/reset GPIO | 同じchip情報 |
 
@@ -238,10 +248,11 @@ flash書込み、breakpoint、GDB server、全targetのdebug algorithmは、こ�
 
 ## ロードマップへの判断
 
-PID申請までのdebug実証は、従来案の「JTAGまたはSWDのどちらか」から、次の優先順位へ具体化できる。
+PID申請までのdebug実証は、従来案の「JTAGまたはSWDのどちらか」から、両方を段階的に成立させる計画へ具体化する。
 
 1. UART/GPIOによるESP32 ROM識別
 2. **両probeによるPico targetのSWD DP IDCODE取得**
-3. 余力があれば両probeによるJTAG IDCODE取得
+3. 両probeによるJTAG chain scanとIDCODE取得
+4. 共通のhost bridgeを介したOpenOCDのhalt、register/memory read、resume
 
-SWDまでを申請前の基準にすれば、Open Embedded Probeが単なるUSB-UART adapterではなく、異なるMCU上で同じ拡張可能なdebug serviceを実装できることを示せる。JTAGはprotocol設計上は同時に収容するが、PID申請を不必要に遅らせる必須条件にはしない。
+IDCODEは信号層の成立確認であり、実装例の完成とはみなさない。SWDとJTAGの双方をOpenOCDから利用できれば、Open Embedded Probeが単なるUSB-UART adapterでも専用test programでもなく、異なるMCU上で実用的なdebug serviceを提供できることを示せる。

@@ -23,7 +23,7 @@ Open Embedded Probeに対して、OSS向けVIDを管理する団体からproject
 |---|---|---|
 | 0. projectの入口を作る | GitHub Organization、canonical repository、短い説明 | `Open-Embedded-Probe`から仕様、実装、client、利用条件へ到達できる |
 | 1. 公開条件を決める | LICENSE、PID利用方針、contribution方針 | project codeのlicenseと、PIDを利用できるfirmwareのFOSS license要件が読める |
-| 2. 最小protocolを固定する | identity、capability discovery、基本command、UART service、extension規則、transport境界 | 二つのfirmwareとclientが同じ記述を参照して実装できる |
+| 2. 最小protocolを固定する | identity、capability discovery、UART/GPIO、SWD、JTAG、extension規則、transport境界 | 二つのfirmwareとclientが同じ記述を参照して実装できる |
 | 3. USB identityを固定する | descriptor profile registry、`bcdDevice`割当規則 | 申請時に使用するprofileが登録され、同じ値を別構成へ再利用しない |
 | 4. Python clientを公開する | source、`pyproject.toml`、`uv`での実行手順 | clone後にbuild済み専用binaryなしで列挙と基本操作ができる |
 | 5. Raspberry Pi Pico実装を公開する | firmware source、build/書込手順、license | 実機が列挙され、clientからidentity、capabilities、基本操作を確認できる |
@@ -53,16 +53,27 @@ probeが提供する機能は、baud rate等を設定できる汎用UARTと、�
 - target固有protocolをclient側へ置けることを示せる
 - 同じUART serviceを将来別の用途へ再利用できる
 
-### 第二段: JTAGまたはSWDの識別操作
+### 第二段: SWDによるdebug操作
 
-UARTだけでは一般的なUSB-UART bridgeとの差が見えにくいため、PID申請までにJTAGまたはSWDのどちらか一方について、最小の識別操作を追加することが望ましい。
+UARTだけでは一般的なUSB-UART bridgeとの差が見えにくいため、両方のreference firmwareから別のPico targetへSWD接続する。
 
-- JTAGを選ぶ場合: TAP reset、chain scan、IDCODE取得
-- SWDを選ぶ場合: line reset、接続、DP IDCODE取得
+- bring-upではline reset、接続、DP IDCODE取得まで確認する
+- 完成条件ではhalt、registerまたはmemory read、resumeまで確認する
+- host側のOpenOCD bridgeを共通にし、Pico版とESP32-S3版で同じ操作を行う
 
-最初からflash書込み、breakpoint、GDB連携まで完成させる必要はない。既知のdebug interfaceを共通protocol上の独立したserviceとして追加できることを示すのが目的である。
+最初からflash書込みやtarget別flash algorithmまで完成させる必要はない。既知のdebug interfaceを共通protocol上の独立したserviceとして追加し、既存debug toolから利用できることを示す。
 
-第一段のUARTは申請前の必須実証とする。第二段は、実装負担を確認してJTAGまたはSWDの一方を選び、申請時にOpen Embedded Probeが単なるserial adapterではないことを示す実証とする。
+### 第三段: JTAGによるdebug操作
+
+両方のreference firmwareへJTAG serviceを追加する。
+
+- bring-upではTAP reset、chain scan、IDCODE取得まで確認する
+- 完成条件ではOpenOCDからhalt、registerまたはmemory read、resumeまで確認する
+- SWDと同じhost bridgeとclient構造を再利用する
+
+JTAGはOpenOCDなしでもdevice chainの識別、boundary scan、FPGA/CPLD設定に利用できる。ただしIDCODE取得だけではprobeの実用例として弱いため、PID申請用reference implementationではOpenOCD接続まで実証する。
+
+第一段のUART、第二段のSWD、第三段のJTAGを申請前の実証とする。詳細な成立性と実装順序は[Arduino ESP32-S3 / Pico probe 実現性調査](arduino-probe-protocol-feasibility.ja.md)を参照する。
 
 ## 申請用clientの形
 
@@ -75,6 +86,9 @@ $ uv run oep list
 $ uv run oep info <device>
 $ uv run oep caps <device>
 $ uv run oep esp-info <device>
+$ uv run oep swd-idcode <device>
+$ uv run oep jtag-scan <device>
+$ uv run oep openocd-bridge <device>
 ```
 
 command名はprotocol設計時に決める。この形の目的は、reviewerや第三者が次を短時間で確認できるようにすることである。
@@ -85,17 +99,17 @@ command名はprotocol設計時に決める。この形の目的は、reviewerや
 - 実装していない機能も含め、capabilityの違いを比較できる
 - 端末出力をそのまま動作証拠として保存できる
 
-Python clientは全serviceの完全実装を目標にしない。申請時点では、device discovery、protocol identity、capability discovery、ESP32 targetの識別と、JTAGまたはSWDによる一つの識別操作を確認できればよい。
+Python clientは全serviceの完全実装を目標にしない。申請時点では、device discovery、protocol identity、capability discovery、ESP32 targetのUART識別、SWD/JTAGの基本操作とOpenOCD bridgeを確認できればよい。
 
 ## 二つのreference implementationが示すもの
 
 | 観点 | Raspberry Pi Pico | ESP32-S3 |
 |---|---|---|
 | 役割 | 小さく追いやすい最小実装 | 別MCU・別SDKでも成立する移植例 |
-| 共通部分 | protocol identity、capability discovery、clientからの基本操作 | protocol identity、capability discovery、clientからの基本操作 |
+| 共通部分 | identity、capability discovery、UART/GPIO、SWD、JTAG | identity、capability discovery、UART/GPIO、SWD、JTAG |
 | 異なってよい部分 | 実装するservice、USB profile、性能、pin配置 | 実装するservice、USB profile、性能、pin配置 |
 
-両者がすべて同じ機能を持つ必要はない。むしろ機能差があっても、clientがcapabilityを確認して利用可能な範囲だけを扱えることが、このprojectのコンセプトを示す。
+UART/GPIO、SWD、JTAGは申請用reference implementationの共通baselineとする。それ以外は両者が同じ機能を持つ必要はない。機能差があっても、clientがcapabilityを確認して利用可能な範囲だけを扱えることが、このprojectのコンセプトを示す。
 
 ただし`bcdDevice`方式を申請根拠に含めるなら、二つの実装または試験用buildを使って、少なくとも二種類のdescriptor profileを実機で検証する。
 
@@ -112,6 +126,10 @@ uv run oep info / caps
     ↓
 同じcommandで各probeからESP32 targetを識別
     ↓
+SWD/JTAG IDCODEを取得
+    ↓
+OpenOCDからhalt / read / resume
+    ↓
 異なる機能構成がcapabilityとして表示される
 ```
 
@@ -127,7 +145,8 @@ uv run oep info / caps
 - Python clientを`uv run`で実行できる
 - 二つの実機について端末から同じ確認手順を再現できる
 - 二つのprobeからUART経由でESP32 targetを識別できる
-- JTAGまたはSWDの最小識別操作を少なくとも一つ実証している
+- 両方のprobeでSWDとJTAGのIDCODE取得を実証している
+- 共通のhost bridgeを介し、OpenOCDからSWD/JTAG targetのhalt、registerまたはmemory read、resumeを実証している
 - Windowsで`bcdDevice`によるdescriptor profile分離を実証している
 - 依存libraryを含むlicense一覧がある
 - 一つのPIDを第三者の準拠実装へ利用させたいことを申請文に明記している
