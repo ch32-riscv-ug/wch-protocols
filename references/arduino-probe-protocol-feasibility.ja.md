@@ -346,6 +346,8 @@ ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的�
 
 [E022](../experiments/e022_p4_parlio_spool_80mhz/README.ja.md)では同じ経路を80 MHzへ上げ、1 MiBを3/3回、queue overflow 0、実効79.594〜79.612 MB/s、全lane正常で取得した。内部GPIO matrix上の100 kHz PWMを信号源にした結果であり、外部padのsignal integrity、trigger検索を同時に行うCPU余裕、120〜160 MHz、host downloadは未確認である。
 
+[E023](../experiments/e023_p4_sump_basic_trigger_80mhz/README.ja.md)ではSUMP基本trigger相当のpattern/mask・edge条件をcopy taskで1 byteずつ全sample検索した。検索は15.078〜24.555 MB/sに留まり、80 MHz入力ではqueue overflowが722〜1,286件発生した。したがってtriggerなし80 MHzは成立するが、素朴なsoftware trigger付き80 MHzは成立しない。32-bit並列検索、専用core、またはtrigger mode時のsample rate制限を比較する必要がある。
+
 検討時には、少なくとも次を分けて評価する。
 
 1. SUMP commandとの互換範囲

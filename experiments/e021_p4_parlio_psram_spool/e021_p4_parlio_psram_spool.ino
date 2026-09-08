@@ -28,6 +28,18 @@
 #define SAMPLE_RATE_HZ 8000000
 #endif
 
+#ifndef BEFORE_CAPTURE
+#define BEFORE_CAPTURE(run) do { } while (0)
+#endif
+
+#ifndef PROCESS_CHUNK
+#define PROCESS_CHUNK(data, length, offset) do { } while (0)
+#endif
+
+#ifndef AFTER_CAPTURE
+#define AFTER_CAPTURE(run) do { } while (0)
+#endif
+
 namespace {
 
 constexpr size_t kLaneCount = 8;
@@ -153,6 +165,7 @@ void run_case(size_t run) {
   capture_state.callback_count = 0;
   capture_state.callback_bytes = 0;
   capture_state.queue_overflow = 0;
+  BEFORE_CAPTURE(run);
   memset(ring_buffer, 0xA5, kRingSize);
   memset(destination, 0xA5, kDestinationSize);
   esp_cache_msync(ring_buffer, kRingSize, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
@@ -196,6 +209,7 @@ void run_case(size_t run) {
     }
     const size_t remaining = kDestinationSize - copied;
     const size_t copy_size = min(chunk.length, remaining);
+    PROCESS_CHUNK(chunk.data, copy_size, copied);
     memcpy(destination + copied, chunk.data, copy_size);
     copied += copy_size;
     ++dequeue_count;
@@ -317,6 +331,7 @@ void run_case(size_t run) {
   Serial.print(min_edges);
   Serial.print(" max_edges=");
   Serial.println(max_edges);
+  AFTER_CAPTURE(run);
 
   if (delimiter != nullptr) parlio_del_rx_delimiter(delimiter);
   if (rx_unit != nullptr) parlio_del_rx_unit(rx_unit);
