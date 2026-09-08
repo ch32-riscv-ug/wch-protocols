@@ -21,13 +21,14 @@ PIDはproject名、owner、source URLと結び付けて登録されるため、�
 
 | 配置 | 評価 |
 |---|---|
-| 現在の`wch-protocols`内 | 検討中は可。正式なproject identityには範囲が狭く見える |
-| 個人accountの専用repository | 実現可能だが、将来のowner移管でURLと管理主体が変わり得る |
-| 専用organization配下のrepository | **推奨**。protocol、PID、governanceのownerを安定させやすい |
+| protocolもprobeも現在のrepository | projectの範囲がWCH専用に見える |
+| protocolだけ専用organization | identityは明確だが、申請時に実現性を示すsourceが分散する |
+| protocolと最小referenceを専用organization、実用probeは現在のrepository | **推奨**。申請の自己完結性と既存開発の継続を両立できる |
+| すべて専用organizationへ移動 | 構成は明快だが、既存projectとの統合まで移動する必要はない |
 
-最初からrepositoryを細分化せず、protocol、descriptor profile、reference implementation、PID利用方針を一つのcanonical repositoryから辿れるようにする。
+専用organization側は、protocol、descriptor profile、PID利用方針、適合確認と、動作する最小probe/client例を管理する。CH32向けの実用probeやapplication統合は現在のrepositoryに残し、canonical projectから参照する。
 
-通過条件は、中立的で重複・商標上の問題がない名称、安定したowner、公開repository、licenseが確定することである。
+通過条件は、中立的な名称、安定したowner、canonical repository、license、最小referenceと実用実装の責任境界が確定することである。
 
 ## Gate 1 — PIDを取得できるか
 

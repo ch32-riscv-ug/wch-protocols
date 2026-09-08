@@ -229,7 +229,27 @@ Openmokoと同じ6点に加え、次を明示する。
 
 ## 3. 申請前に揃えるもの
 
-どちらへ申請する場合も、先にproject名とcanonical repositoryを確定する。現在の`wch-protocols`は検討場所として使い、MCU非依存であることが伝わる名称の専用repositoryを、安定したownerまたはorganizationの下に置くのが望ましい。
+どちらへ申請する場合も、先にproject名とcanonical repositoryを確定する。protocolのcanonical repositoryは、MCU非依存であることが伝わる専用organizationの下に置くのが望ましい。
+
+すべてのprobe実装をそのorganizationへ移す必要はない。推奨構成は次のとおりである。
+
+```text
+dedicated organization / canonical project
+  ├─ protocol specification
+  ├─ USB descriptor profile registry
+  ├─ PID use policy
+  ├─ conformance tests
+  ├─ minimal reference probe
+  └─ minimal reference client
+
+current WCH-related repository
+  ├─ practical CH32 probe implementation
+  └─ ch32rv / tool integration
+```
+
+専用organization側のminimal referenceは、完成品probeではなく、protocol、descriptor profile、capability discoveryが実際に動くことを示す申請用の基準実装とする。実用probeは現在のrepositoryで発展させ、canonical projectから対応実装としてlinkする。
+
+これにより、PID申請先はcanonical repositoryだけでprojectのidentity、利用規則、実現性を確認でき、同時にWCH固有の実装詳細を汎用protocolへ持ち込まずに済む。
 
 その上で、次を公開する。
 
