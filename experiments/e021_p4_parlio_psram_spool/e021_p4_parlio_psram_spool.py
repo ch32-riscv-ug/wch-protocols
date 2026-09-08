@@ -27,6 +27,11 @@ CASE = re.compile(
 )
 DESTINATION_SIZE = 1024 * 1024
 RUNS = 3
+RATE_MIN_MBPS_MILLI = 7000
+RATE_MAX_MBPS_MILLI = 9000
+CAPTURE_US_MIN = 50000
+CAPTURE_US_MAX = 500000
+MIN_EDGES = 20000
 
 
 def test_parlio_psram_spool(dut):
@@ -71,11 +76,11 @@ def test_parlio_psram_spool(dut):
         assert overflows == 0
         assert 0 < min_chunk <= max_chunk <= 4092
         assert max_queue < 64
-        assert 50000 <= capture_us <= 500000
-        assert 7000 <= rate_mbps_milli <= 9000
+        assert CAPTURE_US_MIN <= capture_us <= CAPTURE_US_MAX
+        assert RATE_MIN_MBPS_MILLI <= rate_mbps_milli <= RATE_MAX_MBPS_MILLI
         assert sync_us > 0
         assert max_error <= 30000
-        assert min_edges >= 20000 and max_edges >= min_edges
+        assert min_edges >= MIN_EDGES and max_edges >= min_edges
         observations.append(metrics)
 
     dut.expect_exact("DONE status=ok", timeout=5)

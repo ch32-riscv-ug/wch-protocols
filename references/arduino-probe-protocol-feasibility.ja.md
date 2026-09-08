@@ -344,6 +344,8 @@ ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的�
 
 [E021](../experiments/e021_p4_parlio_psram_spool/README.ja.md)では、64 KiB internal DMA ringからtaskで1 MiB PSRAMへ退避し、8 MHz / 8-bitを3/3回、queue overflow 0、実効7.982 MB/s、全lane正常で取得した。receiverをstop後に再利用した初回構成では2回目に約5%のdata不良が出たため、現時点ではcaptureごとにreceiverを再生成する。これによりstock Arduino環境でも深いbatch captureの基本経路は成立したが、sample rate上限、trigger検索、pre/post ring、host downloadは未確認である。
 
+[E022](../experiments/e022_p4_parlio_spool_80mhz/README.ja.md)では同じ経路を80 MHzへ上げ、1 MiBを3/3回、queue overflow 0、実効79.594〜79.612 MB/s、全lane正常で取得した。内部GPIO matrix上の100 kHz PWMを信号源にした結果であり、外部padのsignal integrity、trigger検索を同時に行うCPU余裕、120〜160 MHz、host downloadは未確認である。
+
 検討時には、少なくとも次を分けて評価する。
 
 1. SUMP commandとの互換範囲
