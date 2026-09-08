@@ -80,6 +80,6 @@ protocolのcoreは、接続、識別、機能発見、要求と応答など、�
 
 ## 仕様と初期実装の範囲
 
-protocolの考え方はCH32RVに限定しない。SWD、JTAG、未知の将来protocolやUSB以外のtransportを追加できるものとする。
+protocolの考え方は特定のMCUやtarget protocolに限定しない。SWD、JTAG、未知の将来protocolやUSB以外のtransportを追加できるものとする。
 
-最初の実装と動作保証はCH32 RISC-V向けに限定し、共通protocolとUSB descriptor profileが実際に成立することを示すreference implementationとする。その実績をもって、OSSプロジェクト向けのVIDを管理する団体から、このプロジェクト専用のPID割当を受ける。
+最初の実装では、公開情報が揃ったUART、JTAG、SWD等を用いて、共通protocolとUSB descriptor profileが実際に成立することを示す。独自解析を必要とするtarget protocolへの対応は、その後の実用実装として追加する。その実績をもって、OSSプロジェクト向けのVIDを管理する団体から、このプロジェクト専用のPID割当を受ける。

@@ -33,6 +33,52 @@ Openmokoには、専用hardwareを持たず、STM32とCH32を対象にCDC/HIDを
 どちらもUSB-IFが公式にendorseするPID割当制度ではない。USB-IF certificationやlogo使用を必要とする製品には、そのまま適用できるとは考えない。
 
 protocolの利用条件とPIDの利用条件は分離する。project PIDを使用するprobe firmwareには、MIT等の認知されたFOSS licenseを必須とする。一方、PIDを使用しないtransport実装やclient applicationまで、PID割当条件だけを理由に同じlicenseへ拘束しない。
+
+### Licenseの決定
+
+Open Embedded Probe自身が作るprotocol文書、reference firmware、Python client、schema、test vector、code exampleは、**MIT Licenseで統一する**。
+
+MITはOSI承認済みで、Openmokoとpid.codesのFOSS要件を明確に満たす。0BSDやCC0より広く認知されており、利用者、contributor、reviewer、license checkerへ追加説明を必要としにくい。実装例を取り込む利用者にはcopyright noticeとlicense textの保持を求めるが、表示不要にすることよりproject全体の理解と運用の単純さを優先する。
+
+0BSD、CC0、`MIT OR 0BSD`も調査上は利用可能な候補だったが、公式成果物には採用しない。CC0はpid.codesでの採用例もある一方、patentとtrademarkを明示的に対象外としており、FSFもsoftwareへの利用を推奨していない。dual licenseは今回必要のない選択肢とlicense管理を増やす。
+
+| 選択肢 | PID申請との適合 | 下流でnoticeを外せるか | 判断 |
+|---|---|---|---|
+| MIT | OSI承認済みで問題なし | **不可**。substantial portionsへnotice保持が必要 | **採用**。認知度と運用の単純さを優先 |
+| 0BSD | OSI承認済みで問題なし | **可能**。配布時のnotice保持条件がない | 不採用。表示不要を必須要件にしない |
+| CC0-1.0 | OpenmokoのFSF条件を満たし、pid.codesにも前例あり | **可能** | 不採用。softwareではpatent面に注意 |
+| `MIT OR 0BSD` | いずれもFOSS license | **可能**。利用者が0BSDを選択 | 不採用。license管理を増やさない |
+
+ここでいう「noticeを外せる」は、project自身が著作者を表示しなくてよいという意味ではない。Openmokoの申請checklistは、source fileに著作権者と年、license headerを置くよう求めている。したがってcanonical repositoryでは、たとえば次の表示を置く。
+
+```text
+SPDX-FileCopyrightText: 2026 <copyright holder>
+SPDX-License-Identifier: MIT
+```
+
+MITでは、下流利用者もこのcopyright noticeとlicense textを保持する。第三者library、SDK、USB stackから取り込んだcodeには、それぞれのupstream licenseが別に残る。
+
+code licenseとproject PIDの使用許可も分離する。MITはreference codeの利用、改変、再配布を許可するが、それだけでOpen Embedded Probeへ割り当てられたVID:PIDの使用を許可するものとは扱わない。PIDをそのまま使用する実装は別途`PID-USE.md`の適合条件に従い、条件を満たさない派生実装はVID:PIDを変更する。
+
+成果物ごとの方針は次のとおりとする。
+
+| 成果物 | license / 規則 | 理由 |
+|---|---|---|
+| protocol文書 / reference firmware / Python client / schema / test vector / code example | MIT | project自身が作る成果物を一つのlicenseで管理する |
+| 第三者library / SDK / USB stack | upstream license | project側で再licenseしない |
+| 将来作成するhardware design | 未決定 | 実際に設計を公開するとき、OSHW向けlicenseを別途選ぶ |
+| VID:PIDの使用 | `PID-USE.md` | copyright licenseとは別に、割当元の条件とproject適合条件を管理する |
+
+参考資料:
+
+- [Openmoko USB PID registry: Conditions and checklist](https://github.com/openmoko/openmoko-usb-oui)
+- [pid.codes: How to get a PID](https://pid.codes/howto/)
+- [pid.codes: CC0で登録されたHID bridge](https://pid.codes/1209/4B42/)
+- [OSI: Zero-Clause BSD](https://opensource.org/license/0bsd)
+- [OSI: MIT License](https://opensource.org/license/mit)
+- [FSF: CC0の評価](https://www.gnu.org/licenses/license-list.html#CC0)
+- [Creative Commons: CC0 legal code](https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+
 ---
 
 ## 1. Openmoko
@@ -269,10 +315,12 @@ current WCH-related repository
 
 PID利用方針には、少なくとも「PIDを使用するprobe firmwareは認知されたFOSS licenseで公開する」ことを明記する。hardwareの公開も必須にするかは、最終的に選ぶ割当団体の条件に合わせる。
 
-申請の説得力を考えると、単一profileが動くだけでなく、次の二構成を示すのが望ましい。
+申請の説得力を考えると、単一profileが動くだけでなく、外部に見える構成が異なる二つ以上のdescriptor profileを示すのが望ましい。
 
-- software USBによるHID-only reference
-- native USBによるHID + CDCまたはvendor-specific reference
+- 最小限のinterfaceだけを持つprofile
+- 複数interfaceまたは高速な経路を持つprofile
+
+具体的なUSB classの組合せはprofile設計時に決定する。PicoとESP32-S3のどちらへ各profileを割り当てるかも、firmware構成を見て決める。
 
 同じ仮の開発用VID:PIDと異なる`bcdDevice`でWindows検証を行い、申請後は割り当てられたVID:PIDへ置き換える。開発用IDのfirmwareは配布用releaseにしない。
 
