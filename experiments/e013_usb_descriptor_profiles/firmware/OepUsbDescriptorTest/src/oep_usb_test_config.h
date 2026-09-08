@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 #ifndef OEP_USB_TEST_PROFILE
-#define OEP_USB_TEST_PROFILE 1
+#error "Define OEP_USB_TEST_PROFILE before including OepUsbDescriptorTest.h"
 #endif
 
 #warning "E013 uses private test VID:PID 1209:0001; do not distribute this firmware"
@@ -16,7 +16,7 @@
 #ifndef ARDUINO_USB_MODE
 #error "This experiment requires an ESP32-S3 with native USB"
 #elif ARDUINO_USB_MODE != 0
-#error "Select Tools > USB Mode > USB-OTG (TinyUSB)"
+#error "Select USB-OTG (TinyUSB) mode"
 #endif
 
 namespace oep_usb_test {
@@ -34,3 +34,4 @@ constexpr uint16_t profile_revision() {
 }
 
 }  // namespace oep_usb_test
+

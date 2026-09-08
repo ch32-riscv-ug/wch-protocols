@@ -47,7 +47,7 @@
 
 ### Firmware
 
-同じsketchを`OEP_USB_TEST_PROFILE=1`または`2`でbuildする。Profile BではMicrosoft OS 2.0 descriptorが指すinterface 0をUSBVendorにするため、USBVendor、HID、CDCの順に登録する。
+Profile番号だけが異なる二つの薄いsketchをbuildし、USB実装は同じheader-only local libraryから取り込む。各sketchの`sketch.yaml`がArduino-ESP32 3.3.11を固定するため、Coreの事前installは不要である。Profile BではMicrosoft OS 2.0 descriptorが指すinterface 0をUSBVendorにするため、USBVendor、HID、CDCの順に登録する。
 
 各経路は固定payloadのechoを提供する。descriptorが見えるだけでは合格にせず、hostから送ったbyte列が同じ経路で戻ることを確認する。
 
@@ -122,8 +122,9 @@ WindowsとLinuxの全必須手順についてraw記録が残り、成功・失�
 ```console
 cd experiments
 uv sync
-uv run python e013_usb_descriptor_profiles/firmware_tool.py build --profile all
-uv run python e013_usb_descriptor_profiles/firmware_tool.py upload --profile a --port <UPLOAD_PORT>
+arduino-cli compile e013_usb_descriptor_profiles/firmware/profile_a
+arduino-cli compile e013_usb_descriptor_profiles/firmware/profile_b
+arduino-cli compile --upload --port <UPLOAD_PORT> e013_usb_descriptor_profiles/firmware/profile_a
 uv run python e013_usb_descriptor_profiles/usb_profile_test.py inspect --expect-profile a
 uv run python e013_usb_descriptor_profiles/usb_profile_test.py test --profile a
 ```
