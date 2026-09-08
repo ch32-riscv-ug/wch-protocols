@@ -14,9 +14,14 @@
 #define TRIGGER_MODE_FOR_RUN(run) (run)
 #endif
 
+#ifndef TRIGGER_MIN_INDEX_FOR_RUN
+#define TRIGGER_MIN_INDEX_FOR_RUN(run) 0
+#endif
+
 namespace trigger_test {
 
 struct Metrics {
+  size_t run;
   size_t mode;
   bool found;
   size_t first_index;
@@ -31,6 +36,7 @@ const char *const mode_names[] = {"nomatch", "rising", "pattern"};
 
 void before(size_t run) {
   metrics = {};
+  metrics.run = run;
   metrics.mode = TRIGGER_MODE_FOR_RUN(run);
 }
 
@@ -80,7 +86,8 @@ void record_rising_word(const uint8_t *data, size_t offset) {
   uint8_t previous = metrics.previous;
   bool has_previous = metrics.has_previous;
   for (size_t i = 0; i < sizeof(uint32_t); ++i) {
-    if (has_previous && !(previous & 0x01U) && (data[i] & 0x01U)) {
+    if (offset + i >= TRIGGER_MIN_INDEX_FOR_RUN(metrics.run) && has_previous &&
+        !(previous & 0x01U) && (data[i] & 0x01U)) {
       metrics.found = true;
       metrics.first_index = offset + i;
       return;
@@ -106,7 +113,8 @@ void scan_rising(const uint8_t *data, size_t length, size_t offset) {
   }
   for (; i < length; ++i) {
     const uint8_t sample = data[i];
-    if (!metrics.found && metrics.has_previous &&
+    if (!metrics.found && offset + i >= TRIGGER_MIN_INDEX_FOR_RUN(metrics.run) &&
+        metrics.has_previous &&
         !(metrics.previous & 0x01U) && (sample & 0x01U)) {
       metrics.found = true;
       metrics.first_index = offset + i;
