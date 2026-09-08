@@ -36,11 +36,12 @@ repositoryの`experiments`へ移動する。
 ```console
 cd <wch-protocols>/experiments
 uv sync
-arduino-cli core update-index
-arduino-cli core install esp32:esp32@3.3.11
+arduino-cli version
 ```
 
 必要なPython packageは`pyusb`、`libusb-package`、`hidapi`、`pyserial`で、`uv sync`が導入する。
+
+Firmware側の`sketch.yaml`がArduino-ESP32 3.3.11と追加index URLを固定している。`arduino-cli compile`は不足するCoreをprofile専用領域へ自動取得するため、`core update-index`や`core install`は実行しない。
 
 Linuxでは一般userからUSB interfaceを開けるよう、実験中だけ次のudev ruleを用意する。system policyに応じて管理者が設置する。
 
@@ -55,28 +56,31 @@ WindowsではMicrosoft USBViewを用意する。Profile Bのvendor-specific inte
 
 ## 4. firmwareのbuild
 
-Linux、WindowsのどちらからでもPython wrapperを使える。
+Linux、Windowsとも`arduino-cli`を直接実行する。Profile A/Bは独立したsketchであり、それぞれの`sketch.yaml`を自動的に使用する。
 
 ```console
-uv run python e013_usb_descriptor_profiles/firmware_tool.py build --profile all
+arduino-cli compile e013_usb_descriptor_profiles/firmware/profile_a
+arduino-cli compile e013_usb_descriptor_profiles/firmware/profile_b
 ```
 
-生成物:
-
-```text
-e013_usb_descriptor_profiles/build/profile_a/
-e013_usb_descriptor_profiles/build/profile_b/
-```
-
-Profile A/Bは同じsketchからcompile-time defineだけを変えて生成される。
+初回だけ、profileに固定されたCoreのdownloadに時間がかかることがある。Profile A/Bの`.ino`はprofile番号だけを保持し、USB実装は共通のheader-only local libraryを使用する。
 
 ## 5. firmwareの書込み
 
-`<UPLOAD_PORT>`にはnative USB側ではなく、書込みに使うUART/USB-Serial portを指定する。Linuxでは`/dev/ttyACM*`または`/dev/ttyUSB*`、Windowsでは`COM*`になる。
+`<UPLOAD_PORT>`にはnative USB側ではなく、書込みに使うUART/USB-Serial portを指定する。`compile --upload`により、選んだsketchをbuildしてそのまま書き込む。
+
+Linux:
 
 ```console
-uv run python e013_usb_descriptor_profiles/firmware_tool.py upload --profile a --port <UPLOAD_PORT>
-uv run python e013_usb_descriptor_profiles/firmware_tool.py upload --profile b --port <UPLOAD_PORT>
+arduino-cli compile --upload --port /dev/ttyUSB0 e013_usb_descriptor_profiles/firmware/profile_a
+arduino-cli compile --upload --port /dev/ttyUSB0 e013_usb_descriptor_profiles/firmware/profile_b
+```
+
+Windows PowerShell:
+
+```powershell
+arduino-cli compile --upload --port COM5 e013_usb_descriptor_profiles/firmware/profile_a
+arduino-cli compile --upload --port COM5 e013_usb_descriptor_profiles/firmware/profile_b
 ```
 
 書込み後、native USB側を一度抜き差しする。書込み用USB-Serial portとProfile BのCDC portを取り違えない。
@@ -203,4 +207,3 @@ Profile Aを書き戻して同じ記録を行う。Device Managerを「非表示
 - cache削除、driver手動置換、接続順依存を通常手順として要求しない
 
 失敗した場合もraw記録を消さず、どの条件で失敗したかを実験READMEの結果へ追記する。
-

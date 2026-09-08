@@ -1,9 +1,11 @@
 profiles:
-  esp32s3_usb_profile:
+  esp32s3:
     fqbn: esp32:esp32:esp32s3:USBMode=default,CDCOnBoot=default,UploadMode=default
     platforms:
       - platform: esp32:esp32 (3.3.11)
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+    libraries:
+      - dir: ../OepUsbDescriptorTest
 
-default_profile: esp32s3_usb_profile
+default_profile: esp32s3
 

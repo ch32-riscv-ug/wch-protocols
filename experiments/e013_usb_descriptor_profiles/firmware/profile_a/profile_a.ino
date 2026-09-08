@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-#include "src/oep_usb_test_profile.h"
+#define OEP_USB_TEST_PROFILE 1
+#include <OepUsbDescriptorTest.h>
 
 void setup() {
   oep_usb_test::begin();
