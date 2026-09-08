@@ -342,6 +342,8 @@ ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的�
 
 [E020](../experiments/e020_p4_psram_copy_bandwidth/README.ja.md)では、8 MiBを使うCPU `memcpy`単体で、internal RAM→PSRAMのflush込みwriteが138.590〜182.746 MB/s、PSRAM→internal readが170.917〜183.815 MB/sだった。16 KiB chunkのwriteは8-bit 80 MS/sに対して2.28倍あるため、internal DMA ringからPSRAMへ退避する方式はmemory帯域上の候補として残る。PARLIO、trigger検索、USBとの同時動作時のdropは未確認。
 
+[E021](../experiments/e021_p4_parlio_psram_spool/README.ja.md)では、64 KiB internal DMA ringからtaskで1 MiB PSRAMへ退避し、8 MHz / 8-bitを3/3回、queue overflow 0、実効7.982 MB/s、全lane正常で取得した。receiverをstop後に再利用した初回構成では2回目に約5%のdata不良が出たため、現時点ではcaptureごとにreceiverを再生成する。これによりstock Arduino環境でも深いbatch captureの基本経路は成立したが、sample rate上限、trigger検索、pre/post ring、host downloadは未確認である。
+
 検討時には、少なくとも次を分けて評価する。
 
 1. SUMP commandとの互換範囲
