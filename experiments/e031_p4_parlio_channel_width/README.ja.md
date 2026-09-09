@@ -86,3 +86,11 @@ width、保存byte数、復元sample数、callback/dequeue、queue最大、overf
 **候補**: 1〜16 channelはPARLIOと同じbatch APIを使い、sample encodingだけwidthで決める。
 
 **未決**: width別raw rate上限 / width別trigger上限 / 16本独立pad / 24 channel以上のCPU snapshot。
+
+## 追記 — E042による成立条件の限定(2026-09-09)
+
+本レポートは書き換えない。[E042](../e042_p4_parlio_16ch_seq_verify/README.ja.md)が同じ複製lane構成をPARLIO TXのgray code rampで測り直した結果、「16 channelの複製lane不一致は0」という記録の成立条件を次のように限定する。
+
+**不一致0は、8 MHz samplingに対して信号源が100 kHzという疎な条件でのみ成立する。** E042では40 MHz以上で複製lane不一致が1,048,576 sampleあたり345〜1,066件(遷移1回あたり0.13〜0.41%)出た。20 MHzでは0件である。同一GPIOを二つのlane slotへ入力しても、信号遷移がsampling edge付近に来ると両者が別の値を読むことがある。
+
+したがってchannel間のedge位置は±1 sampleの精度として扱い、それより細かいtiming差をsample列から読み取ってはならない。
