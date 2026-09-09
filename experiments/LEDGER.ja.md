@@ -106,7 +106,7 @@
 | `p4-wide-gpio-snapshot` | CPUのGPIO input register snapshotで24 / 32 / 33〜55 channelを同時取得できるrate・jitter・core占有率の限界はどこか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有 | 同上。wide低速tier |
 | `p4-trigger-matrix` | channel幅、pattern/edge/occurrence/multi-stage条件ごとのdropなしsample rate境界はどこか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有 | 同上。trigger |
 | `p4-batch-compression` | RLE、transition timestamp、blockごとのraw/RLE選択はどの入力で有効で、最大sample rate・edge rate・最悪膨張率はいくつか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有 | 同上。内部圧縮 |
-| `p4-external-clock` | PARLIO external clock入力でfinite/circular batch captureが成立する周波数・停止条件はどこか | **一時・要配線** | PSRAM搭載ESP32-P4 1枚、clock source | 現在不可 | 同上。clock |
+| `p4-external-clock` | PARLIO external clock入力でfinite/circular batch captureが成立する周波数・停止条件はどこか | **一時・配線なしで試せる見込み** | PSRAM搭載ESP32-P4 1枚 | **有**(下記) | 同上。clock |
 | `p4-rmt-capture` | 同じPWM/RMT信号をRMT RXのpulse-duration列で取得すると、PARLIO raw sampleより少ないdata量で何channel・何edge/sまで保持できるか | **一時・配線なし** | ESP32-P4 1枚 | 有 | 同上 |
 | `p4-adc-batch` | ADC continuous DMAの1〜14 channel pattern順、aggregate rate上限、pool overflow、PSRAM batch退避は無配線入力でも成立するか | **一時・配線なし** | ESP32-P4 1枚 | 有 | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) analog |
 | `p4-adc-signal-quality` | ADC continuousのattenuation別範囲、noise、ENOB、channel間skew、digital captureとの同期精度はどの程度か | **一時・要配線** | ESP32-P4 1枚、SDM/PWM、RC、jumper、基準電圧 | 現在不可 | 同上。analog実信号 |
@@ -135,6 +135,23 @@
 | `swio-threshold` | SWIO の LOW パルス幅は 0/1 をどこで分けるか。**動かなくなる境界は両側どこか** | **一時**(LA は任意) | probe + **実 V003**。幅の生成・測定は E006 の道具(12.5 ns 分解能)で足りる。**立ち上がり波形まで見るなら** LA 100 MS/s 以上 + marker 線 | V003 次第 | [link-to-target](../protocols/link-to-target.ja.md) §3/§5、P3-6、[dmi-bridge](../protocols/dmi-bridge.ja.md) §9-2 |
 | `rvswd-frame` | RVSWD の bit フレーム(7+32+2+1 ×2)は実波形と一致するか。STOP 波形とクロック周波数は | **使い捨て** | probe + V203/V307 + **LA 3ch**(SWCLK/SWDIO/marker) | **要調達?** | [link-to-target](../protocols/link-to-target.ja.md) §3、P3-7 |
 | `5v-swio` | 5 V board(Uno)から open-drain で SWIO を叩けるか。直列抵抗だけで安全か | **使い捨て** | Uno + V003 + **LA** + 抵抗 | 不明 | [dmi-bridge](../protocols/dmi-bridge.ja.md) §8.2 |
+
+### P4候補の現状(2026-09-09)
+
+上表のP4候補のうち、いくつかは別の名前で採番されて解決している。番号は再利用しないので候補行はそのまま残し、行き先だけここに書く。
+
+| slug | 状態 |
+|---|---|
+| `p4-parlio-rate` | **解決** — [E015](e015_p4_parlio_routing_order/README.ja.md)・[E016](e016_p4_parlio_psram_direct/README.ja.md)・[E031](e031_p4_parlio_channel_width/README.ja.md)〜[E033](e033_p4_parlio_width_rate_fine/README.ja.md)・[E036](e036_p4_parlio_rate_seq_verify/README.ja.md)・[E038](e038_p4_parlio_pulse_trigger_rate/README.ja.md)。sampling上限は内部clock源の160 MHz |
+| `p4-parlio-spool-rate` | **解決** — [E021](e021_p4_parlio_psram_spool/README.ja.md)・[E022](e022_p4_parlio_spool_80mhz/README.ja.md)・[E036](e036_p4_parlio_rate_seq_verify/README.ja.md)。持続約98 MB/s |
+| `p4-parlio-width` | **解決** — [E031](e031_p4_parlio_channel_width/README.ja.md)、sample単位再検証は[E036](e036_p4_parlio_rate_seq_verify/README.ja.md)と[E042](e042_p4_parlio_16ch_seq_verify/README.ja.md) |
+| `p4-adc-batch` | **解決** — [E034](e034_p4_adc1_continuous_batch/README.ja.md)。続きは[E035](e035_p4_adc_topology_order/README.ja.md)(計画) |
+| `p4-trigger-matrix` | **一部** — 8 channelのsoftware走査tierは[E025](e025_p4_sump_trigger_rate_boundary/README.ja.md)・[E028](e028_p4_sump_four_stage_trigger/README.ja.md)、hardware tierは[E037](e037_p4_parlio_pulse_trigger/README.ja.md)〜[E041](e041_p4_parlio_shared_valid_line/README.ja.md)で確定。**width × 条件種のmatrixは未着手** |
+| `p4-batch-compression` | **一部** — RLE・transition timestamp・block adaptiveは未着手。CPUを使わない手段としてhardware capture qualificationが[E040](e040_p4_parlio_level_open_frame/README.ja.md)〜[E060](e060_p4_drain_batch_coalesce/README.ja.md)で実装候補まで固まった |
+| `p4-rmt-capture` | **未着手**(元の問い)。RMT RX自体は[E044](e044_p4_gate_rmt_timestamp/README.ja.md)〜[E054](e054_p4_rmt_dma_block_min/README.ja.md)でgate windowのtimestamp用途として使い、発火条件まで確定した |
+| `p4-wide-gpio-snapshot` | **未着手**。限界matrixの24 / 32 / 33〜55 channel行は空のまま |
+| `p4-external-clock` | **未着手だが配線なしで試せる見込みへ変わった**。`PARLIO_CLK_SRC_EXTERNAL`の`clk_in_gpio_num`はGPIO matrix経由で、[E041](e041_p4_parlio_shared_valid_line/README.ja.md)と[E047](e047_p4_gate_three_way_share/README.ja.md)で1つの入力GPIOを複数のperipheral入力へfan-outできることが確認済みである。PARLIO TXの`clk_out_gpio_num`か`esp_clock_output`で同じGPIOへclockを出せば、API・経路・停止条件は無配線で測れる。周波数精度と実信号品質は配線が必要なまま |
+| `p4-adc-signal-quality` | **未着手・要配線**のまま |
 
 ### セッションの束ね方(使い捨てベンチ)
 
