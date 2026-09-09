@@ -73,6 +73,7 @@
 | **E054** | RMT DMA modeが受理する`mem_block_symbols`の最小値はいくつで、初回遅延はnon-DMAより良いか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — DMAでは縮まらず、下限は`48 × 周期`**([e054_p4_rmt_dma_block_min/](e054_p4_rmt_dma_block_min/README.ja.md)) |
 | **E055** | gated captureの緩衝は64 KiB ringか64 entry queueか。driverはringを周回して使っているか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 緩衝はqueue、ringは線形**([e055_p4_gated_buffer_source/](e055_p4_gated_buffer_source/README.ja.md)) |
 | **E056** | ring容量をpattern周期の倍数から外すと、未読 > ring容量の条件で破損が現れるか(検証器のalias 疑い) | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — alias で盲だった、ringは実際に上書きされる**([e056_p4_ring_period_alias/](e056_p4_ring_period_alias/README.ja.md)) |
+| **E057** | alias から外したringで、gated captureの条件2の境界はどこにあるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 境界はgate 3,000〜4,000、容量は完全chunk数**([e057_p4_gated_ring_boundary/](e057_p4_gated_ring_boundary/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -194,6 +195,23 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E057 ESP32-P4: 条件2の境界をalias から外したringで実測 — 完了 2026-09-09
+
+全文: [e057_p4_gated_ring_boundary/README.ja.md](e057_p4_gated_ring_boundary/README.ja.md)。採用run: `_runs/E057_20260909T102539Z_default/`。
+
+**事実**
+
+1. **境界はgate 3,000(正常)と4,000(破綻)の間。** 計画の予測(4,000と5,000の間)より1段手前。queue overflowは全条件0でringだけが効く条件だった。
+2. alias から外したring 63,488で、gate 1,000〜3,000は飛びが期待境界数と一致し階差15 / 15、gate 4,000と5,000は飛びが47と79(期待32と26)へ急増し階差一致が10 / 15と1 / 15へ落ちた。
+3. **予測が外れたのは容量の取り方。** chunk 4,032 byteに対しring 63,488に入る完全chunkは15個(60,480 byte)で末尾3,008 byteは使えない。
+4. **実測の未読最大は真の尖頭を過小に見る。** gate 4,000は破綻しているのに未読最大59,456で完全chunk容量60,480を下回る。`未読 > ring容量`のflagはgate 5,000でしか立たずgate 4,000の破綻を見逃した。**判定はwindow長からの計算で行う。**
+5. **条件2の最終形**: `ceil(window byte長 × (1 − drain 82 MB/s ÷ rate) ÷ chunk size) ≤ min(floor(ring容量 ÷ chunk size), queue深さ)`。本実験・[E048](e048_p4_gated_rate_ceiling/README.ja.md)・[E050](e050_p4_gated_window_at_fixed_duty/README.ja.md)・[E055](e055_p4_gated_buffer_source/README.ja.md)の**8条件すべてが一致する**。E050のgate 4,000が境界上で正常だったので条件は`≤`。
+6. host側判定の誤り3件(field追加に伴うunpackのずれ2件、削除した定数の参照1件)とfirmwareのmsync非整列1件を修正した。firmwareの計測値は最初のrunから変わっていない。
+
+**候補**: `必要chunk数 ≤ min(floor(ring ÷ chunk), queue深さ)`で申告する。ring容量はchunk sizeの整数倍で取る。drop判定は計算で行う。
+
+**未決**: drain帯域82 MB/sの由来 / chunk sizeが4,032固定である根拠 / 未読を尖頭まで捉える標本化 / triggerなしspool経路にも同じ形が当てはまるか / duty 61%付近の条件1の実測。
 
 ### E056 ESP32-P4: ring容量とpattern周期のalias — 完了 2026-09-09
 
