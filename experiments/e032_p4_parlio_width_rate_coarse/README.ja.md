@@ -84,3 +84,12 @@ width別raw rateのfine sweep範囲と、後続trigger/圧縮試験の入力rate
 **候補**: raw byte rate 80 MB/sを全width共通の安全tierとし、幅ごとのsample rateへ換算してcapabilityを返す。
 
 **未決**: 1/2/4chのclock上限 / 8/16chのfine boundary / 長時間・deep capture時の最高rate / trigger追加時のwidth別境界。
+
+## 追記 — E036による再解析(2026-09-09)
+
+本レポートは書き換えない。[E036](../e036_p4_parlio_rate_seq_verify/README.ja.md)がsample単位の検証器とring未読byteによるdrop判定で同じ条件を測り直した結果、次の2点を訂正する。
+
+1. **律速はsampling側ではない。** 「実効rateが設定へ追従しない」と書いた条件では、PARLIOは設定どおりsamplingしていた(120 MHz設定で119.560 MB/s = 設定の99.6%)。約98 MB/sの飽和はinternal ring → PSRAMのtask copy側の限界である。本レポートの「実効sample rate」はcapture開始からPSRAMへの退避完了までを分母にしており、samplingとspoolを1つの値へ潰していた。
+2. **dutyとedge数による検証はsample単位の欠落を検出できない。** 信号源が定常・周期的な100 kHz PWMなので、ringがcopy前に上書きされても同じ波形が見え、検証を通過する。E036では112 / 120 MHzで連番違反が18 / 27件出たが、`result`は`ESP_OK`、`overflows`は0だった。
+
+数値そのものは有効である。訂正は「その数値が何の限界か」の帰属と、data検証の有効範囲についてである。
