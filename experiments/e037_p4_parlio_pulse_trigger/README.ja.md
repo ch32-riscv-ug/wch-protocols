@@ -1,6 +1,6 @@
 # E037 ESP32-P4 PARLIO pulse delimiterによるhardware trigger
 
-状態: **計画**
+状態: **完了 — hardware trigger成立。arm待ちtimeoutはsoftwareが必要**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 調査地図: [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md) / 先行実験: [E036](../e036_p4_parlio_rate_seq_verify/README.ja.md)・[E025](../e025_p4_sump_trigger_rate_boundary/README.ja.md)
 
@@ -83,3 +83,65 @@ pulse delimiterによるhardware trigger開始と`eof_data_len`停止が成立�
 ## 影響
 
 成立すれば[P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md)のtrigger節に、software走査tierとは別のhardware trigger tierが立つ。trigger能力の申告方法(消費channel数、条件種、最大rate)が変わる。不成立ならsoftware走査tierだけが残り、E023〜E028の20〜24 MHzがtrigger付き公称値として確定する。
+
+## 結果
+
+実施日: 2026-09-09
+
+採用run: `_runs/E037_20260909T030730Z_default/test_parlio_pulse_trigger/dut.log`
+
+| # | valid_sig_line_id | pulse | timeout_ticks | delimiter | wait | receive_done | timeout_events | 受信byte | runs | run長 | 違反 | 先頭4 sample | 経過 |
+|---:|---:|---|---:|---|---|---:|---:|---:|---:|---:|---:|---|---:|
+| 1 | 4 | あり | 0 | `ESP_OK` | `ESP_OK` | 1 | 0 | 16,384 | 8,192 | 4〜4 | 0 | 0,0,0,1 | 2,058 us |
+| 2 | 5 | あり | 0 | `ESP_OK` | `ESP_OK` | 1 | 0 | 16,384 | 8,192 | 4〜4 | 0 | 0,0,0,1 | 2,058 us |
+| 3 | 4 | なし | 60,000 | `ESP_OK` | `ESP_ERR_TIMEOUT` | 0 | 0 | 0 | — | — | — | — | 499,798 us |
+| 4 | 5 | なし | 60,000 | `ESP_OK` | `ESP_ERR_TIMEOUT` | 0 | 0 | 0 | — | — | — | — | 499,869 us |
+
+pulseのある2 caseは、全APIが`ESP_OK`で`on_receive_done`が1回だけ発火し、受信byteは`eof_data_len`と完全に一致した。復元したframeはrun 8,192本、run長が4固定、gray step違反0件だった。frame長32,768 sampleをsource分周比4で割った値がちょうど8,192なので、frame全域が欠落なく連続している。
+
+pulseの無い2 caseはframeが一度も始まらず、`parlio_rx_unit_wait_all_done`が500 msで`ESP_ERR_TIMEOUT`を返した。誤triggerは無い。
+
+`valid_sig_line_id`は4と5の両方が受理され、結果も同一だった。headerのコメントは範囲を`(data_width, MAX]`と書いているが、data_width 4に対してid 4は使える。条件は「data lineと衝突しない」ことである。
+
+先頭4 sampleは両caseで0,0,0,1だった。pulseはsource index 2048から始まり、そのwordのgray値は`gray4(2048 & 0xF)` = 0である。frame先頭のrunが4ではなく3 sampleなので、pulse検出からsample取得開始までのずれは1 sample(50 ns)以内に収まっている。2 caseで同一値なので再現する。
+
+経過時間2,058 usは、frame本体1,638 us(32,768 sample / 20 MHz)に、armしてから次のpulseが来るまでの待ち約420 usを足した値である。source loopは16,384 word / 5 MHz = 3,277 us周期なので待ち時間はこの範囲に収まる。
+
+**`timeout_ticks` = 60,000を設定してもpulseが来ない間は`on_timeout`が発火しなかった。** frameが始まる前のarm待ちはhardware timeoutの対象ではない。
+
+## 判定
+
+**PARLIO RXのpulse delimiterはhardware triggerとして成立する。valid線1本を払えば、CPUがsampleを走査せずにframe開始と`eof_data_len`停止が得られ、誤triggerもない。**
+
+これはE023〜E028のsoftware走査tierとは別の能力である。software triggerはdata線上のpattern / mask / edge / occurrence / multi-stageを条件にできるが、全sampleをCPUが見るため8 channelで24 MHz、4-stageで16 MHzが天井だった。pulse delimiterは条件が「専用線のpulse」1種類に限られる代わりに、CPU負荷がゼロなのでrateはraw captureの限界(E036のsampling / spool / burst)と同じところまで行けるはずである。したがってtrigger能力は次の二段で申告する。
+
+| tier | 条件 | 消費channel | rateの決まり方 |
+|---|---|---|---|
+| software走査 | pattern / mask、edge、occurrence、multi-stage | 0 | CPUの走査能力。8 channelで24 MHz、4-stage 16 MHz |
+| hardware pulse delimiter | 専用線のpulse 1本(極性は`pulse_invert`) | 1 | raw captureの限界と同じはず。**本実験は20 MHzでの成立確認までで、上限は未測定** |
+
+この構成には次の制約がある。
+
+- `eof_data_len`は16 bitで最大65,535 byteである(E018と同じ制約)。これを超えるpost長は`partial_rx_en`とsoftware停止に戻るため、E026と同じdescriptor粒度の停止誤差が復活する
+- pulse delimiterはpulseでframeを開始するので、**pre-trigger dataは取れない**。pre/post windowが必要ならE027のcircular ring方式であり、hardware triggerとpre-triggerは同時に成立しない
+- 条件はdata線上のpatternではない。SUMP的なpattern triggerの代替にはならず、外部trigger入力またはsingle-line edge triggerに相当する
+- arm待ちのtimeoutはsoftwareで持つ必要がある。`timeout_ticks`はarm待ちには効かない
+
+## 事実・候補・未決
+
+**事実**
+
+1. `parlio_new_rx_pulse_delimiter`は`valid_sig_line_id`が4でも5でも`ESP_OK`で、data_width 4との組で動作した。結果は両者同一。
+2. pulseがあるとき`on_receive_done`が1回発火し、受信byteは`eof_data_len` 16,384と完全一致した。frameはrun 8,192本・run長4固定・gray step違反0で、全域が連続していた。
+3. pulseが無いときframeは一度も始まらず、`wait_all_done`が500 msで`ESP_ERR_TIMEOUT`を返した。誤triggerは0。
+4. `timeout_ticks` = 60,000でも、frame開始前のarm待ちでは`on_timeout`が発火しなかった。
+5. frame先頭のrunが3 sampleなので、pulse検出から取得開始までのずれは1 sample(50 ns)以内で、2 caseで再現した。
+
+**候補**: trigger能力をsoftware走査tierとhardware pulse tierの二段で申告し、hardware tierはvalid線1本の消費とpre-trigger不可を明記する。arm待ちtimeoutはsoftwareで持つ。
+
+**未決**: hardware trigger時の最大sample rate / level delimiterによるgating / `has_end_pulse`での停止 / `pulse_invert`の極性 / 8・16 channelでの構成(valid線を含めて9・17線が必要になるためpin数の確認が要る) / `eof_data_len` 65,535超のpost長 / circular ringとの併用可否。
+
+## 反映
+
+- [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): Trigger節をsoftware走査tierとhardware pulse tierの二段に分ける
+- [LEDGER](../LEDGER.ja.md): E037の節

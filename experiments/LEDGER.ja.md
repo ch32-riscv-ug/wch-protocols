@@ -45,7 +45,7 @@
 | **E034** | ADC1の1 / 2 / 4 / 8chを最大83,333 conversion/sでcontinuous DMA取得し、channel IDを保ってPSRAMへ退避できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) analog | **完了 — 全12条件成立、最大rateでは非逐次channel順**([e034_p4_adc1_continuous_batch/](e034_p4_adc1_continuous_batch/README.ja.md)) |
 | **E035** | ADC1最大rateのchannel ID列を特定し、ADC2単独・ADC1+ADC2 continuous modeを利用できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) analog topology | **計画**([e035_p4_adc_topology_order/](e035_p4_adc_topology_order/README.ja.md)) |
 | **E036** | PARLIO TXの連番rampを源にしring未読量でdropを直接検出すると、8 channel triggerなしbatchのdropなし境界はどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 律速はspool側、1 Mi burstは104 MHz成立**([e036_p4_parlio_rate_seq_verify/](e036_p4_parlio_rate_seq_verify/README.ja.md)) |
-| **E037** | PARLIO RX pulse delimiterで4 data channel + 1 valid lineを構成し、hardware pulseでframe開始・`eof_data_len`停止・hardware timeoutが成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **計画**([e037_p4_parlio_pulse_trigger/](e037_p4_parlio_pulse_trigger/README.ja.md)) |
+| **E037** | PARLIO RX pulse delimiterで4 data channel + 1 valid lineを構成し、hardware pulseでframe開始・`eof_data_len`停止・hardware timeoutが成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — hardware trigger成立、arm待ちtimeoutは非対応**([e037_p4_parlio_pulse_trigger/](e037_p4_parlio_pulse_trigger/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -172,6 +172,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E037 ESP32-P4: PARLIO pulse delimiterによるhardware trigger — 完了 2026-09-09
+
+全文: [e037_p4_parlio_pulse_trigger/README.ja.md](e037_p4_parlio_pulse_trigger/README.ja.md)。採用run: `_runs/E037_20260909T030730Z_default/`。
+
+**事実**
+
+1. `parlio_new_rx_pulse_delimiter`は`valid_sig_line_id`が4でも5でも`ESP_OK`で、data_width 4 + `valid_gpio_num`との組で動作した。結果は両者同一。
+2. pulseがあるとき`on_receive_done`が1回発火し、受信byteは`eof_data_len` 16,384と完全一致した。復元frameはrun 8,192本、run長4固定、gray step違反0で全域連続。
+3. pulseが無いときframeは一度も始まらず、`wait_all_done`が500 msで`ESP_ERR_TIMEOUT`を返した。誤triggerは0。
+4. **`timeout_ticks` = 60,000でも、frame開始前のarm待ちでは`on_timeout`が発火しなかった。** arm待ちのtimeoutはsoftwareで持つ必要がある。
+5. frame先頭のrunが3 sampleなので、pulse検出から取得開始までのずれは1 sample(50 ns)以内で、2 caseで再現した。
+
+**候補**: trigger能力をsoftware走査tier(pattern / edge / occurrence / multi-stage、消費channel 0、8 channelで24 MHz)とhardware pulse tier(専用線pulseのみ、消費channel 1、CPU負荷なし)の二段で申告する。
+
+**未決**: hardware trigger時の最大rate / level delimiterのgating / `has_end_pulse`停止 / `pulse_invert`極性 / 8・16 channel構成に要るpin数 / `eof_data_len` 65,535超のpost長 / circular ringとの併用。pulse delimiterはpre-trigger dataを取れないため、pre/post windowとhardware triggerは同時に成立しない。
 
 ### E036 ESP32-P4: PARLIO rate境界のsample単位再検証 — 完了 2026-09-09
 

@@ -75,15 +75,25 @@ drop判定にも同じ整理が要る。`queue_overflow`はchunk queueが満杯�
 
 ### Trigger
 
-- level / pattern + mask
-- rising / falling / either edge
-- occurrence count
-- 複数stageとstageごとの条件
-- trigger delay、pre/post位置
-- pulse width / timeout条件
+triggerは性質の違う二段に分かれる。[E037](../experiments/e037_p4_parlio_pulse_trigger/README.ja.md)でhardware側の経路が成立した。
+
+| tier | 条件にできるもの | 消費channel | pre-trigger | rateの決まり方 |
+|---|---|---:|---|---|
+| software走査 | pattern + mask、rising / falling / either edge、occurrence count、複数stage | 0 | 可(circular ring) | CPUの走査能力。8 channelで24 MHz、固定4-stageで16 MHz |
+| hardware pulse delimiter | 専用線のpulse 1本。極性は`pulse_invert` | 1 | **不可** | CPU負荷ゼロ。raw captureの限界と同じはず(上限は未測定) |
+
+hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`停止をCPU走査なしで行う。20 MHzでは受信byteが`eof_data_len`と完全一致し、gray rampのstep違反0、誤trigger0だった。pulseからの取得開始のずれは1 sample以内。ただしpulseでframeを開始する方式なのでpre-trigger dataは取れず、pre/post windowが必要ならsoftware走査 + circular ring([E027](../experiments/e027_p4_sump_circular_pretrigger/README.ja.md))に戻る。`eof_data_len`は16 bitで最大65,535 byteなので、これを超えるpost長もsoftware停止に戻る。arm待ちのtimeoutは`timeout_ticks`では取れず、softwareで持つ必要がある。
+
+まだ測っていないもの:
+
+- hardware triggerが成立する最大sample rate
+- level delimiterによるgating(enable線がactiveな間だけ取得)
+- `has_end_pulse`によるhardware停止と`pulse_invert`の極性
+- 8 / 16 channelでhardware triggerを使う構成。valid線を含めて9 / 17線が要るのでpin数の確認から
+- trigger delay
 - UART / I2C / SPI等のprotocol-aware triggerは、raw triggerの成立後にCPU負荷とrateを別測定する
 
-trigger能力は対応条件だけでなく、channel幅・条件種・stage数ごとの最大sample rateとして申告する。
+trigger能力は対応条件だけでなく、tier・消費channel・channel幅・条件種・stage数ごとの最大sample rateとして申告する。
 
 ### 内部圧縮
 
@@ -127,7 +137,7 @@ digitalとの同期は、まず共通timerで開始時刻と完了時刻を記�
 
 1. PARLIO widthとpacking
 2. width別raw sample rate（sampling / 持続spool / burst深度の三分割。8 channelは[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)済、他widthは再検証待ち）
-3. width別basic triggerとmulti-stage trigger
+3. width別basic triggerとmulti-stage trigger（software走査tier。hardware pulse tierは[E037](../experiments/e037_p4_parlio_pulse_trigger/README.ja.md)で成立、rate上限は未測定）
 4. wide CPU snapshot（24 / 32 / 33〜55 channel）
 5. raw batchの深度・停止・再arm耐久
 6. RLE、transition timestamp、block adaptive encoding
