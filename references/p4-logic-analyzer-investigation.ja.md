@@ -56,7 +56,7 @@ channel幅とpackingは[E031](../experiments/e031_p4_parlio_channel_width/README
 |---|---|---|
 | **sampling上限** | **160 MHz**(構造上の天井そのもの) | PARLIO RXの内部clock源はPLL_F160Mが最上位。E036で120 MHzまでcallback数から推定し、[E038](../experiments/e038_p4_parlio_pulse_trigger_rate/README.ja.md)がframe間隔による絶対測定で160 MHzまで設定の99.9〜100.1%を確認した。これを超えるにはexternal clock経路しかない |
 | **持続spool帯域** | 約98 MB/s | internal ring → PSRAMのtask copyの限界。channel数ではなくpacking後のbyte rateで決まる |
-| **burst深度** | ring容量 ÷ (sampling − spool) | sampling超過分をringが吸収できる間だけ成立する。ring 64 KiBなら104 MHzで約1.2 Mi sample、112 MHzで約0.54 Mi sample |
+| **burst深度** | ring容量 ÷ (sampling − spool) | sampling超過分をringが吸収できる間だけ成立する。ring 64 KiBなら104 MHzで約1.2 Mi sample、112 MHzで約0.54 Mi sample。これは[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)のtriggerなし経路での粗い形で、床とchunk単位まで精密化した形は下の**条件2**にある(gate前提で測ったもので、triggerなし経路に同じ床とdrain曲線が当てはまるかは未測定) |
 
 **gateがあるとsample rateの上限が上がる。** [E048](../experiments/e048_p4_gated_rate_ceiling/README.ja.md)で、hardware qualificationを併用したgated captureは内部clock源の上限160 MHzまで成立した。ただし持続spool帯域そのものは変わっていない。[E049](../experiments/e049_p4_gated_window_absorption/README.ja.md)がwindow長を伸ばして境界を探し、成立条件は次だと確定した。
 
@@ -65,7 +65,9 @@ sample rate ≤ 160 MHz（内部clock源）
 かつ duty × sample rate × bytes/sample < 持続spool帯域（約98 MB/s）
 ```
 
-つまり**gateは平均byte rateを持続限界の下へ下げているだけ**である。E048が立てた「ringがwindow単位の過負荷を吸収するので`window byte長 × (1 − spool ÷ rate) < ring容量`が条件」というmodelは反証された。[E050](../experiments/e050_p4_gated_window_at_fixed_duty/README.ja.md)がdutyを50%に固定してwindow byte長を32,000から224,000まで7倍に振り、**全条件でdataが正常**だった。window byte長224,000はring容量の3.4倍で、ring未読も106,880 byteに達していたが1 byteも失っていない。**window長は成立に影響せず、上限を設ける必要はない。**
+つまり**gateは平均byte rateを持続限界の下へ下げている**。持続spool帯域そのものは上がっていない。
+
+ただしこれは条件の一本目にすぎない。**window長にも上限がある。** [E050](../experiments/e050_p4_gated_window_at_fixed_duty/README.ja.md)はduty 50%固定でwindow byte長を224,000まで振って「全条件正常、window長は無関係」と結論したが、[E056](../experiments/e056_p4_ring_period_alias/README.ja.md)がその判定を無効にした(検証patternの周期がring容量を割り切っていたため、上書きが見えていなかった)。alias から外して測り直した[E057](../experiments/e057_p4_gated_ring_boundary/README.ja.md)で、window長は確かに効くことが分かっている。正確な形は下の**条件2**である。
 
 8 channel(1 byte/sample)なら実用上の境界は次のようになる。
 
@@ -139,7 +141,7 @@ E057がalias から外したring 63,488(完全chunk 15個)で境界を実測し�
 
 triggerなしの場合に戻ると、sample rateの成立・不成立は**capture深度と一緒でなければ意味を持たない**。8 channel 100 MHzは1 Mi sampleでは成立するが、超過分1.692 MB/sをringが吸収しきる約3.87 Mi sampleで破綻するので、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)の16 MiB deep captureには適用できない。深度を伸ばすほど公称rateは持続spool帯域へ漸近する。
 
-drop判定にも同じ整理が要る。`queue_overflow`はchunk queueが満杯になった時点しか見ておらず、queue 64段はring容量の約3.8倍あるので、ringが上書きされてもAPIは`ESP_OK`を返す。判定に使う量は**ring上の未読byte数がring容量を超えたか**である。
+triggerなし経路のdrop判定にも同じ整理が要る。`queue_overflow`はchunk queueが満杯になった時点しか見ておらず、queue 64段はring容量の約3.8倍あるので、ringが上書きされてもAPIは`ESP_OK`を返す。判定に使う量は**ring上の未読byte数がring容量を超えたか**である。gate前提の経路では容量が`min(ring容量, queue深さ × chunk size)`になり、床とchunk単位まで含めた形が条件2である。
 
 ## channel間のedge一致精度は±1 sample
 
@@ -286,7 +288,7 @@ n = floor(user_buffer ÷ group)          ← n = 0 なら永久に発火しな�
 
 **CPU負荷では変わらない** — 160 MHz・duty 50%の入力をPSRAMへcopyし続けてCPUを飽和させても発火時刻の差は3 usだった。gate周期の遅い信号では初回のtimestampが数百ms遅れて届くが、durationの正確さは損なわれない。この規則でE045からE053までの16条件すべての実測callback回数が説明できる。
 
-hostへはsample列とwindow長の列を組で渡せば、間引いたまま時間軸を再構成できる。**幅が可変なgateでも成立する**([E046](../experiments/e046_p4_gate_variable_width/README.ja.md))— 幅の違う4 windowに対しRMTは各長さを個別に正しく返し、capture data中の切れ目の階差がRMT high durationの列と15箇所すべてで一致した。lowのdurationも記録されるので、捨てた区間の長さと各windowの絶対時刻位置まで求まる。 払うものはRMT RX channel 1つ(P4は4 channel)、1 levelあたり32,767 tickの上限(20 MHz分解能で1.638 ms。超えるなら分解能を落とす)、そしてcallback遅延 = user buffer symbol数 × gate周期である。captureするchannel数は払わない。
+hostへはsample列とwindow長の列を組で渡せば、間引いたまま時間軸を再構成できる。**幅が可変なgateでも成立する**([E046](../experiments/e046_p4_gate_variable_width/README.ja.md))— 幅の違う4 windowに対しRMTは各長さを個別に正しく返し、capture data中の切れ目の階差がRMT high durationの列と15箇所すべてで一致した。lowのdurationも記録されるので、捨てた区間の長さと各windowの絶対時刻位置まで求まる。 払うものはRMT RX channel 1つ(P4は4 channel)、1 levelあたり32,767 tickの上限(20 MHz分解能で1.638 ms。超えるなら分解能を落とす)、そしてcallback遅延(初回`mem_block_symbols × gate周期`、以降その半分。詳細は下の「Trigger」節)である。captureするchannel数は払わない。
 
 ### 後段
 
