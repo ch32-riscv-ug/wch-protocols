@@ -20,6 +20,14 @@
 | **E001** | 実機なしで sketch を build・実行し、出力を assert できるか(profile 解決 / `socket://localhost` / 銘板) | **常設 v0**(実機なし。host Arduino core `lang-ship:host:host`) | (規則そのもの) | **完了**([e001_smoke_host/](e001_smoke_host/README.ja.md)) |
 | **E002** | 実機 1 枚で upload → monitor → assert が通り、実時間が取れるか | **常設 v1**(peer 対の HOST 側 `esp32-s3-d0cf1359101c`) | (規則そのもの) | **完了 — 反証**([e002_smoke_board/](e002_smoke_board/README.ja.md)) |
 | **E003** | peer は使えるか(**環境確認のみ**)— 2 台同時 upload / 2 台の間で実際に繋がっている線はどれか | **常設 v2**(peer 対 2 枚、配線変更なし) | [README.ja.md §4.4/§4.5](README.ja.md) | **完了**([e003_smoke_peer/](e003_smoke_peer/README.ja.md)) |
+| **E004** | host からの trigger で応答させれば、起動時出力の取りこぼし(E002)を回避して銘板と実時間を取れるか | **常設 v1** | (規則そのもの)+ [dmi-bridge](../protocols/dmi-bridge.ja.md) §4.1 の裏付け | **完了**([e004_smoke_board_trigger/](e004_smoke_board_trigger/README.ja.md)) |
+| **E005** | 2 線でクロック同期の bit 列を取り込めるか。取り込める最短のクロック周期は(**道具の性能測定**) | **常設 v2** | (道具)→ 候補 `wire-bitstream` の機材要件 | **完了**([e005_tool_clocked_capture/](e005_tool_clocked_capture/README.ja.md)) |
+| **E006** | RMT で SWIO 相当のパルス幅(290 / 890 ns)を生成・測定できるか。分解能は(**道具の性能測定**) | **常設 v2** | (道具)→ 候補 `swio-threshold` の機材要件 | **完了**([e006_tool_pulse_capture/](e006_tool_pulse_capture/README.ja.md)) |
+| **E007** | RVSWD host 位相の 42 bit(addr7+data32+op2+parity)を線上に出したとき、[link-to-target](../protocols/link-to-target.ja.md) §3 の仕様どおりか | **常設 v2** | [link-to-target](../protocols/link-to-target.ja.md) §3(**status は動かさない**) | **完了**([e007_wire_rvswd_frame/](e007_wire_rvswd_frame/README.ja.md)) |
+| **E008** | SWIO write フレーム(start+addr7+rw+data32=41 bit)をパルス幅で出し、幅から復号できるか | **常設 v2** | [link-to-target](../protocols/link-to-target.ja.md) §3/§5(**status は動かさない**) | **完了**([e008_wire_swio_frame/](e008_wire_swio_frame/README.ja.md)) |
+| **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
+| **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
+| **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E012** | 銘板の版情報を conftest から build 時に自動で埋められるか。再ビルドのコストは | **常設 v0**(実機なし) | [README.ja.md §5](README.ja.md) | **完了**([e012_banner_autofill/](e012_banner_autofill/README.ja.md)) |
 | **E013** | 同一VID:PID・異なる`bcdDevice`でHID-onlyとHID + Vendor + CDC × 1をWindowsが分離でき、Linuxでも各経路が通信できるか | **一時・専用機材**(別途用意するESP32-S3 native USB、Windows 11、Linux) | [probe-feasibility-gates](../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 4 | **計画**([e013_usb_descriptor_profiles/](e013_usb_descriptor_profiles/README.ja.md)) |
 | **E014** | ESP32-P4で8本のGPIOをLEDC出力に使ったまま、同じGPIOをPARLIO RXへ接続して配線なしで同時captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **中断 — 選んだ初期化方法は反証**([e014_p4_parlio_internal_capture/](e014_p4_parlio_internal_capture/README.ja.md)) |
@@ -65,19 +73,14 @@
 | **E054** | RMT DMA modeが受理する`mem_block_symbols`の最小値はいくつで、初回遅延はnon-DMAより良いか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — DMAでは縮まらず、下限は`48 × 周期`**([e054_p4_rmt_dma_block_min/](e054_p4_rmt_dma_block_min/README.ja.md)) |
 | **E055** | gated captureの緩衝は64 KiB ringか64 entry queueか。driverはringを周回して使っているか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 緩衝はqueue、ringは線形**([e055_p4_gated_buffer_source/](e055_p4_gated_buffer_source/README.ja.md)) |
 | **E056** | ring容量をpattern周期の倍数から外すと、未読 > ring容量の条件で破損が現れるか(検証器のalias 疑い) | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — alias で盲だった、ringは実際に上書きされる**([e056_p4_ring_period_alias/](e056_p4_ring_period_alias/README.ja.md)) |
-| **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
-| **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
-| **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
-| **E008** | SWIO write フレーム(start+addr7+rw+data32=41 bit)をパルス幅で出し、幅から復号できるか | **常設 v2** | [link-to-target](../protocols/link-to-target.ja.md) §3/§5(**status は動かさない**) | **完了**([e008_wire_swio_frame/](e008_wire_swio_frame/README.ja.md)) |
-| **E007** | RVSWD host 位相の 42 bit(addr7+data32+op2+parity)を線上に出したとき、[link-to-target](../protocols/link-to-target.ja.md) §3 の仕様どおりか | **常設 v2** | [link-to-target](../protocols/link-to-target.ja.md) §3(**status は動かさない**) | **完了**([e007_wire_rvswd_frame/](e007_wire_rvswd_frame/README.ja.md)) |
-| **E006** | RMT で SWIO 相当のパルス幅(290 / 890 ns)を生成・測定できるか。分解能は(**道具の性能測定**) | **常設 v2** | (道具)→ 候補 `swio-threshold` の機材要件 | **完了**([e006_tool_pulse_capture/](e006_tool_pulse_capture/README.ja.md)) |
-| **E005** | 2 線でクロック同期の bit 列を取り込めるか。取り込める最短のクロック周期は(**道具の性能測定**) | **常設 v2** | (道具)→ 候補 `wire-bitstream` の機材要件 | **完了**([e005_tool_clocked_capture/](e005_tool_clocked_capture/README.ja.md)) |
-| **E004** | host からの trigger で応答させれば、起動時出力の取りこぼし(E002)を回避して銘板と実時間を取れるか | **常設 v1** | (規則そのもの)+ [dmi-bridge](../protocols/dmi-bridge.ja.md) §4.1 の裏付け | **完了**([e004_smoke_board_trigger/](e004_smoke_board_trigger/README.ja.md)) |
 
-順序に意味がある([README.ja.md §4.5](README.ja.md)):
+**表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
+
+最初の 4 本は [README.ja.md §4.5](README.ja.md) の常設ベンチの梯子(v0 → v1 → v2)を登るために組んだもので、以後の全実験がこの上に乗る。
 
 - **E001 が最初**なのは、これが通らないうちに測った数値は測定対象ではなく環境を測っているから([§3.1.2](README.ja.md))。**実機を一切使わない**ので、board の有無に関係なく今日始められる。
 - **E002** で初めて実機が出る。E001 で切り分け済みなので、ここで落ちたら原因は「実機まわり」に限定される。
+- **E004** は E002 の追試。起動時出力の取りこぼしを host からの trigger で避ける。
 - **E003** は peer を**やるかどうかを決めるための確認**であって、peer テストの実装ではない。既設の 2 枚は **GPIO19↔19 / 20↔20** が直結されており、**RVSWD が 2 線なので配線を触らずに 2 線ペアの形が既にある**。使えると分かれば選択肢として残り、使えないと分かれば早く諦められる。
 
 ## 2. 候補(未採番)
