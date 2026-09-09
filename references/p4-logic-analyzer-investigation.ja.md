@@ -39,6 +39,7 @@ Arduino-ESP32 3.3.11が使用するESP32-P4のSoC定義では、PARLIOは1 group
 | 4 | 1/2 | 160 MHz成立（内部clock源の上限）※ | — | — | 1,048,576 sample | PARLIO |
 | 8 | 1 | 104 MHz（1 Mi burst）／持続98 MB/s | 24 MHz、保守候補20 MHz | 16 MHz（固定4-stage） | 16 MiB / 20 MHz | PARLIO |
 | 16 | 2 | 48 MHz（実効95.884 MB/s、1 Mi burst）／持続98 MB/s | — | — | 1,048,576 sample | PARLIO |
+| 8 + gate | 1 | **160 MHz**（内部clock源の上限。gate前提） | — | — | 1 MiB検証済 | PARLIO + qualification |
 | 24 | 4想定 | — | — | — | — | CPU snapshot候補 |
 | 32 | 4 | — | — | — | — | CPU snapshot候補 |
 | 33〜55 | 8 | — | — | — | — | CPU snapshot候補 |
@@ -57,7 +58,15 @@ channel幅とpackingは[E031](../experiments/e031_p4_parlio_channel_width/README
 | **持続spool帯域** | 約98 MB/s | internal ring → PSRAMのtask copyの限界。channel数ではなくpacking後のbyte rateで決まる |
 | **burst深度** | ring容量 ÷ (sampling − spool) | sampling超過分をringが吸収できる間だけ成立する。ring 64 KiBなら104 MHzで約1.2 Mi sample、112 MHzで約0.54 Mi sample |
 
-つまりsample rateの成立・不成立は**capture深度と一緒でなければ意味を持たない**。8 channel 100 MHzは1 Mi sampleでは成立するが、超過分1.692 MB/sをringが吸収しきる約3.87 Mi sampleで破綻するので、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)の16 MiB deep captureには適用できない。深度を伸ばすほど公称rateは持続spool帯域へ漸近する。
+**gateがあるとこの三分割の枠組みが変わる。** [E048](../experiments/e048_p4_gated_rate_ceiling/README.ja.md)で、hardware qualificationを併用したgated captureは内部clock源の上限160 MHzまで成立した。gate区間内の瞬間byte rateはsample rateそのもの(160 MHzなら160 MB/s)で持続spool帯域を上回っているが、ringがwindow単位の過負荷を吸収しgapで空になるので成立する。したがって成立条件はdutyではなく**1 windowの過負荷分がringに収まるか**である。
+
+```
+window byte長 × (1 − 持続spool帯域 ÷ sample rate) < ring容量
+```
+
+ring 64 KiBなら160 MHzで1 windowあたり約169 KBまで吸収できる。level delimiterは`eof_data_len` = 0でwindow長に上限が無いので、この条件は実際に効く。**qualificationは保存量を減らす手段であると同時に、sample rateの上限を引き上げる手段でもある。**
+
+triggerなしの場合に戻ると、sample rateの成立・不成立は**capture深度と一緒でなければ意味を持たない**。8 channel 100 MHzは1 Mi sampleでは成立するが、超過分1.692 MB/sをringが吸収しきる約3.87 Mi sampleで破綻するので、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)の16 MiB deep captureには適用できない。深度を伸ばすほど公称rateは持続spool帯域へ漸近する。
 
 drop判定にも同じ整理が要る。`queue_overflow`はchunk queueが満杯になった時点しか見ておらず、queue 64段はring容量の約3.8倍あるので、ringが上書きされてもAPIは`ESP_OK`を返す。判定に使う量は**ring上の未読byte数がring容量を超えたか**である。
 
@@ -133,7 +142,8 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - `eof_data_len` 65,535超のpost長
 - level delimiterでのgating時の最大sample rateとgate境界のsample精度
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
-- gating時の最大sample rate(20 MHzでしか測っていない)
+- destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
+- 1 windowが吸収限界を超える条件の実測(現在はmodelのみ)
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
 - RMT symbolとPARLIO sample列の先頭同期
 - `has_end_pulse`によるhardware停止と`pulse_invert`の極性
