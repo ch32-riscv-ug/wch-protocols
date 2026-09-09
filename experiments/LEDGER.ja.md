@@ -59,6 +59,7 @@
 | **E048** | 3者共有qualification構成でgated captureがdropなしで成立する最大sample rateはどこか。約98 MB/sを超えるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 160 MHzまで成立、gateはrate上限を上げる**([e048_p4_gated_rate_ceiling/](e048_p4_gated_rate_ceiling/README.ja.md)) |
 | **E049** | gated captureの成立条件はmodel `window byte長 × (1 − spool ÷ rate) < ring容量`で決まるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — modelは反証、境界は平均byte rate**([e049_p4_gated_window_absorption/](e049_p4_gated_window_absorption/README.ja.md)) |
 | **E050** | dutyを50%に固定してwindow長だけを振ると、window長はgated captureの成立に影響するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — window長は無関係、条件は平均byte rateのみ**([e050_p4_gated_window_at_fixed_duty/](e050_p4_gated_window_at_fixed_duty/README.ja.md)) |
+| **E051** | gate loop周期2.4 msでRMTが`on_recv_done`を発火する条件はuser buffer・`mem_block_symbols`・回収時間のどれか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — buffer・blockは閾値でない、正体未特定**([e051_p4_rmt_partial_threshold/](e051_p4_rmt_partial_threshold/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -185,6 +186,23 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E051 ESP32-P4: RMT partial受信が通知される条件 — 完了 2026-09-09
+
+全文: [e051_p4_rmt_partial_threshold/README.ja.md](e051_p4_rmt_partial_threshold/README.ja.md)。採用run: `_runs/E051_20260909T091955Z_default/`。
+
+**事実**
+
+1. **user bufferを8 symbol(所要19.2 ms)にしても100 msの回収でcallbackは0回。** user bufferのsymbol数は発火の閾値ではない。
+2. **`mem_block_symbols`を48から96へ変えても0回のまま。** これも閾値ではない。
+3. 回収時間を400 msにすると5回発火し、durationはhigh / lowともに24,000 tick固定で期待値と完全一致した。取れたdataは正しい。
+4. PARLIO側は4条件すべて同一かつ正常(飛び22、階差一致15 / 15、overflow 0、bit 7が0のsample 0)。RMT設定はcaptureに影響しない。
+5. **[E045](e045_p4_gate_rmt_order/README.ja.md)の「callbackはuser bufferが埋まったときに起きる」は一般則として反証された。** E050とE051の実測回数はbuffer基準・block基準・block半分基準のどのmodelとも合わず、長いloopでは常に1回少ない。**閾値の正体は未特定。**
+6. instrumentation不具合を2件見つけて修正した。期待値表示の32 bit溢れ(`6000 × 20,000,000`)と、E049から引き継いだcache line非整列のmsync。後者はE049・E050でもerror logを出していたが、両実験のdataは検証を通っており結論は変わらない。
+
+**候補**: 経験的規則として使う。gate loop周期1.6 ms以下なら100 ms程度の回収でwindow timestampが取れる。2.4 ms以上では回収時間を数百msへ伸ばす。durationの正確さは条件に依存しない。
+
+**未決**: **callbackの発火時刻を`esp_timer`で記録して起動遅延と間隔を直接測る**(食い違いを解く鍵) / RMT ISRとPSRAM copy loopの競合 / `en_partial_rx=false`との比較 / gate loop周期1.6〜2.4 msの境界。
 
 ### E050 ESP32-P4: dutyを固定してwindow長だけを振る — 完了 2026-09-09
 

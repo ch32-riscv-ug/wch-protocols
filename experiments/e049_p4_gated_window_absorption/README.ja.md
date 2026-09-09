@@ -167,3 +167,9 @@ ring容量については、未読量がring容量を超えてもdataが正常�
 
 - **本実験で残した交絡は解けた。境界はwindow長ではなくdutyによるものだった。** duty固定なら window byte長224,000(ring容量の3.4倍)でもdataは正常で、ring未読は106,880 byteに達していた。成立条件は`duty × sample rate × bytes/sample < 約98 MB/s`の一本である。window長に上限は無い。
 - **gate 8,000でRMTがhighを記録しなかった理由の解釈は成り立たない。** 本レポートは`signal_range_max_ns`(32,000 tick)への到達と説明したが、E050ではhigh 24,000 tickのgate 6,000でも同じくcallbackが0回だった。共通しているのはloop周期が2.4 ms以上であることで、1.6 ms以下では取得できている。原因は未解明である。
+
+## 追記 — E051で見つかったmsync非整列(2026-09-09)
+
+本レポートは書き換えない。[E051](../e051_p4_rmt_partial_threshold/README.ja.md)で、`build_pattern`が`loop_words`だけを`esp_cache_msync`しており、64 byteのcache line境界に載らないためerror logが出ていたことが分かった。本実験でも同じerrorが出ていた。
+
+ただし**本実験のdataは検証を通っており結論は変わらない**。この環境ではflushが失敗してもCPUの書き込みはDMAから見えていたことになる。E051ではbuffer全体をsyncする形へ直している。
