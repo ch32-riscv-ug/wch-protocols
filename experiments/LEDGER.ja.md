@@ -46,6 +46,7 @@
 | **E035** | ADC1最大rateのchannel ID列を特定し、ADC2単独・ADC1+ADC2 continuous modeを利用できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) analog topology | **計画**([e035_p4_adc_topology_order/](e035_p4_adc_topology_order/README.ja.md)) |
 | **E036** | PARLIO TXの連番rampを源にしring未読量でdropを直接検出すると、8 channel triggerなしbatchのdropなし境界はどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 律速はspool側、1 Mi burstは104 MHz成立**([e036_p4_parlio_rate_seq_verify/](e036_p4_parlio_rate_seq_verify/README.ja.md)) |
 | **E037** | PARLIO RX pulse delimiterで4 data channel + 1 valid lineを構成し、hardware pulseでframe開始・`eof_data_len`停止・hardware timeoutが成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — hardware trigger成立、arm待ちtimeoutは非対応**([e037_p4_parlio_pulse_trigger/](e037_p4_parlio_pulse_trigger/README.ja.md)) |
+| **E038** | pulse delimiterによるhardware trigger付き有限frameは、どのsample rateまで欠落なく成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — 160 MHzまで成立、上限は内部clock源**([e038_p4_parlio_pulse_trigger_rate/](e038_p4_parlio_pulse_trigger_rate/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -172,6 +173,21 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E038 ESP32-P4: hardware pulse triggerのrate上限 — 完了 2026-09-09
+
+全文: [e038_p4_parlio_pulse_trigger_rate/README.ja.md](e038_p4_parlio_pulse_trigger_rate/README.ja.md)。採用run: `_runs/E038_20260909T031300Z_default/`。
+
+**事実**
+
+1. data_width 4 + valid線1本のhardware pulse triggerは20 / 40 / 80 / 100 / 120 / 160 MHzの6条件すべてで成立した。受信byteは両frameとも`eof_data_len` 16,384と完全一致、gray step違反0件。
+2. frame間隔から求めた実測rateは設定の99.9〜100.1%。source loop周期という独立した時間基準による絶対測定で、**160 MHzまでsample clockが設定どおりであることを直接確認した**(E036はcallback数からの推定だった)。
+3. run長は160 MHzの整数分周(20 / 40 / 80 / 160 MHz)で厳密に4固定、非整数分周(100 / 120 MHz)で3〜5に散った。RX側かTX側かは切り分けていない。trigger位置も整数分周では2 frameのheadが完全一致し、120 MHzだけ1 sampleずれた。
+4. E036の約98 MB/sはinternal ring → PSRAM copy段の限界であり、copy段の無い有限frameには効かない。ただしdata_width 4の160 MHzはpacking後80 MB/sなので、**98 MB/s超のbyte rateは試していない**。
+
+**候補**: capabilityを取得方式ごとに分ける。hardware trigger + 有限frame = 160 MHz / 深度65,535 byte以内 / pre-trigger不可、software走査 + spool = 24 MHz / 深度16 MiB / pre-trigger可。公称rateは160 MHzの整数分周に限定し、非整数分周は±1 sample揺れとして別枠にする。
+
+**未決**: data_width 8 / 16でのhardware trigger(9 / 17線必要でpin宣言の拡張から) / 有限frameのbyte rate上限 / `eof_data_len` 65,535超のpost長 / level delimiter / `has_end_pulse`・`pulse_invert` / 連続frame soakと再arm周期 / circular ringとの併用。
 
 ### E037 ESP32-P4: PARLIO pulse delimiterによるhardware trigger — 完了 2026-09-09
 
