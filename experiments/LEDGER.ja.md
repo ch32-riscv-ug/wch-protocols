@@ -52,6 +52,8 @@
 | **E041** | `valid_gpio_num`をdata線と同一GPIOにして、8 channel全部を残したままhardware edge triggerを使えるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — 共有成立、triggerはchannelを消費しない**([e041_p4_parlio_shared_valid_line/](e041_p4_parlio_shared_valid_line/README.ja.md)) |
 | **E042** | 16 channelのtriggerなしbatchをsample単位検証とring未読量で測ると、dropなし境界はどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 48 MHz成立、複製lane不一致を検出**([e042_p4_parlio_16ch_seq_verify/](e042_p4_parlio_16ch_seq_verify/README.ja.md)) |
 | **E043** | hardware gateで間引かれたstreamから、gate windowの境界と長さを復元できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — window長は決定論的、境界は自己記述されない**([e043_p4_parlio_gate_window_boundary/](e043_p4_parlio_gate_window_boundary/README.ja.md)) |
+| **E044** | gate線を同時にRMT RXへ入力して、window境界の長さと間隔をhardwareで記録できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **中断 — GPIO共有は成立、RMTがsymbolを返さず**([e044_p4_gate_rmt_timestamp/](e044_p4_gate_rmt_timestamp/README.ja.md)) |
+| **E045** | RMT RXがgate線のdurationを返すのは、どのperipheral生成順とどの回収時間か | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — 原因は回収時間、durationは期待値と完全一致**([e045_p4_gate_rmt_order/](e045_p4_gate_rmt_order/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -178,6 +180,35 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E045 ESP32-P4: RMT RXがgate durationを返す条件 — 完了 2026-09-09
+
+全文: [e045_p4_gate_rmt_order/README.ja.md](e045_p4_gate_rmt_order/README.ja.md)。採用run: `_runs/E045_20260909T083514Z_default/`。
+
+**事実**
+
+1. RMTの生成位置をPARLIO TXの前・後どちらにしても結果は同一。**GPIO matrixのfan-outはRMTにも効き、PARLIO TXが同じGPIOを出力にしてもRMTの入力経路は壊れない。** E044の生成順仮説は反証された。
+2. **原因は回収時間だった。** 50 msでsymbol 0、300 msで両順序とも取得。`en_partial_rx`のcallbackはuser bufferが埋まったときに起きる。32 symbol × gate周期1.6384 ms = 52.43 msが必要で、51.3 msでは届いていなかった。
+3. **duration 16個のhighはすべて8,176 tick、16個のlowはすべて24,592 tickで期待値と完全一致(min = max)。** 分解能20 MHzなので1 tick = 1 sample。gate windowの長さと間隔がsample単位で読める。
+4. PARLIO側のgated captureは4条件すべてで無傷。gray stepの飛びはすべて期待window長の整数倍。
+
+**判定**: hardware gatingとhardware window timestampingは同時に成立する。gate線1本をPARLIO validとRMT RXへ共有すれば、PARLIOがgate区間のsampleを間引いて拾い、RMTが各high / lowの長さを記録する。CPUは介在しない。**E043の「可変幅gateでは時間軸を再構成できない」制約が外れる。**
+
+**払うもの**: RMT RX channel 1つ(P4は4) / 1 levelあたり32,767 tick上限(20 MHz分解能で1.638 ms) / callback遅延 = buffer symbol数 × gate周期。channel数は払わない。
+
+**未決**: 実際に可変幅なgateでの復元 / 32,767 tick超のgap / [E041](e041_p4_parlio_shared_valid_line/README.ja.md)のdata線共有との3者同時共有 / RMT分解能を落としたときの精度 / gating時の最大rate / RMT symbolとPARLIO sample列の先頭同期 / data_width 8・16でのqualification。
+
+### E044 ESP32-P4: gate線をRMT RXへ分岐 — 中断 2026-09-09
+
+全文: [e044_p4_gate_rmt_timestamp/README.ja.md](e044_p4_gate_rmt_timestamp/README.ja.md)。採用run: `_runs/E044_20260909T083102Z_default/`。
+
+**事実**
+
+1. 同一GPIOをPARLIO RXの`valid_gpio_num`とRMT RXの`gpio_num`へ同時に割り当て、両peripheralの生成・enable・receiveがすべて`ESP_OK`になった。
+2. RMTを足してもPARLIO側のgated captureは壊れなかった。gray stepの飛びは31 / 32件すべてが期待window長の整数倍。
+3. **RMTの`on_recv_done`が50 msの回収window中に0回発火し、symbolを取得できなかった。**
+
+**判定**: 選んだ回収時間では反証。原因の候補を生成順とpartial受信のthresholdの二つに絞り、[E045](e045_p4_gate_rmt_order/README.ja.md)へ引き継いだ。E045で**回収時間が原因**と確定し、生成順仮説は反証された。pytestは意図的に失敗する記録として残している。
 
 ### E043 ESP32-P4: hardware gate windowの境界は復元できるか — 完了 2026-09-09
 
