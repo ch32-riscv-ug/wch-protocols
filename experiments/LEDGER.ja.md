@@ -77,7 +77,7 @@
 | **E058** | window長を固定してsample rateを振ると、window中のdrain帯域は一定かrate依存か | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — drainはrate依存、未読に2 chunkの床**([e058_p4_window_drain_vs_rate/](e058_p4_window_drain_vs_rate/README.ja.md)) |
 | **E059** | window中のdrain低下はmemcpy自体が遅いのか(memory競合)、memcpyに使える時間が減るのか(ISR overhead) | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — memcpy帯域は一定、原因は1 chunkあたり固定cost**([e059_p4_drain_breakdown/](e059_p4_drain_breakdown/README.ja.md)) |
 | **E060** | 1 chunkあたりの固定costは`xQueueReceive`のまとめ取りと連続chunkのmemcpyまとめで下がるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — どちらも効かず、固定costはISRが支配**([e060_p4_drain_batch_coalesce/](e060_p4_drain_batch_coalesce/README.ja.md)) |
-| **E061** | PARLIOのISRが走るcoreとmemcpyするcoreを分けると、window中のdrain帯域は上がるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **計画 — 実装・build済み。benchのportが外れて未実行**([e061_p4_drain_core_split/](e061_p4_drain_core_split/README.ja.md)) |
+| **E061** | PARLIOのISRが走るcoreとmemcpyするcoreを分けると、window中のdrain帯域は上がるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — core分離でdrainが82.3→119.7 MB/s**([e061_p4_drain_core_split/](e061_p4_drain_core_split/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -216,6 +216,23 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E061 ESP32-P4: 回収を別coreへ移すとdrainは上がるか — 完了 2026-09-09
+
+全文: [e061_p4_drain_core_split/README.ja.md](e061_p4_drain_core_split/README.ja.md)。採用run: `_runs/E061_20260909T132131Z_default/`。
+
+**事実**
+
+1. Arduinoのloop taskはcore 1。要求 −1と1が同一core、要求 0が分離条件。同一coreの2条件は未読最大54,656で完全一致し対照として機能した。
+2. **core分離でISR側の未読最大が54,656→32,256(−41%)、逆算したdrainが82.3→119.7 MB/s(+45%)。**
+3. **memcpy帯域も107.6→131.0 MB/s(+22%)。** [E059](e059_p4_drain_breakdown/README.ja.md)の107 MB/sは計時区間の内側でISRがmemcpyを中断していた分を含んでいた。[E020](e020_p4_psram_copy_bandwidth/README.ja.md)のDMA無し138.6〜182.7との残差5〜25%が本当のmemory競合分。
+4. 分離後もdrain 119.7はmemcpy帯域131.0の91%で、残る9%は`xQueueReceive`とloop本体。core分離では消えない。
+5. **尖頭未読の式は分離条件でも当たる。** drain 119.7で予測32,244に対し実測32,256、差12 byte。
+6. 条件2への効果は8 channel・160 MHz・ring 15 chunkで許容window byte長が約107,900→約208,000、**約1.9倍**。逆にwindow長固定ならring容量が半分で済む。
+
+**候補**: 実装では回収をISRと別coreへ置く。driverの生成・enableをloop task上で行い、回収loopだけを`xTaskCreatePinnedToCore`で別coreへ出す。条件2の`drain(rate)`はcore配置ごとの値として持つ。
+
+**未決**: 分離時のdrainのrate依存(本実験は160 MHzのみ) / 残る9%の内訳 / 回収coreで他taskが走る場合の劣化 / ISR自体を明示的に別coreへ割り当てる方法 / triggerなしspool経路でも同じ改善が出るか。
 
 ### E060 ESP32-P4: chunkのまとめ取りでdrainは上がるか — 完了 2026-09-09
 

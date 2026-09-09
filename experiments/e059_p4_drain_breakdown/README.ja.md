@@ -141,3 +141,11 @@ drain表に理由が付いたので、条件2の`drain(rate)`は「107 MB/s × m
 
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): drain表に理由を付け、改善の方向を書く
 - [LEDGER](../LEDGER.ja.md): E059の節
+
+## 追記 — E061によるmemcpy帯域の訂正(2026-09-09)
+
+本レポートは書き換えない。[E061](../e061_p4_drain_core_split/README.ja.md)が回収を別coreへ移した結果、**本レポートが測ったmemcpy帯域107 MB/sは計時区間の内側でISRがmemcpyを中断していた分を含んでいた**ことが分かった。別coreに置くと131.0 MB/sになる。
+
+したがって「DMAが動いていること自体で25〜40%失っている」という記述は、**ISRによる中断とmemory競合を合わせた値**である。分離後の131.0 MB/sと[E020](../e020_p4_psram_copy_bandwidth/README.ja.md)のDMA無し138.6〜182.7 MB/sとの残差5〜25%が本当のmemory競合分にあたる。
+
+「memcpy帯域を上げる余地は小さい」という結論も訂正が要る。**core分離で22%上がる。** 本レポートの「固定costはdriver側のISRが支配している」は正しく、そのISRをmemcpyと別coreへ分けることでdrainは82.3から119.7 MB/sへ45%改善した。

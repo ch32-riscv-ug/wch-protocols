@@ -94,15 +94,24 @@ chunk sizeは4,032 byteで、これは実測値ではなくSoC定義から決ま
 
 尖頭未読の式は[E058](../experiments/e058_p4_window_drain_vs_rate/README.ja.md)が直接測って確定した。**8,064 byte(2 chunk)の床**はchunk通知とqueue投入のpipeline分で、過負荷が無くても常に乗る。**window中のdrain帯域はrate依存で、sample rateが上がるほど下がる。**
 
-| sample rate | window中のdrain |
+| sample rate | window中のdrain（ISRと同一core） |
 |---:|---:|
 | 100 MHz以下 | 100 MB/s以上（過負荷が生じないため上限は未測定） |
 | 120 MHz | 95.9 MB/s |
 | 160 MHz | 86.1 MB/s |
 
+**回収をISRと別coreへ置くとdrainは大きく上がる。** [E061](../experiments/e061_p4_drain_core_split/README.ja.md)が160 MHzで測ったところ、同一coreの82.3 MB/sに対し分離で**119.7 MB/s(+45%)**になった。memcpy帯域自体も107.6から131.0 MB/sへ上がるので、ISRがmemcpyを内側で中断していた分が消えたことになる。
+
+| 回収core | 160 MHzでのdrain | ring 15 chunkで許容されるwindow byte長 |
+|---|---:|---:|
+| ISRと同一 | 82.3 MB/s | 約107,900 |
+| **分離** | **119.7 MB/s** | **約208,000** |
+
+**同じringで約1.9倍長いwindowが通る。** window長を固定するならring容量が半分で済む。実装ではdriverの生成・enableをloop task上で行い(ISRはそのcoreに載る)、回収loopだけを`xTaskCreatePinnedToCore`で別coreへ出す。分離時のrate依存は160 MHzでしか測っていない。
+
 [E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)の持続spool帯域98 MB/sはこの曲線上の一点にあたる。予測の当てはまりはwindow 96,000 byteで**48 byte以内**である。
 
-**低下の理由は[E059](../experiments/e059_p4_drain_breakdown/README.ja.md)で分解できた。** memcpyを直接計時すると、gated capture中のmemcpy帯域は**100〜160 MHzで107 MB/s一定**である(DMAを動かさない[E020](../experiments/e020_p4_psram_copy_bandwidth/README.ja.md)の138.6〜182.7 MB/sより25〜40%低いが、DMAのrateには依存しない)。drainが下がるのは**1 chunkあたり3.6〜5.2 usの固定cost**(ISR、`xQueueReceive`、loop本体)が原因で、window byte長が同じならchunk数も同じなので、windowが短くなるほどこのcostの占める割合が増える。
+**低下の理由は[E059](../experiments/e059_p4_drain_breakdown/README.ja.md)で分解できた。** memcpyを直接計時すると、gated capture中のmemcpy帯域は**100〜160 MHzで107 MB/s一定**である(この107はISRがmemcpyを内側で中断した分を含む値で、別coreへ分ければ131.0 MB/sになる。[E020](../experiments/e020_p4_psram_copy_bandwidth/README.ja.md)のDMA無し138.6〜182.7 MB/sとの残差5〜25%が本当のmemory競合分)。drainが下がるのは**1 chunkあたり3.6〜5.2 usの固定cost**(ISR、`xQueueReceive`、loop本体)が原因で、window byte長が同じならchunk数も同じなので、windowが短くなるほどこのcostの占める割合が増える。
 
 ```
 drain(rate) = 107 MB/s × memcpy占有率(rate)
@@ -114,7 +123,7 @@ memcpy占有率 = 100 MHzで89%、120 MHzで86%、160 MHzで77%
 - `xQueueReceive`のまとめ取り(1 batch最大12 chunk)は**効果ゼロ** — ISR側の未読最大は54,656で完全に同一
 - 連続chunkを1回のmemcpyへまとめる(呼び出し1,070→277、平均copy size 3,920→15,142 byte)も**memcpy時間は1%減**だけ
 
-memcpyの累積時間は3条件でほぼ一定なので、**固定costはdriver側のISRが支配している**。task側で残る手は**回収を別coreへ移すこと**だけで、これは未実測である。memcpy帯域はDMAが動いている限り107〜109 MB/sでcopy sizeにも依存しない(DMA無しの[E020](../experiments/e020_p4_psram_copy_bandwidth/README.ja.md)では181〜183 MB/s)。
+memcpyの累積時間は3条件でほぼ一定なので、**固定costはdriver側のISRが支配している**。同一core上ではmemcpy帯域は107〜109 MB/sでcopy sizeにも依存しない。**残った手のcore分離は[E061](../experiments/e061_p4_drain_core_split/README.ja.md)で実際に効いた**(上の表)。
 
 **per-chunk copyを維持する。** memcpyをまとめると`consumed_bytes`がrun単位でしか進まず、未読の実測値が最大1 run分過大に出る(E060では54,656が70,784になったがdataは正常)。**未読の実測を条件2の判定に使えるのはper-chunk copyのときだけ**で、それ以外は計算で判定する。
 
@@ -217,7 +226,7 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
 - `en_partial_rx=false`のときの発火条件と、48 symbol溜まる前に`rmt_disable`して取れる分だけ回収できるか(応答性が要る用途の逃げ道)
-- 回収を別coreへ移した場合のdrainの改善(task側で残る唯一の手)とISR本体の実行時間の直接測定
+- core分離時のdrainのrate依存(160 MHzでしか測っていない)と、分離後に残る9%の非memcpy時間の内訳
 - triggerなしspool経路がpattern周期のalias で盲にならなかった理由
 - duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
