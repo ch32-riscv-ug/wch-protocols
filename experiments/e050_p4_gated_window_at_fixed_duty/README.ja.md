@@ -143,3 +143,9 @@ RMTのloop周期依存は、qualificationの実装に直接効く制約になり
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): gate行の条件を平均byte rateの一本に確定し、window長の上限を外す。RMTのloop周期依存を未測定項目に追加する
 - [E049](../e049_p4_gated_window_absorption/README.ja.md): 境界がdutyによるものと確定したこと、RMT dropoutの解釈が成り立たないことを追記する
 - [LEDGER](../LEDGER.ja.md): E050の節
+
+## 追記 — E051で見つかったmsync非整列(2026-09-09)
+
+本レポートは書き換えない。[E051](../e051_p4_rmt_partial_threshold/README.ja.md)で、`build_pattern`が`loop_words`だけを`esp_cache_msync`しており、64 byteのcache line境界に載らないためerror logが出ていたことが分かった。本実験でも同じerrorが出ていた。
+
+ただし**本実験のdataは検証を通っており結論は変わらない**。この環境ではflushが失敗してもCPUの書き込みはDMAから見えていたことになる。E051ではbuffer全体をsyncする形へ直している。

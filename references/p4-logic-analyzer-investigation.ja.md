@@ -155,7 +155,7 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - level delimiterでのgating時の最大sample rateとgate境界のsample精度
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
-- **RMTがgate loop周期2 ms以上でsymbolを返さない原因**(2.4 msで0 callback、1.6 msでは取得できる。qualificationの実装に直接効く)
+- **RMT callbackの発火条件**。[E051](../experiments/e051_p4_rmt_partial_threshold/README.ja.md)でuser bufferのsymbol数と`mem_block_symbols`はどちらも閾値でないことが分かり、回収時間を増やせば発火することだけが確定した。正体は未特定で、次はcallbackの発火時刻を直接記録する。実装上の経験的規則は**gate loop周期1.6 ms以下なら100 ms程度の回収でwindow timestampが取れる。2.4 ms以上では数百msへ伸ばす**。取れたdurationの正確さは条件に依存しない
 - ringとqueueのどちらがgated captureの実際の緩衝なのか
 - duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)

@@ -135,3 +135,9 @@ channel数は払わない。gate線はPARLIO側でも[E041](../e041_p4_parlio_sh
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): 内部圧縮節のqualificationから「可変幅では時間軸を再構成できない」を外し、RMTによるwindow timestampを追加する
 - [E044](../e044_p4_gate_rmt_timestamp/README.ja.md): 生成順仮説が反証されたことを追記する
 - [LEDGER](../LEDGER.ja.md): E045の節
+
+## 追記 — E051による限定(2026-09-09)
+
+本レポートは書き換えない。[E051](../e051_p4_rmt_partial_threshold/README.ja.md)がuser bufferのsymbol数を8まで下げて測った結果、**「`en_partial_rx`のcallbackはuser bufferが埋まったときに起きる」という規則は一般則としては成り立たない**ことが分かった。buffer 8 symbol(所要19.2 ms)でも100 msの回収でcallbackは0回だった。`mem_block_symbols`も48と96で差が無い。
+
+本レポートの数値(32 symbol × 1.6384 ms = 52.43 msが必要で51.3 msでは届かなかった)はbuffer基準の説明と整合していたが、それは偶然一致していた可能性がある。確定しているのは「回収時間を増やせば発火する」ことと「取れたdurationは正確である」ことだけで、閾値の正体は未特定である。
