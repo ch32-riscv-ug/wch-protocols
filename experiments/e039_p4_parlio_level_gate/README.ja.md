@@ -136,3 +136,11 @@ active lowの開始位置が再現しないのは異常ではなく、「armし�
 
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): Trigger節にhardware側の窓の切り方3種と、終了が`eof_data_len`だけであることを追加する
 - [LEDGER](../LEDGER.ja.md): E039の節
+
+## 追記 — E040による判定範囲の限定(2026-09-09)
+
+本レポートは書き換えない。[E040](../e040_p4_parlio_level_open_frame/README.ja.md)がpayloadの中身を無条件に検査した結果、case 2の解釈を次のように限定する。
+
+**`eof_data_len` = 0でもDMAは走っており、dataは正しく書かれている。** 発火しないのは完了eventだけである。したがって「可変長frameは不成立」は、**有限transaction(`partial_rx_en=false`)で完了eventを待った場合**に限った話である。`partial_rx_en=true`と組めば`on_partial_receive`からdataを回収でき、hardware gate + software停止の可変長modeとして成立する。
+
+さらにE040は、gateがactiveな区間のsampleだけがDMAへ渡ることを実測した(回収rateがraw byte rateの12%、gate dutyは12.5%)。level delimiterはframeの区切りだけでなく、streamそのものを間引いている。

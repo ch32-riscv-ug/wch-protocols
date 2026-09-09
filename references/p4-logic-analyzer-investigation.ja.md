@@ -92,7 +92,12 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - **pre-trigger dataは取れない。** pulseでframeを開始する方式なので、pre/post windowが必要ならsoftware走査 + circular ring([E027](../experiments/e027_p4_sump_circular_pretrigger/README.ja.md))に戻る
 - **深度が浅い。** `eof_data_len`は16 bitで最大65,535 byte。16 KiB frameは160 MHzで205 us分にすぎない。深い取得はspool経路へ戻る。つまり「速いが浅い」と「遅いが深い」の二つのmodeになる
 - **arm待ちのtimeoutは`timeout_ticks`では取れない。** frame開始前は`on_timeout`が発火しないので、softwareで持つ
-- **終了は`eof_data_len`だけである。** level delimiterの「`eof_data_len` = 0ならenable無効化でEOF」は`partial_rx_en=false`の有限transactionでは効かず、frameが完了しなかった([E039](../experiments/e039_p4_parlio_level_gate/README.ja.md))。gate幅が不定な信号は上限を`eof_data_len`で置き、有効長はsoftware側で判定する
+- **完了eventが出る終了条件は`eof_data_len`だけである。** `eof_data_len` = 0にすると完了eventは来ないが、[E040](../experiments/e040_p4_parlio_level_open_frame/README.ja.md)でDMA自体は正しく走っていることが分かった。したがって窓のmodeは三つある
+
+| mode | 長さ | 完了event | 深度の上限 |
+|---|---|---|---|
+| pulse または level + 有限transaction | 固定(`eof_data_len`) | 有り | 65,535 byte |
+| level + `eof_data_len` = 0 + `partial_rx_en` | 可変(softwareが止める) | **無し** | software次第 |
 - **level active lowは開始位置が再現しない。** armした時点で既にactiveならその瞬間から始まるため、開始位置が信号の位相ではなくarmのタイミングで決まる
 - **公称rateは160 MHzの整数分周から選ぶ。** 160 / 80 / 40 / 20 MHz等ではsample間隔が均一でtrigger位置も完全に再現したが、100 / 120 MHzでは±1 sample揺れた
 
@@ -102,7 +107,7 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - 有限frameのbyte rate上限(98 MB/s超が通るか)
 - `eof_data_len` 65,535超のpost長
 - level delimiterでのgating時の最大sample rateとgate境界のsample精度
-- `eof_data_len` = 0でframeが開始しているのか否か(payloadが書かれるかで判定できる)
+- gate境界のsample精度(gate開放・閉止のedgeに対して何sampleずれるか)とgate window境界のmetadata復元
 - `has_end_pulse`によるhardware停止と`pulse_invert`の極性
 - trigger delay
 - UART / I2C / SPI等のprotocol-aware triggerは、raw triggerの成立後にCPU負荷とrateを別測定する
@@ -119,8 +124,11 @@ trigger能力は対応条件だけでなく、tier・消費channel・channel幅�
 | transition + delta timestamp | UART/I2C等のedgeが疎な信号 | 高速clockやrandom data | 最大edge/s、timestamp wrap、複数channel同時edge |
 | channel bit packing | 1 / 2 / 4 channel | 8 / 16 channelでは効果なし | hardware packing順、host展開cost |
 | block raw/RLE選択 | 入力特性が途中で変わる信号 | block判定cost | block size、切替cost、random data時の上限 |
+| **hardware capture qualification** | CS / enable線でburstが区切られる信号(SPI、I2C等) | qualifierが常にactiveな信号。gate外の情報は完全に失われる | duty別の保存量削減率、gate境界のsample精度、境界metadataの持ち方 |
 
 圧縮は常に有効にしない。各blockにencoding、raw sample数、encoded byte数を持たせ、圧縮後がraw以上ならraw blockを保存する方式を基準候補とする。これなら最悪入力でも容量を大きく失わない。
+
+hardware capture qualificationはこの表の中で唯一**CPUを使わない**手段である。[E040](../experiments/e040_p4_parlio_level_open_frame/README.ja.md)で、level delimiterのgateがactiveな区間のsampleだけがDMAへ渡ることを実測した(gate duty 12.5%に対して回収byte rateはraw byte rateの12%)。入力の性質に依存せず最悪時膨張も無い代わりに、qualifier線を1本消費し、gate外の情報は残らない。同じPSRAM容量でduty分だけ長い時間を覆え、spool帯域([E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)の約98 MB/s)も同じ比率で緩む。
 
 ### 後段
 
