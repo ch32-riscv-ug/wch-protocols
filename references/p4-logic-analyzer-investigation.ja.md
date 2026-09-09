@@ -155,7 +155,7 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - level delimiterでのgating時の最大sample rateとgate境界のsample精度
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
-- DMA modeの`mem_block_symbols` 32が受理されるか(8と16は拒否、64は受理だが遅い)
+- `en_partial_rx=false`のときの発火条件と、48 symbol溜まる前に`rmt_disable`して取れる分だけ回収できるか(応答性が要る用途の逃げ道)
 - ringとqueueのどちらがgated captureの実際の緩衝なのか
 - duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
@@ -213,7 +213,16 @@ n = floor(user_buffer ÷ group)          ← n = 0 なら永久に発火しな�
 
 **`user_buffer < group`だとcallbackは一度も来ない。** これを踏み外すと無音になるので、設定時に必ず確認する。
 
-**DMA mode(`flags.with_dma`)は使わない。** `mem_block_symbols` 8と16は`ESP_ERR_INVALID_ARG`で拒否され、受理された64は初回157 msでnon-DMAの115 msより悪い(32は未確認)。
+**DMA mode(`flags.with_dma`)は使わない。** [E054](../experiments/e054_p4_rmt_dma_block_min/README.ja.md)で48未満(8 / 16 / 24 / 32 / 40)はすべて`ESP_ERR_INVALID_ARG`で拒否され、受理された48も**64として振る舞う**ことが分かった。初回遅延は常に`64 × gate周期`でnon-DMAの`48 × gate周期`より遅い。
+
+したがって**初回遅延の下限は`48 × gate周期`**で、構成はnon-DMA・`mem_block_symbols` 48・user buffer 24である。
+
+| gate周期 | 初回遅延 | 更新間隔 |
+|---:|---:|---:|
+| 0.4 ms | 19.2 ms | 9.6 ms |
+| 0.8 ms | 38.4 ms | 19.2 ms |
+| 1.6 ms | 76.8 ms | 38.4 ms |
+| 2.4 ms | 115.2 ms | 57.6 ms |
 
 **CPU負荷では変わらない** — 160 MHz・duty 50%の入力をPSRAMへcopyし続けてCPUを飽和させても発火時刻の差は3 usだった。gate周期の遅い信号では初回のtimestampが数百ms遅れて届くが、durationの正確さは損なわれない。この規則でE045からE053までの16条件すべての実測callback回数が説明できる。
 

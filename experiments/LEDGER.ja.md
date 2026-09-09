@@ -62,6 +62,7 @@
 | **E051** | gate loop周期2.4 msでRMTが`on_recv_done`を発火する条件はuser buffer・`mem_block_symbols`・回収時間のどれか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — buffer・blockは閾値でない、正体未特定**([e051_p4_rmt_partial_threshold/](e051_p4_rmt_partial_threshold/README.ja.md)) |
 | **E052** | RMTの`on_recv_done`は何ms後に最初に発火しどの間隔で何symbolずつ届くか。PSRAM copy loopのCPU飽和は影響するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — 初回48 symbol・以降24ごと、CPU負荷は無関係**([e052_p4_rmt_callback_timing/](e052_p4_rmt_callback_timing/README.ja.md)) |
 | **E053** | RMT RXをDMA modeにすると`mem_block_symbols`を48より小さくして初回遅延を縮められるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — DMAでは縮まらず、規則が完成**([e053_p4_rmt_dma_block/](e053_p4_rmt_dma_block/README.ja.md)) |
+| **E054** | RMT DMA modeが受理する`mem_block_symbols`の最小値はいくつで、初回遅延はnon-DMAより良いか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — DMAでは縮まらず、下限は`48 × 周期`**([e054_p4_rmt_dma_block_min/](e054_p4_rmt_dma_block_min/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -188,6 +189,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E054 ESP32-P4: RMT DMA modeが受理する`mem_block_symbols`の最小値 — 完了 2026-09-09
+
+全文: [e054_p4_rmt_dma_block_min/README.ja.md](e054_p4_rmt_dma_block_min/README.ja.md)。採用run: `_runs/E054_20260909T094215Z_default/`。
+
+**事実**
+
+1. **DMA modeは`mem_block_symbols` 24 / 32 / 40をすべて`ESP_ERR_INVALID_ARG`で拒否した。** 48は受理。
+2. **受理された48は64として振る舞う。** 1 callbackが64 symbol、間隔153,611 us(= 64 × symbol周期)、初回156,934 us。[E053](e053_p4_rmt_dma_block/README.ja.md)のblock 64指定時と完全一致するので、DMA modeは48を64へ丸めている。
+3. **DMA modeの初回遅延は常に`64 × symbol周期`で、non-DMAの`48 × symbol周期`より遅い。DMAでは縮められない。**
+4. **window timestampの初回遅延の下限は`48 × symbol周期`で確定した。** 構成はnon-DMA、`mem_block_symbols` 48、user buffer 24(= `mem_block ÷ 2`)。symbol周期0.4 / 0.8 / 1.6 / 2.4 msに対し初回19.2 / 38.4 / 76.8 / 115.2 ms、更新間隔はその半分。
+5. instrumentation不具合を1件修正した。E053から引き継いだnon-DMA対照の判定が残っており、本実験に対照が無いためpytestが失敗した。計測値は完走しており、判定を設計へ合わせた採用runでは通る。
+
+**候補**: window timestampをnon-DMA・`mem_block_symbols` 48・user buffer 24で構成し、初回遅延`48 × gate周期`・更新間隔`24 × gate周期`を仕様値とする。DMA modeは使わない。
+
+**未決**: `en_partial_rx=false`の発火条件 / 48 symbol溜まる前に`rmt_disable`して取れる分だけ回収できるか / RMT分解能を落としたときの挙動。
 
 ### E053 ESP32-P4: RMT DMA modeで初回遅延を縮められるか — 完了 2026-09-09
 
