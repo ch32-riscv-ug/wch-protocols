@@ -107,7 +107,14 @@ drain(rate) = 107 MB/s × memcpy占有率(rate)
 memcpy占有率 = 100 MHzで89%、120 MHzで86%、160 MHzで77%
 ```
 
-したがって改善の方向は**1 chunkあたりのcostを削ること**である。chunk sizeはSoC定義で4,032固定なので大きくできないため、複数chunkをまとめて取る、queueを介さずdescriptorを直接見る、回収を別coreへ移す、といった手になる。memcpy帯域そのものを上げる余地は小さい。
+改善の方向として1 chunkあたりのcostを削る手を[E060](../experiments/e060_p4_drain_batch_coalesce/README.ja.md)で試したが、**task側の書き方では下がらなかった**。
+
+- `xQueueReceive`のまとめ取り(1 batch最大12 chunk)は**効果ゼロ** — ISR側の未読最大は54,656で完全に同一
+- 連続chunkを1回のmemcpyへまとめる(呼び出し1,070→277、平均copy size 3,920→15,142 byte)も**memcpy時間は1%減**だけ
+
+memcpyの累積時間は3条件でほぼ一定なので、**固定costはdriver側のISRが支配している**。task側で残る手は**回収を別coreへ移すこと**だけで、これは未実測である。memcpy帯域はDMAが動いている限り107〜109 MB/sでcopy sizeにも依存しない(DMA無しの[E020](../experiments/e020_p4_psram_copy_bandwidth/README.ja.md)では181〜183 MB/s)。
+
+**per-chunk copyを維持する。** memcpyをまとめると`consumed_bytes`がrun単位でしか進まず、未読の実測値が最大1 run分過大に出る(E060では54,656が70,784になったがdataは正常)。**未読の実測を条件2の判定に使えるのはper-chunk copyのときだけ**で、それ以外は計算で判定する。
 
 **未読の測定はISR内で行う。** taskがdequeueごとに標本化する方法はちょうど1 chunk分だけ尖頭を見落とす(E058が4条件すべてで正確に4,032 byteの差を確認)。未読が増えるのはISRがchunkを通知する瞬間だけである。
 
@@ -208,7 +215,7 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
 - `en_partial_rx=false`のときの発火条件と、48 symbol溜まる前に`rmt_disable`して取れる分だけ回収できるか(応答性が要る用途の逃げ道)
-- 1 chunkあたり3.6〜5.2 usの内訳(ISR本体・`xQueueReceive`・loop本体の分離)と、複数chunkのまとめ取りや別coreへの分離で占有率が上がるかの実測
+- 回収を別coreへ移した場合のdrainの改善(task側で残る唯一の手)とISR本体の実行時間の直接測定
 - triggerなしspool経路がpattern周期のalias で盲にならなかった理由
 - duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
