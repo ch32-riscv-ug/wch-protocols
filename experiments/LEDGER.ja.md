@@ -74,6 +74,7 @@
 | **E055** | gated captureの緩衝は64 KiB ringか64 entry queueか。driverはringを周回して使っているか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 緩衝はqueue、ringは線形**([e055_p4_gated_buffer_source/](e055_p4_gated_buffer_source/README.ja.md)) |
 | **E056** | ring容量をpattern周期の倍数から外すと、未読 > ring容量の条件で破損が現れるか(検証器のalias 疑い) | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — alias で盲だった、ringは実際に上書きされる**([e056_p4_ring_period_alias/](e056_p4_ring_period_alias/README.ja.md)) |
 | **E057** | alias から外したringで、gated captureの条件2の境界はどこにあるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 境界はgate 3,000〜4,000、容量は完全chunk数**([e057_p4_gated_ring_boundary/](e057_p4_gated_ring_boundary/README.ja.md)) |
+| **E058** | window長を固定してsample rateを振ると、window中のdrain帯域は一定かrate依存か | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — drainはrate依存、未読に2 chunkの床**([e058_p4_window_drain_vs_rate/](e058_p4_window_drain_vs_rate/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -195,6 +196,24 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E058 ESP32-P4: window中のdrain帯域はrateに依存するか — 完了 2026-09-09
+
+全文: [e058_p4_window_drain_vs_rate/README.ja.md](e058_p4_window_drain_vs_rate/README.ja.md)。採用run: `_runs/E058_20260909T105237Z_default/`。
+
+**事実**
+
+1. window byte長96,000固定で80 / 100 / 120 / 160 MHzの4条件すべて正常に取れた(飛び42〜44対期待43、階差15 / 15、queue overflow 0)。
+2. **task側の標本化はちょうど1 chunk(4,032 byte)分だけ尖頭を見落としていた。** 差は4条件すべてで正確に4,032。ISR内で標本化すれば取れる([E057](e057_p4_gated_ring_boundary/README.ja.md)の制約が外れる)。
+3. **未読には約8,064 byte(2 chunk)の床がある。** 過負荷が生じない80 MHzでもこの値が出る。chunk通知とqueue投入のpipeline分。
+4. **drainはrate依存で、rateが上がるほど下がる。** 床を引いた増分から逆算すると100 MHz以下で100 MB/s以上、120 MHzで95.9、160 MHzで86.1 MB/s。window中はDMAがsample rateでringへ書きながらCPUが同じringから読むためと整合する。
+5. **尖頭未読は`8,064 + window byte長 × (1 − drain(rate) ÷ rate)`で表せる。** 120 / 160 MHzは予測27,344 / 52,464に対し実測27,328 / 52,416で**48 byte以内**の一致。E057の境界もこの形で実測どおり(gate 3,000は14 chunk ≤ 15、gate 4,000は17 chunk > 15)。
+6. [E036](e036_p4_parlio_rate_seq_verify/README.ja.md)の持続spool帯域98 MB/sは、DMA書き込みが98 MB/s程度だった状態の値としてこの曲線上の一点に収まる。
+7. 「drain 82 MB/s・床なし」という近似は160 MHzで尖頭を1〜2 chunk小さく見積もる。安全側ではない。
+
+**候補**: 条件2を`ceil((8,064 + window × (1 − drain(rate) ÷ rate)) ÷ chunk) ≤ min(floor(ring ÷ chunk), queue深さ)`とし、`drain(rate)`を表で持つ。未読の測定はISR内で行う。
+
+**未決**: drainのrate依存の内訳(DMA writeとCPU readの分離) / 100 MHz以下のdrainの上限(過負荷が生じず測れない) / 床8,064が`trans_queue_depth`やchunk sizeでどう変わるか / chunk sizeが4,032固定である根拠 / triggerなしspool経路にも同じ床とdrain曲線が当てはまるか。
 
 ### E057 ESP32-P4: 条件2の境界をalias から外したringで実測 — 完了 2026-09-09
 

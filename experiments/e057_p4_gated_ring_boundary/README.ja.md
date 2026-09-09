@@ -167,3 +167,16 @@ chunk sizeは4,032 byte、window中のdrain帯域は約82 MB/sである。この
 
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): 条件2を完全chunk数の形へ直し、8条件の照合表を載せる
 - [LEDGER](../LEDGER.ja.md): E057の節
+
+## 追記 — E058による標本化の改善(2026-09-09)
+
+本レポートは書き換えない。[E058](../e058_p4_window_drain_vs_rate/README.ja.md)がISR内で未読を標本化した結果、**task側の標本化はちょうど1 chunk(4,032 byte)分だけ尖頭を見落としている**ことが分かった。未読が増えるのはISRがchunkを通知する瞬間だけなので、そこで測れば真の尖頭が取れる。本レポートの未読最大に4,032を足したものが実際の値に近い。
+
+またE058は尖頭の形も精密化した。
+
+```
+尖頭未読 = 8,064 + window byte長 × (1 − drain(rate) ÷ rate)
+drain(rate) ≈ 160 MHzで86 MB/s、120 MHzで96 MB/s、100 MHz以下で100 MB/s以上
+```
+
+床8,064 byte(2 chunk)はchunk通知とqueue投入のpipeline分で、過負荷とは別に常に乗る。この形で本レポートの境界を照合すると、gate 3,000は14 chunk ≤ 15で正常、gate 4,000は17 chunk > 15で破綻となり実測どおりである。本レポートが使った「drain 82 MB/s・床なし」は結論としては同じだが、160 MHzでは尖頭を1〜2 chunk小さく見積もるので安全側ではない。
