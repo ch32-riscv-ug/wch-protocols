@@ -86,6 +86,25 @@ trigger能力は対応条件だけでなく、channel幅・条件種・stage数�
 
 batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、file保存を測る。streamingは最後に独立して測り、batch側のsample rateやtrigger結果と混ぜない。PC側applicationでsigrok互換形式、VCD、CSV等へ変換する。
 
+### Analog capture
+
+ESP32-P4のSoC定義とADC continuous driverから、実装前に次が確定する。
+
+| 項目 | P4の値 | 意味 |
+|---|---:|---|
+| ADC unit | 2 | ADC1とADC2 |
+| 外部channel | ADC1 8、ADC2 6 | GPIO16〜23、GPIO49〜54 |
+| continuous pattern長 | 最大16 entry | 複数channelをround-robin取得可能 |
+| resolution | 12 bit固定 | raw resultは1 conversionあたり4 byte |
+| aggregate sample rate | 611〜83,333 conversion/s | 複数channel時はchannelごとのrateが概ね分割される |
+| DMA | 対応 | continuous batch取得のdriver経路がある |
+
+この上限から、内蔵ADCはMSa/s級digital captureの代替ではなく、電源、ゆっくりしたsensor、threshold前後の電圧を同時に残す補助analog traceとして扱う。8 channelを均等scanすると理論上は各約10.4 kSa/sである。
+
+無配線で確認できるのは、continuous driverの初期化、1〜14 channelのpattern順、aggregate rate、DMA pool overflow、PSRAMへのbatch退避、metadata復元までである。入力電圧の正確さ、noise、ENOB、attenuation別範囲、SDM出力をRC filterした波形はanalog pinへの配線が必要なので分離する。P4はSDM出力を持つが、それをADCへ内部routingするanalog経路はない。
+
+digitalとの同期は、まず共通timerで開始時刻と完了時刻を記録する疎結合方式を評価する。sample単位の位相同期が必要ならhardware trigger/ETM経路の有無を別に確認し、software同時startだけで同期済みとは扱わない。
+
 ## 実験の依存関係
 
 1. PARLIO widthとpacking
@@ -94,8 +113,10 @@ batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、fi
 4. wide CPU snapshot（24 / 32 / 33〜55 channel）
 5. raw batchの深度・停止・再arm耐久
 6. RLE、transition timestamp、block adaptive encoding
-7. external clockとanalog同期
-8. batch download
-9. streaming throughput
+7. ADC continuous batchのrate・channel・深度（無配線）
+8. analog精度・noise・digital同期（要配線）
+9. external clock
+10. batch download
+11. streaming throughput
 
 失敗した段階で後続条件を組み替える。たとえば16 channelのraw rateがPSRAM byte帯域で制限される場合、trigger実験はその成立rate以下だけを対象にする。
