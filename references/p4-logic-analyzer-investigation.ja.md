@@ -94,12 +94,14 @@ ESP32-P4のSoC定義とADC continuous driverから、実装前に次が確定す
 |---|---:|---|
 | ADC unit | 2 | ADC1とADC2 |
 | 外部channel | ADC1 8、ADC2 6 | GPIO16〜23、GPIO49〜54 |
-| continuous pattern長 | 最大16 entry | 複数channelをround-robin取得可能 |
+| continuous pattern長 | 最大16 entry | 複数channelをscan可能。最大rate時の出力順は実測が必要 |
 | resolution | 12 bit固定 | raw resultは1 conversionあたり4 byte |
 | aggregate sample rate | 611〜83,333 conversion/s | 複数channel時はchannelごとのrateが概ね分割される |
 | DMA | 対応 | continuous batch取得のdriver経路がある |
 
-この上限から、内蔵ADCはMSa/s級digital captureの代替ではなく、電源、ゆっくりしたsensor、threshold前後の電圧を同時に残す補助analog traceとして扱う。8 channelを均等scanすると理論上は各約10.4 kSa/sである。
+この上限から、内蔵ADCはMSa/s級digital captureの代替ではなく、電源、ゆっくりしたsensor、threshold前後の電圧を同時に残す補助analog traceとして扱う。[E034](../experiments/e034_p4_adc1_continuous_batch/README.ja.md)ではADC1の1 / 2 / 4 / 8 channelすべてで最大aggregate 83,333 conversion/s、各1 MiBのPSRAM退避が成立した。8 channel時の実効値は各約10.4 kSa/s、pool overflowは0だった。
+
+E034ではchannel別sample数とIDは正しかった一方、最大rateの複数channelは設定順の単純な循環列にならなかった。したがってraw resultのchannel IDを必ず保持してtraceへ分離し、配列位置だけからchannel間skewを推定しない。
 
 無配線で確認できるのは、continuous driverの初期化、1〜14 channelのpattern順、aggregate rate、DMA pool overflow、PSRAMへのbatch退避、metadata復元までである。入力電圧の正確さ、noise、ENOB、attenuation別範囲、SDM出力をRC filterした波形はanalog pinへの配線が必要なので分離する。P4はSDM出力を持つが、それをADCへ内部routingするanalog経路はない。
 
