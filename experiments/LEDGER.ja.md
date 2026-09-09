@@ -64,6 +64,7 @@
 | **E053** | RMT RXをDMA modeにすると`mem_block_symbols`を48より小さくして初回遅延を縮められるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — DMAでは縮まらず、規則が完成**([e053_p4_rmt_dma_block/](e053_p4_rmt_dma_block/README.ja.md)) |
 | **E054** | RMT DMA modeが受理する`mem_block_symbols`の最小値はいくつで、初回遅延はnon-DMAより良いか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — DMAでは縮まらず、下限は`48 × 周期`**([e054_p4_rmt_dma_block_min/](e054_p4_rmt_dma_block_min/README.ja.md)) |
 | **E055** | gated captureの緩衝は64 KiB ringか64 entry queueか。driverはringを周回して使っているか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 緩衝はqueue、ringは線形**([e055_p4_gated_buffer_source/](e055_p4_gated_buffer_source/README.ja.md)) |
+| **E056** | ring容量をpattern周期の倍数から外すと、未読 > ring容量の条件で破損が現れるか(検証器のalias 疑い) | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — alias で盲だった、ringは実際に上書きされる**([e056_p4_ring_period_alias/](e056_p4_ring_period_alias/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -190,6 +191,25 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E056 ESP32-P4: ring容量とpattern周期のalias — 完了 2026-09-09
+
+全文: [e056_p4_ring_period_alias/README.ja.md](e056_p4_ring_period_alias/README.ja.md)。採用run: `_runs/E056_20260909T100537Z_default/`。
+
+**事実**
+
+1. **pattern周期4,096 byteの整数倍のring(65,536 / 61,440)では飛びが期待どおり22で階差も15 / 15一致。倍数から外したring(63,488 / 59,392)では飛びが172と86に跳ね階差一致は0 / 15。** 4条件すべてqueue overflowは0で、queueは律速でない。
+2. **ringは未読がring容量を超えた時点で実際に上書きされている。** これまでの「正常」判定は、検証用gray code rampの周期がring容量を割り切るためのalias による盲点だった。
+3. **`未読 > ring容量`は破綻の指標である。** [E055](e055_p4_gated_buffer_source/README.ja.md)の「指標ではない」は誤り。
+4. 正しい条件は2本で、条件2の容量は`min(ring容量, queue深さ × chunk size)`。**[E048](e048_p4_gated_rate_ceiling/README.ja.md)のmodelは形としては正しかった。**
+5. **[E050](e050_p4_gated_window_at_fixed_duty/README.ja.md)の「window長は無関係」は成り立たない。** duty 50%固定でもgate 4,000(未読61,504)は正常、gate 6,000(92,288)は無効。条件2が許すwindow byte長は約134,000(gate幅4,200 word相当)で実測の分かれ目と一致する。
+6. **[E055](e055_p4_gated_buffer_source/README.ja.md)の「ring容量を倍にしても変わらない」も成り立たない。** ring 128 KiBにしたことで正常になっていた。**ringとqueueは両方が独立に効く。**
+7. **検証用patternの周期は経路上のどのbuffer sizeも割り切ってはならない。** [E036](e036_p4_parlio_rate_seq_verify/README.ja.md)が定常性の盲点を直したのに対し、今回は周期性の別の盲点だった。
+8. E036とE042はpattern周期がring容量を割り切る構成でありながら破綻を検出できていた。持続的な過負荷では上書き量がring容量の整数倍にならないためと考えられるが、切り分けていない。両実験の結論は変わらない。
+
+**候補**: gated captureを条件1と条件2の2本で申告し、条件2の容量を`min(ring容量, queue深さ × chunk size)`とする。今後の検証patternは周期がring容量・chunk size・queue容量・destination容量のいずれも割り切らないように選ぶ。
+
+**未決**: **alias から外したringでのE049・E050の再測**(境界の実測確定) / triggerなしspool経路がalias で盲にならなかった理由 / window中のdrain帯域82 MB/sの由来 / 条件2の境界をring容量付近で細かく測ること。
 
 ### E055 ESP32-P4: gated captureの緩衝はringかqueueか — 完了 2026-09-09
 

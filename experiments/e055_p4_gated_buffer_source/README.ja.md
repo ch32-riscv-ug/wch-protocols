@@ -135,3 +135,24 @@ queueを浅くしたときに破綻するか、ringを倍にしたときに挙�
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): drop判定をring容量基準からqueue基準へ直し、gated captureの条件を2本立てにする
 - [E050](../e050_p4_gated_window_at_fixed_duty/README.ja.md): window長の上限が「無い」のではなくqueue深さで決まることを追記する
 - [LEDGER](../LEDGER.ja.md): E055の節
+
+## 追記 — E056によるdata検証の無効化(2026-09-09)
+
+本レポートは書き換えない。[E056](../e056_p4_ring_period_alias/README.ja.md)で、**検証用のgray code rampの周期(4,096 byte)がring容量65,536を割り切るため、ringの上書きが検証器に見えていなかった**ことが分かった。ring容量を倍数から外すと、同じ条件で飛びが22から172へ跳ねる。
+
+したがって本実験のうち**未読がring容量を超えていた条件のdata検証は無効**である。
+
+| 条件 | 未読最大 | ring容量 | 判定 |
+|---|---:|---:|---|
+| ring 64 KiB / queue 64 | 93,760 | 65,536 | **無効** |
+| ring 128 KiB / queue 64 | 90,752 | 131,072 | **有効** |
+| queue 8の2条件 | 1.9 MB / 1.8 MB | — | 破綻の判定自体は変わらない |
+
+正しい条件は次の2本で、条件2の容量は`min(ring容量, queue深さ × chunk size)`である。
+
+```
+条件1(平均) duty × sample rate × bytes/sample < 持続spool帯域(約98 MB/s)
+条件2(尖頭) window byte長 × (1 − window中のdrain ÷ sample rate) < min(ring容量, queue深さ × chunk size)
+```
+
+本レポートの結論のうち**「ring容量を倍にしても結果は変わらない」と「`未読 > ring容量`は破綻の指標ではない」は成り立たない**。ring 64 KiB / queue 64(未読93,760)は実際には破損しており、ring 128 KiB / queue 64(未読90,752)が正常だったのは**ring容量を倍にしたおかげ**である。一方「queueを浅くすると破綻する」ことは変わらない。**ringとqueueは両方が独立に効く**というのが正しい。
