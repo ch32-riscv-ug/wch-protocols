@@ -82,11 +82,23 @@ sample rate ≤ 160 MHz（内部clock源）
 
 ```
 条件1（平均）duty × sample rate × bytes/sample < 持続spool帯域（約98 MB/s）
-条件2（尖頭）ceil(window byte長 × (1 − drain ÷ sample rate) ÷ chunk size)
+条件2（尖頭）ceil((8,064 + window byte長 × (1 − drain(rate) ÷ sample rate)) ÷ chunk size)
              ≤ min(floor(ring容量 ÷ chunk size), queue深さ)
 ```
 
-chunk sizeは4,032 byte、window中のdrain帯域は約82 MB/sで持続値98 MB/sより低い。**容量は「完全なchunkがいくつ入るか」で数える** — ringの端数にはdescriptorが載らないので使えない([E057](../experiments/e057_p4_gated_ring_boundary/README.ja.md))。
+chunk sizeは4,032 byte。**容量は「完全なchunkがいくつ入るか」で数える** — ringの端数にはdescriptorが載らないので使えない([E057](../experiments/e057_p4_gated_ring_boundary/README.ja.md))。
+
+尖頭未読の式は[E058](../experiments/e058_p4_window_drain_vs_rate/README.ja.md)が直接測って確定した。**8,064 byte(2 chunk)の床**はchunk通知とqueue投入のpipeline分で、過負荷が無くても常に乗る。**window中のdrain帯域はrate依存で、sample rateが上がるほど下がる。**
+
+| sample rate | window中のdrain |
+|---:|---:|
+| 100 MHz以下 | 100 MB/s以上（過負荷が生じないため上限は未測定） |
+| 120 MHz | 95.9 MB/s |
+| 160 MHz | 86.1 MB/s |
+
+window中はDMAがsample rateでringへ書きながらCPUが同じringから読むので、DMAの書き込みrateが上がるほどCPUの読み出しが圧迫される。[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)の持続spool帯域98 MB/sはこの曲線上の一点にあたる。予測の当てはまりはwindow 96,000 byteで**48 byte以内**である。
+
+**未読の測定はISR内で行う。** taskがdequeueごとに標本化する方法はちょうど1 chunk分だけ尖頭を見落とす(E058が4条件すべてで正確に4,032 byteの差を確認)。未読が増えるのはISRがchunkを通知する瞬間だけである。
 
 容量が`min()`の二つである根拠は二段ある。[E055](../experiments/e055_p4_gated_buffer_source/README.ja.md)はqueueを64から8 entryへ浅くするとring容量に関係なく破綻することを示し、[E056](../experiments/e056_p4_ring_period_alias/README.ja.md)はringも独立に効くことを示した。**ringとqueueは両方が制約である。**
 
@@ -103,7 +115,7 @@ E057がalias から外したring 63,488(完全chunk 15個)で境界を実測し�
 | E055 queue 8の2条件 | 192,000 | 24 | 16 / 32 | 8 | 破綻 | 破綻 |
 | [E048](../experiments/e048_p4_gated_rate_ceiling/README.ja.md) 160 MHz | 65,408 | 8 | 16 | 64 | 正常 | 正常 |
 
-**drop判定は実測の未読ではなくwindow長からの計算で行う。** 未読の実測値は標本化のため尖頭を過小に見る — E057のgate 4,000は破綻しているのに未読最大59,456で完全chunk容量60,480すら下回った。ringは周回bufferではなく`max_recv_size`まで線形に歩くが(chunk offsetは4,032 byte刻みで単調増加し、ring 128 KiBでは最大offsetも128,000まで伸びる)、transactionが端まで行くと先頭から書き直すので未読は上書きされる。**ring容量はchunk sizeの整数倍で取る**(端数は使えない)。
+**drop判定はwindow長からの計算で行う。** task側で標本化した未読は1 chunk分だけ尖頭を過小に見る — E057のgate 4,000は破綻しているのに未読最大59,456で完全chunk容量60,480すら下回った(ISR側なら63,488相当)。ringは周回bufferではなく`max_recv_size`まで線形に歩くが(chunk offsetは4,032 byte刻みで単調増加し、ring 128 KiBでは最大offsetも128,000まで伸びる)、transactionが端まで行くと先頭から書き直すので未読は上書きされる。**ring容量はchunk sizeの整数倍で取る**(端数は使えない)。
 
 > **検証器の落とし穴。** E048からE055までの間、未読がring容量を超えてもdataが正常に見える条件が続いた。原因は検証用gray code rampの周期(4,096 byte)がring容量65,536と131,072を割り切っていたことで、位置Xを`X + ring容量`のdataで上書きしても同じ値が書かれ痕跡が残らなかった。[E056](../experiments/e056_p4_ring_period_alias/README.ja.md)でring容量を倍数から外すと、同じ条件で飛びが22から172へ跳ねた。**検証用patternの周期は、経路上のどのbuffer size(ring容量・chunk size・queue容量・destination容量)も割り切ってはならない。** [E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)が定常性の盲点を直したのに対し、これは周期性の別の盲点である。この影響でE049・E050・E055の一部条件のdata検証は無効になっており、各レポートに追記した。
 
@@ -185,7 +197,7 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
 - `en_partial_rx=false`のときの発火条件と、48 symbol溜まる前に`rmt_disable`して取れる分だけ回収できるか(応答性が要る用途の逃げ道)
-- window中のdrain帯域が持続値より低い(約82 MB/s)理由と、chunk sizeが4,032固定である根拠
+- drainのrate依存の内訳(DMA writeとCPU readのどちらが圧迫されているかの分離)と、chunk sizeが4,032固定である根拠
 - triggerなしspool経路がpattern周期のalias で盲にならなかった理由
 - duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
