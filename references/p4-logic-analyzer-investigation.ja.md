@@ -132,7 +132,8 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - 有限frameの持続byte rate(4 KiB burstより長い取得で98 MB/sを超えられるか)
 - `eof_data_len` 65,535超のpost長
 - level delimiterでのgating時の最大sample rateとgate境界のsample精度
-- 実際に可変幅なgateでのwindow復元と、32,767 tickを超えるgapの扱い
+- 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
+- data線・valid線・RMT RXの3者同時共有(成立すれば8 channel + qualification + timestampが8 pinに収まる)
 - RMT symbolとPARLIO sample列の先頭同期
 - `has_end_pulse`によるhardware停止と`pulse_invert`の極性
 - trigger delay
@@ -168,7 +169,7 @@ gate線(1 GPIO)
    └─→ RMT RX           : 各gate high / lowの長さをsample単位で記録
 ```
 
-hostへはsample列とwindow長の列を組で渡せば、間引いたまま時間軸を再構成できる。**幅が可変なgate(実際のCS等)でも成立する。** 払うものはRMT RX channel 1つ(P4は4 channel)、1 levelあたり32,767 tickの上限(20 MHz分解能で1.638 ms。超えるなら分解能を落とす)、そしてcallback遅延 = user buffer symbol数 × gate周期である。captureするchannel数は払わない。
+hostへはsample列とwindow長の列を組で渡せば、間引いたまま時間軸を再構成できる。**幅が可変なgateでも成立する**([E046](../experiments/e046_p4_gate_variable_width/README.ja.md))— 幅の違う4 windowに対しRMTは各長さを個別に正しく返し、capture data中の切れ目の階差がRMT high durationの列と15箇所すべてで一致した。lowのdurationも記録されるので、捨てた区間の長さと各windowの絶対時刻位置まで求まる。 払うものはRMT RX channel 1つ(P4は4 channel)、1 levelあたり32,767 tickの上限(20 MHz分解能で1.638 ms。超えるなら分解能を落とす)、そしてcallback遅延 = user buffer symbol数 × gate周期である。captureするchannel数は払わない。
 
 ### 後段
 
