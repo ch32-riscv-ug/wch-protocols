@@ -77,15 +77,17 @@ drop判定にも同じ整理が要る。`queue_overflow`はchunk queueが満杯�
 
 triggerは性質の違う二段に分かれる。[E037](../experiments/e037_p4_parlio_pulse_trigger/README.ja.md)でhardware側の経路が成立した。
 
-| tier | 条件にできるもの | 消費channel | pre-trigger | rateの決まり方 |
-|---|---|---:|---|---|
-| software走査 | pattern + mask、rising / falling / either edge、occurrence count、複数stage | 0 | 可(circular ring) | CPUの走査能力。8 channelで24 MHz、固定4-stageで16 MHz |
-| hardware pulse delimiter | 専用線のpulse 1本。極性は`pulse_invert` | 1 | **不可** | CPU負荷ゼロ。**data_width 4で160 MHzまで実測成立**([E038](../experiments/e038_p4_parlio_pulse_trigger_rate/README.ja.md)) |
-| hardware level delimiter | 専用線がactiveな区間。極性は`active_low_en` | 1 | **不可** | CPU負荷ゼロ。20 MHzで成立([E039](../experiments/e039_p4_parlio_level_gate/README.ja.md))。rate上限は未測定 |
+| tier | 条件にできるもの | channelの代償 | pre-trigger | rateの決まり方 |
+|---|---|---|---|---|
+| software走査 | pattern + mask、rising / falling / either edge、occurrence count、複数stage | なし | 可(circular ring) | CPUの走査能力。8 channelで24 MHz、固定4-stageで16 MHz |
+| hardware pulse delimiter | trigger源にした1 channelのedge。極性は`pulse_invert` | **なし**(源のchannelを選ぶだけ) | **不可** | CPU負荷ゼロ。**160 MHzまで実測成立**([E038](../experiments/e038_p4_parlio_pulse_trigger_rate/README.ja.md)・[E041](../experiments/e041_p4_parlio_shared_valid_line/README.ja.md)) |
+| hardware level delimiter | trigger源にした1 channelがactiveな区間。極性は`active_low_en` | **なし**(同上) | **不可** | CPU負荷ゼロ。20 MHzで成立([E039](../experiments/e039_p4_parlio_level_gate/README.ja.md))。rate上限は未測定 |
+
+**hardware triggerはchannelを消費しない。** `valid_gpio_num`はGPIO matrix経由なのでdata線のいずれかと同一GPIOに設定でき、その線はdataとして記録されつつtriggerにもなる([E041](../experiments/e041_p4_parlio_shared_valid_line/README.ja.md))。`valid_sig_line_id`はGPIOではなく内部line slotの番号なので、data widthより大きい値を選べばdata lineと衝突しない。したがって8 channel + hardware triggerは8 pinで成立する。
 
 hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`停止をCPU走査なしで行う。[E037](../experiments/e037_p4_parlio_pulse_trigger/README.ja.md)と[E038](../experiments/e038_p4_parlio_pulse_trigger_rate/README.ja.md)で、data_width 4の20〜160 MHzすべてで受信byteが`eof_data_len`と完全一致し、gray rampのstep違反0、誤trigger0だった。pulseからの取得開始のずれは1 sample以内。
 
-上限は**内部clock源(PLL_F160M)の160 MHz**である。E036の約98 MB/sはinternal ring → PSRAM copy段の限界であり、copy段の無い有限frameには効かない。ただしdata_width 4では160 MHzでもpacking後80 MB/sなので、98 MB/s超のbyte rateは未確認である。
+上限は**内部clock源(PLL_F160M)の160 MHz**である。E036の約98 MB/sはinternal ring → PSRAM copy段の限界であり、copy段の無い有限frameには効かない。[E041](../experiments/e041_p4_parlio_shared_valid_line/README.ja.md)はdata_width 8の160 MHz、つまり160 MB/sで4 KiB frameを違反0で取得したので、**internal RAMへのDMA write自体は少なくとも4 KiB burstで160 MB/sを通す**。持続帯域は未測定である。
 
 この経路には引き換えがある。
 
@@ -99,12 +101,12 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 | pulse または level + 有限transaction | 固定(`eof_data_len`) | 有り | 65,535 byte |
 | level + `eof_data_len` = 0 + `partial_rx_en` | 可変(softwareが止める) | **無し** | software次第 |
 - **level active lowは開始位置が再現しない。** armした時点で既にactiveならその瞬間から始まるため、開始位置が信号の位相ではなくarmのタイミングで決まる
-- **公称rateは160 MHzの整数分周から選ぶ。** 160 / 80 / 40 / 20 MHz等ではsample間隔が均一でtrigger位置も完全に再現したが、100 / 120 MHzでは±1 sample揺れた
+- **sample間隔の均一性は分周比だけでは決まらない。** E038ではdata_width 4で160 MHzの整数分周(160 / 80 / 40 / 20 MHz)だけが均一だったが、E041ではdata_width 8の80 / 160 MHzが±1 sample揺れた。整数分周は十分条件ではなく、独立した二つの分周器の位相関係が実際の変数と考えられる。**時間精度を分周比から申告してはならない**(未解明)
 
 まだ測っていないもの:
 
-- data_width 8 / 16でのhardware trigger。valid線を含めて9 / 17線が要るので、`TEST_PARLIO_PINS`の8線では作れない
-- 有限frameのbyte rate上限(98 MB/s超が通るか)
+- data_width 16でのvalid線共有(`valid_sig_line_id`に空きslotが無い可能性)
+- 有限frameの持続byte rate(4 KiB burstより長い取得で98 MB/sを超えられるか)
 - `eof_data_len` 65,535超のpost長
 - level delimiterでのgating時の最大sample rateとgate境界のsample精度
 - gate境界のsample精度(gate開放・閉止のedgeに対して何sampleずれるか)とgate window境界のmetadata復元

@@ -120,3 +120,12 @@ E036の限界はinternal ring → PSRAMをtaskがcopyする段のものだった
 
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): Trigger節のhardware pulse tierに実測160 MHzを入れ、整数分周の制約と深度の引き換えを書く
 - [LEDGER](../LEDGER.ja.md): E038の節
+
+## 追記 — E041による判定範囲の限定(2026-09-09)
+
+本レポートは書き換えない。[E041](../e041_p4_parlio_shared_valid_line/README.ja.md)の結果から、次の2点を限定する。
+
+1. **「data_width 8のhardware triggerにはvalid線を含めて9線が必要」は誤りだった。** `valid_gpio_num`はdata線のいずれかと同一GPIOに設定でき、その線はdataとして記録されつつtriggerにも使える。8 channel + hardware triggerは8 pinで成立する。したがってhardware trigger tierの代償は「channel 1本」ではなく「trigger源となるchannelを1つ選ぶ」ことである。
+2. **「160 MHzの整数分周ならrun長が均一」は十分条件ではない。** E041はdata_width 8で80 / 160 MHz(どちらも整数分周)のrun長が3〜5に散った。本レポートの6条件で整数分周と非整数分周がきれいに分かれたのは、二つの独立した分周器の位相関係がarmごとに変わることの一側面だった可能性がある。step違反は両実験とも0なので取得の正しさには影響しないが、**sample間隔の均一性を分周比だけから申告してはならない。**
+
+またE041はdata_width 8の160 MHz(160 MB/s)で4,096 byteを違反0で取得したので、本レポートで「98 MB/s超のbyte rateは試していない」とした点は、少なくとも4 KiB burstについては解消した。持続帯域は未測定のままである。
