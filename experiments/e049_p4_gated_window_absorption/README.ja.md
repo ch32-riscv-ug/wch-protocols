@@ -160,3 +160,10 @@ ring容量については、未読量がring容量を超えてもdataが正常�
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): gate行の成立条件をwindow過負荷式から`duty × sample rate < 持続spool帯域`へ直す
 - [E048](../e048_p4_gated_rate_ceiling/README.ja.md): 機構の説明が反証されたことを追記する
 - [LEDGER](../LEDGER.ja.md): E049の節
+
+## 追記 — E050による確定(2026-09-09)
+
+本レポートは書き換えない。[E050](../e050_p4_gated_window_at_fixed_duty/README.ja.md)がgapをwindowに比例させてdutyを50%に固定し、window byte長を32,000から224,000まで振った結果、次が確定した。
+
+- **本実験で残した交絡は解けた。境界はwindow長ではなくdutyによるものだった。** duty固定なら window byte長224,000(ring容量の3.4倍)でもdataは正常で、ring未読は106,880 byteに達していた。成立条件は`duty × sample rate × bytes/sample < 約98 MB/s`の一本である。window長に上限は無い。
+- **gate 8,000でRMTがhighを記録しなかった理由の解釈は成り立たない。** 本レポートは`signal_range_max_ns`(32,000 tick)への到達と説明したが、E050ではhigh 24,000 tickのgate 6,000でも同じくcallbackが0回だった。共通しているのはloop周期が2.4 ms以上であることで、1.6 ms以下では取得できている。原因は未解明である。
