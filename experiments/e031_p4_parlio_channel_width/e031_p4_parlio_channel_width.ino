@@ -17,12 +17,25 @@
 #define PARLIO_PINS "2,3,4,5,6,7,8,9"
 #endif
 
+#ifndef EXPERIMENT_ID
+#define EXPERIMENT_ID "E031"
+#endif
+
+#ifndef RUN_CAPTURE_CASES
+#define RUN_CAPTURE_CASES()                         \
+  do {                                              \
+    for (size_t width : kWidths) {                  \
+      run_case(width, kDefaultSampleRateHz);         \
+    }                                               \
+  } while (0)
+#endif
+
 namespace {
 
 constexpr size_t kSourceLaneCount = 8;
 constexpr size_t kMaxLaneCount = 16;
 constexpr size_t kSampleCount = 1024 * 1024;
-constexpr uint32_t kSampleRateHz = 8000000;
+constexpr uint32_t kDefaultSampleRateHz = 8000000;
 constexpr uint32_t kPwmFrequencyHz = 100000;
 constexpr uint8_t kPwmResolutionBits = 8;
 constexpr size_t kRingSize = 64 * 1024;
@@ -106,7 +119,7 @@ bool IRAM_ATTR on_partial_receive(parlio_rx_unit_handle_t,
   return high_task_woken == pdTRUE;
 }
 
-esp_err_t create_receiver(size_t width,
+esp_err_t create_receiver(size_t width, uint32_t sample_rate_hz,
                           parlio_rx_unit_handle_t *rx_unit,
                           parlio_rx_delimiter_handle_t *delimiter) {
   parlio_rx_unit_config_t unit_config = {};
@@ -114,7 +127,7 @@ esp_err_t create_receiver(size_t width,
   unit_config.max_recv_size = kRingSize;
   unit_config.data_width = width;
   unit_config.clk_src = PARLIO_CLK_SRC_DEFAULT;
-  unit_config.exp_clk_freq_hz = kSampleRateHz;
+  unit_config.exp_clk_freq_hz = sample_rate_hz;
   unit_config.clk_in_gpio_num = GPIO_NUM_NC;
   unit_config.clk_out_gpio_num = GPIO_NUM_NC;
   unit_config.valid_gpio_num = GPIO_NUM_NC;
@@ -150,7 +163,7 @@ uint16_t unpack_sample(const uint8_t *data, size_t sample, size_t width) {
          (static_cast<uint16_t>(data[sample * 2 + 1]) << 8);
 }
 
-void run_case(size_t width) {
+void run_case(size_t width, uint32_t sample_rate_hz) {
   const size_t target_bytes = kSampleCount * width / 8;
   xQueueReset(capture_state.queue);
   capture_state.callback_count = 0;
@@ -164,7 +177,8 @@ void run_case(size_t width) {
 
   parlio_rx_unit_handle_t rx_unit = nullptr;
   parlio_rx_delimiter_handle_t delimiter = nullptr;
-  const esp_err_t config_result = create_receiver(width, &rx_unit, &delimiter);
+  const esp_err_t config_result =
+      create_receiver(width, sample_rate_hz, &rx_unit, &delimiter);
   const esp_err_t pwm_result =
       config_result == ESP_OK ? configure_pwm() : ESP_FAIL;
   esp_err_t enable_result = ESP_FAIL;
@@ -264,16 +278,6 @@ void run_case(size_t width) {
       max_error_ppm = max(max_error_ppm, error_ppm);
       min_edges = min(min_edges, edges);
       max_edges = max(max_edges, edges);
-      Serial.print("LANE width=");
-      Serial.print(width);
-      Serial.print(" lane=");
-      Serial.print(lane);
-      Serial.print(" high_ppm=");
-      Serial.print(ratio_ppm);
-      Serial.print(" expected_ppm=");
-      Serial.print(expected_ppm);
-      Serial.print(" edges=");
-      Serial.println(edges);
     }
   } else {
     min_edges = 0;
@@ -285,6 +289,8 @@ void run_case(size_t width) {
       capture_us > 0 ? copied * 1000ULL / capture_us : 0;
   Serial.print("CASE width=");
   Serial.print(width);
+  Serial.print(" rate_hz=");
+  Serial.print(sample_rate_hz);
   Serial.print(" result=");
   Serial.print(esp_err_to_name(result));
   Serial.print(" config=");
@@ -333,15 +339,6 @@ void run_case(size_t width) {
   Serial.print(max_edges);
   Serial.print(" duplicate_mismatches=");
   Serial.println(duplicate_mismatches);
-  Serial.print("HEAD width=");
-  Serial.print(width);
-  Serial.print(" data=");
-  for (size_t index = 0; index < min(target_bytes, static_cast<size_t>(32));
-       ++index) {
-    if (destination[index] < 16) Serial.print('0');
-    Serial.print(destination[index], HEX);
-  }
-  Serial.println();
 
   if (delimiter != nullptr) parlio_del_rx_delimiter(delimiter);
   if (rx_unit != nullptr) parlio_del_rx_unit(rx_unit);
@@ -349,7 +346,7 @@ void run_case(size_t width) {
 }
 
 void run_experiment() {
-  Serial.print("# EXP E031 v1 git=");
+  Serial.print("# EXP " EXPERIMENT_ID " v1 git=");
   Serial.print(BANNER_GIT);
   Serial.print(" probe=esp32p4_parlio target=internal build=");
   Serial.println(__DATE__ " " __TIME__);
@@ -395,7 +392,7 @@ void run_experiment() {
     return;
   }
 
-  for (size_t width : kWidths) run_case(width);
+  RUN_CAPTURE_CASES();
 
   vQueueDelete(capture_state.queue);
   free(ring_buffer);

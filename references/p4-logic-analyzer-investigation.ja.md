@@ -34,16 +34,16 @@ Arduino-ESP32 3.3.11が使用するESP32-P4のSoC定義では、PARLIOは1 group
 
 | channel | bytes/sample | raw rate上限 | basic trigger上限 | multi-stage上限 | 最大確認深度 | 方式 |
 |---:|---:|---:|---:|---:|---:|---|
-| 1 | 1/8 | 8 MHzで成立、上限未測定 | — | — | 1,048,576 sample | PARLIO |
-| 2 | 1/4 | 8 MHzで成立、上限未測定 | — | — | 1,048,576 sample | PARLIO |
-| 4 | 1/2 | 8 MHzで成立、上限未測定 | — | — | 1,048,576 sample | PARLIO |
+| 1 | 1/8 | 160 MHz成立、上限未到達 | — | — | 1,048,576 sample | PARLIO |
+| 2 | 1/4 | 160 MHz成立、上限未到達 | — | — | 1,048,576 sample | PARLIO |
+| 4 | 1/2 | 160 MHz成立、上限未到達 | — | — | 1,048,576 sample | PARLIO |
 | 8 | 1 | 80 MHz（triggerなし、1 MiB） | 24 MHz、保守候補20 MHz | 16 MHz（固定4-stage） | 16 MiB / 20 MHz | PARLIO |
-| 16 | 2 | 8 MHzで成立、上限未測定 | — | — | 1,048,576 sample | PARLIO |
+| 16 | 2 | 40 MHz成立、80 MHz不成立 | — | — | 1,048,576 sample | PARLIO |
 | 24 | 4想定 | — | — | — | — | CPU snapshot候補 |
 | 32 | 4 | — | — | — | — | CPU snapshot候補 |
 | 33〜55 | 8 | — | — | — | — | CPU snapshot候補 |
 
-channel幅とpackingは[E031](../experiments/e031_p4_parlio_channel_width/README.ja.md)、8 channelの速度・trigger・深度は[E022](../experiments/e022_p4_parlio_spool_80mhz/README.ja.md)、[E025](../experiments/e025_p4_sump_trigger_rate_boundary/README.ja.md)、[E028](../experiments/e028_p4_sump_four_stage_trigger/README.ja.md)、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)による。
+channel幅とpackingは[E031](../experiments/e031_p4_parlio_channel_width/README.ja.md)、width別raw rateは[E032](../experiments/e032_p4_parlio_width_rate_coarse/README.ja.md)、8 channelのtrigger・深度は[E025](../experiments/e025_p4_sump_trigger_rate_boundary/README.ja.md)、[E028](../experiments/e028_p4_sump_four_stage_trigger/README.ja.md)、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)による。
 
 ## 調べる機能
 

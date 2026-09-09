@@ -1,6 +1,6 @@
 # E032 ESP32-P4 PARLIO width別rate粗探索
 
-状態: **計画**
+状態: **完了 — 1/2/4chは160 MHz成立、8chは80〜120 MHz、16chは40〜80 MHzに境界**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行実験: [E031](../e031_p4_parlio_channel_width/README.ja.md)
 
@@ -50,3 +50,37 @@ width、設定rate、実効sample/byte rate、callback/dequeue、queue最大、o
 ## 影響
 
 width別raw rateのfine sweep範囲と、後続trigger/圧縮試験の入力rateを決める。
+
+## 結果
+
+実施日: 2026-09-09
+
+採用run: `_runs/E032_20260909T012950Z_default/test_parlio_width_rate_coarse/dut.log`
+
+| channel | 最大成立設定 | 実効sample rate | 実効byte rate | 最初の不成立設定 | 不成立時の主因 |
+|---:|---:|---:|---:|---:|---|
+| 1 | 160 MHz | 155.091 MHz | 19.386 MB/s | 未到達 | — |
+| 2 | 160 MHz | 157.184 MHz | 39.296 MB/s | 未到達 | — |
+| 4 | 160 MHz | 158.156 MHz | 79.078 MB/s | 未到達 | — |
+| 8 | 80 MHz | 79.588 MHz | 79.588 MB/s | 120 MHz | 実効97.496 MHz、queue 62で追従条件外 |
+| 16 | 40 MHz | 39.883 MHz | 79.766 MB/s | 80 MHz | queue 64、overflow 422、実効42.689 MHz |
+
+全widthの20 MHz baselineは成立した。1 / 2 / 4 channelは160 MHz設定までqueue最大1、overflow 0、data正常だった。160 MHzでの実効値は設定の96.9〜98.8%だったため成立条件内であるが、上限には到達していない。
+
+8 channel / 120 MHzはAPIとdata検証自体は成功しoverflow 0だったが、callback 334に対してdequeue 273、queue最大62、実効97.496 MHzで、設定rateへ追従していない。160 MHzではoverflowした。16 channel / 80 MHz以上はすべてoverflowした。
+
+失敗した最初のpytest runは、過負荷時も余分なcallback byteを64 KiB未満と要求した判定器の誤りで中断した。firmwareは25条件を完走しており、`_runs/E032_20260909T012843Z_default/`に残した。過負荷量を結果として受け入れるよう修正した採用runはpytestを通過した。
+
+## 判定
+
+**triggerなしspool経路はraw byte rate約80 MB/sまでは全widthで安定し、80〜100 MB/s付近でtask退避の実用境界が現れる。** channel数そのものではなく、packing後のbyte rateが第一の律速である。
+
+1 / 2 / 4 channelは160 MHzでもraw byte rateが20 / 40 / 80 MB/sなので成立した。8 / 16 channelのfine sweepはそれぞれ80〜120 MHz、40〜80 MHzを対象にする。狭幅は160 MHzより上をdriverが生成できるか別に測る。
+
+## 事実・候補・未決
+
+**事実**: 25条件完走。1/2/4chは160 MHz成立、8chは80 MHz成立・120 MHz不成立、16chは40 MHz成立・80 MHz不成立。
+
+**候補**: raw byte rate 80 MB/sを全width共通の安全tierとし、幅ごとのsample rateへ換算してcapabilityを返す。
+
+**未決**: 1/2/4chのclock上限 / 8/16chのfine boundary / 長時間・deep capture時の最高rate / trigger追加時のwidth別境界。

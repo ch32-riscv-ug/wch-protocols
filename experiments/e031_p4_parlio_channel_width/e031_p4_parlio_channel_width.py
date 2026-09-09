@@ -14,7 +14,7 @@ ENV = re.compile(
     rb"rx_units_per_group=(\d+) max_width=(\d+)\r?\n"
 )
 CASE = re.compile(
-    rb"CASE width=(\d+) result=(\S+) config=(\S+) pwm=(\S+) enable=(\S+) "
+    rb"CASE width=(\d+) rate_hz=(\d+) result=(\S+) config=(\S+) pwm=(\S+) enable=(\S+) "
     rb"receive=(\S+) start=(\S+) stop=(\S+) disable=(\S+) sync=(\S+) "
     rb"target_bytes=(\d+) copied=(\d+) callbacks=(\d+) dequeues=(\d+) "
     rb"extra_bytes=(\d+) overflows=(\d+) max_queue=(\d+) capture_us=(\d+) "
@@ -44,9 +44,9 @@ def test_parlio_channel_width(dut):
     observations = []
     for width in WIDTHS:
         values = [value.decode() for value in dut.expect(CASE, timeout=30).groups()]
-        assert int(values[0]) == width
-        assert all(value == "ESP_OK" for value in values[1:10])
-        metrics = list(map(int, values[10:]))
+        assert (int(values[0]), int(values[1])) == (width, 8_000_000)
+        assert all(value == "ESP_OK" for value in values[2:11])
+        metrics = list(map(int, values[11:]))
         (target_bytes, copied, callbacks, dequeues, extra_bytes, overflows,
          max_queue, capture_us, sample_rate_khz, byte_rate_kbps,
          max_error_ppm, min_edges, max_edges, duplicate_mismatches) = metrics
