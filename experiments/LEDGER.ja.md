@@ -44,7 +44,7 @@
 | **E033** | 8ch 84〜120 MHz、16ch 44〜80 MHzのtriggerなしbatch境界は4 MHz刻みでどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 8ch 100 MHz、16ch 48 MHz成立**([e033_p4_parlio_width_rate_fine/](e033_p4_parlio_width_rate_fine/README.ja.md)) |
 | **E034** | ADC1の1 / 2 / 4 / 8chを最大83,333 conversion/sでcontinuous DMA取得し、channel IDを保ってPSRAMへ退避できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) analog | **完了 — 全12条件成立、最大rateでは非逐次channel順**([e034_p4_adc1_continuous_batch/](e034_p4_adc1_continuous_batch/README.ja.md)) |
 | **E035** | ADC1最大rateのchannel ID列を特定し、ADC2単独・ADC1+ADC2 continuous modeを利用できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) analog topology | **計画**([e035_p4_adc_topology_order/](e035_p4_adc_topology_order/README.ja.md)) |
-| **E036** | PARLIO TXの連番rampを源にしring未読量でdropを直接検出すると、8 channel triggerなしbatchのdropなし境界はどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **計画**([e036_p4_parlio_rate_seq_verify/](e036_p4_parlio_rate_seq_verify/README.ja.md)) |
+| **E036** | PARLIO TXの連番rampを源にしring未読量でdropを直接検出すると、8 channel triggerなしbatchのdropなし境界はどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 律速はspool側、1 Mi burstは104 MHz成立**([e036_p4_parlio_rate_seq_verify/](e036_p4_parlio_rate_seq_verify/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -171,6 +171,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E036 ESP32-P4: PARLIO rate境界のsample単位再検証 — 完了 2026-09-09
+
+全文: [e036_p4_parlio_rate_seq_verify/README.ja.md](e036_p4_parlio_rate_seq_verify/README.ja.md)。採用run: `_runs/E036_20260909T025817Z_default/`。
+
+**事実**
+
+1. PARLIO TXとRXは同一group・同一GPIOで共存し、gray code rampを信号源にできた。20 MHzでrun 262,144本、run長4固定、連番違反0。
+2. sampling rate(callback byte由来)は120 MHz設定で119.560 MB/s、設定の99.6%を維持した。spool rate(copied由来)は100 MHz以上で97.1〜98.2 MB/sに飽和した。律速はsampling側ではなくring→PSRAM copy側である。
+3. ring未読byteの最大値は100 / 104 / 112 / 120 MHzで20,160 / 60,480 / 142,912 / 244,608 byte。ring 65,536 byteを超えた112 / 120 MHzだけ連番違反が18 / 27件出た。**104 MHzは違反0で、E033の不成立判定は覆った。**
+4. 違反のある112 / 120 MHzでも`result=ESP_OK`かつ`overflows=0`だった。firmware側のdrop検出は64段queueの満杯を見ており、ring容量の約3.8倍まで見逃す。
+5. 最初の違反位置(0.57 / 0.41 Mi sample)は、sampling超過分でringが枯渇するburst budget(0.54 / 0.35 Mi sample)と同じ桁で一致した。
+
+**候補**: rate単独の上限値を出さず、sampling上限・持続spool帯域・ring容量から決まるburst深度の三つに分けて申告する。drop判定はinflight最大 > ring容量とし、queue段数では判定しない。信号源はgray code rampを標準にする。
+
+**未決**: 持続spool帯域の改善余地 / 16 channelの同条件再検証 / 深度別burst境界の実測 / 104〜112 MHz間の1 Mi境界 / trigger・圧縮時のinflight。
 
 ### E034 ESP32-P4: ADC1 continuous batch基礎 — 完了 2026-09-09
 
