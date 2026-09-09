@@ -39,7 +39,7 @@
 | **E028** | pattern・edge・occurrence countを組み合わせた4-stage software triggerからpost取得・停止まで成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 16 MHz、固定4-stage 3/3成功**([e028_p4_sump_four_stage_trigger/](e028_p4_sump_four_stage_trigger/README.ja.md)) |
 | **E029** | circular pre-trigger ringを1/2/4 wrap × 10組、独立reset 2回の計60 captureで再現性確認できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 独立reset 2回、60/60成功**([e029_p4_circular_ring_soak/](e029_p4_circular_ring_soak/README.ja.md)) |
 | **E030** | 20 MHz / 8-bitを64 KiB internal ringから16 MiB PSRAMへ連続退避し、dropやdata化けなしで保持できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) batch capture候補 | **完了 — 16 MiB、19.995 MB/s**([e030_p4_deep_batch_capture/](e030_p4_deep_batch_capture/README.ja.md)) |
-| **E031** | PARLIO RXの1 / 2 / 4 / 8 / 16 data lineでpackingを復元し、各幅1,048,576 sampleを8 MHzでdropなく取得できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) channel幅 | **計画**([e031_p4_parlio_channel_width/](e031_p4_parlio_channel_width/README.ja.md)) |
+| **E031** | PARLIO RXの1 / 2 / 4 / 8 / 16 data lineでpackingを復元し、各幅1,048,576 sampleを8 MHzでdropなく取得できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) channel幅 | **完了 — 全5幅成立**([e031_p4_parlio_channel_width/](e031_p4_parlio_channel_width/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -165,6 +165,20 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E031 ESP32-P4: PARLIO channel width — 完了 2026-09-09
+
+全文: [e031_p4_parlio_channel_width/README.ja.md](e031_p4_parlio_channel_width/README.ja.md)。採用run: `_runs/E031_20260909T012045Z_default/`。
+
+**事実**
+
+1. 1 / 2 / 4 / 8 / 16 channelの全幅で各1,048,576 sampleを取得し、queue最大0、overflow 0、data正常だった。
+2. 8未満は1 byteへ複数sample、8 channelは1 byte/sample、16 channelはlittle-endian 2 byte/sampleとして復元できた。
+3. 8 MHz設定時のbyte rateは幅に比例して0.971〜15.966 MB/s。16 channelの複製lane不一致は0だった。
+
+**候補**: 1〜16 channelをPARLIO高速tier、24 channel以上をCPU snapshot低速tierとして分ける。
+
+**未決**: width別raw/trigger rate上限 / 16本独立pad / 24 channel以上のCPU snapshot。
 
 ### E030 ESP32-P4: 16 MiB deep batch capture — 完了 2026-09-09
 
