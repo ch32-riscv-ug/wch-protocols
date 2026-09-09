@@ -63,6 +63,7 @@
 | **E052** | RMTの`on_recv_done`は何ms後に最初に発火しどの間隔で何symbolずつ届くか。PSRAM copy loopのCPU飽和は影響するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — 初回48 symbol・以降24ごと、CPU負荷は無関係**([e052_p4_rmt_callback_timing/](e052_p4_rmt_callback_timing/README.ja.md)) |
 | **E053** | RMT RXをDMA modeにすると`mem_block_symbols`を48より小さくして初回遅延を縮められるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — DMAでは縮まらず、規則が完成**([e053_p4_rmt_dma_block/](e053_p4_rmt_dma_block/README.ja.md)) |
 | **E054** | RMT DMA modeが受理する`mem_block_symbols`の最小値はいくつで、初回遅延はnon-DMAより良いか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — DMAでは縮まらず、下限は`48 × 周期`**([e054_p4_rmt_dma_block_min/](e054_p4_rmt_dma_block_min/README.ja.md)) |
+| **E055** | gated captureの緩衝は64 KiB ringか64 entry queueか。driverはringを周回して使っているか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 緩衝はqueue、ringは線形**([e055_p4_gated_buffer_source/](e055_p4_gated_buffer_source/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -189,6 +190,23 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E055 ESP32-P4: gated captureの緩衝はringかqueueか — 完了 2026-09-09
+
+全文: [e055_p4_gated_buffer_source/README.ja.md](e055_p4_gated_buffer_source/README.ja.md)。採用run: `_runs/E055_20260909T095625Z_default/`。
+
+**事実**
+
+1. **queueを64から8へ浅くすると、ring容量64 KiBでも128 KiBでも破綻した**(overflow 502 / 448件、飛びが期待22に対し483 / 465、階差一致0 / 15)。**ring容量を倍にしても結果は変わらない。緩衝はchunk queueである。**
+2. **ringは周回bufferではなく線形に歩いている。** chunk offsetは4,032 byte刻みで単調増加し、最大offsetはring 64 KiBで62,976、128 KiBで128,000。
+3. **`未読 > ring容量`は破綻の指標ではない。** case 1は未読93,760でring容量65,536超なのに正常、case 3は未読90,752でring容量以内。未読はring容量ではなくwindowの過負荷で決まる。
+4. 尖頭の未読は`window byte長 × (1 − window中のdrain ÷ sample rate)`で説明できる。192,000 × (1 − 82/160) = 93,600に対し実測93,760。必要queue深さは24 entry以上と計算できる。
+5. **[E048](e048_p4_gated_rate_ceiling/README.ja.md)の過負荷modelが、容量をringからqueueへ差し替えた形で復活する。** gated captureの条件は2本立てになる。条件1は`duty × rate × bytes/sample < 持続spool帯域`、条件2は`queue深さ × chunk size > window byte長 × (1 − drain ÷ rate)`。[E050](e050_p4_gated_window_at_fixed_duty/README.ja.md)でwindow長が効かなく見えたのは、queue 64 entry(258 KiB)が160 MHzで約529,000 byteのwindowまで許容し、試した最大224,000 byteが遠く届いていなかったため。
+6. ring 64 KiBで未読がring容量を超えてもdataが正常だった機序は未解明。
+
+**候補**: drop判定をring容量基準から`未読 > queue深さ × chunk size`へ直す。ringは`max_recv_size`としての意味しか持たない。
+
+**未決**: ring容量超の未読でdataが正常な機序(`trans_queue_depth`とtransaction終端) / 条件2の境界をqueue深さ24付近で実測 / triggerなしspool経路でも緩衝がqueueなのか(E036はring容量で説明できていたが偶然の一致かもしれない) / chunk sizeが4,032固定である根拠。
 
 ### E054 ESP32-P4: RMT DMA modeが受理する`mem_block_symbols`の最小値 — 完了 2026-09-09
 
