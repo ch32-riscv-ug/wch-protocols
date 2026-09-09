@@ -148,3 +148,14 @@ window byte長 × (1 − spool帯域 ÷ sample rate) < ring容量
 
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): 限界matrixにgate前提の行を立て、rate限界の三分割にgateの場合を追加する
 - [LEDGER](../LEDGER.ja.md): E048の節
+
+## 追記 — E049による機構の訂正(2026-09-09)
+
+本レポートは書き換えない。[E049](../e049_p4_gated_window_absorption/README.ja.md)がwindow長を伸ばして境界を探した結果、本レポートが立てた機構の説明は**反証された**。
+
+- **誤り**: gateは持続的な過負荷をringが吸収できるburstへ変換し、`window byte長 × (1 − spool ÷ sample rate) < ring容量`が成立条件である
+- **正しい**: gateは**平均byte rateを持続spool帯域の下へ下げる**。成立条件は`duty × sample rate × bytes/sample < 約98 MB/s`である
+
+E049ではring未読量がring容量を超えてもdataが正常な条件が2つあり(gate 5,000と6,000)、実測の破綻点は平均byte rateが98 MB/sを横切る位置(gate 6,000の96.0 MB/sが正常、8,000の106.7 MB/sが破綻)と一致した。
+
+本レポートの数値と「160 MHzまで成立する」という結論は変わらない。本実験のdutyは27.7%で平均44.3 MB/sであり、訂正後の条件も十分に満たしている。変わるのは、sample rateが98 MHzを超えられる理由が「ringのburst吸収」ではなく「間引きによる平均byte rateの低下」だという点である。持続spool帯域そのものは変わっていない。

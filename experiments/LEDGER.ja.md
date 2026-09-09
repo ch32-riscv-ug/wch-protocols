@@ -57,6 +57,7 @@
 | **E046** | 幅が可変なgateでRMTが各window長を返し、そこからPARLIO側の境界位置を予測できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — 可変幅でも境界を完全復元**([e046_p4_gate_variable_width/](e046_p4_gate_variable_width/README.ja.md)) |
 | **E047** | 1本のGPIOをPARLIO data線・valid線・RMT RXの3者へ同時に渡し、8 channel + qualification + timestampが8 pinで成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — 3者共有成立、8 pinで成立**([e047_p4_gate_three_way_share/](e047_p4_gate_three_way_share/README.ja.md)) |
 | **E048** | 3者共有qualification構成でgated captureがdropなしで成立する最大sample rateはどこか。約98 MB/sを超えるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 160 MHzまで成立、gateはrate上限を上げる**([e048_p4_gated_rate_ceiling/](e048_p4_gated_rate_ceiling/README.ja.md)) |
+| **E049** | gated captureの成立条件はmodel `window byte長 × (1 − spool ÷ rate) < ring容量`で決まるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — modelは反証、境界は平均byte rate**([e049_p4_gated_window_absorption/](e049_p4_gated_window_absorption/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -183,6 +184,23 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E049 ESP32-P4: gated captureの吸収限界 — 完了 2026-09-09
+
+全文: [e049_p4_gated_window_absorption/README.ja.md](e049_p4_gated_window_absorption/README.ja.md)。採用run: `_runs/E049_20260909T090339Z_default/`。
+
+**事実**
+
+1. gate幅2,044 / 4,000 / 5,000 / 6,000は正常。飛びの数が期待境界数と一致し、先頭15個の階差はすべてwindow byte長と厳密に一致した。gate 8,000だけが破綻(queue overflow 51、飛び93対期待16.4、階差一致4 / 15)。
+2. **E048のwindow過負荷modelは反証された。** gate 5,000と6,000はring未読が77,632 / 92,288 byteでring容量65,536を超えたが**dataは正常**だった。ring未読 > ring容量はこの構成でdata喪失の指標にならない。
+3. **実測の境界は平均byte rate(duty × sample rate)が約98 MB/sを横切る点と一致した。** 6,000で96.0 MB/s正常、8,000で106.7 MB/s破綻。つまり成立条件は`duty × sample rate × bytes/sample < 持続spool帯域`である。gateは持続spool帯域を上げているのではなく、**平均byte rateをその下へ下げている**。
+4. 交絡あり: gapを固定したのでgate幅とdutyが一緒に動いた(33.8% → 66.7%)。window長と平均rateは分離できていない。ただし5点すべてを説明できるのは平均rateのmodelだけである。
+5. gate 8,000でRMTがhighを記録しなかったのは、high duration 32,000 tickが`signal_range_max_ns`の32,000 tickに達しidle扱いになったため。設定の問題。
+6. window区間中の実効drain帯域はring未読量から約82〜83 MB/sと計算でき、E036の持続値98 MB/sより低い。
+
+**候補**: gated captureを`sample rate ≤ 160 MHz`かつ`duty × sample rate × bytes/sample < 約98 MB/s`で申告する。8 channelならduty 61%以上で160 MHzが取れなくなる。`signal_range_max_ns`は想定最長levelより十分大きく取る。
+
+**未決**: dutyを固定してwindow長だけを振る掃引(分離) / ringとqueueのどちらが実際の緩衝か / window中のdrain帯域が持続値より低い理由 / low durationの64 tickばらつき / duty 61%付近の実測 / 長時間持続。
 
 ### E048 ESP32-P4: qualification構成でのgated capture rate上限 — 完了 2026-09-09
 
