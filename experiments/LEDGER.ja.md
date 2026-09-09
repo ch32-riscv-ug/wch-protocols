@@ -55,6 +55,7 @@
 | **E044** | gate線を同時にRMT RXへ入力して、window境界の長さと間隔をhardwareで記録できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **中断 — GPIO共有は成立、RMTがsymbolを返さず**([e044_p4_gate_rmt_timestamp/](e044_p4_gate_rmt_timestamp/README.ja.md)) |
 | **E045** | RMT RXがgate線のdurationを返すのは、どのperipheral生成順とどの回収時間か | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — 原因は回収時間、durationは期待値と完全一致**([e045_p4_gate_rmt_order/](e045_p4_gate_rmt_order/README.ja.md)) |
 | **E046** | 幅が可変なgateでRMTが各window長を返し、そこからPARLIO側の境界位置を予測できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — 可変幅でも境界を完全復元**([e046_p4_gate_variable_width/](e046_p4_gate_variable_width/README.ja.md)) |
+| **E047** | 1本のGPIOをPARLIO data線・valid線・RMT RXの3者へ同時に渡し、8 channel + qualification + timestampが8 pinで成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — 3者共有成立、8 pinで成立**([e047_p4_gate_three_way_share/](e047_p4_gate_three_way_share/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -181,6 +182,23 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E047 ESP32-P4: data線・valid線・RMT RXの3者共有 — 完了 2026-09-09
+
+全文: [e047_p4_gate_three_way_share/README.ja.md](e047_p4_gate_three_way_share/README.ja.md)。採用run: `_runs/E047_20260909T085436Z_default/`。
+
+**事実**
+
+1. GPIO 9をPARLIOのdata線7・PARLIOのvalid線・RMT RXの入力へ**同時に**割り当てて全APIが`ESP_OK`。
+2. **bit 7が0だったsampleは262,144 sample中0件。** 共有した線はdata channelとしても正しく取得される。
+3. RMTのhigh / low durationは期待値と完全一致(high 1,200 / 2,800 / 6,000 / 8,176、low 6,800 / 9,200 / 10,000 / 21,360)。
+4. **gray7飛びの階差15箇所すべてがRMT high durationと一致。** data_width 8では`window byte長 = high duration`が割り算なしで成立する。
+
+**判定**: **8 channel logic capture + hardware qualification + hardware window timestampが8 pin・追加channel 0・CPU負荷0で成立する。** GPIO 2〜9の8本で8 channelを取り、1本をqualifierに兼用する。qualifierに選んだchannelはdataとしても残る。払うのはRMT RX channel 1つと1 levelあたり32,767 tick上限だけ。
+
+**制約**: qualifierはgate区間内で常にactiveなので、その線の波形情報は「activeだった」以外に残らない。値の変化に意味のない線(CS / enable / frame同期)へ割り当てる。
+
+**未決**: gating時の最大sample rate / data_width 16での3者共有 / 32,767 tick超のgap / RMT分解能を落としたときの精度 / pulse delimiterとの3者共有 / run中の先頭同期 / hostへ渡すformat。
 
 ### E046 ESP32-P4: 幅が可変なgateでwindowを復元する — 完了 2026-09-09
 

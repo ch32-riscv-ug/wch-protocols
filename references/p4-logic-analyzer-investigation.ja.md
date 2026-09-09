@@ -133,7 +133,8 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - `eof_data_len` 65,535超のpost長
 - level delimiterでのgating時の最大sample rateとgate境界のsample精度
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
-- data線・valid線・RMT RXの3者同時共有(成立すれば8 channel + qualification + timestampが8 pinに収まる)
+- gating時の最大sample rate(20 MHzでしか測っていない)
+- data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
 - RMT symbolとPARLIO sample列の先頭同期
 - `has_end_pulse`によるhardware停止と`pulse_invert`の極性
 - trigger delay
@@ -161,13 +162,18 @@ hardware capture qualificationはこの表の中で唯一**CPUを使わない**�
 
 これは**gate線をRMT RXへも分岐させることで解決した**([E045](../experiments/e045_p4_gate_rmt_order/README.ja.md))。gate線はGPIOなので、GPIO matrixのfan-outで同じpinをPARLIOのvalid入力とRMT RXの入力へ同時に渡せる。RMT分解能をsample rateに合わせれば1 tick = 1 sampleとなり、各high / low区間の長さがsample単位で読める。実測ではhigh 16個すべてが8,176 tick、low 16個すべてが24,592 tickで期待値と完全一致した。生成順の制約は無く、PARLIO側のcaptureも壊れない。
 
-つまりqualificationはhardware 2段構成になる。
+つまりqualificationはhardware 3役の1本に集約される。[E047](../experiments/e047_p4_gate_three_way_share/README.ja.md)で、同じGPIOをPARLIOのdata線・PARLIOのvalid線・RMT RXの入力へ**同時に**割り当てられることを確認した。
 
 ```
-gate線(1 GPIO)
-   ├─→ PARLIO RX valid  : gate区間のsampleだけをDMAでPSRAMへ
-   └─→ RMT RX           : 各gate high / lowの長さをsample単位で記録
+GPIO 9(1本 / data_width 8、GPIO 2〜9で8 channel)
+   ├─→ PARLIO RX data line 7 : channel 7としてsampleに残る
+   ├─→ PARLIO RX valid       : gate区間のsampleだけをDMAでPSRAMへ
+   └─→ RMT RX                : 各high / lowの長さをsample単位で記録
 ```
+
+**8 channel + qualification + window timestampが8 pin・追加channel 0・CPU負荷0で成立する。** data_width 8を選べば1 sample = 1 byte、RMT分解能20 MHzで1 tick = 1 sampleとなり、`window byte長 = RMT high duration`が割り算なしで成り立つ。実測ではbit 7が0のsampleは262,144中0件、飛びの階差はRMT durationと15箇所すべてで一致した。
+
+qualifierに選ぶchannelには制約がある。gate区間内では常にactiveなので、その線の波形情報は「activeだった」以外に残らない。CS / enable / frame同期のように**値の変化に意味のない線**へ割り当てる。
 
 hostへはsample列とwindow長の列を組で渡せば、間引いたまま時間軸を再構成できる。**幅が可変なgateでも成立する**([E046](../experiments/e046_p4_gate_variable_width/README.ja.md))— 幅の違う4 windowに対しRMTは各長さを個別に正しく返し、capture data中の切れ目の階差がRMT high durationの列と15箇所すべてで一致した。lowのdurationも記録されるので、捨てた区間の長さと各windowの絶対時刻位置まで求まる。 払うものはRMT RX channel 1つ(P4は4 channel)、1 levelあたり32,767 tickの上限(20 MHz分解能で1.638 ms。超えるなら分解能を落とす)、そしてcallback遅延 = user buffer symbol数 × gate周期である。captureするchannel数は払わない。
 
