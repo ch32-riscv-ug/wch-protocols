@@ -158,3 +158,15 @@ PARLIO側は4条件すべてで同一かつ正常だった(飛び22、階差一�
 - [E049](../e049_p4_gated_window_absorption/README.ja.md)・[E050](../e050_p4_gated_window_at_fixed_duty/README.ja.md): msync非整列errorが出ていたが結論に影響しないことを追記する
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): qualificationのRMT設定指針を経験的な規則として書く
 - [LEDGER](../LEDGER.ja.md): E051の節
+
+## 追記 — E052で閾値が確定(2026-09-09)
+
+本レポートは書き換えない。[E052](../e052_p4_rmt_callback_timing/README.ja.md)がcallbackごとの発火時刻と`num_symbols`を記録し、規則が確定した。
+
+```
+1 callbackあたりのsymbol数 = mem_block_symbols ÷ 2
+最初の発火 = mem_block_symbols 個溜まった時点
+以降の間隔 = mem_block_symbols ÷ 2 個ごと
+```
+
+`mem_block_symbols` 48では、初回が48 symbol分、以降24 symbol分である。user bufferのsymbol数は関与しない。CPU負荷も無関係である(PSRAM copyの有無で発火時刻の差は3 us)。この規則でE045からE052までの14条件すべての実測callback回数が説明できる。
