@@ -50,6 +50,7 @@
 | **E039** | level delimiterでenable線がactiveな間だけ取得するhardware gatingと、`eof_data_len`=0による可変長frameが成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — gating成立、可変長は不成立**([e039_p4_parlio_level_gate/](e039_p4_parlio_level_gate/README.ja.md)) |
 | **E040** | `eof_data_len`=0のlevel delimiterでDMAはpayloadへ書くのか。`partial_rx_en`との組で「hardware gate + software停止」modeになるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — DMAは走る、gateはdutyどおり間引く**([e040_p4_parlio_level_open_frame/](e040_p4_parlio_level_open_frame/README.ja.md)) |
 | **E041** | `valid_gpio_num`をdata線と同一GPIOにして、8 channel全部を残したままhardware edge triggerを使えるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — 共有成立、triggerはchannelを消費しない**([e041_p4_parlio_shared_valid_line/](e041_p4_parlio_shared_valid_line/README.ja.md)) |
+| **E042** | 16 channelのtriggerなしbatchをsample単位検証とring未読量で測ると、dropなし境界はどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 48 MHz成立、複製lane不一致を検出**([e042_p4_parlio_16ch_seq_verify/](e042_p4_parlio_16ch_seq_verify/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -176,6 +177,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E042 ESP32-P4: 16 channel rate境界のsample単位再検証 — 完了 2026-09-09
+
+全文: [e042_p4_parlio_16ch_seq_verify/README.ja.md](e042_p4_parlio_16ch_seq_verify/README.ja.md)。採用run: `_runs/E042_20260909T065702Z_default/`。
+
+**事実**
+
+1. 16 channelは48 MHz設定(実効95.884 MB/s)まで連番違反0・ring未読4,928 byteで成立。52 MHzはring未読134,848 byteでring容量を超え違反44件。**E036のburst modelがwidthをまたいで成立した**(予測は48成立 / 52違反)。
+2. spool rateは52 / 56 MHzで97.6 / 96.9 MB/sに飽和し、8 channelの約98 MB/sと一致。律速はchannel数ではなくpacking後のbyte rateである。
+3. **複製laneの不一致は20 MHzで0件、40 / 48 / 52 / 56 MHzで1,066 / 373 / 345 / 480件。** 遷移1回あたり0.13〜0.41%。不一致の有無はrun長の散らばり(4固定か3〜5か)と完全に対応した。同一GPIOを二つのlane slotへ入れても遷移の瞬間には別の値を読むことがある。
+4. gray code検証は40 / 48 MHzで違反0のまま。遷移中のsampleは前後どちらかの値になるので、この現象はgray検証には現れず複製lane検証にだけ現れる。
+5. E031の「複製lane不一致0」は8 MHz sampling・100 kHz信号源という疎な条件でのみ成立する記録だった。
+
+**候補**: 16 channel行をsample単位検証済みにする。**channel間のedge位置は±1 sampleの精度として申告し、それ以上細かいtiming差をsample列から読まない。** 1 / 2 / 4 channelはbyte rateに余裕があるため再検証の優先度を下げる。
+
+**未決**: 不一致の原因(lane slot間の到達時間差か遷移中信号の独立確定か) / 不一致率のrate依存性 / 1 / 2 / 4 channelでのrun揺れとlane間食い違い / 独立16 padでの同測定(要配線) / 48〜52 MHz間の境界。
 
 ### E041 ESP32-P4: valid線をdata線と同一GPIOで共有 — 完了 2026-09-09
 
