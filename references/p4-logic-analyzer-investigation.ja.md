@@ -155,7 +155,7 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - level delimiterでのgating時の最大sample rateとgate境界のsample精度
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
-- DMA mode(`flags.with_dma`)で`mem_block_symbols`を48より小さくして初回遅延を縮められるか
+- DMA modeの`mem_block_symbols` 32が受理されるか(8と16は拒否、64は受理だが遅い)
 - ringとqueueのどちらがgated captureの実際の緩衝なのか
 - duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
@@ -199,15 +199,23 @@ GPIO 9(1本 / data_width 8、GPIO 2〜9で8 channel)
 
 qualifierに選ぶchannelには制約がある。gate区間内では常にactiveなので、その線の波形情報は「activeだった」以外に残らない。CS / enable / frame同期のように**値の変化に意味のない線**へ割り当てる。
 
-**RMT側のtimestampが届くtimingは計算できる**([E052](../experiments/e052_p4_rmt_callback_timing/README.ja.md))。
+**RMT側のtimestampが届くtimingは計算できる**([E052](../experiments/e052_p4_rmt_callback_timing/README.ja.md)・[E053](../experiments/e053_p4_rmt_dma_block/README.ja.md))。
 
 ```
-1 callbackあたりのsymbol数 = mem_block_symbols ÷ 2
-初回遅延 = mem_block_symbols × gate周期
-以降の更新間隔 = (mem_block_symbols ÷ 2) × gate周期
+group = mem_block_symbols ÷ 2
+n = floor(user_buffer ÷ group)          ← n = 0 なら永久に発火しない
+1 callbackあたりのsymbol数 = n × group
+初回遅延 = (mem_block_symbols + (n − 1) × group) × gate周期
+以降の更新間隔 = n × group × gate周期
 ```
 
-`mem_block_symbols` 48(P4のnon-DMA modeの最小値)なら、gate周期2.4 msで初回115 ms・以降57.6 msごと、gate周期0.4 msで初回19.2 ms・以降9.6 msごとである。**CPU負荷では変わらない** — 160 MHz・duty 50%の入力をPSRAMへcopyし続けてCPUを飽和させても発火時刻の差は3 usだった。gate周期の遅い信号では初回のtimestampが数百ms遅れて届くが、durationの正確さは損なわれない。この規則でE045からE052までの14条件すべての実測callback回数が説明できる。
+`mem_block_symbols`はP4のnon-DMA modeでは48が最小である。**user bufferを`group`(= 24)ちょうどにすると遅延が最小化され**、gate周期2.4 msで初回115 ms・以降57.6 msごと、gate周期0.4 msで初回19.2 ms・以降9.6 msごとになる。user bufferを広げると1回あたりのsymbol数は増えるが初回遅延と間隔も同じ比率で伸びる(buffer 128では初回346 ms・1回120 symbol)。
+
+**`user_buffer < group`だとcallbackは一度も来ない。** これを踏み外すと無音になるので、設定時に必ず確認する。
+
+**DMA mode(`flags.with_dma`)は使わない。** `mem_block_symbols` 8と16は`ESP_ERR_INVALID_ARG`で拒否され、受理された64は初回157 msでnon-DMAの115 msより悪い(32は未確認)。
+
+**CPU負荷では変わらない** — 160 MHz・duty 50%の入力をPSRAMへcopyし続けてCPUを飽和させても発火時刻の差は3 usだった。gate周期の遅い信号では初回のtimestampが数百ms遅れて届くが、durationの正確さは損なわれない。この規則でE045からE053までの16条件すべての実測callback回数が説明できる。
 
 hostへはsample列とwindow長の列を組で渡せば、間引いたまま時間軸を再構成できる。**幅が可変なgateでも成立する**([E046](../experiments/e046_p4_gate_variable_width/README.ja.md))— 幅の違う4 windowに対しRMTは各長さを個別に正しく返し、capture data中の切れ目の階差がRMT high durationの列と15箇所すべてで一致した。lowのdurationも記録されるので、捨てた区間の長さと各windowの絶対時刻位置まで求まる。 払うものはRMT RX channel 1つ(P4は4 channel)、1 levelあたり32,767 tickの上限(20 MHz分解能で1.638 ms。超えるなら分解能を落とす)、そしてcallback遅延 = user buffer symbol数 × gate周期である。captureするchannel数は払わない。
 

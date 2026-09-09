@@ -61,6 +61,7 @@
 | **E050** | dutyを50%に固定してwindow長だけを振ると、window長はgated captureの成立に影響するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — window長は無関係、条件は平均byte rateのみ**([e050_p4_gated_window_at_fixed_duty/](e050_p4_gated_window_at_fixed_duty/README.ja.md)) |
 | **E051** | gate loop周期2.4 msでRMTが`on_recv_done`を発火する条件はuser buffer・`mem_block_symbols`・回収時間のどれか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — buffer・blockは閾値でない、正体未特定**([e051_p4_rmt_partial_threshold/](e051_p4_rmt_partial_threshold/README.ja.md)) |
 | **E052** | RMTの`on_recv_done`は何ms後に最初に発火しどの間隔で何symbolずつ届くか。PSRAM copy loopのCPU飽和は影響するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — 初回48 symbol・以降24ごと、CPU負荷は無関係**([e052_p4_rmt_callback_timing/](e052_p4_rmt_callback_timing/README.ja.md)) |
+| **E053** | RMT RXをDMA modeにすると`mem_block_symbols`を48より小さくして初回遅延を縮められるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — DMAでは縮まらず、規則が完成**([e053_p4_rmt_dma_block/](e053_p4_rmt_dma_block/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -187,6 +188,23 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E053 ESP32-P4: RMT DMA modeで初回遅延を縮められるか — 完了 2026-09-09
+
+全文: [e053_p4_rmt_dma_block/README.ja.md](e053_p4_rmt_dma_block/README.ja.md)。採用run: `_runs/E053_20260909T093735Z_default/`。
+
+**事実**
+
+1. **DMA modeは`mem_block_symbols` 8と16を`ESP_ERR_INVALID_ARG`で拒否した。** 64は受理。
+2. **DMA modeの初回遅延はnon-DMAより悪い。** block 64で初回156,935 us、間隔153,601 us(= 64 × symbol周期)、1 callbackは64 symbol。non-DMAの48では初回115.2 ms相当。**DMAでは縮められない。**
+3. **non-DMAでuser bufferを32から128へ変えると挙動が変わった。** E052は5回・各24 symbol、本実験は1回・120 symbol。
+4. **規則が完成した。** `group = mem_block ÷ 2`、`n = floor(buffer ÷ group)`、1回あたり`n × group` symbol、初回`(mem_block + (n−1) × group) × 周期`、間隔`n × group × 周期`。case 1は予測345.6 msに対し実測346.6 ms。
+5. **`n = 0`だと永久に発火しない。** これで[E051](e051_p4_rmt_partial_threshold/README.ja.md)のbuffer 8(group 24)とblock 96(group 48、buffer 32)の両caseが説明できる。E051の解釈は誤りで、発火不能な条件だった。**user bufferはtriggerではなく`group`以上という必要条件。**
+6. E045からE053までの16条件すべてがこの規則で説明できる。
+
+**候補**: user bufferを`mem_block_symbols ÷ 2`ちょうどにして初回遅延と更新間隔を最小化する。DMA modeは使わない。
+
+**未決**: **DMA modeの`mem_block_symbols` 32が受理されるか**(受理されれば初回76.8 msでnon-DMAの115.2 msより良い) / `en_partial_rx=false`の発火条件 / 途中で`rmt_disable`して取れる分だけ回収できるか。
 
 ### E052 ESP32-P4: RMT callbackの発火時刻と間隔 — 完了 2026-09-09
 
