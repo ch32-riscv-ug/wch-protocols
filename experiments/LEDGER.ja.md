@@ -213,7 +213,7 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 
 **候補**: 条件2を`ceil((8,064 + window × (1 − drain(rate) ÷ rate)) ÷ chunk) ≤ min(floor(ring ÷ chunk), queue深さ)`とし、`drain(rate)`を表で持つ。未読の測定はISR内で行う。
 
-**未決**: drainのrate依存の内訳(DMA writeとCPU readの分離) / 100 MHz以下のdrainの上限(過負荷が生じず測れない) / 床8,064が`trans_queue_depth`やchunk sizeでどう変わるか / chunk sizeが4,032固定である根拠 / triggerなしspool経路にも同じ床とdrain曲線が当てはまるか。
+**未決**: drainのrate依存の内訳(DMA writeとCPU readの分離) / 100 MHz以下のdrainの上限(過負荷が生じず測れない) / 床8,064が`trans_queue_depth`やchunk sizeでどう変わるか / triggerなしspool経路にも同じ床とdrain曲線が当てはまるか。**chunk size 4,032の根拠はSoC定義(`DMA_DESCRIPTOR_BUFFER_MAX_SIZE_64B_ALIGNED` = 4095 − 63)から確定したので実験不要**(レポートに追記)。
 
 ### E057 ESP32-P4: 条件2の境界をalias から外したringで実測 — 完了 2026-09-09
 
