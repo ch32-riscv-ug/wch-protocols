@@ -132,7 +132,7 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - 有限frameの持続byte rate(4 KiB burstより長い取得で98 MB/sを超えられるか)
 - `eof_data_len` 65,535超のpost長
 - level delimiterでのgating時の最大sample rateとgate境界のsample精度
-- gate境界のsample精度(gate開放・閉止のedgeに対して何sampleずれるか)とgate window境界のmetadata復元
+- 自由走行signalによるgap測定の実証と、可変幅gateでのwindow長の決定性
 - `has_end_pulse`によるhardware停止と`pulse_invert`の極性
 - trigger delay
 - UART / I2C / SPI等のprotocol-aware triggerは、raw triggerの成立後にCPU負荷とrateを別測定する
@@ -149,11 +149,20 @@ trigger能力は対応条件だけでなく、tier・消費channel・channel幅�
 | transition + delta timestamp | UART/I2C等のedgeが疎な信号 | 高速clockやrandom data | 最大edge/s、timestamp wrap、複数channel同時edge |
 | channel bit packing | 1 / 2 / 4 channel | 8 / 16 channelでは効果なし | hardware packing順、host展開cost |
 | block raw/RLE選択 | 入力特性が途中で変わる信号 | block判定cost | block size、切替cost、random data時の上限 |
-| **hardware capture qualification** | CS / enable線でburstが区切られる信号(SPI、I2C等) | qualifierが常にactiveな信号。gate外の情報は完全に失われる | duty別の保存量削減率、gate境界のsample精度、境界metadataの持ち方 |
+| **hardware capture qualification** | CS / enable線でburstが区切られる信号(SPI、I2C等) | qualifierが常にactiveな信号。gate外の情報は完全に失われる。**幅が可変なgateでは時間軸を再構成できない** | 削減率はdutyに一致([E040](../experiments/e040_p4_parlio_level_open_frame/README.ja.md))。window長は決定論的だが境界は自己記述されない([E043](../experiments/e043_p4_parlio_gate_window_boundary/README.ja.md)) |
 
 圧縮は常に有効にしない。各blockにencoding、raw sample数、encoded byte数を持たせ、圧縮後がraw以上ならraw blockを保存する方式を基準候補とする。これなら最悪入力でも容量を大きく失わない。
 
-hardware capture qualificationはこの表の中で唯一**CPUを使わない**手段である。[E040](../experiments/e040_p4_parlio_level_open_frame/README.ja.md)で、level delimiterのgateがactiveな区間のsampleだけがDMAへ渡ることを実測した(gate duty 12.5%に対して回収byte rateはraw byte rateの12%)。入力の性質に依存せず最悪時膨張も無い代わりに、qualifier線を1本消費し、gate外の情報は残らない。同じPSRAM容量でduty分だけ長い時間を覆え、spool帯域([E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)の約98 MB/s)も同じ比率で緩む。
+hardware capture qualificationはこの表の中で唯一**CPUを使わない**手段である。[E040](../experiments/e040_p4_parlio_level_open_frame/README.ja.md)で、level delimiterのgateがactiveな区間のsampleだけがDMAへ渡ることを実測した(gate duty 12.5%に対して回収byte rateはraw byte rateの12%)。入力の性質に依存せず最悪時膨張も無い代わりに、qualifier線を1本消費し、gate外の情報は残らない。同じPSRAM容量でduty分だけ長い時間を覆え、spool帯域([E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)の約98 MB/s)も同じ比率で緩む。現ベンチのdownloadがUART上限に縛られている(下の「後段」)ことを考えると、深度を伸ばすより効く手段である。
+
+ただし[E043](../experiments/e043_p4_parlio_gate_window_boundary/README.ja.md)で、**間引かれたdataの中にwindow境界は残らない**ことが分かった。window長自体はgate幅から一意に決まりばらつき0だが、callbackはDMA descriptorの4,032 byte単位で切れるだけでgate境界とは無関係である。したがって用途が二つに分かれる。
+
+| gateの性質 | 境界の復元 | 使える用途 |
+|---|---|---|
+| 幅が既知で一定 | 算術で可能(window長 = gate幅 × 分周比 ÷ sample/byte) | window単位に切ってhostへ渡せる |
+| 幅が可変(実際のCS等) | **不可** | burstの中身の確認だけ。時間軸の再構成はできない |
+
+可変幅gateで時間軸を残す候補は、**captureする1 channelに周期既知の自由走行信号(counterやclock)を入れ、gap長をその周期を法として測る**ことである。E043でgray rampが境界を見せたのはこの原理で、gapが周期より短ければ一意に決まる。qualifierとは別に1 channelを払うがCPU負荷はゼロで、間引きの利得を保ったまま時間軸を再構成できる。未実証。
 
 ### 後段
 

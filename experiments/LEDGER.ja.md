@@ -51,6 +51,7 @@
 | **E040** | `eof_data_len`=0のlevel delimiterでDMAはpayloadへ書くのか。`partial_rx_en`との組で「hardware gate + software停止」modeになるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — DMAは走る、gateはdutyどおり間引く**([e040_p4_parlio_level_open_frame/](e040_p4_parlio_level_open_frame/README.ja.md)) |
 | **E041** | `valid_gpio_num`をdata線と同一GPIOにして、8 channel全部を残したままhardware edge triggerを使えるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — 共有成立、triggerはchannelを消費しない**([e041_p4_parlio_shared_valid_line/](e041_p4_parlio_shared_valid_line/README.ja.md)) |
 | **E042** | 16 channelのtriggerなしbatchをsample単位検証とring未読量で測ると、dropなし境界はどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 48 MHz成立、複製lane不一致を検出**([e042_p4_parlio_16ch_seq_verify/](e042_p4_parlio_16ch_seq_verify/README.ja.md)) |
+| **E043** | hardware gateで間引かれたstreamから、gate windowの境界と長さを復元できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 内部圧縮 | **完了 — window長は決定論的、境界は自己記述されない**([e043_p4_parlio_gate_window_boundary/](e043_p4_parlio_gate_window_boundary/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -177,6 +178,23 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E043 ESP32-P4: hardware gate windowの境界は復元できるか — 完了 2026-09-09
+
+全文: [e043_p4_parlio_gate_window_boundary/README.ja.md](e043_p4_parlio_gate_window_boundary/README.ja.md)。採用run: `_runs/E043_20260909T082419Z_default/`。
+
+**事実**
+
+1. gate幅2,044 / 1,020 wordに対し、gray stepの飛びはすべて期待window長(4,088 / 2,040 byte)の整数倍にあった。16回・15回連続で1 byteの狂いも無い。**window長 = gate幅 × 分周比 ÷ sample/byteで一意に決まり、ばらつきは0。**
+2. windowは常にbyte境界で終わり、nibble整列のずれは起きなかった。data_width 4でもqualificationは使える。
+3. **callbackの`recv_bytes`は両caseとも4,032 byte固定で、gate幅に依存しない。** driverのDMA descriptor分割単位でありgate境界とは無関係。E040のcallback数とgate数の不一致はこれで説明できる。**callback境界は境界情報として使えない。**
+4. run長は両caseとも4固定。回収rateはduty比とほぼ一致(12.4% / 5.9%)。
+
+**判定**: window長は決定論的だが、境界はcapture dataの中で自己記述されない。復元できるのはgate幅が既知・一定のときに限る。可変幅gate(実際のCS等)では時間軸を再構成できない。
+
+**候補**: qualificationを二つに分ける。固定幅なら算術でwindowへ切る。可変幅なら**captureする1 channelに周期既知の自由走行信号を入れてgap長を法演算で測る**(本実験でgray rampが境界を見せた原理そのもの)。CPU負荷ゼロで間引きの利得を保てる。callback境界は使わない。
+
+**未決**: 自由走行信号によるgap測定の実証 / gate edgeのsoftware timestampが成立するrate / 可変幅gateでのwindow長決定性 / gating時の最大rate / gate開放位置の絶対sample精度 / data_width 8・16でのqualification / hardwareでwindow timestampを得る経路の有無。
 
 ### E042 ESP32-P4: 16 channel rate境界のsample単位再検証 — 完了 2026-09-09
 
