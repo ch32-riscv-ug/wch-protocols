@@ -86,7 +86,9 @@ sample rate ≤ 160 MHz（内部clock源）
              ≤ min(floor(ring容量 ÷ chunk size), queue深さ)
 ```
 
-chunk sizeは4,032 byte。**容量は「完全なchunkがいくつ入るか」で数える** — ringの端数にはdescriptorが載らないので使えない([E057](../experiments/e057_p4_gated_ring_boundary/README.ja.md))。
+chunk sizeは4,032 byteで、これは実測値ではなくSoC定義から決まる。`hal/dma_types.h`の`DMA_DESCRIPTOR_BUFFER_MAX_SIZE`は4,095(descriptorのsize fieldが12 bit)で、64 byte整列版の`DMA_DESCRIPTOR_BUFFER_MAX_SIZE_64B_ALIGNED`が`4095 − 63` = **4,032**である。P4のinternal RAMのcache line整列要件は64 byteなので([E016](../experiments/e016_p4_parlio_psram_direct/README.ja.md))、driverはこの値でtransactionを刻む。
+
+**容量は「完全なchunkがいくつ入るか」で数える** — ringの端数にはdescriptorが載らないので使えない([E057](../experiments/e057_p4_gated_ring_boundary/README.ja.md))。したがって**ring容量は4,032の整数倍で取るのが無駄がない**。
 
 尖頭未読の式は[E058](../experiments/e058_p4_window_drain_vs_rate/README.ja.md)が直接測って確定した。**8,064 byte(2 chunk)の床**はchunk通知とqueue投入のpipeline分で、過負荷が無くても常に乗る。**window中のdrain帯域はrate依存で、sample rateが上がるほど下がる。**
 
@@ -197,7 +199,7 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
 - `en_partial_rx=false`のときの発火条件と、48 symbol溜まる前に`rmt_disable`して取れる分だけ回収できるか(応答性が要る用途の逃げ道)
-- drainのrate依存の内訳(DMA writeとCPU readのどちらが圧迫されているかの分離)と、chunk sizeが4,032固定である根拠
+- drainのrate依存の内訳(DMA writeとCPU readのどちらが圧迫されているかの分離)
 - triggerなしspool経路がpattern周期のalias で盲にならなかった理由
 - duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)

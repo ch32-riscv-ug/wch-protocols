@@ -162,3 +162,11 @@ drain(rate) ≈ 160 MHzで86 MB/s、120 MHzで96 MB/s、100 MHz以下では100 M
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): 条件2を床とrate依存drainの形へ差し替え、drainの表を載せる
 - [E057](../e057_p4_gated_ring_boundary/README.ja.md): task側の未読が1 chunk分過小だったことと、ISR側で測れることを追記する
 - [LEDGER](../LEDGER.ja.md): E058の節
+
+## 追記 — chunk sizeの根拠(2026-09-09、実験不要)
+
+未決に挙げた「chunk sizeが4,032固定である根拠」は、SoC定義から確定するので実験は要らない。
+
+`hal/dma_types.h`に`DMA_DESCRIPTOR_BUFFER_MAX_SIZE`が4,095(descriptorのsize fieldが12 bit)、64 byte整列版の`DMA_DESCRIPTOR_BUFFER_MAX_SIZE_64B_ALIGNED`が`4095 − 63` = **4,032**と定義されている。P4のinternal RAMのcache line整列要件は64 byteなので([E016](../e016_p4_parlio_psram_direct/README.ja.md))、driverはこの値でtransactionを刻む。
+
+したがって**ring容量は4,032の整数倍で取るのが無駄がない**。62,720は15.55倍なので末尾2,240 byteが使えていない。
