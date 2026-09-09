@@ -37,13 +37,13 @@ Arduino-ESP32 3.3.11が使用するESP32-P4のSoC定義では、PARLIOは1 group
 | 1 | 1/8 | 160 MHz成立、上限未到達 | — | — | 1,048,576 sample | PARLIO |
 | 2 | 1/4 | 160 MHz成立、上限未到達 | — | — | 1,048,576 sample | PARLIO |
 | 4 | 1/2 | 160 MHz成立、上限未到達 | — | — | 1,048,576 sample | PARLIO |
-| 8 | 1 | 80 MHz（triggerなし、1 MiB） | 24 MHz、保守候補20 MHz | 16 MHz（固定4-stage） | 16 MiB / 20 MHz | PARLIO |
-| 16 | 2 | 40 MHz成立、80 MHz不成立 | — | — | 1,048,576 sample | PARLIO |
+| 8 | 1 | 100 MHz（実効97.869 MHz、1 Mi sample） | 24 MHz、保守候補20 MHz | 16 MHz（固定4-stage） | 16 MiB / 20 MHz | PARLIO |
+| 16 | 2 | 48 MHz（実効47.838 MHz、1 Mi sample） | — | — | 1,048,576 sample | PARLIO |
 | 24 | 4想定 | — | — | — | — | CPU snapshot候補 |
 | 32 | 4 | — | — | — | — | CPU snapshot候補 |
 | 33〜55 | 8 | — | — | — | — | CPU snapshot候補 |
 
-channel幅とpackingは[E031](../experiments/e031_p4_parlio_channel_width/README.ja.md)、width別raw rateは[E032](../experiments/e032_p4_parlio_width_rate_coarse/README.ja.md)、8 channelのtrigger・深度は[E025](../experiments/e025_p4_sump_trigger_rate_boundary/README.ja.md)、[E028](../experiments/e028_p4_sump_four_stage_trigger/README.ja.md)、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)による。
+channel幅とpackingは[E031](../experiments/e031_p4_parlio_channel_width/README.ja.md)、width別raw rateは[E032](../experiments/e032_p4_parlio_width_rate_coarse/README.ja.md)と[E033](../experiments/e033_p4_parlio_width_rate_fine/README.ja.md)、8 channelのtrigger・深度は[E025](../experiments/e025_p4_sump_trigger_rate_boundary/README.ja.md)、[E028](../experiments/e028_p4_sump_four_stage_trigger/README.ja.md)、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)による。triggerなしPSRAM spoolは約96〜98 MB/sで飽和するため、80 MB/sを安定tierとする。
 
 ## 調べる機能
 

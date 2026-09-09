@@ -41,7 +41,7 @@
 | **E030** | 20 MHz / 8-bitを64 KiB internal ringから16 MiB PSRAMへ連続退避し、dropやdata化けなしで保持できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) batch capture候補 | **完了 — 16 MiB、19.995 MB/s**([e030_p4_deep_batch_capture/](e030_p4_deep_batch_capture/README.ja.md)) |
 | **E031** | PARLIO RXの1 / 2 / 4 / 8 / 16 data lineでpackingを復元し、各幅1,048,576 sampleを8 MHzでdropなく取得できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) channel幅 | **完了 — 全5幅成立**([e031_p4_parlio_channel_width/](e031_p4_parlio_channel_width/README.ja.md)) |
 | **E032** | 1 / 2 / 4 / 8 / 16 channelのtriggerなしbatch rate境界は20 / 40 / 80 / 120 / 160 MHzのどの区間か | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 1/2/4ch 160 MHz、8ch 80 MHz、16ch 40 MHz成立**([e032_p4_parlio_width_rate_coarse/](e032_p4_parlio_width_rate_coarse/README.ja.md)) |
-| **E033** | 8ch 84〜120 MHz、16ch 44〜80 MHzのtriggerなしbatch境界は4 MHz刻みでどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **計画**([e033_p4_parlio_width_rate_fine/](e033_p4_parlio_width_rate_fine/README.ja.md)) |
+| **E033** | 8ch 84〜120 MHz、16ch 44〜80 MHzのtriggerなしbatch境界は4 MHz刻みでどこか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 8ch 100 MHz、16ch 48 MHz成立**([e033_p4_parlio_width_rate_fine/](e033_p4_parlio_width_rate_fine/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -168,6 +168,20 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E033 ESP32-P4: PARLIO 8/16 channel rate精密探索 — 完了 2026-09-09
+
+全文: [e033_p4_parlio_width_rate_fine/README.ja.md](e033_p4_parlio_width_rate_fine/README.ja.md)。採用run: `_runs/E033_20260909T013637Z_default/`。
+
+**事実**
+
+1. 8 channelは100 MHz設定（実効97.869 MB/s）、16 channelは48 MHz設定（実効95.677 MB/s）まで成立した。
+2. 8 channel / 104 MHzと16 channel / 52 MHzではoverflow前に約97〜98 MB/sで飽和し、設定rateの95%へ追従できなかった。
+3. 16 channelは56 MHzからoverflowし、8 channelは120 MHzまでoverflow 0だがqueue最大63へ達した。
+
+**候補**: 80 MB/sを安定tier、約96 MB/sを短時間burst tierとして分ける。
+
+**未決**: deep capture時の境界 / ring・chunk tuning / trigger・圧縮追加時の上限。
 
 ### E032 ESP32-P4: PARLIO width別rate粗探索 — 完了 2026-09-09
 
