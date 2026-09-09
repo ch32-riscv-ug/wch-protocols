@@ -77,6 +77,7 @@
 | **E058** | window長を固定してsample rateを振ると、window中のdrain帯域は一定かrate依存か | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — drainはrate依存、未読に2 chunkの床**([e058_p4_window_drain_vs_rate/](e058_p4_window_drain_vs_rate/README.ja.md)) |
 | **E059** | window中のdrain低下はmemcpy自体が遅いのか(memory競合)、memcpyに使える時間が減るのか(ISR overhead) | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — memcpy帯域は一定、原因は1 chunkあたり固定cost**([e059_p4_drain_breakdown/](e059_p4_drain_breakdown/README.ja.md)) |
 | **E060** | 1 chunkあたりの固定costは`xQueueReceive`のまとめ取りと連続chunkのmemcpyまとめで下がるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — どちらも効かず、固定costはISRが支配**([e060_p4_drain_batch_coalesce/](e060_p4_drain_batch_coalesce/README.ja.md)) |
+| **E061** | PARLIOのISRが走るcoreとmemcpyするcoreを分けると、window中のdrain帯域は上がるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **計画 — 実装・build済み。benchのportが外れて未実行**([e061_p4_drain_core_split/](e061_p4_drain_core_split/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
