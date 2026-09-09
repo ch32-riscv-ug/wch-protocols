@@ -48,6 +48,7 @@
 | **E037** | PARLIO RX pulse delimiterで4 data channel + 1 valid lineを構成し、hardware pulseでframe開始・`eof_data_len`停止・hardware timeoutが成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — hardware trigger成立、arm待ちtimeoutは非対応**([e037_p4_parlio_pulse_trigger/](e037_p4_parlio_pulse_trigger/README.ja.md)) |
 | **E038** | pulse delimiterによるhardware trigger付き有限frameは、どのsample rateまで欠落なく成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — 160 MHzまで成立、上限は内部clock源**([e038_p4_parlio_pulse_trigger_rate/](e038_p4_parlio_pulse_trigger_rate/README.ja.md)) |
 | **E039** | level delimiterでenable線がactiveな間だけ取得するhardware gatingと、`eof_data_len`=0による可変長frameが成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — gating成立、可変長は不成立**([e039_p4_parlio_level_gate/](e039_p4_parlio_level_gate/README.ja.md)) |
+| **E040** | `eof_data_len`=0のlevel delimiterでDMAはpayloadへ書くのか。`partial_rx_en`との組で「hardware gate + software停止」modeになるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — DMAは走る、gateはdutyどおり間引く**([e040_p4_parlio_level_open_frame/](e040_p4_parlio_level_open_frame/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -174,6 +175,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E040 ESP32-P4: `eof_data_len` = 0のlevel delimiterでDMAは走るか — 完了 2026-09-09
+
+全文: [e040_p4_parlio_level_open_frame/README.ja.md](e040_p4_parlio_level_open_frame/README.ja.md)。採用run: `_runs/E040_20260909T064609Z_default/`。
+
+**事実**
+
+1. `eof_data_len` = 0では`on_receive_done`が発火しないが、payload 16,384 byteは全域が書き換わった。**DMAは走っている。** E039の「不成立」は取得が起きないことではなく完了eventが来ないことだった。
+2. 書かれたdataは`gray4`のrun長4の正しい列で、先頭はgate開放位置の値にそろっていた。
+3. `partial_rx_en=true`では52,817 usで20 callback・65,536 byteを回収でき、queue overflow 0。hardware gate + software停止の可変長modeとして成立する。
+4. **回収byte rateは1,240 KB/sで、raw byte rate 10,000 KB/sの12%だった。gate dutyは12.5%。gateがactiveな区間のsampleだけがDMAへ渡る。** これはCPU負荷ゼロのcapture qualificationであり、同じ容量でduty分だけ長い時間を覆え、spool帯域も同じ比率で緩む。
+5. gateが無いcaseはcallback 0、回収0、payloadは全域fill値のままだった。
+
+**候補**: hardware窓を三つのmodeに分ける。(a) pulse + 有限 = 固定長・完了event有り、(b) level + 有限 = 固定長・完了event有り、(c) level + `eof_data_len` 0 + `partial_rx_en` = 可変長・software停止・完了event無し。(c)をcapture qualificationとして「内部圧縮」の選択肢に入れ、qualifier線1本の消費とgate外情報の喪失を明記する。
+
+**未決**: gate境界のsample精度 / gating時の最大rate / duty可変時の線形性 / payload満杯後のDMA挙動 / gate window境界のmetadata復元(現状は連結されて境界が失われる) / `partial_rx_en`とPSRAM spoolの組。
 
 ### E039 ESP32-P4: level delimiterによるhardware gating — 完了 2026-09-09
 
