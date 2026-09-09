@@ -155,7 +155,7 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - level delimiterでのgating時の最大sample rateとgate境界のsample精度
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
-- **RMT callbackの発火条件**。[E051](../experiments/e051_p4_rmt_partial_threshold/README.ja.md)でuser bufferのsymbol数と`mem_block_symbols`はどちらも閾値でないことが分かり、回収時間を増やせば発火することだけが確定した。正体は未特定で、次はcallbackの発火時刻を直接記録する。実装上の経験的規則は**gate loop周期1.6 ms以下なら100 ms程度の回収でwindow timestampが取れる。2.4 ms以上では数百msへ伸ばす**。取れたdurationの正確さは条件に依存しない
+- DMA mode(`flags.with_dma`)で`mem_block_symbols`を48より小さくして初回遅延を縮められるか
 - ringとqueueのどちらがgated captureの実際の緩衝なのか
 - duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
@@ -198,6 +198,16 @@ GPIO 9(1本 / data_width 8、GPIO 2〜9で8 channel)
 **8 channel + qualification + window timestampが8 pin・追加channel 0・CPU負荷0で成立する。** data_width 8を選べば1 sample = 1 byte、RMT分解能20 MHzで1 tick = 1 sampleとなり、`window byte長 = RMT high duration`が割り算なしで成り立つ。実測ではbit 7が0のsampleは262,144中0件、飛びの階差はRMT durationと15箇所すべてで一致した。
 
 qualifierに選ぶchannelには制約がある。gate区間内では常にactiveなので、その線の波形情報は「activeだった」以外に残らない。CS / enable / frame同期のように**値の変化に意味のない線**へ割り当てる。
+
+**RMT側のtimestampが届くtimingは計算できる**([E052](../experiments/e052_p4_rmt_callback_timing/README.ja.md))。
+
+```
+1 callbackあたりのsymbol数 = mem_block_symbols ÷ 2
+初回遅延 = mem_block_symbols × gate周期
+以降の更新間隔 = (mem_block_symbols ÷ 2) × gate周期
+```
+
+`mem_block_symbols` 48(P4のnon-DMA modeの最小値)なら、gate周期2.4 msで初回115 ms・以降57.6 msごと、gate周期0.4 msで初回19.2 ms・以降9.6 msごとである。**CPU負荷では変わらない** — 160 MHz・duty 50%の入力をPSRAMへcopyし続けてCPUを飽和させても発火時刻の差は3 usだった。gate周期の遅い信号では初回のtimestampが数百ms遅れて届くが、durationの正確さは損なわれない。この規則でE045からE052までの14条件すべての実測callback回数が説明できる。
 
 hostへはsample列とwindow長の列を組で渡せば、間引いたまま時間軸を再構成できる。**幅が可変なgateでも成立する**([E046](../experiments/e046_p4_gate_variable_width/README.ja.md))— 幅の違う4 windowに対しRMTは各長さを個別に正しく返し、capture data中の切れ目の階差がRMT high durationの列と15箇所すべてで一致した。lowのdurationも記録されるので、捨てた区間の長さと各windowの絶対時刻位置まで求まる。 払うものはRMT RX channel 1つ(P4は4 channel)、1 levelあたり32,767 tickの上限(20 MHz分解能で1.638 ms。超えるなら分解能を落とす)、そしてcallback遅延 = user buffer symbol数 × gate周期である。captureするchannel数は払わない。
 

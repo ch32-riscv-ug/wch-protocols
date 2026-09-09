@@ -141,3 +141,15 @@ channel数は払わない。gate線はPARLIO側でも[E041](../e041_p4_parlio_sh
 本レポートは書き換えない。[E051](../e051_p4_rmt_partial_threshold/README.ja.md)がuser bufferのsymbol数を8まで下げて測った結果、**「`en_partial_rx`のcallbackはuser bufferが埋まったときに起きる」という規則は一般則としては成り立たない**ことが分かった。buffer 8 symbol(所要19.2 ms)でも100 msの回収でcallbackは0回だった。`mem_block_symbols`も48と96で差が無い。
 
 本レポートの数値(32 symbol × 1.6384 ms = 52.43 msが必要で51.3 msでは届かなかった)はbuffer基準の説明と整合していたが、それは偶然一致していた可能性がある。確定しているのは「回収時間を増やせば発火する」ことと「取れたdurationは正確である」ことだけで、閾値の正体は未特定である。
+
+## 追記 — E052で閾値が確定(2026-09-09)
+
+本レポートは書き換えない。[E052](../e052_p4_rmt_callback_timing/README.ja.md)がcallbackごとの発火時刻と`num_symbols`を記録し、規則が確定した。
+
+```
+1 callbackあたりのsymbol数 = mem_block_symbols ÷ 2
+最初の発火 = mem_block_symbols 個溜まった時点
+以降の間隔 = mem_block_symbols ÷ 2 個ごと
+```
+
+`mem_block_symbols` 48では、初回が48 symbol分、以降24 symbol分である。user bufferのsymbol数は関与しない。CPU負荷も無関係である(PSRAM copyの有無で発火時刻の差は3 us)。この規則でE045からE052までの14条件すべての実測callback回数が説明できる。
