@@ -76,7 +76,18 @@ sample rate ≤ 160 MHz（内部clock源）
 | 60% | 163 MHz相当 | 160 MHz |
 | 61%以上 | 160 MHz未満 | dutyから逆算 |
 
-**duty 61%までは常に160 MHzが取れる。** なおring未読量がring容量を超えてもdataは正常だったので、実際の緩衝はring単体ではない(chunk queueは64 entry × 約4,032 byte ≒ 258 KiB)。「ring容量を超えたら壊れる」ではない点は[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)のtriggerなしspool経路と異なる。
+**duty 61%までは常に160 MHzが取れる。**
+
+ただし条件はもう1本ある。[E055](../experiments/e055_p4_gated_buffer_source/README.ja.md)がring容量とqueue深さを独立に振り、**緩衝はring容量ではなくchunk queueの深さ × chunk size**だと確定した。queueを64から8 entryへ浅くすると、ring容量を64 KiBから128 KiBへ倍にしても破綻する。
+
+```
+条件1（平均）duty × sample rate × bytes/sample < 持続spool帯域（約98 MB/s）
+条件2（尖頭）queue深さ × chunk size > window byte長 × (1 − window中のdrain ÷ sample rate)
+```
+
+window中のdrain帯域は約82 MB/sで、持続値98 MB/sより低い。window 192,000 byteを160 MHzで取る場合の尖頭未読は93,600 byteと計算でき、実測93,760と一致する。必要なqueue深さは24 entry以上である。queue 64 entry(258 KiB)なら160 MHzで約529,000 byteのwindowまで許容するので、[E050](../experiments/e050_p4_gated_window_at_fixed_duty/README.ja.md)がwindow長の影響を見なかったのは条件2に遠く届いていなかったためである。
+
+**drop判定は`未読 > queue深さ × chunk size`で行う。** `未読 > ring容量`は指標にならない — ring 64 KiBで未読93,760 byteでもdataは正常だった。ringは`max_recv_size`としての意味しか持たず、周回bufferではなく線形に歩く(chunk offsetは4,032 byte刻みで単調増加し、ring 128 KiBでは最大offsetも128,000まで伸びる)。この点は[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)のtriggerなしspool経路と異なる(そちらがring容量で説明できたのが偶然の一致かは未確認)。
 
 triggerなしの場合に戻ると、sample rateの成立・不成立は**capture深度と一緒でなければ意味を持たない**。8 channel 100 MHzは1 Mi sampleでは成立するが、超過分1.692 MB/sをringが吸収しきる約3.87 Mi sampleで破綻するので、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)の16 MiB deep captureには適用できない。深度を伸ばすほど公称rateは持続spool帯域へ漸近する。
 
@@ -156,7 +167,8 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
 - `en_partial_rx=false`のときの発火条件と、48 symbol溜まる前に`rmt_disable`して取れる分だけ回収できるか(応答性が要る用途の逃げ道)
-- ringとqueueのどちらがgated captureの実際の緩衝なのか
+- ring容量を超える未読でdataが正常な機序(`trans_queue_depth`とtransaction終端の挙動)
+- triggerなしspool経路でも緩衝がqueueなのか(E036がring容量で説明できたのは偶然の一致かもしれない)
 - duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
 - RMT symbolとPARLIO sample列の先頭同期

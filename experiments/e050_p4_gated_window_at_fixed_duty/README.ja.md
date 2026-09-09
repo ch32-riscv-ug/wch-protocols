@@ -149,3 +149,16 @@ RMTのloop周期依存は、qualificationの実装に直接効く制約になり
 本レポートは書き換えない。[E051](../e051_p4_rmt_partial_threshold/README.ja.md)で、`build_pattern`が`loop_words`だけを`esp_cache_msync`しており、64 byteのcache line境界に載らないためerror logが出ていたことが分かった。本実験でも同じerrorが出ていた。
 
 ただし**本実験のdataは検証を通っており結論は変わらない**。この環境ではflushが失敗してもCPUの書き込みはDMAから見えていたことになる。E051ではbuffer全体をsyncする形へ直している。
+
+## 追記 — E055による限定(2026-09-09)
+
+本レポートは書き換えない。[E055](../e055_p4_gated_buffer_source/README.ja.md)がring容量とqueue深さを独立に振った結果、**緩衝はring容量ではなくchunk queueの深さ × chunk size**だと分かった。
+
+したがって本レポートの「window長に上限は無い」は、**queueが十分深い前提での話**に限定される。正確には条件が2本ある。
+
+```
+条件1(平均) duty × sample rate × bytes/sample < 持続spool帯域(約98 MB/s)
+条件2(尖頭) queue深さ × chunk size > window byte長 × (1 − window中のdrain ÷ sample rate)
+```
+
+queue 64 entry(258,048 byte)では160 MHzで約529,000 byteのwindowまで条件2を満たす。本実験が試した最大は224,000 byteなので条件2に遠く届いておらず、そのためwindow長が効かなく見えた。queueを8 entryへ浅くすると、本実験と同じ192,000 byteのwindowでも破綻する。
