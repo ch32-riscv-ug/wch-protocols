@@ -78,16 +78,20 @@ sample rate ≤ 160 MHz（内部clock源）
 
 **duty 61%までは常に160 MHzが取れる。**
 
-ただし条件はもう1本ある。[E055](../experiments/e055_p4_gated_buffer_source/README.ja.md)がring容量とqueue深さを独立に振り、**緩衝はring容量ではなくchunk queueの深さ × chunk size**だと確定した。queueを64から8 entryへ浅くすると、ring容量を64 KiBから128 KiBへ倍にしても破綻する。
+ただし条件はもう1本ある。
 
 ```
 条件1（平均）duty × sample rate × bytes/sample < 持続spool帯域（約98 MB/s）
-条件2（尖頭）queue深さ × chunk size > window byte長 × (1 − window中のdrain ÷ sample rate)
+条件2（尖頭）window byte長 × (1 − window中のdrain ÷ sample rate) < min(ring容量, queue深さ × chunk size)
 ```
 
-window中のdrain帯域は約82 MB/sで、持続値98 MB/sより低い。window 192,000 byteを160 MHzで取る場合の尖頭未読は93,600 byteと計算でき、実測93,760と一致する。必要なqueue深さは24 entry以上である。queue 64 entry(258 KiB)なら160 MHzで約529,000 byteのwindowまで許容するので、[E050](../experiments/e050_p4_gated_window_at_fixed_duty/README.ja.md)がwindow長の影響を見なかったのは条件2に遠く届いていなかったためである。
+window中のdrain帯域は約82 MB/sで、持続値98 MB/sより低い。window 192,000 byteを160 MHzで取る場合の尖頭未読は93,600 byteと計算でき、実測93,760と一致する。
 
-**drop判定は`未読 > queue深さ × chunk size`で行う。** `未読 > ring容量`は指標にならない — ring 64 KiBで未読93,760 byteでもdataは正常だった。ringは`max_recv_size`としての意味しか持たず、周回bufferではなく線形に歩く(chunk offsetは4,032 byte刻みで単調増加し、ring 128 KiBでは最大offsetも128,000まで伸びる)。この点は[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)のtriggerなしspool経路と異なる(そちらがring容量で説明できたのが偶然の一致かは未確認)。
+容量が`min()`の二つである根拠は二段ある。[E055](../experiments/e055_p4_gated_buffer_source/README.ja.md)はqueueを64から8 entryへ浅くするとring容量に関係なく破綻することを示し、[E056](../experiments/e056_p4_ring_period_alias/README.ja.md)はringも独立に効くことを示した。**ringとqueueは両方が制約である。**
+
+**drop判定は`未読 > min(ring容量, queue深さ × chunk size)`で行う。** ringは周回bufferではなく`max_recv_size`まで線形に歩くが(chunk offsetは4,032 byte刻みで単調増加し、ring 128 KiBでは最大offsetも128,000まで伸びる)、transactionが端まで行くと先頭から書き直すので未読は上書きされる。
+
+> **検証器の落とし穴。** E048からE055までの間、未読がring容量を超えてもdataが正常に見える条件が続いた。原因は検証用gray code rampの周期(4,096 byte)がring容量65,536と131,072を割り切っていたことで、位置Xを`X + ring容量`のdataで上書きしても同じ値が書かれ痕跡が残らなかった。[E056](../experiments/e056_p4_ring_period_alias/README.ja.md)でring容量を倍数から外すと、同じ条件で飛びが22から172へ跳ねた。**検証用patternの周期は、経路上のどのbuffer size(ring容量・chunk size・queue容量・destination容量)も割り切ってはならない。** [E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)が定常性の盲点を直したのに対し、これは周期性の別の盲点である。この影響でE049・E050・E055の一部条件のdata検証は無効になっており、各レポートに追記した。
 
 triggerなしの場合に戻ると、sample rateの成立・不成立は**capture深度と一緒でなければ意味を持たない**。8 channel 100 MHzは1 Mi sampleでは成立するが、超過分1.692 MB/sをringが吸収しきる約3.87 Mi sampleで破綻するので、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)の16 MiB deep captureには適用できない。深度を伸ばすほど公称rateは持続spool帯域へ漸近する。
 
@@ -167,8 +171,9 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
 - `en_partial_rx=false`のときの発火条件と、48 symbol溜まる前に`rmt_disable`して取れる分だけ回収できるか(応答性が要る用途の逃げ道)
-- ring容量を超える未読でdataが正常な機序(`trans_queue_depth`とtransaction終端の挙動)
-- triggerなしspool経路でも緩衝がqueueなのか(E036がring容量で説明できたのは偶然の一致かもしれない)
+- alias から外したringでのE049・E050の再測(条件2の境界の実測確定)
+- triggerなしspool経路がpattern周期のalias で盲にならなかった理由
+- window中のdrain帯域が持続値より低い(約82 MB/s)理由
 - duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
 - RMT symbolとPARLIO sample列の先頭同期

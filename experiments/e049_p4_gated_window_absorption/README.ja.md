@@ -173,3 +173,24 @@ ring容量については、未読量がring容量を超えてもdataが正常�
 本レポートは書き換えない。[E051](../e051_p4_rmt_partial_threshold/README.ja.md)で、`build_pattern`が`loop_words`だけを`esp_cache_msync`しており、64 byteのcache line境界に載らないためerror logが出ていたことが分かった。本実験でも同じerrorが出ていた。
 
 ただし**本実験のdataは検証を通っており結論は変わらない**。この環境ではflushが失敗してもCPUの書き込みはDMAから見えていたことになる。E051ではbuffer全体をsyncする形へ直している。
+
+## 追記 — E056によるdata検証の無効化(2026-09-09)
+
+本レポートは書き換えない。[E056](../e056_p4_ring_period_alias/README.ja.md)で、**検証用のgray code rampの周期(4,096 byte)がring容量65,536を割り切るため、ringの上書きが検証器に見えていなかった**ことが分かった。ring容量を倍数から外すと、同じ条件で飛びが22から172へ跳ねる。
+
+したがって本実験のうち**未読がring容量を超えていた条件のdata検証は無効**である。
+
+| 条件 | 未読最大 | ring容量 | 判定 |
+|---|---:|---:|---|
+| gate 2,044 / 4,000 | 33,280 / 61,504 | 65,536 | **有効** |
+| gate 5,000 / 6,000 | 77,632 / 92,288 | 65,536 | **無効**(正常と判定したが超過) |
+| gate 8,000 | 442,624 | 65,536 | 破綻の判定自体は変わらない |
+
+正しい条件は次の2本で、条件2の容量は`min(ring容量, queue深さ × chunk size)`である。
+
+```
+条件1(平均) duty × sample rate × bytes/sample < 持続spool帯域(約98 MB/s)
+条件2(尖頭) window byte長 × (1 − window中のdrain ÷ sample rate) < min(ring容量, queue深さ × chunk size)
+```
+
+本レポートが破綻の起点を平均byte rateとした点も動く。条件2で見るとgate 5,000(未読77,632)から既にring容量65,536を超えており、実測の境界はgate 4,000と5,000の間になる。ただしこれは未読の値からの推論であり、alias から外したringでの再測が必要である。

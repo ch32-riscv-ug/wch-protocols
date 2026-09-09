@@ -162,3 +162,23 @@ RMTのloop周期依存は、qualificationの実装に直接効く制約になり
 ```
 
 queue 64 entry(258,048 byte)では160 MHzで約529,000 byteのwindowまで条件2を満たす。本実験が試した最大は224,000 byteなので条件2に遠く届いておらず、そのためwindow長が効かなく見えた。queueを8 entryへ浅くすると、本実験と同じ192,000 byteのwindowでも破綻する。
+
+## 追記 — E056によるdata検証の無効化(2026-09-09)
+
+本レポートは書き換えない。[E056](../e056_p4_ring_period_alias/README.ja.md)で、**検証用のgray code rampの周期(4,096 byte)がring容量65,536を割り切るため、ringの上書きが検証器に見えていなかった**ことが分かった。ring容量を倍数から外すと、同じ条件で飛びが22から172へ跳ねる。
+
+したがって本実験のうち**未読がring容量を超えていた条件のdata検証は無効**である。
+
+| 条件 | 未読最大 | ring容量 | 判定 |
+|---|---:|---:|---|
+| gate 1,000 / 2,000 / 4,000 | 18,688 / 33,280 / 61,504 | 65,536 | **有効** |
+| gate 6,000 / 7,000 | 92,288 / 106,880 | 65,536 | **無効** |
+
+正しい条件は次の2本で、条件2の容量は`min(ring容量, queue深さ × chunk size)`である。
+
+```
+条件1(平均) duty × sample rate × bytes/sample < 持続spool帯域(約98 MB/s)
+条件2(尖頭) window byte長 × (1 − window中のdrain ÷ sample rate) < min(ring容量, queue深さ × chunk size)
+```
+
+本レポートの結論「window長は無関係」は**成り立たない**。duty 50%固定でも、gate 4,000(未読61,504)は有効に正常だがgate 6,000(92,288)と7,000(106,880)は無効である。条件2が許すwindow byte長はring 65,536・drain 82 MB/sで約134,000 byte(gate幅4,200 word相当)で、gate 4,000が通りgate 6,000が通らないのは予測どおりである。
