@@ -32,6 +32,8 @@ RATE_MAX_MBPS_MILLI = 9000
 CAPTURE_US_MIN = 50000
 CAPTURE_US_MAX = 500000
 MIN_EDGES = 20000
+CASE_TIMEOUT = 10
+REPORT_ID = "E021"
 
 
 def test_parlio_psram_spool(dut):
@@ -60,7 +62,7 @@ def test_parlio_psram_spool(dut):
 
     observations = []
     for expected_run in range(RUNS):
-        match = dut.expect(CASE, timeout=10)
+        match = dut.expect(CASE, timeout=CASE_TIMEOUT)
         values = [value.decode() for value in match.groups()]
         run = int(values[0])
         results = values[1:9]
@@ -85,7 +87,7 @@ def test_parlio_psram_spool(dut):
 
     dut.expect_exact("DONE status=ok", timeout=5)
     print(
-        f"\nE021 callbacks={[row[0] for row in observations]} "
+        f"\n{REPORT_ID} callbacks={[row[0] for row in observations]} "
         f"dequeues={[row[1] for row in observations]} "
         f"extra_bytes={[row[4] for row in observations]} "
         f"max_queue={[row[8] for row in observations]} "
