@@ -76,6 +76,7 @@
 | **E057** | alias から外したringで、gated captureの条件2の境界はどこにあるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 境界はgate 3,000〜4,000、容量は完全chunk数**([e057_p4_gated_ring_boundary/](e057_p4_gated_ring_boundary/README.ja.md)) |
 | **E058** | window長を固定してsample rateを振ると、window中のdrain帯域は一定かrate依存か | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — drainはrate依存、未読に2 chunkの床**([e058_p4_window_drain_vs_rate/](e058_p4_window_drain_vs_rate/README.ja.md)) |
 | **E059** | window中のdrain低下はmemcpy自体が遅いのか(memory競合)、memcpyに使える時間が減るのか(ISR overhead) | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — memcpy帯域は一定、原因は1 chunkあたり固定cost**([e059_p4_drain_breakdown/](e059_p4_drain_breakdown/README.ja.md)) |
+| **E060** | 1 chunkあたりの固定costは`xQueueReceive`のまとめ取りと連続chunkのmemcpyまとめで下がるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — どちらも効かず、固定costはISRが支配**([e060_p4_drain_batch_coalesce/](e060_p4_drain_batch_coalesce/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -197,6 +198,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E060 ESP32-P4: chunkのまとめ取りでdrainは上がるか — 完了 2026-09-09
+
+全文: [e060_p4_drain_batch_coalesce/README.ja.md](e060_p4_drain_batch_coalesce/README.ja.md)。採用run: `_runs/E060_20260909T115516Z_default/`。
+
+**事実**
+
+1. **`xQueueReceive`のまとめ取りは効果ゼロ。** 1 batchの最大が1から12へ増えてもmemcpy時間は0.4%しか変わらず、**ISR側の未読最大は54,656で完全に同一**。
+2. **memcpyのまとめも効かない。** 呼び出しが1,070→277(3.9倍減)、平均copy sizeが3,920→15,142 byteになってもmemcpy時間は1%減、帯域は107.8→108.8 MB/s。DMA無しの[E020](e020_p4_psram_copy_bandwidth/README.ja.md)では4 KiBと16 KiBで181と182.7なので、**DMAが動いている状態ではcopy sizeが効かない。**
+3. memcpyの累積時間は3条件でほぼ一定(39,078 / 38,912 / 38,535 us)。queue呼び出し回数もmemcpy呼び出し回数も実際のcostに寄与していない。
+4. **したがって[E059](e059_p4_drain_breakdown/README.ja.md)の3.6〜5.2 us/chunkはdriver側のISRが支配しており、task側の書き方では下がらない。** 残る手は回収を別coreへ移すことだけ。
+5. **memcpyまとめでは未読の測定値が54,656→70,784へ悪化したがdataは正常だった。** `consumed_bytes`がrun単位でしか進まないため最大1 run分(48 KB)遅れて見える。未読70,784は18 chunk相当でringの完全chunk 15個を超えるのに破綻していない。**未読の実測を条件2の判定に使えるのはper-chunk copyのときだけである。**
+
+**候補**: まとめ取りもmemcpyのまとめも入れず、per-chunk copyを維持する(`consumed_bytes`が読み出し位置に密着し未読の実測が意味を持つ)。drainを上げる残りの手はcore分離。
+
+**未決**: **回収を別coreへ移した場合の効果**(task側で残る唯一の手) / ISR本体の実行時間の直接測定 / 80〜100 MHzでmemcpy帯域が飽和する理由 / triggerなしspool経路でも同じ結論になるか。
 
 ### E059 ESP32-P4: drain低下はmemory競合かISR overheadか — 完了 2026-09-09
 
