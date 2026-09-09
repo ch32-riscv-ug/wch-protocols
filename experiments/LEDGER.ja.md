@@ -75,6 +75,7 @@
 | **E056** | ring容量をpattern周期の倍数から外すと、未読 > ring容量の条件で破損が現れるか(検証器のalias 疑い) | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — alias で盲だった、ringは実際に上書きされる**([e056_p4_ring_period_alias/](e056_p4_ring_period_alias/README.ja.md)) |
 | **E057** | alias から外したringで、gated captureの条件2の境界はどこにあるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — 境界はgate 3,000〜4,000、容量は完全chunk数**([e057_p4_gated_ring_boundary/](e057_p4_gated_ring_boundary/README.ja.md)) |
 | **E058** | window長を固定してsample rateを振ると、window中のdrain帯域は一定かrate依存か | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — drainはrate依存、未読に2 chunkの床**([e058_p4_window_drain_vs_rate/](e058_p4_window_drain_vs_rate/README.ja.md)) |
+| **E059** | window中のdrain低下はmemcpy自体が遅いのか(memory競合)、memcpyに使える時間が減るのか(ISR overhead) | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — memcpy帯域は一定、原因は1 chunkあたり固定cost**([e059_p4_drain_breakdown/](e059_p4_drain_breakdown/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -196,6 +197,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E059 ESP32-P4: drain低下はmemory競合かISR overheadか — 完了 2026-09-09
+
+全文: [e059_p4_drain_breakdown/README.ja.md](e059_p4_drain_breakdown/README.ja.md)。採用run: `_runs/E059_20260909T114649Z_default/`。
+
+**事実**
+
+1. **memcpy帯域は100 / 120 / 160 MHzで107.8 / 107.2 / 107.2 MB/sと一定。** drainは95.8 / 92.0 / 82.3 MB/sと下がるので、**drain低下はmemcpyの帯域低下ではない。**
+2. 80 MHzのmemcpy帯域は128.2 MB/sで100 MHz以上より16%高い。memory競合は100 MHz以上で飽和し、そこから先のdrain低下には寄与しない。
+3. **window byte長固定でwindowあたりのchunk数は23.8個と同じなのに、memcpy占有率は89% → 86% → 77%と下がる。** 1 chunkあたりの非memcpy時間は4.2 / 4.7 / 5.8 usでほぼ一定で、**windowが短くなる分だけ固定costが相対的に大きくなる**のが原因である。
+4. 本実験の160 MHzのdrain 82.3はE058の86.1より3.8 MB/s低い。計測のtimer 2回分で1 chunkあたり約0.6 us。差し引くと真の非memcpy時間は3.6〜5.2 us/chunk。
+5. gated capture中のmemcpy帯域107 MB/sは[E020](e020_p4_psram_copy_bandwidth/README.ja.md)のDMA無し138.6〜182.7 MB/sより25〜40%低い。この損失はDMAのrateに依存しない。
+
+**候補**: 条件2の`drain(rate)`を「107 MB/s × memcpy占有率(rate)」と分解する。改善は1 chunkあたりのcostを削る方向(複数chunkのまとめ取り、queueを介さない回収、別coreへの分離)。chunk sizeはSoC定義で4,032固定なので大きくできない。memcpy帯域を上げる余地は小さい。
+
+**未決**: 1 chunkあたり3.6〜5.2 usの内訳(ISR本体・`xQueueReceive`・loop本体の分離) / 複数chunkのまとめ取りの効果 / 別coreへの分離の効果 / 80〜100 MHzでmemcpy帯域が飽和する理由 / triggerなしspool経路でも同じ分解が成り立つか。
 
 ### E058 ESP32-P4: window中のdrain帯域はrateに依存するか — 完了 2026-09-09
 

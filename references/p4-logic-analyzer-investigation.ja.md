@@ -98,7 +98,16 @@ chunk sizeは4,032 byteで、これは実測値ではなくSoC定義から決ま
 | 120 MHz | 95.9 MB/s |
 | 160 MHz | 86.1 MB/s |
 
-window中はDMAがsample rateでringへ書きながらCPUが同じringから読むので、DMAの書き込みrateが上がるほどCPUの読み出しが圧迫される。[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)の持続spool帯域98 MB/sはこの曲線上の一点にあたる。予測の当てはまりはwindow 96,000 byteで**48 byte以内**である。
+[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)の持続spool帯域98 MB/sはこの曲線上の一点にあたる。予測の当てはまりはwindow 96,000 byteで**48 byte以内**である。
+
+**低下の理由は[E059](../experiments/e059_p4_drain_breakdown/README.ja.md)で分解できた。** memcpyを直接計時すると、gated capture中のmemcpy帯域は**100〜160 MHzで107 MB/s一定**である(DMAを動かさない[E020](../experiments/e020_p4_psram_copy_bandwidth/README.ja.md)の138.6〜182.7 MB/sより25〜40%低いが、DMAのrateには依存しない)。drainが下がるのは**1 chunkあたり3.6〜5.2 usの固定cost**(ISR、`xQueueReceive`、loop本体)が原因で、window byte長が同じならchunk数も同じなので、windowが短くなるほどこのcostの占める割合が増える。
+
+```
+drain(rate) = 107 MB/s × memcpy占有率(rate)
+memcpy占有率 = 100 MHzで89%、120 MHzで86%、160 MHzで77%
+```
+
+したがって改善の方向は**1 chunkあたりのcostを削ること**である。chunk sizeはSoC定義で4,032固定なので大きくできないため、複数chunkをまとめて取る、queueを介さずdescriptorを直接見る、回収を別coreへ移す、といった手になる。memcpy帯域そのものを上げる余地は小さい。
 
 **未読の測定はISR内で行う。** taskがdequeueごとに標本化する方法はちょうど1 chunk分だけ尖頭を見落とす(E058が4条件すべてで正確に4,032 byteの差を確認)。未読が増えるのはISRがchunkを通知する瞬間だけである。
 
@@ -199,7 +208,7 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
 - `en_partial_rx=false`のときの発火条件と、48 symbol溜まる前に`rmt_disable`して取れる分だけ回収できるか(応答性が要る用途の逃げ道)
-- drainのrate依存の内訳(DMA writeとCPU readのどちらが圧迫されているかの分離)
+- 1 chunkあたり3.6〜5.2 usの内訳(ISR本体・`xQueueReceive`・loop本体の分離)と、複数chunkのまとめ取りや別coreへの分離で占有率が上がるかの実測
 - triggerなしspool経路がpattern周期のalias で盲にならなかった理由
 - duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
