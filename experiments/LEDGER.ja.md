@@ -49,6 +49,7 @@
 | **E038** | pulse delimiterによるhardware trigger付き有限frameは、どのsample rateまで欠落なく成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — 160 MHzまで成立、上限は内部clock源**([e038_p4_parlio_pulse_trigger_rate/](e038_p4_parlio_pulse_trigger_rate/README.ja.md)) |
 | **E039** | level delimiterでenable線がactiveな間だけ取得するhardware gatingと、`eof_data_len`=0による可変長frameが成立するか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — gating成立、可変長は不成立**([e039_p4_parlio_level_gate/](e039_p4_parlio_level_gate/README.ja.md)) |
 | **E040** | `eof_data_len`=0のlevel delimiterでDMAはpayloadへ書くのか。`partial_rx_en`との組で「hardware gate + software停止」modeになるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — DMAは走る、gateはdutyどおり間引く**([e040_p4_parlio_level_open_frame/](e040_p4_parlio_level_open_frame/README.ja.md)) |
+| **E041** | `valid_gpio_num`をdata線と同一GPIOにして、8 channel全部を残したままhardware edge triggerを使えるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) trigger | **完了 — 共有成立、triggerはchannelを消費しない**([e041_p4_parlio_shared_valid_line/](e041_p4_parlio_shared_valid_line/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E009** | 実験の生ログを `_runs/` へ自動退避できるか。失敗した run でも残るか | **常設 v0**(実機なし) | [README.ja.md §3.4](README.ja.md) | **完了**([e009_runs_archive/](e009_runs_archive/README.ja.md)) |
@@ -175,6 +176,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E041 ESP32-P4: valid線をdata線と同一GPIOで共有 — 完了 2026-09-09
+
+全文: [e041_p4_parlio_shared_valid_line/README.ja.md](e041_p4_parlio_shared_valid_line/README.ja.md)。採用run: `_runs/E041_20260909T065115Z_default/`。
+
+**事実**
+
+1. `valid_gpio_num`をdata線7と同一のGPIO 9にしても`parlio_new_rx_unit`は受理し、20 / 80 / 160 MHzすべてで全APIが`ESP_OK`。受信byteは`eof_data_len` 4,096と完全一致、`gray7` step違反0件。
+2. **bit 7が0だったsampleは0件。** 共有GPIOはdata channel 7としてもtrigger線としても機能する。**hardware triggerはchannelを消費しない。**
+3. 先頭4 byteは3条件すべて`80 80 80 81`でgate開放位置の値と一致。取得開始のずれは1 sample以内。
+4. run長は20 MHzで4固定、80 / 160 MHzで3〜5。**E038の「整数分周なら均一」と一致しない。** 整数分周は十分条件ではない。原因は未切り分け。
+5. data_width 8の160 MHz(160 MB/s)で4,096 byteを25.6 usにわたり違反0で取得。**internal RAMへのDMA writeは4 KiB burstで160 MB/sを通す。** E036の約98 MB/sはtask copy段の限界であってDMA writeの限界ではない。
+
+**候補**: trigger能力の申告を「消費channel 1」から「trigger源となるchannelを1つ選ぶ」に変える。hardware trigger付き8 channelを8 pinの標準構成にする。
+
+**未決**: run長均一性を決める条件(分周比か位相か) / internal RAM DMA writeの持続帯域 / 共有線をlevel gateに使う構成 / data_width 16での共有(`valid_sig_line_id`に空きslotが無い可能性) / 共有時のtrigger jitter。
 
 ### E040 ESP32-P4: `eof_data_len` = 0のlevel delimiterでDMAは走るか — 完了 2026-09-09
 
