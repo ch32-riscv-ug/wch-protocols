@@ -36,6 +36,10 @@
 #define EXPERIMENT_RUNS 3
 #endif
 
+#ifndef CAPTURE_BUFFER_SIZE
+#define CAPTURE_BUFFER_SIZE (1024 * 1024)
+#endif
+
 #ifndef BEFORE_CAPTURE
 #define BEFORE_CAPTURE(run) do { } while (0)
 #endif
@@ -73,7 +77,7 @@ constexpr uint32_t kPwmFrequencyHz = 100000;
 constexpr uint8_t kPwmResolutionBits = 8;
 constexpr uint32_t kSampleRateHz = SAMPLE_RATE_HZ;
 constexpr size_t kRingSize = 64 * 1024;
-constexpr size_t kDestinationSize = 1024 * 1024;
+constexpr size_t kDestinationSize = CAPTURE_BUFFER_SIZE;
 constexpr size_t kDelimiterSize = 65408;
 constexpr size_t kQueueDepth = 64;
 constexpr size_t kRuns = EXPERIMENT_RUNS;
