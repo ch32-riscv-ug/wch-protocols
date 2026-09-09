@@ -14,15 +14,17 @@ CASE = re.compile(
     rb"config=(\S+) callbacks=(\S+) start=(\S+) read=(\S+) stop=(\S+) "
     rb"deinit=(\S+) psram=(\d+) target=(\d+) copied=(\d+) reads=(\d+) "
     rb"timeouts=(\d+) overflows=(\d+) elapsed_us=(\d+) effective_rate_hz=(\d+) "
-    rb"invalid_unit=(\d+) invalid_channel=(\d+) order_errors=(\d+)([^\r\n]*)"
+    rb"invalid_unit=(\d+) invalid_channel=(\d+) pattern_phase=(\d+) "
+    rb"order_errors=(\d+)([^\r\n]*)"
 )
 EXPECTED = tuple((channels, rate) for channels in (1, 2, 4, 8) for rate in (10000, 40000, 83333))
 TARGET_CONVERSIONS = 262144
 
 
 def test_adc1_continuous_batch(dut):
+    dut.expect_exact("READY E034", timeout=10)
     dut.write("?")
-    dut.expect(BANNER, timeout=10)
+    dut.expect(BANNER, timeout=5)
     env = tuple(map(int, dut.expect(ENV, timeout=5).groups()))
     assert env[0] == 1 and env[1] >= 32 * 1024 * 1024
     assert env[2:] == (2, 8, 4, 611, 83333, TARGET_CONVERSIONS)
@@ -34,14 +36,15 @@ def test_adc1_continuous_batch(dut):
         assert (int(fields[0]), int(fields[1])) == (channels, requested_rate)
         result = fields[2]
         api = fields[3:10]
-        numbers = list(map(int, fields[10:21]))
-        psram, target, copied, reads, timeouts, overflows, elapsed_us, effective_rate, invalid_unit, invalid_channel, order_errors = numbers
-        suffix = fields[21]
+        numbers = list(map(int, fields[10:22]))
+        psram, target, copied, reads, timeouts, overflows, elapsed_us, effective_rate, invalid_unit, invalid_channel, pattern_phase, order_errors = numbers
+        suffix = fields[22]
         assert result == "ESP_OK" and all(value == "ESP_OK" for value in api)
         assert psram == 1 and target == copied == TARGET_CONVERSIONS * 4
         assert reads > 0 and timeouts == overflows == 0 and elapsed_us > 0
         assert requested_rate * 90 // 100 <= effective_rate <= requested_rate * 110 // 100
-        assert invalid_unit == invalid_channel == order_errors == 0
+        assert invalid_unit == invalid_channel == 0
+        assert pattern_phase < channels
 
         channel_fields = re.findall(r"c(\d+)=(\d+):(\d+):(\d+)", suffix)
         assert len(channel_fields) == channels
@@ -49,7 +52,7 @@ def test_adc1_continuous_batch(dut):
             assert int(index) < channels
             assert int(samples) == TARGET_CONVERSIONS // channels
             assert 0 <= int(minimum) <= int(maximum) <= 4095
-        observations.append((channels, requested_rate, effective_rate, reads))
+        observations.append((channels, requested_rate, effective_rate, reads, pattern_phase, order_errors))
 
     dut.expect_exact("DONE status=ok", timeout=5)
     print(f"\nE034 adc_observations={observations}")

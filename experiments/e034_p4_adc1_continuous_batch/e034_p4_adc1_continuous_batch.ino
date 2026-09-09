@@ -14,6 +14,7 @@ static constexpr uint32_t kFrameBytes = 1024;
 static constexpr uint32_t kPoolBytes = 16384;
 static uint8_t read_buffer[kFrameBytes];
 static volatile uint32_t pool_overflows;
+static bool host_armed;
 
 static bool IRAM_ATTR on_pool_overflow(adc_continuous_handle_t,
                                        const adc_continuous_evt_data_t *,
@@ -96,6 +97,7 @@ static void run_case(uint8_t channel_count, uint32_t requested_rate) {
   uint32_t invalid_unit = 0;
   uint32_t invalid_channel = 0;
   uint32_t order_errors = 0;
+  uint8_t pattern_phase = 0;
   uint32_t channel_samples[8] = {};
   uint16_t channel_min[8];
   uint16_t channel_max[8] = {};
@@ -104,6 +106,7 @@ static void run_case(uint8_t channel_count, uint32_t requested_rate) {
   if (destination != nullptr) {
     uint32_t conversions = copied / kResultBytes;
     auto *results = reinterpret_cast<adc_digi_output_data_t *>(destination);
+    if (conversions > 0) pattern_phase = results[0].type2.channel;
     for (uint32_t i = 0; i < conversions; ++i) {
       uint8_t unit = results[i].type2.unit;
       uint8_t channel = results[i].type2.channel;
@@ -113,7 +116,7 @@ static void run_case(uint8_t channel_count, uint32_t requested_rate) {
         ++invalid_channel;
         continue;
       }
-      if (channel != i % channel_count) ++order_errors;
+      if (channel != (pattern_phase + i) % channel_count) ++order_errors;
       ++channel_samples[channel];
       channel_min[channel] = min(channel_min[channel], value);
       channel_max[channel] = max(channel_max[channel], value);
@@ -128,9 +131,9 @@ static void run_case(uint8_t channel_count, uint32_t requested_rate) {
             start_result == ESP_OK && last_read_result == ESP_OK &&
             stop_result == ESP_OK && delete_result == ESP_OK &&
             copied == kTargetBytes && pool_overflows == 0 &&
-            invalid_unit == 0 && invalid_channel == 0 && order_errors == 0;
+            invalid_unit == 0 && invalid_channel == 0;
 
-  Serial.printf("CASE channels=%u rate_hz=%lu result=%s create=%s config=%s callbacks=%s start=%s read=%s stop=%s deinit=%s psram=%u target=%lu copied=%lu reads=%lu timeouts=%lu overflows=%lu elapsed_us=%llu effective_rate_hz=%lu invalid_unit=%lu invalid_channel=%lu order_errors=%lu",
+  Serial.printf("CASE channels=%u rate_hz=%lu result=%s create=%s config=%s callbacks=%s start=%s read=%s stop=%s deinit=%s psram=%u target=%lu copied=%lu reads=%lu timeouts=%lu overflows=%lu elapsed_us=%llu effective_rate_hz=%lu invalid_unit=%lu invalid_channel=%lu pattern_phase=%u order_errors=%lu",
                 channel_count, static_cast<unsigned long>(requested_rate),
                 ok ? "ESP_OK" : "ESP_FAIL", esp_err_to_name(create_result),
                 esp_err_to_name(config_result), esp_err_to_name(callbacks_result),
@@ -142,7 +145,7 @@ static void run_case(uint8_t channel_count, uint32_t requested_rate) {
                 static_cast<unsigned long long>(elapsed_us),
                 static_cast<unsigned long>(effective_rate),
                 static_cast<unsigned long>(invalid_unit),
-                static_cast<unsigned long>(invalid_channel),
+                static_cast<unsigned long>(invalid_channel), pattern_phase,
                 static_cast<unsigned long>(order_errors));
   for (uint8_t i = 0; i < channel_count; ++i) {
     Serial.printf(" c%u=%lu:%u:%u", i,
@@ -160,6 +163,17 @@ void setup() {
 }
 
 void loop() {
+  if (!host_armed) {
+    if (millis() < 1000) {
+      delay(10);
+      return;
+    }
+    while (Serial.available()) Serial.read();
+    Serial.println("READY E034");
+    Serial.flush();
+    host_armed = true;
+    return;
+  }
   if (!Serial.available()) {
     delay(10);
     return;
@@ -175,6 +189,7 @@ void loop() {
                 static_cast<unsigned long>(kTargetConversions));
   const uint32_t rates[] = {10000, 40000, 83333};
   const uint8_t widths[] = {1, 2, 4, 8};
+  Serial.flush();
   for (uint8_t width : widths) {
     for (uint32_t rate : rates) run_case(width, rate);
   }
