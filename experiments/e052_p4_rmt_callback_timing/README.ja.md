@@ -161,3 +161,17 @@ durationは全caseで期待値と完全一致した(gate 6,000でhigh / lowと�
 - [E045](../e045_p4_gate_rmt_order/README.ja.md)・[E051](../e051_p4_rmt_partial_threshold/README.ja.md): 閾値が確定したことを追記する
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md): RMT設定指針を経験則から数値の規則へ置き換える
 - [LEDGER](../LEDGER.ja.md): E052の節
+
+## 追記 — E053による一般化(2026-09-09)
+
+本レポートは書き換えない。[E053](../e053_p4_rmt_dma_block/README.ja.md)でuser bufferを32から128へ変えたところ挙動が変わり(1回・120 symbol)、本レポートの規則が特殊解だったことが分かった。一般形は次である。
+
+```
+group = mem_block_symbols ÷ 2
+n = floor(user_buffer ÷ group)     ← n = 0 なら永久に発火しない
+1 callbackあたり = n × group symbol
+初回発火 = (mem_block_symbols + (n − 1) × group) × symbol周期
+以降の間隔 = n × group × symbol周期
+```
+
+本レポートのuser bufferは32、`group`は24なので`n = 1`となり、「1回24 symbol、初回`mem_block`分、以降`group`分」という形に還元される。測定値と結論は変わらないが、**user bufferを広げると初回遅延と間隔も伸びる**点が本レポートの記述からは読み取れない。

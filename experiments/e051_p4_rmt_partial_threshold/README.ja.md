@@ -170,3 +170,17 @@ PARLIO側は4条件すべてで同一かつ正常だった(飛び22、階差一�
 ```
 
 `mem_block_symbols` 48では、初回が48 symbol分、以降24 symbol分である。user bufferのsymbol数は関与しない。CPU負荷も無関係である(PSRAM copyの有無で発火時刻の差は3 us)。この規則でE045からE052までの14条件すべての実測callback回数が説明できる。
+
+## 追記 — E053による訂正(2026-09-09)
+
+本レポートは書き換えない。[E053](../e053_p4_rmt_dma_block/README.ja.md)で発火規則が完成し、**本レポートの解釈は誤りだったことが分かった。**
+
+```
+group = mem_block_symbols ÷ 2
+n = floor(user_buffer ÷ group)     ← n = 0 なら永久に発火しない
+1 callbackあたり = n × group symbol
+初回発火 = (mem_block_symbols + (n − 1) × group) × symbol周期
+以降の間隔 = n × group × symbol周期
+```
+
+本レポートのcase 2(buffer 8、block 48)は`group` 24に対しbufferが8なので`n = 0`、case 4(buffer 32、block 96)は`group` 48に対しbufferが32なので`n = 0`である。**どちらも時間に関係なく発火しない条件だった。** 「user bufferは閾値ではない」ではなく、**user bufferは`group`以上でなければならないという必要条件**である。「時間が足りない」という説明もcase 3(n = 1)にだけ当てはまる。
