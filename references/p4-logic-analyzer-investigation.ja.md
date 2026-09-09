@@ -80,16 +80,26 @@ triggerは性質の違う二段に分かれる。[E037](../experiments/e037_p4_p
 | tier | 条件にできるもの | 消費channel | pre-trigger | rateの決まり方 |
 |---|---|---:|---|---|
 | software走査 | pattern + mask、rising / falling / either edge、occurrence count、複数stage | 0 | 可(circular ring) | CPUの走査能力。8 channelで24 MHz、固定4-stageで16 MHz |
-| hardware pulse delimiter | 専用線のpulse 1本。極性は`pulse_invert` | 1 | **不可** | CPU負荷ゼロ。raw captureの限界と同じはず(上限は未測定) |
+| hardware pulse delimiter | 専用線のpulse 1本。極性は`pulse_invert` | 1 | **不可** | CPU負荷ゼロ。**data_width 4で160 MHzまで実測成立**([E038](../experiments/e038_p4_parlio_pulse_trigger_rate/README.ja.md)) |
 
-hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`停止をCPU走査なしで行う。20 MHzでは受信byteが`eof_data_len`と完全一致し、gray rampのstep違反0、誤trigger0だった。pulseからの取得開始のずれは1 sample以内。ただしpulseでframeを開始する方式なのでpre-trigger dataは取れず、pre/post windowが必要ならsoftware走査 + circular ring([E027](../experiments/e027_p4_sump_circular_pretrigger/README.ja.md))に戻る。`eof_data_len`は16 bitで最大65,535 byteなので、これを超えるpost長もsoftware停止に戻る。arm待ちのtimeoutは`timeout_ticks`では取れず、softwareで持つ必要がある。
+hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`停止をCPU走査なしで行う。[E037](../experiments/e037_p4_parlio_pulse_trigger/README.ja.md)と[E038](../experiments/e038_p4_parlio_pulse_trigger_rate/README.ja.md)で、data_width 4の20〜160 MHzすべてで受信byteが`eof_data_len`と完全一致し、gray rampのstep違反0、誤trigger0だった。pulseからの取得開始のずれは1 sample以内。
+
+上限は**内部clock源(PLL_F160M)の160 MHz**である。E036の約98 MB/sはinternal ring → PSRAM copy段の限界であり、copy段の無い有限frameには効かない。ただしdata_width 4では160 MHzでもpacking後80 MB/sなので、98 MB/s超のbyte rateは未確認である。
+
+この経路には引き換えがある。
+
+- **pre-trigger dataは取れない。** pulseでframeを開始する方式なので、pre/post windowが必要ならsoftware走査 + circular ring([E027](../experiments/e027_p4_sump_circular_pretrigger/README.ja.md))に戻る
+- **深度が浅い。** `eof_data_len`は16 bitで最大65,535 byte。16 KiB frameは160 MHzで205 us分にすぎない。深い取得はspool経路へ戻る。つまり「速いが浅い」と「遅いが深い」の二つのmodeになる
+- **arm待ちのtimeoutは`timeout_ticks`では取れない。** frame開始前は`on_timeout`が発火しないので、softwareで持つ
+- **公称rateは160 MHzの整数分周から選ぶ。** 160 / 80 / 40 / 20 MHz等ではsample間隔が均一でtrigger位置も完全に再現したが、100 / 120 MHzでは±1 sample揺れた
 
 まだ測っていないもの:
 
-- hardware triggerが成立する最大sample rate
+- data_width 8 / 16でのhardware trigger。valid線を含めて9 / 17線が要るので、`TEST_PARLIO_PINS`の8線では作れない
+- 有限frameのbyte rate上限(98 MB/s超が通るか)
+- `eof_data_len` 65,535超のpost長
 - level delimiterによるgating(enable線がactiveな間だけ取得)
 - `has_end_pulse`によるhardware停止と`pulse_invert`の極性
-- 8 / 16 channelでhardware triggerを使う構成。valid線を含めて9 / 17線が要るのでpin数の確認から
 - trigger delay
 - UART / I2C / SPI等のprotocol-aware triggerは、raw triggerの成立後にCPU負荷とrateを別測定する
 
@@ -137,7 +147,7 @@ digitalとの同期は、まず共通timerで開始時刻と完了時刻を記�
 
 1. PARLIO widthとpacking
 2. width別raw sample rate（sampling / 持続spool / burst深度の三分割。8 channelは[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)済、他widthは再検証待ち）
-3. width別basic triggerとmulti-stage trigger（software走査tier。hardware pulse tierは[E037](../experiments/e037_p4_parlio_pulse_trigger/README.ja.md)で成立、rate上限は未測定）
+3. width別basic triggerとmulti-stage trigger（software走査tier。hardware pulse tierは[E037](../experiments/e037_p4_parlio_pulse_trigger/README.ja.md)・[E038](../experiments/e038_p4_parlio_pulse_trigger_rate/README.ja.md)でdata_width 4の160 MHzまで成立）
 4. wide CPU snapshot（24 / 32 / 33〜55 channel）
 5. raw batchの深度・停止・再arm耐久
 6. RLE、transition timestamp、block adaptive encoding
