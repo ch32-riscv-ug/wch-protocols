@@ -68,6 +68,11 @@
 | `tool-fast-capture` | 受信を SPI slave / レジスタ直読み / 割り込みにすれば、実 RVSWD 速度で bit を拾えるか(E005 は 100 kbps が上限) | **常設 v2** | peer 対 2 枚 | 有 | (道具) |
 | `p4-parlio-rate` | PARLIO TX等の既知patternを信号源にして、internal RAMへの8-bit有限長PARLIO RX captureが欠落・化けなしで成立するsample rate上限はどこか | **一時・配線なし** | ESP32-P4 1枚 | 有 | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 |
 | `p4-parlio-spool-rate` | internal DMA ringからPSRAMへ退避するとき、dropなしで継続できる8-bit sample rate、ring/chunk size、capture時間の境界はどこか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有(E016で32 MiB確認) | 同上。E021の8 MHz成立後 |
+| `p4-parlio-width` | PARLIOの1 / 2 / 4 / 8 / 16 data lineでpackingを復元し、既知patternを欠落なくbatch取得できるか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有 | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) channel幅 |
+| `p4-wide-gpio-snapshot` | CPUのGPIO input register snapshotで24 / 32 / 33〜55 channelを同時取得できるrate・jitter・core占有率の限界はどこか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有 | 同上。wide低速tier |
+| `p4-trigger-matrix` | channel幅、pattern/edge/occurrence/multi-stage条件ごとのdropなしsample rate境界はどこか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有 | 同上。trigger |
+| `p4-batch-compression` | RLE、transition timestamp、blockごとのraw/RLE選択はどの入力で有効で、最大sample rate・edge rate・最悪膨張率はいくつか | **一時・配線なし** | PSRAM搭載ESP32-P4 1枚 | 有 | 同上。内部圧縮 |
+| `p4-external-clock` | PARLIO external clock入力でfinite/circular batch captureが成立する周波数・停止条件はどこか | **一時・要配線** | PSRAM搭載ESP32-P4 1枚、clock source | 現在不可 | 同上。clock |
 | `p4-rmt-capture` | 同じPWM/RMT信号をRMT RXのpulse-duration列で取得すると、PARLIO raw sampleより少ないdata量で何channel・何edge/sまで保持できるか | **一時・配線なし** | ESP32-P4 1枚 | 有 | 同上 |
 | `p4-adc-continuous` | ESP32-P4のADC continuous DMAでanalog pinを連続captureでき、実効sample rate・欠落・noiseはどの程度か | **一時** | ESP32-P4 1枚、PWMまたはSDM出力、ADC pinへのjumper、必要ならRC | 有 | 同上 |
 | `linke-error-frame` | WCH-Link の異常系 error 応答 frame の形式(target 無し等) | **常設**(capture) | LinkE + usbmon | 有 | [pc-to-link](../protocols/pc-to-link.ja.md) §3、P1-1 |

@@ -329,6 +329,8 @@ IDCODEは信号層の成立確認であり、実装例の完成とはみなさ�
 
 PID申請用の最小実装とは分けて、SUMP protocolに近い操作modelを持つlogic capture機能を追加できるか検討する。
 
+ESP32-P4に関する限界調査の軸、channel tier、圧縮候補、実験順序は[P4 batch logic analyzer予備調査](p4-logic-analyzer-investigation.ja.md)へ集約する。
+
 - sample rate、channel、trigger、sample countを設定してcaptureを開始する
 - probe内のRAMまたはPSRAMへ収集し、capture完了後にhostへdownloadする
 - real-time modeではprobeから共通protocolのstreamとしてsampleをhostへ送る
