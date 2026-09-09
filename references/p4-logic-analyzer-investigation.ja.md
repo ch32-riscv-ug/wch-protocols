@@ -65,9 +65,18 @@ sample rate ≤ 160 MHz（内部clock源）
 かつ duty × sample rate × bytes/sample < 持続spool帯域（約98 MB/s）
 ```
 
-つまり**gateは平均byte rateを持続限界の下へ下げているだけ**である。E048が立てた「ringがwindow単位の過負荷を吸収するので`window byte長 × (1 − spool ÷ rate) < ring容量`が条件」というmodelはE049で反証された — ring未読量がring容量を超えてもdataが正常な条件が2つあり、実測の破綻点は平均byte rateが98 MB/sを横切る位置(96.0 MB/s正常、106.7 MB/s破綻)と一致した。
+つまり**gateは平均byte rateを持続限界の下へ下げているだけ**である。E048が立てた「ringがwindow単位の過負荷を吸収するので`window byte長 × (1 − spool ÷ rate) < ring容量`が条件」というmodelは反証された。[E050](../experiments/e050_p4_gated_window_at_fixed_duty/README.ja.md)がdutyを50%に固定してwindow byte長を32,000から224,000まで7倍に振り、**全条件でdataが正常**だった。window byte長224,000はring容量の3.4倍で、ring未読も106,880 byteに達していたが1 byteも失っていない。**window長は成立に影響せず、上限を設ける必要はない。**
 
-8 channel(1 byte/sample)なら、**duty 61%以上で160 MHzが取れなくなる**のが実用上の境界である。E049はgapを固定したためgate幅とdutyが一緒に動いており、window長と平均rateの分離は未了である。
+8 channel(1 byte/sample)なら実用上の境界は次のようになる。
+
+| duty | 許容sample rate | 実際に取れるrate |
+|---:|---:|---:|
+| 25% | 392 MHz相当 | 160 MHz(clock源) |
+| 50% | 196 MHz相当 | 160 MHz |
+| 60% | 163 MHz相当 | 160 MHz |
+| 61%以上 | 160 MHz未満 | dutyから逆算 |
+
+**duty 61%までは常に160 MHzが取れる。** なおring未読量がring容量を超えてもdataは正常だったので、実際の緩衝はring単体ではない(chunk queueは64 entry × 約4,032 byte ≒ 258 KiB)。「ring容量を超えたら壊れる」ではない点は[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)のtriggerなしspool経路と異なる。
 
 triggerなしの場合に戻ると、sample rateの成立・不成立は**capture深度と一緒でなければ意味を持たない**。8 channel 100 MHzは1 Mi sampleでは成立するが、超過分1.692 MB/sをringが吸収しきる約3.87 Mi sampleで破綻するので、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)の16 MiB deep captureには適用できない。深度を伸ばすほど公称rateは持続spool帯域へ漸近する。
 
@@ -146,8 +155,9 @@ hardware tierはvalid線1本を払う代わりに、frame開始と`eof_data_len`
 - level delimiterでのgating時の最大sample rateとgate境界のsample精度
 - 32,767 tickを超えるgapの扱いと、RMT分解能を落としたときの精度
 - destinationを大きくしたgated captureの長時間持続(現在はdata検証が1 MiB分)
-- dutyを固定してwindow長だけを振る掃引(window長と平均rateの分離)
+- **RMTがgate loop周期2 ms以上でsymbolを返さない原因**(2.4 msで0 callback、1.6 msでは取得できる。qualificationの実装に直接効く)
 - ringとqueueのどちらがgated captureの実際の緩衝なのか
+- duty 61%付近で160 MHzが取れなくなる点の実測
 - data_width 16での3者共有(`valid_sig_line_id`に空きslotが無い可能性)
 - RMT symbolとPARLIO sample列の先頭同期
 - `has_end_pulse`によるhardware停止と`pulse_invert`の極性
