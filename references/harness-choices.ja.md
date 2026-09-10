@@ -93,6 +93,8 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 
 > **本節は結論を出さない。** PID は幅の議論に**制約として効く**ので、**動かせない事実**と**選択の軸**だけを並べる。**どこまでの幅を取るかが決まってから**、この軸の上で選ぶ。
 
+> ⚠ **2026-09-10 訂正**: 本節の後半(「実務上の逃げ道」以降)にあった **「`bcdDevice`(REV)が hardware ID に入るので descriptor の違いを分離できる」「serial では分離できない」という推論は誤り**。Windows が既存 devnode(と install 済み driver)を再利用するかは **instance identity(VID:PID + serial、composite の子は + `MI_nn`)** で決まり、**`bcdDevice` はそこに入らない**。`REV_` は新規 devnode の INF 選択にしか効かず、`usbflags` が `bcdDevice` 単位なのは MS OS 1.0 descriptor の応答 cache だけ。一次資料と観測は [usb-host-descriptor-persistence](usb-host-descriptor-persistence.ja.md)。誤っていた箇所は削らず **「訂正」** を付して残す(選択肢集としての履歴を保つ)。
+
 #### 動かせない事実
 
 | # | 事実 | 出どころ |
@@ -100,7 +102,7 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 | **K1** | **pid.codes は「1 project 1 PID が原則」**(複数は理由付きで) | [ecosystem](ecosystem-any-hardware.ja.md) §4.2b |
 | **K2** | **WCH には vendor community program が無い**。Raspberry Pi `0x2E8A` / Espressif `0x303A` は**その silicon 上でのみ**無償・公認 | 同 §4.2b |
 | **K3** | **他人の PID を自分の firmware が名乗るのは NG**。同じ ID を別の device が使うと host が判別できなくなる — **この repo に実例がある**(LinkE の IAP mode と factory ISP がどちらも `4348:55E0`)。**共有 ID(`0x1209:0x0001`〜、`0x6666`、`0xCAFE`)も配布物では同じ理由で不可** | 同 §4.1 / §4.2b |
-| **K4** | **Windows は VID:PID(+MI_xx)単位で driver 割当を cache する**。同じ ID で **interface 構成**を変えると壊れる | 同 §4.3 |
+| **K4** | **Windows は device instance(VID:PID + serial、composite の子は + `MI_nn`)単位で driver 割当を永続化する**。同じ instance で **interface 構成**を変えると壊れる(観測)。**`bcdDevice` はこの単位に入らない**(2026-09-10 訂正) | 同 §4.3 / [usb-host-descriptor-persistence](usb-host-descriptor-persistence.ja.md) |
 | **K5** | **低速 USB は control と interrupt しか持たない**(bulk が無い)。→ **V003 の software USB では CDC が成立せず、HID しか選べない** | [software-usb](../protocols/software-usb.ja.md) / B003 が HID である理由 |
 | **K6** | **既存 USB-serial bridge 上の UART と IP は、自前 descriptor を持たないので PID を消費しない** | [ecosystem](ecosystem-any-hardware.ja.md) §4.5 |
 
@@ -120,8 +122,8 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 | **末尾への function 追加** | **△ 比較的安全** | **既存の `MI_nn` が動かず、子が 1 つ増えるだけ**。class driver(CDC / HID)なら binding は自動 |
 | 各 function の class | **✗**(既存分) | class driver の binding が変わる |
 | **function 内の endpoint address / 種別** | **○ ほぼ自由** | class driver は descriptor を読み直す(class の要件を満たす限り) |
-| **`bcdDevice`(REV)** | **○ むしろ上げる** | **`&REV_xxxx` が別 hardware ID になる**ので、新旧を区別でき、旧 binding と衝突しにくい |
-| serial string | ○ | instance 追跡と **COM 番号の安定**に効く |
+| **`bcdDevice`(REV)** | **○ 自由。ただし分離には効かない** | **訂正(2026-09-10)**: `&REV_xxxx` は hardware ID には入るが **instance ID には入らない**。既存 devnode は `REV` が違っても再利用されるので、旧 binding との衝突は避けられない。効くのは MS OS 1.0 descriptor の `usbflags` cache だけ |
+| serial string | ○ | **instance ID そのもの**。同じなら COM 番号が安定する代わりに旧 binding が個体に付いて回る。**変えると新 devnode になり binding をやり直す**(2026-09-10 追記) |
 
 ⚠ **「末尾への追加は安全」は実務上の通説**で、**実機での確認が要る**(Windows の版と、既存 binding の残り方に依存)。
 
@@ -142,22 +144,23 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 
 ⚠ 具体的なキー配置は Windows の版で変わるので、**ベンチで一度確認する価値がある**(→ 未確認)。
 
-#### 実務上の逃げ道 — **`bcdDevice` を上げる**
+#### 実務上の逃げ道 — **`bcdDevice` を上げる**(**訂正: 効かない**)
 
-**`usbflags` と hardware ID は `bcdDevice`(REV)を含む**ので、**版を上げると別 hardware ID として扱われ、古い binding と衝突しにくくなる**。**掃除せずに「新品」に近い状態を作れる、唯一安い手**。
+**訂正(2026-09-10)**: この小節の前提は誤りだった。`usbflags` と hardware ID は `bcdDevice` を含むが、**Windows が既存 devnode を再利用するかは instance ID(VID:PID + serial)で決まり、`bcdDevice` は入らない**。OSR で Tim Roberts が「試したが bcdDevice は PnP identifier の一部ではない」と明言し、PJRC forum にも「bcdDevice を上げても直らず uninstall で直った」報告がある。**`bcdDevice` を上げて効くのは MS OS 1.0 descriptor の `osvc` cache だけ**。掃除せずに新品に近い状態を作れる安い手は無く、**serial か PID を変える**しかない(→ [usb-host-descriptor-persistence](usb-host-descriptor-persistence.ja.md))。
 
 | 手段 | コスト |
 |---|---|
-| **`bcdDevice` を上げる** | **ゼロ**。descriptor の 2 byte |
+| **`bcdDevice` を上げる** | **ゼロ。ただし devnode の再利用には効かない(訂正)**。MS OS 1.0 の `osvc` cache のみ分かれる |
 | Device Manager でアンインストール | 手作業。台数分 |
 | `pnputil /delete-driver ... /uninstall /force` | 手作業。**driver package を消すので影響範囲が広い** |
 | `Enum\USB\...` を直接削除 | **要 SYSTEM 権限。危険** |
 | ComDB を掃除して COM 番号を回収 | Device Manager の port 詳細設定か registry |
 | **別 port に挿す** | **serial を出していない device に限り**新 instance になる |
+| **serial を変える** | **ゼロ。新 instance になり binding をやり直す**。個体識別と COM 番号の継続を失う(2026-09-10 追記) |
 
 **実例**: **UIAPduino は既に `bcdDevice` を版管理している** — fork の差分で `0x0000` → **`0x0141`**、さらに commit `9e30b75`「Change bcdDevice from 1.40 to 1.41」がある。**この運用は既に前例がある。**
 
-→ **設計への含意**: **firmware の版を必ず `bcdDevice` に載せ、descriptor に触るたびに上げる**。[ecosystem §4.2](ecosystem-any-hardware.ja.md) が「`bcdDevice` は BL/probe firmware の版」としているのと同じ運用で、**Windows の cache 対策も兼ねる**。
+→ **設計への含意**: **firmware の版を `bcdDevice` に載せる**のは [ecosystem §4.2](ecosystem-any-hardware.ja.md) のとおりでよい。ただし **Windows の devnode 再利用の対策にはならない(訂正)**。MS OS descriptor を使う build では `osvc` cache の対策になる。
 
 #### 「CDC の個数は後から変えられるか」への答え
 
@@ -169,7 +172,7 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 | **HID 1 本(単機能)→ CDC + HID(composite)** | **✗ 最も破壊的**。usbccgp の有無が変わる |
 | **最初から composite で、使わない function を予約しておく** | **○** ← **これが答え** |
 
-→ **CDC の個数は「最初から composite にしておき、末尾に足す」なら増やせる見込み。「単機能 → composite」は不可。**
+→ **CDC の個数は「最初から composite にしておき、末尾に足す」なら増やせる見込み。「単機能 → composite」は不可。** **この表は 2026-09-10 の再調査後も有効**。根拠は `MI_nn` 単位の devnode 再利用であり `bcdDevice` ではない。実測は [E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md)。
 
 #### 本当の問題 — **能力が違う device を同じ PID で混ぜるとき**
 
@@ -197,34 +200,31 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 
 ⚠ **class driver(CDC / HID / MSC)だけで組む場合は危険が下がる**(binding が毎回 descriptor から決まる)。**vendor INF / WinUSB を INF で入れる形が最も危ない。** → **実機確認が要る**(Windows の版依存)。
 
-##### serial では分離できない — **hardware ID に入るのは `REV` だけ**
+##### 訂正: serial は instance を分ける。`bcdDevice` は何も分けない
 
-**serial number は instance ID に入るが、hardware ID には入らない。** ここが分かれ目:
+**serial number は instance ID に入り、hardware ID には入らない。`bcdDevice` はその逆。** 2026-09-10 の訂正前は「driver 選択に効くのは hardware ID だから `bcdDevice` が鍵」と読んでいたが、**driver 選択が走るのは新規 devnode のときだけ**で、**既存 devnode が再利用されるかを決めるのは instance ID** である。
 
-| ID | 中身 | driver 選択に効くか |
-|---|---|:--:|
-| **hardware ID** | `USB\VID_xxxx&PID_yyyy&REV_zzzz` / `USB\VID_xxxx&PID_yyyy`(+ composite の子は `&MI_nn`) | **効く** |
-| **instance ID** | `USB\VID_xxxx&PID_yyyy\`**`<serial>`**(serial が無ければ port 由来のパス) | **効かない** |
+| ID | 中身 | 新規 devnode の driver 選択 | 既存 devnode の再利用を防ぐか |
+|---|---|:--:|:--:|
+| **hardware ID** | `USB\VID_xxxx&PID_yyyy&REV_zzzz` / `USB\VID_xxxx&PID_yyyy`(+ composite の子は `&MI_nn`) | **効く** | **防がない**(`REV` が違っても同じ instance path) |
+| **instance ID** | `USB\VID_xxxx&PID_yyyy\`**`<serial>`**(serial が無ければ port 由来のパス) | 効かない | **防ぐ**(別 instance = 別 devnode = driver 選択をやり直す) |
 
-→ **serial が違っても driver binding の判断は同じ。** serial が分けるのは
-**(a) per-device の設定(COM 番号割当など)、(b) `Enum\USB\...\<serial>` の instance 状態、(c) 「前に見た同じ個体か」の判定**だけ。
+→ **「前に見た同じ個体か」の判定が、install 済み driver をそのまま使うかの判定でもある。** `usbflags` が VID + PID + `bcdDevice` 単位なのは MS OS 1.0 descriptor の応答 cache だけで、driver binding とは別物。
 
-**`usbflags` も VID + PID + `bcdDevice` 単位**で、**serial は入らない**。
+> **訂正: descriptor の違いから Windows を守る key は instance identity(PID / serial / `MI_nn`)であって `bcdDevice` ではない。** serial は個体識別であると同時に、Windows にとっては「別 device」の境界でもある。
 
-> **つまり descriptor の違いを分離できるのは `bcdDevice`(REV)だけ。** serial は「同じ形の device の個体識別」であって、「違う形の device の分離」には使えない。
+##### 訂正: `bcdDevice` では V003(HID 単機能)と composite を同じ PID で切り替えられない
 
-##### **→ `bcdDevice` を使えば V003 も同じ PID に入れられる(見込み)**
+**2026-09-10 訂正。** 以前ここで「V003 を USB-native に含めると 1 PID が固定される」を撤回し、`bcdDevice` の `REV` で分けられると書いたが、その撤回が誤りだった。
 
-**前に「V003 を USB-native に含めると descriptor が HID 単機能に固定され、1 PID がそこで固定される」と書いたのは強すぎた。** 訂正する:
+| build | descriptor | `bcdDevice`(旧案) | hardware ID | instance ID(同一個体) |
+|---|---|---|---|---|
+| **V003**(software USB) | **HID 単機能、low-speed** | `0x01xx` | `USB\VID&PID&REV_01xx` | `USB\VID&PID\<serial>` |
+| **RP2040 / S3** | **composite(CDC + HID + 予約)** | `0x02xx` | `USB\VID&PID&REV_02xx` | `USB\VID&PID\<serial>` |
 
-| build | descriptor | `bcdDevice`(案) | hardware ID |
-|---|---|---|---|
-| **V003**(software USB) | **HID 単機能、low-speed** | `0x01xx` | `USB\VID&PID&REV_01xx` |
-| **RP2040 / S3** | **composite(CDC + HID + 予約)** | `0x02xx` | `USB\VID&PID&REV_02xx` |
+**hardware ID は分かれるが、instance ID は同じ。** 同一 serial の個体を書き換えて単機能↔composite を往復すると、Windows は既存 devnode(hidusb か usbccgp のどちらか先に載った方)を再利用する。**別個体(別 serial)の V003 と RP2040 を同じ machine に挿す**場合は別 instance なので共存する見込みだが、それは serial の効果であって `bcdDevice` の効果ではない(要実測: [E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md))。
 
-**hardware ID が分かれるので、binding と `usbflags` も分かれる見込み。** → **1 PID で「HID 単機能の V003」と「composite の RP2040」を共存させられる可能性がある。**
-
-**固定されるのは「同じ `bcdDevice` を共有する build 群」だけ**で、**PID 全体ではない。**
+→ **「V003(単機能)を同じ PID に入れると、同じ PID を composite で使う build と同一個体上では切り替えられない」は元の記述どおり成り立つ。** 別個体としての共存だけが残る。
 
 ##### この手の弱点(**採る前に見ておくもの**)
 
@@ -233,17 +233,19 @@ ch32rv には既にその継ぎ目がある — **`DtmAccess` trait**。`ch32rv-
 | **1** | **USB 仕様の趣旨から外れる** | **PID は「製品」、`bcdDevice` は「その製品の版」**。**別の形の device を版番号で区別するのは本来の使い方ではない** |
 | **2** | **VID:PID だけ見るツールが区別できない** | udev rule、Arduino IDE の board 検出、sigrok、その他多数。**`bcdDevice` まで見る実装は少ない** |
 | **3** | **generic な hardware ID が残る** | `USB\VID&PID`(REV 無し)も候補に並ぶ。**vendor INF をその generic ID に対して install すると全 build にかかる** → **INF を出すなら `&REV_` に対して書く** |
-| **4** | **未確認** | 「REV が hardware ID に入る」「class driver の binding は descriptor 駆動」はどちらも確立した挙動だが、**1 PID で descriptor が大きく違う device を混ぜたときの実挙動は測っていない** |
+| **4** | **前提が否定された(2026-09-10)** | 「REV が hardware ID に入る」は正しいが、**hardware ID は既存 devnode の再利用を防がない**。同一個体での切替は分離できない。別個体の同時接続は要実測 |
 
-→ **弱点 1・2 が本質的**。**「動くが、綺麗ではない」**。**pid.codes に複数申請できるならそちらが素直**([決めるために要る情報](#決めるために要る情報) 1)。
+→ **弱点 4 が決定的で、この手は採らない**。**pid.codes に複数申請できるならそちらが素直**([決めるために要る情報](#決めるために要る情報) 1)。同一 PID に留まるなら、分離手段は **interface 番号の固定 + 末尾追加(常に composite)** か **serial 規則**になる。
 
 ##### 設計規則(案)
 
 > **1. 能力が違っても descriptor が同じなら 1 PID でよい。**(`caps` が差を名乗る)
-> **2. descriptor が違う build には、`bcdDevice` を別に割り当てる。**(`REV` が hardware ID に入るので binding と `usbflags` が分かれる)
-> **3. serial は個体識別にだけ使う。**(descriptor の分離には使えない)
+> **2.(訂正)descriptor が違う build を同じ PID に置くなら、interface 番号と機能の対応を固定し、末尾追加だけを許す。親は常に composite。** `bcdDevice` を別に割り当てても Windows は分離しない。
+> **3.(訂正)serial は個体識別であると同時に Windows の instance 境界。** profile を serial に含める案は、個体識別を失う代償と引き換えに分離手段になる。
 
-**2 が「PID を増やさずに descriptor の違いを分離する」唯一安い手**。**PID は 1 個のまま、`bcdDevice` で descriptor 世代を分ける。** ただし上の弱点 1・2 を承知の上で。
+**「PID を増やさずに descriptor の違いを分離する安い手」は無かった。** 規則 2 の末尾追加方式は「単機能 profile を同じ PID の同一個体で切り替えられない」制約を伴う。採否は [E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md) の実測で決める。
+
+> ⚠ **2026-09-10 訂正: 以下 5 小節(割り方 / major の割当 / 弱点はどこまで残るか / 残る作業 / 使い道の衝突)は、`bcdDevice` が Windows の分離に効くという誤った前提の上に組んだ案。履歴として残すが採用しない。** `bcdDevice` に descriptor 世代を載せる付番自体は無害で、我々の client と udev が読める識別子としては残せる。ただし Windows 側では何も分けない。
 
 ##### `bcdDevice` の割り方(**綺麗に整理できる**)
 

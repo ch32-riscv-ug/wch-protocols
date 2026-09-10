@@ -1,6 +1,8 @@
 # harness を通る信号の分離 — 論理 IF と物理 IF
 
 状態: **整理**(帯域は理論値と概算。実測は未)。
+
+> ⚠ **2026-09-10 訂正**: 本文中の「`bcdDevice` の major が変わる」は「descriptor 世代(interface 構成)が変わる」の略記として読む。**`bcdDevice` は Windows の device instance identity に入らず、descriptor 世代を分離する機構にはならない**([choices §2](harness-choices.ja.md) の訂正、[usb-host-descriptor-persistence](usb-host-descriptor-persistence.ja.md))。「descriptor が増えると別 profile になる」という結論は変わらない。分離手段は [E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md) で決める。
 基準日: 2026-09-07
 
 **問い**: harness を通る信号をどう分離するか。最小構成(UART / HID)では **1 本の物理 IF に複数の論理 IF が同居する**。そのとき **素の UART が使えなくなる / HID だと遅い**といった制限は何か。
@@ -937,9 +939,9 @@ OUT: 1 + n     ≤ 15  →  制約にならない
 | 逃げ道 | 中身 |
 |---|---|
 | **他人の PID で済む場合がある** | **RP2040 の UF2 BL は RPi の `2E8A:0003`**、Adafruit の BL は Adafruit の PID。**我々の PID を消費しない**。→ **自前で BL を書かない限り 0 コスト** |
-| **同じ PID を `bcdDevice` major で分ける** | **BL と APP は同時に存在しない**(片方が reboot して他方になる)ので、**同時 binding の衝突が起きない**。**Windows は interface class で driver を選ぶ**(MSC → `usbstor` / HID → HID driver)うえ、**hardware ID が REV で分かれる** → **綺麗に共存する** |
+| **同じ PID を `bcdDevice` major で分ける** | **✗ 訂正(2026-09-10)**: BL(MSC 単機能)と APP(composite)が **同じ VID:PID + serial** なら、Windows は同じ devnode を再利用し、`bcdDevice` が違っても driver を選び直さない。同時に存在しないことは助けにならない。分けるには **PID か serial を変える** |
 
-⚠ **2 つ目は [choices §2 の `bcdDevice` 方式](harness-choices.ja.md)がそのまま効くケース**。**LinkE の IAP と factory ISP が同じ `4348:55E0` を共有して衝突している**(N4 の実例)のに対し、**bcdDevice を分ければその衝突が起きない**。→ **`MSC のみ` の BL は独自 PID を新たに要求しない。**
+⚠ **2 つ目は [choices §2 の `bcdDevice` 方式](harness-choices.ja.md)がそのまま効くケース**。**LinkE の IAP と factory ISP が同じ `4348:55E0` を共有して衝突している**(N4 の実例)のに対し、**訂正: `bcdDevice` を分けてもこの衝突は解けない**。→ **`MSC のみ` の BL に独自 PID が不要なのは、他人の BL(RPi / Adafruit の PID)をそのまま使う場合だけ。**
 
 ### 6h.1g **`MSC + HID` という手もある**
 

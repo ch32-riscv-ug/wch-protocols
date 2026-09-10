@@ -238,7 +238,7 @@ OpenOCD remote-bitbangやXilinx Virtual Cableもbackendの動作確認には便�
 
 ## USB実装に関する成立条件
 
-両Arduino coreともnative USB deviceを利用できるが、OEPのdescriptor profileと`bcdDevice`実証には差がある。
+両Arduino coreともnative USB deviceを利用できるが、OEPのdescriptor profile実証には差がある。
 
 ### ESP32-S3
 
@@ -250,7 +250,7 @@ ESP32-S3ではUSB-OTGと内蔵USB-Serial-JTAGが同じ内部PHYを共有する�
 
 [Arduino-Pico USB documentation](https://arduino-pico.readthedocs.io/en/latest/usb.html)はPico SDK USB stackとAdafruit TinyUSBを選択でき、VID/PIDやvendor interfaceを構成できることを示している。
 
-ただし現行coreの[USB.cpp](https://github.com/earlephilhower/arduino-pico/blob/master/cores/rp2040/USB.cpp)ではdevice descriptorの`bcdDevice`が`0x0100`に固定されており、公開setterが見当たらない。OEPが`bcdDevice`をdescriptor profile IDに使うには、次のいずれかが必要になる。
+ただし現行coreの[USB.cpp](https://github.com/earlephilhower/arduino-pico/blob/master/cores/rp2040/USB.cpp)ではdevice descriptorの`bcdDevice`が`0x0100`に固定されており、公開setterが見当たらない。`bcdDevice`をprofile IDに使う案は2026-09-10に撤回した([調査結果](usb-host-descriptor-persistence.ja.md))ため、これはfirmware版の表示に関わる軽い制約になった。設定したい場合は次のいずれかが必要になる。
 
 - Arduino-Picoへ設定APIをupstream提案する
 - OEP buildでdescriptor callbackを差し替える
@@ -275,7 +275,7 @@ ESP32-S3とPicoのGPIOは3.3 V系であり、開発boardをそのまま汎用の
 
 | 段階 | 実装 | 合格条件 |
 |---|---|---|
-| 0 | USB identity、capabilities、descriptor profile | 両boardを同じclientで列挙できる。Picoで`bcdDevice`を変更できる |
+| 0 | USB identity、capabilities、descriptor profile | 両boardを同じclientで列挙できる。profile分離規則(E062で決定)を両coreで実装できる |
 | 1 | GPIO/reset、UART | 両probeから別のESP32 targetのROM bootloaderへ接続し、chip情報を取得できる |
 | 2 | SWD低速backend | 両probeからPico targetのDP IDCODEを同じcommandで取得できる |
 | 3 | SWD batch | DP/AP transferとmemory readを、bitごとのhost往復なしで実行できる |
@@ -303,7 +303,7 @@ flash書込み、breakpoint、GDB server、全targetのdebug algorithmは、こ�
 
 実装開始前後に、次を事実で閉じる必要がある。
 
-1. Arduino-Picoでcoreの恒久forkなしに`bcdDevice`を設定できるか
+1. Arduino-Picoでcoreの恒久forkなしにdescriptor profileの分離規則(interface番号の固定、必要ならserial規則)を実装できるか
 2. 両coreで採用候補のUSB composite profileを同じOS群へ安定して列挙できるか
 3. Arduino-ESP32 buildから必要なESP-IDF low-level APIを安定して利用できるか
 4. USB処理やFreeRTOS interrupt下でもSWD/JTAG timingを守れるbackend境界を作れるか

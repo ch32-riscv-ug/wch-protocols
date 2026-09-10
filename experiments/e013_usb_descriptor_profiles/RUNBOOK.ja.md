@@ -2,6 +2,8 @@
 
 状態: **実行前手順**。実験計画は[README.ja.md](README.ja.md)を参照する。
 
+⚠ E013は2026-09-10に中断した([README](README.ja.md)「中断」節)。この手順は[E062](../e062_usb_same_identity_layout_change/README.ja.md)が機材、identity、準備、build、書込み、Linux基準記録の部分を引き継ぐ。sequenceとclean state手順はE062側に書く。
+
 ## 1. 使用する機材
 
 - この実験専用のESP32-S3 board 1枚

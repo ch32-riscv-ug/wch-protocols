@@ -126,6 +126,8 @@
 
 → **PID の観点だけで見ると、probe は RP2040 / ESP32 に寄せ、CH32 は「UART / 既存 bridge 経由」または「Arduino app の PID を優先」に倒れる。** これは **[定義 §5.6](harness-tool-definition.ja.md) の「probe としての V003 は価値が高い」と正面から衝突する**。
 
+**⚠ 2026-09-10 再訂正**: 次段落の「`bcdDevice` で分けられる」は誤り。`bcdDevice` は Windows の device instance identity に入らず、同一個体で単機能↔composite を切り替えると既存 devnode が再利用される。**元の「V003 を入れると同一個体上ではそこで固定される」が成り立つ**。別個体(別 serial)としての共存だけが残る(→ [usb-host-descriptor-persistence](usb-host-descriptor-persistence.ja.md)、[choices §2](harness-choices.ja.md) の訂正)。
+
 **⚠ ただし「V003 を入れると 1 PID が固定される」は言い過ぎだった(訂正)。** **`bcdDevice`(REV)は hardware ID に入る**ので、**build ごとに `bcdDevice` を分ければ、HID 単機能の V003 と composite の RP2040 を同じ PID で共存させられる見込み**(**serial では分離できない** — instance ID であって hardware ID ではない)。**固定されるのは「同じ `bcdDevice` を共有する build 群」だけ。** → [choices §2](harness-choices.ja.md)。**代償は「USB 仕様の趣旨から外れる」「VID:PID だけ見るツールが区別できない」の 2 点**で、**未確認**。
 
 **逃げ道は 3 つ(どれも代償がある)**:
@@ -151,7 +153,7 @@
 
 | 届かないもの | 調整で消えるか |
 |---|:--:|
-| **PID が 1 個しか無い(CH32 上の自前 USB)** | **△ 見込みは変わった。** 制度としては消えないが、**`bcdDevice` の major を descriptor 世代に割り当てれば、1 PID で mode / silicon / descriptor 世代を分離できる見込み**(→ [choices §2](harness-choices.ja.md)「`bcdDevice` の割り方」)。**実機確認が最優先** |
+| **PID が 1 個しか無い(CH32 上の自前 USB)** | **✗ 見込みは戻った(2026-09-10 再訂正)。** 制度としては消えず、**`bcdDevice` の major で descriptor 世代を分離する案は Windows の instance identity に効かないため撤回**。残る分離手段は interface 番号の固定 + 末尾追加、serial 規則、別 PID(→ [choices §2](harness-choices.ja.md)「`bcdDevice` の割り方」)。**実機確認が最優先** |
 | **V003 の BOOT 領域(1,920 B)** | **✗ 消えない**(容量は増えない) |
 | **M030 の BOOT 領域(存在しない)** | **✗** |
 | V103 の BOOT 領域(2 分割) | ✗(構造) |
@@ -168,6 +170,8 @@
 **確定して届かないのは 8 件**、**測れば分かるのが 2 件**、**待てば届くのが 1 件**。
 
 **そのうち PID だけが性質が違う。** 他の 7 件は「その対象に届かない」だけだが、**PID は「どの silicon を probe に選ぶか」を歪める**(§4.3)。
+
+**⚠ 2026-09-10 再訂正**: 次段落の `bcdDevice` 案は撤回した。`bcdDevice` は Windows の instance identity に入らず、PID の壁は下がらない(→ [usb-host-descriptor-persistence](usb-host-descriptor-persistence.ja.md))。
 
 **⚠ ただし `bcdDevice` の major を descriptor 世代に使う案が出たので、PID の壁は下がる見込み**(→ [choices §2](harness-choices.ja.md))。**`major = 破壊的変更` は semver / USB 仕様の趣旨と一致する**ので hack ではなく、**実害が残るのは「VID:PID しか見ない自動検出」だけ**。**実機で混ぜて確認するのが最優先の実験。**
 
