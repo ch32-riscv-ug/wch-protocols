@@ -438,7 +438,7 @@
 | CDC の本数 / 割当 / 混合 | **`caps` の申告値 + 実行時 `configure`**。→ [channels 補足 I](harness-channels.ja.md) |
 | `batch` の op 集合、busy 再試行の所在、timeout、`max_inflight` | draft にある。実測で詰める |
 | `cmd` 番号範囲、event の番号 | 実装時 |
-| `bcdDevice` の BCD 分割の細部 | 実装時 |
+| descriptor profile の分離手段(PID / serial / interface 番号固定)。`bcdDevice` 案は 2026-09-10 に撤回 | E062 の結果で決める |
 
 ### 本質的に残っている(**大枠の判断**)
 
@@ -447,7 +447,7 @@
 | **1** | **`trace`(波形)を作るか** | **`U1`〜`U5` の全部**、段の L5〜L8 と L10、不満 6 件のうち 4 件。**この道具の性格そのもの**(§9.6-2)。⚠ **2026-09-07: 論点 3 が上流かもしれない** — **`emu` を作ると capture の要求が下がり**(decode 済みデータが 1/1000 の帯域で得られる)、**trigger の難所も `emu` が引き取る**(protocol 条件は PIO では作れないが emu なら自然に取れる)。→ [virtual-if §10 / §11](harness-virtual-if.ja.md) |
 | **2** | **時刻を持つ 4 つ(波形 / 意味イベント / DMI 実行印 / ADC)を 1 本の列にまとめるか** | **`U1`(意味イベントが確定値)の成否**。→ [channels §1.3](harness-channels.ja.md) |
 | **3** | **相手役(`emu`)をどこまで持つか** | 器だけ / 模型も積む。**PIO I2C slave が通るかに依存**。⚠ **論点 1 より上流の可能性**(→ 上記) |
-| **4** | **どの MCU を probe にするか** + **`bcdDevice` major の割り方** | 到達できる段 / PID の消費 / 拡張余地 |
+| **4** | **どの MCU を probe にするか** + **descriptor profile の分離手段**(`bcdDevice` 案は 2026-09-10 に撤回) | 到達できる段 / PID の消費 / 拡張余地 |
 | **5** | **どの target series を覆うか** | **実在する穴は L103 と V103 の 2 つ**。残り 9 は未発売 |
 | **6** | **方向性 A / B / C**(標準先行 / 統合先行 / 一本化) | 何を最初に出すか(§6) |
 | **7** | **既存 firmware との関係**(互換モードを持つか) | **我々の host が完成する前に価値が出るか** |

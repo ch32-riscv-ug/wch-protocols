@@ -10,8 +10,8 @@
 | MCU非依存でPIDを取得できるか | **候補あり** | Openmokoとpid.codesが候補 |
 | 一つのPIDを複数hardwareで使えるか | **見込みあり・要確認** | OpenmokoはhardwareごとにPIDを取らないよう明記 |
 | 第三者の準拠実装も同じPIDを使えるか | **未確認** | 割当団体へ利用範囲の確認が必要 |
-| `bcdDevice`のprofile数は足りるか | **問題なし** | `0000`を予約しても9,999 profile |
-| Windowsで異なるprofileが安全に共存するか | **未実証** | 実機試験が必要 |
+| `bcdDevice`でprofileを分離できるか | **否定** | Windowsのdevice instance identityに`bcdDevice`は含まれない。一次資料とコミュニティ観測で否定([調査結果](usb-host-descriptor-persistence.ja.md)) |
+| 同一PIDで異なるprofileがWindowsで安全に共存するか | **未実証** | 分離手段の候補はPID、serial、interface番号の固定。[E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md)で判定する |
 | 現在のrepositoryでの企画終了条件 | **定義** | Windowsでprofile分離を判定し、Linuxでdescriptorと各interfaceの基本動作を確認する |
 
 ## Gate 0 — project名と公開場所
@@ -65,94 +65,74 @@ Openmokoは、一つのsoftwareが対応するhardwareごとにPIDを要求せ�
 - [pid.codes: How to get a PID](https://pid.codes/howto/)
 - [pid.codes: About](https://pid.codes/about/)
 
-## Gate 2 — `bcdDevice`をprofile番号として使えるか
+## Gate 2 — 同一PIDで異なるdescriptor profileを共存させられるか
 
-Windowsは`idVendor`、`idProduct`、`bcdDevice`からrevision付きhardware IDを生成し、`usbflags`もVID・PID・revision単位で保持する。このため、同じVID:PIDで異なるdescriptor構成を区別する値として`bcdDevice`を利用できる見込みがある。
+当初は、Windowsが`idVendor`、`idProduct`、`bcdDevice`からrevision付きhardware IDを生成することを根拠に、`bcdDevice`をprofile分離の鍵にする案を立てていた。2026-09-10の再調査でこの根拠は否定された。詳細は[USB descriptor変更に対するhostの挙動](usb-host-descriptor-persistence.ja.md)にある。
 
-ただしWindowsはrevisionを含まない汎用hardware IDも生成する。`bcdDevice`を変えれば常に完全分離できるとはまだ断定せず、driver bindingとdescriptor cacheを実機で確認する。
+一次資料で確認した事実:
 
-根拠:
+- Windowsのdevice instance IDは`USB\VID_xxxx&PID_yyyy\<serial>`(serialがなければport由来)で、composite childは`USB\VID_xxxx&PID_yyyy&MI_nn\...&00nn`である。`bcdDevice`はhardware ID(`REV_rrrr`)にだけ現れ、instance IDには入らない
+- WindowsはEnumキーの有無で「以前installされたdeviceか」を判定し、新規のdeviceだけをゼロから構成する
+- `usbflags\VVVVPPPPRRRR`が`bcdDevice`単位なのは、MS OS 1.0 string descriptorの応答cache(`osvc`)である。MS OS 2.0にはこの単位のcacheはない
 
-- [Microsoft: USB device descriptors](https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/usb-device-descriptors)
-- [Microsoft: Standard USB identifiers](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/standard-usb-identifiers)
-- [Microsoft: USB device registry entries](https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/usb-device-specific-registry-settings)
+コミュニティ観測(Microsoft文書には記述がない):
 
-### profile数
+- 同じinstanceが異なるinterface構成で再出現すると、既存devnodeとdriverが再利用され、driver選択はやり直されない。単機能→compositeでusbccgpが載らず、uninstallだけが解決した報告がある。`bcdDevice`を変えても解消しなかった報告がある
+- TinyUSB、Teensy、ArduPilotは「interfaceの組合せごとに別PID」を採用している
+- Windows 10では再現しなかったという報告もあり、Windows 11の実挙動は実測が必要である
 
-`bcdDevice`は16 bitだが、USB上は4桁のpacked BCDとして扱う。各桁に`0`から`9`を使えるため、有効な値は理論上`0000`から`9999`までの**10,000通り**になる。
+したがって、同一PIDで複数profileを共存させる鍵は`bcdDevice`ではなく、**device instance identity(PID、serial)とinterface番号(`MI_nn`)** である。
 
-`0000`を未割当として予約する場合、利用可能なのは**9,999 profile**である。
+### 分離手段の候補
 
-連番は二進数ではなくBCDとして進める。
+| 手段 | Windowsでの効き方 | 代償 |
+|---|---|---|
+| **interface番号と機能の対応を固定し、末尾追加だけ許す** | 既存childのdevnodeが同じ機能を保つので、再利用されても害にならない見込み。親は常にcomposite(usbccgp)にする | 単機能profile(low-speed HIDなど)を同じPIDの同一個体で切り替えられない。削除したfunctionはghost devnodeとCOM番号予約を残す |
+| **profileごとにPIDを分ける** | 別device IDなので完全に分離する。developerの通例 | PIDを複数申請する。割当団体への説明が増える |
+| **serialにprofile識別を含める** | 別instanceになりdriver選択をやり直す | 同じ個体が別deviceに見える。COM番号やper-device設定が引き継がれない |
+| `bcdDevice`を分ける | **効かない**。MS OS 1.0 descriptorを使う場合の`osvc` cache分離のみ | — |
 
-```text
-0001, 0002, ... 0009, 0010, 0011, ... 9999
-```
-
-`000A`のようにBCDでない値は割り当てない。
-
-## Gate 3 — `bcdDevice`をどう管理するか
-
-`bcdDevice`には機能の意味を符号化しない。単なる不透明なdescriptor profile番号として、registryから連番で割り当てる。
-
-- hostは`bcdDevice`から機能を逆引きしない
-- hostは実際のUSB descriptorから利用可能なUSB経路を判断する
-- probeの機能はprotocol上のcapability discoveryで判断する
-- firmware versionやMCUの種類では`bcdDevice`を変えない
-- 外部に見えるdescriptor構成が変わる場合だけ、新しい値を割り当てる
-- 一度公開した値は変更・再利用しない
-
-registryは「番号から機能を調べる表」ではなく、firmware作成時と適合確認時に、出力するdescriptorに対応する番号を選ぶための管理表になる。通常のclient動作はregistryに依存しない。
-
-最低限、各entryは次だけを持てばよい。
-
-| 項目 | 内容 |
-|---|---|
-| `bcdDevice` | BCD連番 |
-| profile名 | 人間向けの短い識別名 |
-| descriptor定義 | 外部へ提示するUSB構成の正本 |
-| 状態 | draft / active / retired |
-
-新しい番号が必要になるdescriptor差分の境界は別途定義する必要がある。少なくともclass、interface、endpoint、HID report等、OSの列挙・binding・cacheへ影響する変更を対象にする。
+LinuxとmacOSには永続cacheがなく、どの手段でも再認識される。制約は命名(`/dev/serial/by-id`の`-ifNN`、`/dev/cu.usbmodem<serial><if>`)とModemManagerのAT probe(CDC `bInterfaceProtocol` 1〜6)である。
 
 ### 通過条件
 
-- HID-only構成とHID + vendor-specific + CDC ACM × 1のcomposite構成に異なる`bcdDevice`を割り当てる
-- 同じVID:PIDのままWindowsへ交互・同時接続する
-- descriptor、driver binding、COM port、再接続が混線しないことを確認する
-- revisionなしhardware IDによる誤bindingがないことを確認する
-- LinuxとmacOSでも同じ構成を確認する
+- 上記の手段のうち採用するものを、E062の実測結果に基づいて一つ決める
+- 採用した手段で、単機能相当のprofileとcomposite、compositeへの末尾追加が、Windows 11で混線せずに列挙・通信できる
+- Linuxでraw descriptorと各interfaceの基本通信が成立する
+- cache削除、driver手動置換、接続順依存を通常手順として要求しない
 
-この試験を通過するまで、`bcdDevice`方式は**有力な設計案**であり、確定した前提とはしない。
+### 実験
 
-### 最初のWindows実験
+[E013](../experiments/e013_usb_descriptor_profiles/README.ja.md)は`bcdDevice`による分離を問いにしていたため中断し、問いを立て直した[E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md)へ引き継いだ。E062は同一VID:PID・同一serialで、単機能↔composite、末尾追加、interface番号の機能入替、`bcdDevice`のみ変更、serialのみ変更の各条件を測る。firmwareとhost toolはE013のものを拡張する。
 
-ESP32-S3の現行USB device libraryで構成できる範囲を使い、二つの試験用profileを作る。
+### 失敗した場合
 
-実験計画、firmware、host test、実行手順は[E013 USB descriptor profile分離](../experiments/e013_usb_descriptor_profiles/README.ja.md)に置く。
+どの手段でも同一PID内でprofileを安定して分離できない場合、または末尾追加だけでは必要なprofileを表現できない場合は、descriptor構成ごとに別PIDを申請する方針へ戻す。cache削除を通常手順にしたり、接続順へ依存させたりして通過扱いにはしない。
 
-| 項目 | Profile A | Profile B |
-|---|---|---|
-| USB interface | HIDのみ | HID + vendor-specific + CDC ACM × 1 |
-| VID:PID | 同一の試験値 | Profile Aと同一 |
-| `bcdDevice` | `0001` | `0002` |
-| product string | 同一 | 同一 |
-| serial number | 同じ物理boardでは維持 | 同じ物理boardでは維持 |
+## Gate 3 — descriptor profileをどう管理するか
 
-複数CDCへの対応完了を待つ必要はない。この二構成だけで、interface数、class、endpoint構成が異なるprofileを一つのPIDで切り替えられるかを検証できる。
+profileは外部に見えるUSB構成の定義であり、識別子はregistryの番号である。`bcdDevice`はこの番号を運ぶ場所として使わない。firmware版として通常どおり使い、descriptor構成が変わってもそれだけで変える必要はない。
 
-Windows 11のclean環境または試験用VMで、次を記録する。
+- hostはUSB descriptorの値から機能を逆引きしない
+- hostは実際のUSB descriptorから利用可能なUSB経路を判断する
+- probeの機能はprotocol上のcapability discoveryで判断する
+- 外部に見えるdescriptor構成が変わる場合だけ、新しいprofileを起こす
+- 一度公開したprofileのinterface番号と機能の対応は変更しない
+- 一度公開した番号は変更・再利用しない
 
-1. Profile Aを接続し、device descriptor、hardware ID、interface、driver bindingを保存する
-2. 同じESP32-S3をProfile Bへ書き換え、VID:PIDとserial numberを維持したまま再接続する
-3. HID reportの送受信、CDC COM portのopenと送受信、vendor-specific interfaceのopenと転送を確認する
-4. Profile Aへ戻し、誤ったinterfaceやdriver bindingが残らないことを確認する
-5. AとBを複数回切り替え、Windows再起動後とUSB port変更後にも再確認する
-6. 可能なら二台のboardへAとBを入れ、固有serial numberを与えて同時接続する
+registryは「番号から機能を調べる表」ではなく、firmware作成時と適合確認時に、出力するdescriptorがどのprofileに対応するかを確認する管理表である。通常のclient動作はregistryに依存しない。
 
-vendor-specific interfaceはdescriptorに現れるだけでは合格にしない。WinUSBへの自動binding、Microsoft OS descriptorの必要性、またはlibusb利用時の権限・driver条件を明記し、想定clientから実際にopenして転送できることを確認する。
+最低限、各entryは次を持つ。
 
-Microsoftの資料では、Windowsは`bcdDevice`をrevision付きhardware IDの`REV_xxxx`へ使用する。一方、composite interfaceにはrevisionを含まないhardware IDも生成される。このため、hardware IDに違いが見えることだけではなく、interfaceごとのdriverとdevice pathが期待どおり更新されることを合格条件とする。
+| 項目 | 内容 |
+|---|---|
+| profile番号 | 連番 |
+| profile名 | 人間向けの短い識別名 |
+| descriptor定義 | interface番号ごとのfunction、class、endpoint、IAD、HID reportの正本 |
+| 分離手段 | Gate 2で採用した手段に基づく、このprofileが使うPIDまたはserial規則 |
+| 状態 | draft / active / retired |
+
+新しいprofileが必要になるdescriptor差分の境界は別途定義する。少なくともclass、interface番号、endpoint、HID reportなど、OSの列挙・binding・永続化へ影響する変更を対象にする。
 
 ### OSごとの試験段階
 
@@ -160,26 +140,21 @@ Windowsだけでproject全体のUSB成立を宣言することはできない。
 
 | 段階 | OS | 目的 |
 |---|---|---|
-| 現在の企画終了gate | Windows 11 | `bcdDevice`変更時のcache、PnP identity、driver binding、COM portの分離を判定する |
+| 現在の企画終了gate | Windows 11 | 同一identityで構成を変えたときのdevnode再利用、driver binding、COM portの挙動を判定し、分離手段を決める |
 | 現在の企画終了gate | Linux | raw descriptorの比較と、HID・vendor-specific・CDCの基本送受信を確認する |
 | PID申請前の正式検証 | Windows 11、Linux、macOS | 公開するprofileについて列挙、再接続、同時接続、各interfaceの通信を確認する |
 
-Linuxはraw descriptorを取得しやすく、Windowsで問題が起きたときにfirmwareのdescriptor不良とWindows固有のbinding/cache問題を切り分ける基準になる。このため現在のgateにも含める。
+Linuxはraw descriptorを取得しやすく、Windowsで問題が起きたときにfirmwareのdescriptor不良とWindows固有のbinding問題を切り分ける基準になる。このため現在のgateにも含める。
 
-macOSも最終的には必須とするが、`bcdDevice`を用いる中心仮説の最初の判定を止める条件にはしない。利用できる実機があれば同時に試験し、なければcanonical repositoryへ移動後、PID申請前までに閉じる。Windows 10や複数Linux distributionは互換性を広げる追加試験とし、最初の必須matrixには含めない。
+macOSも最終的には必須とするが、最初の判定を止める条件にはしない。利用できる実機があれば同時に試験し、なければcanonical repositoryへ移動後、PID申請前までに閉じる。Windows 10や複数Linux distributionは互換性を広げる追加試験とし、最初の必須matrixには含めない。
 
 根拠:
 
+- [USB descriptor変更に対するhostの挙動](usb-host-descriptor-persistence.ja.md)(一次資料の一覧を含む)
 - [Microsoft: Standard USB identifiers](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/standard-usb-identifiers)
+- [Microsoft: Instance IDs](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/instance-ids)
+- [Microsoft: USB device registry entries](https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/usb-device-specific-registry-settings)
 - [Microsoft: USB composite interface collections](https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/support-for-interface-collections)
-
-### 失敗した場合
-
-`bcdDevice`だけでは安定してprofileを分離できない場合、このprojectの中心仮説が一つ否定されたことになる。cache削除を通常手順にしたり、接続順へ依存させたりして通過扱いにはしない。次のいずれかへ設計を戻す。
-
-- 一つのPIDで許可するdescriptor構成を一つに固定する
-- descriptor構成ごとに別PIDを申請する
-- Windowsが安定して識別できる別のprofile識別方法を調査する
 
 ## Gate 4 — 現在のrepositoryで企画を終了する条件
 
@@ -189,7 +164,7 @@ macOSも最終的には必須とするが、`bcdDevice`を用いる中心仮説�
 
 - core conceptと非目標
 - PID割当経路とlicense方針
-- descriptor profileと`bcdDevice`管理案
+- descriptor profileと分離手段の管理案
 - ESP32-S3によるProfile A/Bの最小USB firmware
 - Windows上のdescriptor、hardware ID、driver binding、通信試験記録
 - Linux上のraw descriptorと各interfaceの基本通信記録
@@ -212,7 +187,7 @@ Gate 4通過後は企画を無制限に広げず、次の作業を`Open-Embedded
 
 1. PID候補は**Openmokoを第一候補、pid.codesを第二候補**とする。
 2. 申請前に「一つのPIDを複数descriptor profileと第三者実装で共有する」利用方法を説明し、可否を確認する。
-3. `bcdDevice`は意味を持たないBCD連番とし、機能の逆引きには使わない。
+3. `bcdDevice`はprofile分離の手段にしない。firmware版として通常どおり使い、hostは機能の逆引きに使わない。
 4. descriptor profile registryはfirmware作成と適合確認に使い、通常のclient動作には使わない。
 5. Windows、Linux、macOSの実機試験をPID申請前の必須ゲートにする。
 6. 現在のrepositoryでの企画はWindowsのprofile分離、Linuxの基本試験と方針決定までとし、完成実装は専用organizationへ移す。

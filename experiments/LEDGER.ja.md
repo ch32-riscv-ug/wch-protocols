@@ -29,7 +29,7 @@
 | **E010** | 1 つの実験ファイルに複数のテスト関数を置けるか。置けないならその制約は何によるか | **常設 v0 + v1** | [README.ja.md §1.3](README.ja.md) | **完了**([e010_dut_scope/](e010_dut_scope/README.ja.md)) |
 | **E011** | `test_` を付けない規約は、実験が 10 本を超えた実プロジェクトでも誤爆から守れているか | **常設 v0**(実機なし) | [README.ja.md §1.3](README.ja.md) | **完了**([e011_collection_guard/](e011_collection_guard/README.ja.md)) |
 | **E012** | 銘板の版情報を conftest から build 時に自動で埋められるか。再ビルドのコストは | **常設 v0**(実機なし) | [README.ja.md §5](README.ja.md) | **完了**([e012_banner_autofill/](e012_banner_autofill/README.ja.md)) |
-| **E013** | 同一VID:PID・異なる`bcdDevice`でHID-onlyとHID + Vendor + CDC × 1をWindowsが分離でき、Linuxでも各経路が通信できるか | **一時・専用機材**(別途用意するESP32-S3 native USB、Windows 11、Linux) | [probe-feasibility-gates](../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 4 | **計画**([e013_usb_descriptor_profiles/](e013_usb_descriptor_profiles/README.ja.md)) |
+| **E013** | 同一VID:PID・異なる`bcdDevice`でHID-onlyとHID + Vendor + CDC × 1をWindowsが分離でき、Linuxでも各経路が通信できるか | **一時・専用機材**(別途用意するESP32-S3 native USB、Windows 11、Linux) | [probe-feasibility-gates](../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 4 | **中断 — 前提を机上調査で反証、E062へ**([e013_usb_descriptor_profiles/](e013_usb_descriptor_profiles/README.ja.md)) |
 | **E014** | ESP32-P4で8本のGPIOをLEDC出力に使ったまま、同じGPIOをPARLIO RXへ接続して配線なしで同時captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **中断 — 選んだ初期化方法は反証**([e014_p4_parlio_internal_capture/](e014_p4_parlio_internal_capture/README.ja.md)) |
 | **E015** | `io_loop_back`を使わず入力だけを追加するか、PARLIO→LEDCの順にすれば、同じ8 GPIOでLEDC PWMとPARLIO RXを共存できるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了**([e015_p4_parlio_routing_order/](e015_p4_parlio_routing_order/README.ja.md)) |
 | **E016** | Arduino環境からESP-IDF PARLIO driverを直接呼び、有限長PARLIO RXのDMA先をPSRAMにして8-bit captureできるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [Arduino向けprobe protocol実現性](../references/arduino-probe-protocol-feasibility.ja.md) logic capture候補 | **完了 — 直接DMA成立、cache警告あり**([e016_p4_parlio_psram_direct/](e016_p4_parlio_psram_direct/README.ja.md)) |
@@ -78,6 +78,7 @@
 | **E059** | window中のdrain低下はmemcpy自体が遅いのか(memory競合)、memcpyに使える時間が減るのか(ISR overhead) | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — memcpy帯域は一定、原因は1 chunkあたり固定cost**([e059_p4_drain_breakdown/](e059_p4_drain_breakdown/README.ja.md)) |
 | **E060** | 1 chunkあたりの固定costは`xQueueReceive`のまとめ取りと連続chunkのmemcpyまとめで下がるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — どちらも効かず、固定costはISRが支配**([e060_p4_drain_batch_coalesce/](e060_p4_drain_batch_coalesce/README.ja.md)) |
 | **E061** | PARLIOのISRが走るcoreとmemcpyするcoreを分けると、window中のdrain帯域は上がるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — core分離でdrainが82.3→119.7 MB/s**([e061_p4_drain_core_split/](e061_p4_drain_core_split/README.ja.md)) |
+| **E062** | 同一VID:PID・同一serialでinterface構成(HID単機能↔composite、末尾追加、interface番号の機能入替)を変えたとき、Windows 11はどの切替で既存devnodeとdriverを再利用するか。`bcdDevice`のみ・serialのみの変更は結果を変えるか。Linuxは全条件で再認識するか | **一時・専用機材**(E013と同じESP32-S3 native USB、Windows 11、Linux) | [probe-feasibility-gates](../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 4、[usb-host-descriptor-persistence](../references/usb-host-descriptor-persistence.ja.md) | **計画**([e062_usb_same_identity_layout_change/](e062_usb_same_identity_layout_change/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -216,6 +217,21 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **未決**: trigger を frame 化(magic+len+CRC)しても 1 発で通るか / reset 後 1 秒未満に撃った場合の挙動(候補 `uart-dtr-reset`)。
 
 **反映**: 規則 §4.1(共有機材)・§7(実機実験の型)を更新。[ecosystem-any-hardware §4.5](../references/ecosystem-any-hardware.ja.md) と [dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) に実測の裏付けを追記。
+
+### E013 ESP32-S3: USB descriptor profile分離 — 中断 2026-09-10
+
+全文: [e013_usb_descriptor_profiles/README.ja.md](e013_usb_descriptor_profiles/README.ja.md)「中断」節。実機は走らせていない。根拠: [usb-host-descriptor-persistence](../references/usb-host-descriptor-persistence.ja.md)。
+
+**事実**(机上調査)
+
+1. Windowsのdevice instance IDは`USB\VID&PID\<serial>`(composite childは`&MI_nn`)で、`bcdDevice`は含まれない。一次資料(Microsoft Learn)で確認。
+2. 既存instanceが異なるinterface構成で再出現すると既存devnodeとdriverが再利用される観測が複数あり、`bcdDevice`変更では解消しなかった報告がある。Microsoft文書には記述がない。
+3. LinuxとmacOSには永続cacheがなく、接続ごとにdescriptorを読み直す(kernel source、Apple文書で確認)。
+4. Arduino-ESP32 3.3.11はCDC + WebUSBでdevice classを`02/02/00`へ強制し、E013 Profile Bはこの対象。
+
+**候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
+
+**未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
 
 ### E061 ESP32-P4: 回収を別coreへ移すとdrainは上がるか — 完了 2026-09-09
 

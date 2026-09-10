@@ -33,9 +33,9 @@ protocolの利用とproject PIDの利用は分けて扱う。共通PIDを使用�
 
 ## USB descriptor profile
 
-Windows等はUSB descriptorとdriver bindingをdevice identityに関連付けて保持する。このため、同じVID:PIDと`bcdDevice`で異なるdescriptorを返す構成は安全に共存できない。
+WindowsはUSB deviceのdriver bindingをdevice instance(VID:PID + serial number。composite childではさらにinterface番号)に紐づけてregistryへ永続化し、同じinstanceが再出現すると既存のdevnodeとdriverを再利用する。`bcdDevice`はこのidentityに含まれない。このため、同じVID:PIDとserialのまま単機能とcompositeを切り替えたり、既存interface番号の機能を変えたりする構成は安全に共存できない。LinuxとmacOSにはこの永続化がなく、接続ごとにdescriptorを読み直す。詳細は[USB descriptor変更に対するhostの挙動](usb-host-descriptor-persistence.ja.md)を参照する。
 
-本protocolでは、`bcdDevice`を **USB descriptor profileの識別子**として利用する。descriptor構成が異なる場合はprofileを分け、同じ構成では同じprofileを使う。firmware versionや実際の機能はUSB descriptorではなくprotocol上で取得する。
+本protocolでは、外部に見えるinterface構成を **USB descriptor profile** として定義し、descriptor構成が異なる場合はprofileを分け、同じ構成では同じprofileを使う。profileを何で分離するか(PID、interface番号の固定と末尾追加、serial)は[実現性ゲート](probe-feasibility-gates.ja.md)のGate 2で実機によって決める。当初案の`bcdDevice`による分離は、上記の理由で2026-09-10に有力案から外した。firmware versionや実際の機能はUSB descriptorではなくprotocol上で取得する。
 
 profileは外部に見えるUSB interfaceの構成だけを定義する。候補には次のような違いがある。
 

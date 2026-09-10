@@ -24,18 +24,18 @@ Open Embedded Probeに対して、OSS向けVIDを管理する団体からproject
 | 0. projectの入口を作る | GitHub Organization、canonical repository、短い説明 | `Open-Embedded-Probe`から仕様、実装、client、利用条件へ到達できる |
 | 1. 公開条件を決める | LICENSE、PID利用方針、contribution方針 | project codeのlicenseと、PIDを利用できるfirmwareのFOSS license要件が読める |
 | 2. 最小protocolを固定する | identity、capability discovery、UART/GPIO、SWD、JTAG、extension規則、transport境界 | 二つのfirmwareとclientが同じ記述を参照して実装できる |
-| 3. USB identityを固定する | descriptor profile registry、`bcdDevice`割当規則、Windows/Linux先行実験 | Windowsでprofile分離を判定し、Linuxでdescriptorと各interfaceの基本動作を確認する |
+| 3. USB identityを固定する | descriptor profile registry、profile分離手段の規則、Windows/Linux先行実験 | 同一PIDで構成が異なるprofileをWindowsが分離できる条件を判定し、Linuxでdescriptorと各interfaceの基本動作を確認する |
 | 4. Python clientを公開する | source、`pyproject.toml`、`uv`での実行手順 | clone後にbuild済み専用binaryなしで列挙と基本操作ができる |
 | 5. Raspberry Pi Pico実装を公開する | firmware source、build/書込手順、license | 実機が列挙され、clientからidentity、capabilities、基本操作を確認できる |
 | 6. ESP32-S3実装を公開する | firmware source、build/書込手順、license | Picoと同じclient操作が成立し、MCU非依存性を示せる |
-| 7. USB profileを実証する | OS別の列挙・再接続試験記録 | 同一VID:PID候補と異なる`bcdDevice`の構成がWindowsで混線せず、LinuxとmacOSでも列挙・通信できる |
+| 7. USB profileを実証する | OS別の列挙・再接続試験記録 | 同一VID:PID候補の公開profile群がWindowsで混線せず、LinuxとmacOSでも列挙・通信できる |
 | 8. 再現可能なデモを固定する | release tag、端末transcript、接続図、既知の制限 | 第三者がREADMEの順に実行して二つのprobeを比較できる |
 | 9. 申請内容をreviewする | 申請文案、source URL、license一覧、希望する利用範囲 | 複数MCU、複数profile、第三者実装によるPID利用を隠さず説明できる |
 | 10. PIDを申請する | Openmoko registryへのPR | reviewerの確認を経てPIDがregistryへmergeされる |
 
 Step 2でprotocol全体を完成させる必要はない。申請に使う二つの実装が相互運用でき、未知のserviceを追加できる最小の拡張境界があればよい。
 
-現在の`wch-protocols`で行う企画と実験は、Step 3のWindows profile分離試験とLinux基本試験までとする。ESP32-S3でHID-onlyとHID + vendor-specific + CDC ACM × 1を同一VID:PID・異なる`bcdDevice`として切り替え、成立可否を決定する。Step 7では、この先行判断を正式なreference firmwareによってWindows、Linux、macOSで再検証する。その間のprotocol、reference firmware、client実装は`Open-Embedded-Probe` organizationのcanonical repositoryで進める。詳細な終了条件は[Probe protocol実現性ゲート](probe-feasibility-gates.ja.md)のGate 4を参照する。
+現在の`wch-protocols`で行う企画と実験は、Step 3のWindows profile分離試験とLinux基本試験までとする。ESP32-S3でHID-onlyとHID + vendor-specific + CDC ACM × 1などを同一VID:PID・同一serialで切り替え、Windowsがdevnodeとdriverをどう扱うかを実測して分離手段を決定する([E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md))。当初の`bcdDevice`による分離案は、Windowsのdevice instance identityに`bcdDevice`が含まれないため2026-09-10に撤回した([調査結果](usb-host-descriptor-persistence.ja.md))。Step 7では、この先行判断を正式なreference firmwareによってWindows、Linux、macOSで再検証する。その間のprotocol、reference firmware、client実装は`Open-Embedded-Probe` organizationのcanonical repositoryで進める。詳細な終了条件は[Probe protocol実現性ゲート](probe-feasibility-gates.ja.md)のGate 4を参照する。
 
 ## 最初に実証するtarget機能
 
@@ -113,7 +113,7 @@ Python clientは全serviceの完全実装を目標にしない。申請時点で
 
 UART/GPIO、SWD、JTAGは申請用reference implementationの共通baselineとする。それ以外は両者が同じ機能を持つ必要はない。機能差があっても、clientがcapabilityを確認して利用可能な範囲だけを扱えることが、このprojectのコンセプトを示す。
 
-ただし`bcdDevice`方式を申請根拠に含めるなら、二つの実装または試験用buildを使って、少なくとも二種類のdescriptor profileを実機で検証する。
+ただし「一PID・複数profile」を申請根拠に含めるなら、二つの実装または試験用buildを使って、少なくとも二種類のdescriptor profileを実機で検証する。
 
 ## 申請時に見せる最短の流れ
 
@@ -149,7 +149,7 @@ OpenOCDからhalt / read / resume
 - 二つのprobeからUART経由でESP32 targetを識別できる
 - 両方のprobeでSWDとJTAGのIDCODE取得を実証している
 - 共通のhost bridgeを介し、OpenOCDからSWD/JTAG targetのhalt、registerまたはmemory read、resumeを実証している
-- Windowsで`bcdDevice`によるdescriptor profile分離を実証している
+- Windowsで、採用した分離手段による公開profile群の分離を実証している
 - LinuxとmacOSで公開profileの列挙と各interfaceの基本通信を実証している
 - 依存libraryを含むlicense一覧がある
 - 一つのPIDを第三者の準拠実装へ利用させたいことを申請文に明記している

@@ -11,7 +11,7 @@ Openmokoには、専用hardwareを持たず、STM32とCH32を対象にCDC/HIDを
 ただし、次の利用方法まで明示的に認めた規則は確認できなかった。
 
 - 同じPIDで複数のUSB descriptor profileを使う
-- `bcdDevice`でprofileを分離する
+- descriptor profileを別PIDではなく同一PID内で分離する
 - project本体以外が作る準拠実装にもPID使用を認める
 
 したがって、通常のPID申請をいきなり出すのではなく、reference implementation公開後に、この3点を申請本文で説明して確認を求める必要がある。
@@ -167,7 +167,7 @@ registryは現在も更新されており、2026年にも複数のmerge実績が
 
 1. PIDは一つのprobe protocol product familyへ割り当てる。
 2. firmwareは複数のMCUへ移植される。
-3. 同じPIDで複数のdescriptor profileを使い、`bcdDevice`で区別する。
+3. 同じPIDで複数のdescriptor profileを使い、hostが誤認識しない分離規則(interface番号の固定と末尾追加、必要ならserial規則)を公開する。
 4. 実際のprobe機能はprotocol上で列挙し、USB descriptorから決めない。
 5. 第三者の準拠実装にも、projectの利用条件に従ってPID使用を認めたい。
 6. PIDの再配布ではなく、一つのopen source projectに属する互換実装群として管理する。
@@ -239,14 +239,14 @@ source: https://example.org/source
 - license
 - source/build手順
 - 一つのPIDを複数hardwareで利用する理由
-- `bcdDevice`によるdescriptor profile管理
+- descriptor profileの管理と分離規則
 - PIDを利用できる実装の範囲
 
 ### 2.4 今回に近い前例
 
 [ArduPilot `0x1209:0x5741`](https://pid.codes/1209/5741/)は、software projectが一組のVID:PIDを多数のboardで共有する前例である。
 
-ただしArduPilotは、Windows上でsingle-endpoint CDC ACMとdual-endpoint CDC ACMを区別するため、二つのPIDを使用している。これは、USB descriptor/driver構成が異なる場合に別PIDを使った前例であり、本projectの`bcdDevice`方式が自動的に認められる根拠にはならない。
+ただしArduPilotは、Windows上でsingle-endpoint CDC ACMとdual-endpoint CDC ACMを区別するため、二つのPIDを使用している。これは、USB descriptor/driver構成が異なる場合に別PIDを使った前例であり、本projectの「一PID・複数profile」方式が自動的に認められる根拠にはならない。むしろ、Windows上でdescriptor構成が異なればPIDを分けるのが通例であることを示す前例として扱う。
 
 また、[pid.codes PR #1184](https://github.com/pidcodes/pidcodes.github.com/pull/1184)では、公開hardware sourceが一variant分しか確認できなかったため、登録対象をそのvariantだけに限定するようreviewされている。申請時点で存在しない実装を広く包含する説明より、動作するreference implementationと公開済みの適用範囲を示す方が通りやすい。
 
@@ -310,7 +310,7 @@ current WCH-related repository
 | reference firmware | Raspberry Pi PicoとESP32-S3で動く二つのprobe実装 |
 | client implementation | `uv run`で実行でき、列挙と一つ以上のprobe機能を端末から操作できるPython source |
 | 動作記録 | build手順、USB列挙結果、実targetでの操作結果 |
-| Windows検証 | 同一VID:PID・異なる`bcdDevice`でprofileが分離する証拠 |
+| Windows検証 | 同一VID:PIDで複数profileが混線しない証拠(分離手段はE062で決定) |
 | PID利用方針 | 誰が、どの条件でproject PIDを使用できるか |
 
 PID利用方針には、少なくとも「PIDを使用するprobe firmwareは認知されたFOSS licenseで公開する」ことを明記する。hardwareの公開も必須にするかは、最終的に選ぶ割当団体の条件に合わせる。
@@ -322,7 +322,7 @@ PID利用方針には、少なくとも「PIDを使用するprobe firmwareは認
 
 具体的なUSB classの組合せはprofile設計時に決定する。PicoとESP32-S3のどちらへ各profileを割り当てるかも、firmware構成を見て決める。
 
-同じ仮の開発用VID:PIDと異なる`bcdDevice`でWindows検証を行い、申請後は割り当てられたVID:PIDへ置き換える。開発用IDのfirmwareは配布用releaseにしない。
+同じ仮の開発用VID:PIDで複数profileのWindows検証を行い、申請後は割り当てられたVID:PIDへ置き換える。開発用IDのfirmwareは配布用releaseにしない。
 
 ## 4. 推奨する申請順序
 
@@ -344,9 +344,10 @@ needs and reports its actual capabilities through the protocol.
 
 We request one PID for the protocol's USB product family. Implementations
 may expose one of a controlled set of USB descriptor profiles. Profiles
-share the same VID:PID and use distinct bcdDevice values. bcdDevice is used
-only to distinguish descriptor layouts; clients inspect the descriptors and
-protocol capabilities rather than deriving features from that number.
+share the same VID:PID and follow a published interface-layout rule that
+keeps host driver binding stable (verified on Windows, Linux and macOS).
+Clients inspect the descriptors and protocol capabilities rather than
+deriving features from any descriptor field.
 
 The repository contains the protocol specification, descriptor profile
 registry, conformance rules, working reference firmware for Raspberry Pi

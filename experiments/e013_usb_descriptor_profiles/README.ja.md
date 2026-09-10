@@ -1,6 +1,6 @@
 # E013 USB descriptor profile分離
 
-状態: **計画**
+状態: **中断 — 前提を机上調査で反証(2026-09-10)**。問いを立て直した[E062](../e062_usb_same_identity_layout_change/README.ja.md)へ引き継ぐ
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md)
 
@@ -156,3 +156,18 @@ uv run python e013_usb_descriptor_profiles/usb_profile_test.py test --profile a
 | device未接続の`inspect` | 空のdevice一覧を返し、誤って別deviceを操作しない |
 
 未確認: firmware upload、実descriptor、interface順、Windows driver binding、HID/Vendor/CDC echo、A→B→A。
+
+## 中断(2026-09-10)
+
+実行前に、仮説の前提「Windowsは`bcdDevice`(`REV_`付きhardware ID)でdescriptor profileを分離できる」を一次資料とコミュニティ観測で再調査し、前提が成立しないと判断して中断した。計画欄は書き換えない。詳細は[USB descriptor変更に対するhostの挙動](../../references/usb-host-descriptor-persistence.ja.md)。
+
+**事実**(机上調査。実機観測ではない)
+
+1. Windowsのdevice instance IDは`USB\VID&PID\<serial>`で、`bcdDevice`は含まれない。`bcdDevice`は`REV_`付きhardware IDと、`usbflags`(MS OS 1.0 descriptorの応答cache)にだけ現れる。
+2. 既存instanceが異なるinterface構成で再出現したとき、Windowsが既存devnodeとdriverを再利用してdriver選択をやり直さない観測が複数ある(OSR 2011、2017)。`bcdDevice`を上げても解消しなかった報告がある。Microsoft文書には記述がない。
+3. 本実験のProfile A/Bは同一serial(MAC由来)なので、A→Bは「HID単機能のdevnodeにcompositeが再出現する」条件になり、`bcdDevice`の値に関係なく同じ結果になる見込み。仮説「`bcdDevice`が分離する」はこの設計では測れない。
+4. Arduino-ESP32 3.3.11はCDCとWebUSBが同時有効だとdevice classを`0x02/0x02/0x00`へ強制し、MS OS 2.0 descriptorはWebUSB有効時のみ応答する。Profile Bは現状のfirmwareではIADと`USB\COMPOSITE`の条件を外れる。
+
+**未決** → [E062](../e062_usb_same_identity_layout_change/README.ja.md): 同一identityで構成を変えたときのWindows 11の実挙動 / 単機能↔composite・末尾追加・`MI_nn`機能入替の各境界 / `bcdDevice`のみ変更とserialのみ変更の効果 / Arduino-ESP32でdevice classを`0xEF/0x02/0x01`に保ったままWinUSBを自動bindする実装。
+
+**反映**: [probe-product-concept](../../references/probe-product-concept.ja.md)「USB descriptor profile」節、[probe-feasibility-gates](../../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 3、[pid-acquisition-roadmap](../../references/pid-acquisition-roadmap.ja.md) Step 3 / 7、[harness-choices](../../references/harness-choices.ja.md) §2の訂正、[LEDGER](../LEDGER.ja.md) E013行。firmwareとhost toolはE062が拡張して使う。

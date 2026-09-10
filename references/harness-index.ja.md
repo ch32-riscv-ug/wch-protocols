@@ -24,8 +24,9 @@
 
 | 文書 | 何が書いてあるか | 状態 |
 |---|---|---|
-| **[probe-product-concept.ja.md](probe-product-concept.ja.md)** | **基本コンセプト**。自作 probe が共通 VID:PID を共有し、必要な service を自由に構成できる protocol 基盤。descriptor pattern、`bcdDevice`、capability discovery、USB/serial/IP 共通化、拡張原則を整理 | **企画仮説**(決定前の判断基準) |
-| **[probe-feasibility-gates.ja.md](probe-feasibility-gates.ja.md)** | **実現性ゲート**。MCU非依存のPID割当候補、申請条件、`bcdDevice`のprofile数とopaqueな連番管理、Windows実機検証条件 | **調査中** |
+| **[probe-product-concept.ja.md](probe-product-concept.ja.md)** | **基本コンセプト**。自作 probe が共通 VID:PID を共有し、必要な service を自由に構成できる protocol 基盤。descriptor pattern、descriptor profile(`bcdDevice` 分離案は撤回)、capability discovery、USB/serial/IP 共通化、拡張原則を整理 | **企画仮説**(決定前の判断基準) |
+| **[probe-feasibility-gates.ja.md](probe-feasibility-gates.ja.md)** | **実現性ゲート**。MCU非依存のPID割当候補、申請条件、descriptor profileの分離手段(`bcdDevice`案は2026-09-10に撤回)、Windows実機検証条件 | **調査中** |
+| **[usb-host-descriptor-persistence.ja.md](usb-host-descriptor-persistence.ja.md)** | **USB descriptor変更に対するhostの挙動**。Windowsのdevice instance identityとdriver bindingの永続化、`usbflags`、IAD / usbser / COM番号、Linux・macOSの非永続性と各制約。一次資料・観測・推論を区別 | **調査結果** |
 | **[oss-usb-pid-application-report.ja.md](oss-usb-pid-application-report.ja.md)** | **PID申請調査**。Openmokoとpid.codesの条件、申請PRの作り方、review事例、類似割当、複数MCU・descriptor profile構想で確認すべき点 | **調査済み** |
 | **[pid-acquisition-roadmap.ja.md](pid-acquisition-roadmap.ja.md)** | **PID取得までの実行計画**。Pico・ESP32-S3のreference firmware、`uv`で動くPython CLI、実機検証、申請開始条件 | **計画案** |
 | **[arduino-probe-protocol-feasibility.ja.md](arduino-probe-protocol-feasibility.ja.md)** | **Arduino実装の成立性調査**。ESP32-S3・PicoでのUART/GPIO、SWD、JTAG、SWO、CMSIS-DAP等を比較し、platform backend、最初の実験matrix、実現性gateを整理 | **調査済み** |
