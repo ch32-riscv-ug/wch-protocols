@@ -30,6 +30,10 @@
 
 ## 参照 fixture
 
+### `fixtures/wire-flash-v003-x035-2026-09-11/`（SWIO/RVSWD 線上実測）
+
+[WCH-LinkE ↔ target 線上 capture](fixtures/wire-flash-v003-x035-2026-09-11/README.ja.md)。LA2016/PulseView 50 MHz の `.sr`、同時間帯の ch32rv USB NDJSON、既知の 4 KiB pattern を V003(SWIO) / X035(RVSWD) の対で保存した。[link-to-target.ja.md](../protocols/link-to-target.ja.md) §3/§5 の検証用。
+
 [`fixtures/`](fixtures/) に実機 capture を置く。命名例: `<操作>-<target>-fw<版>.ndjson`。firmware 版で挙動が変わる項目(消去済みセルの read 値など)は**版ごとに**記録する。
 
 ### `fixtures/target-info-v307.ndjson`(attach + identify、LinkE fw2.22 → CH32V307)

@@ -155,6 +155,8 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 
 ## 5. 未解読 / 要調査
 
+2026-09-11 に WCH-LinkE ↔ V003/X035 の線上波形を 50 MHz で収録し、同時間帯の USB DMI capture と既知 4 KiB payload を保存した。生データと予備解析は [captures/fixtures/wire-flash-v003-x035-2026-09-11/](../captures/fixtures/wire-flash-v003-x035-2026-09-11/README.ja.md)。SWIO の 2 pulse 幅群と RVSWD の clock/data activity は実 target で確認できたが、bit 方向・parity/status・STOP/turnaround の全デコード前なので、§3 の status はまだ上げない。
+
 - **SWIO 1 線**の bit タイミング/フレーミング(pulse 幅符号化)、pull-up 前提。RVSWD(§3)ほど整理された公開解析がまだ無い。
 - RVSWD の STOP 条件波形・クロック周波数・トランザクション間アイドル(§3 末尾)。
 - 1/2 線切替 target の判定と entry シーケンス(debug mode 突入の初期化)。
