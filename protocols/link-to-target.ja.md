@@ -24,9 +24,9 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 
 ## 3. RVSWD 2 線の線上フレーム(具体)
 
-状態: **attested**(fxsheep のリバース解析 + RINS が一致。自前ロジアナ実測で `verified` 化が要る)。出典: [WCH RVSWD protocol 解析](https://github-wiki-see.page/m/fxsheep/openocd_wchlink-rv/wiki/WCH-RVSWD-protocol)、Swindle `doc/rvswd.jpg`。
+状態: **形式別**。52-bit short形式はWCH-LinkE + X035実測と複数の実機動作実装により主要境界を`verified`、84-bit long形式は複数資料で`attested`。WCH-LinkEの585-edge bulk burstは構造のみ実測済み。詳細は[実測report](../captures/fixtures/wire-flash-v003-x035-2026-09-11/README.ja.md)。
 
-**要点: RVSWD の 1 トランザクション = RISC-V DTM の `dmi` レジスタ(addr7 + data32 + op2)そのもの**。つまり USB の `DmiOp`(cmd `0x08`、payload `[addr, data_be32, op]`。[pc-to-link.ja.md](pc-to-link.ja.md) §4)は、この線上フレームを byte 詰めしただけ。WCH-Link は透過ブリッジ。
+**要点: RVSWDはDMI address/data/operation/statusを運ぶが、線上形式は一つではない。** USBの`DmiOp`（cmd `0x08`）から、WCH-Link firmwareがshort/long/burstの選択、busy再試行、内部DMI操作を加えることがあるため、常にbyte列の透過ブリッジとは限らない。
 
 ### 信号とアイドル
 
@@ -43,7 +43,7 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 - **data は clock が LOW の間だけ変化**させる。
 - **全フィールド MSB first**。
 
-### 1 トランザクションのフレーム(順に)
+### 84-bit long形式（従来資料）
 
 | 位相 | 送信側 | bit 数 | 内容 |
 |---|---|---:|---|
@@ -59,6 +59,12 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 - host 位相(7+32+2+1)→ target 位相(7+32+2+1)と続き、明示の turnaround bit は文書化されていない(位相の並びで暗黙に切替)。
 - これは [riscv-debug-module.ja.md](riscv-debug-module.ja.md) の DMI トランザクションと 1:1(op/status のコード、addr=DMDATA0=`0x04`/DMCONTROL=`0x10` 等がそのまま線上の 7bit addr に乗る)。
 - USB `DmiOp` 応答 `[addr, data_be32, status]` の status(0/2/3)も、この target 位相の 2bit status と同じ。
+
+### 52-bit short形式（LinkE + X035実測）
+
+2026-09-11の実測では、通常packetは`addr7 + R/W1 + parity1 + park1 + padding4 + data32 + parity1 + park1 + status2 + padding2`の52 bitで、その後に`0`のtermination clockとSTOP条件が続いた。data/parity位置は8,628 packetsすべてで検算済み。readはbit 14、writeはbit 48で方向切替する。`sigrok-rvswd`、Saleae analyzer、Tapioca、pico-rvswdの境界と一致する。
+
+さらに4 KiB readbackでは585-edge/15-word burstを64回観測した。park/paddingはLinkEが一定値に固定せず、既存probeが使う`10101`/`10111`とも異なるが、X035はその固定値でも実機動作している。したがって同期語ではなくdon’t-careとして扱う。
 
 ### SWIO 1 線との関係(transaction は同じ、bit 符号化だけ違う)
 
@@ -152,19 +158,26 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 | ESP32-S2 funprog | ESP32-S2 | SWCLK pin・RVSWD read/write・family 検出あり(非 V003 の検証範囲は不明確) |
 | [RINS](https://perigoso.github.io/rins/) | — | 第三者実装向けに **RVSWD の物理・論理層を文書化**(「SWD ではない」と明記) |
 | [WCH RVSWD protocol 初期解析](https://github-wiki-see.page/m/fxsheep/openocd_wchlink-rv/wiki/WCH-RVSWD-protocol) | — | 早期リバース。RINS と整合 |
+| [sigrok-rvswd](https://github.com/perigoso/sigrok-rvswd) | PulseView/sigrok decoder | 52-bit short / 84-bit longの両packetを実装。今回のX035通常packet境界と一致（bulk burstは未対応） |
+| [esp32-component-rvswd](https://github.com/Nicolai-Electronics/esp32-component-rvswd) | ESP32 | CH32V203で検証された52-clock実装。data/parity境界は実測と一致するが固定control値はLinkE/X035と相違 |
+| [RVSWD_pico](https://github.com/ImproperCatGirl/RVSWD_pico) | RP2040 PIO | 上記ESP32実装を参照したQingKe V4向けprobe。52-clock構造と固定control値を継承 |
+| [SaleaeRVSWDAnalyzer](https://github.com/bmx/SaleaeRVSWDAnalyzer) | Saleae decoder | 52/84-bit両形式を独立実装。shortの主要field境界が実測と一致 |
+| [ch32-tapioca-probe](https://github.com/pierrejay/ch32-tapioca-probe) | CH32X035 PIOC | LinkE→V307 captureで52-bitを復号し、X035/V203/V307で実機試験。turnaround/statusまで文書化 |
+| [pico-rvswd](https://github.com/i-infra/pico-rvswd) | RP2350 PIO | X035で52-bit frameを実機試験。400 kHz–4 MHzでparity error 0を報告 |
+| [rvswdog](https://github.com/coocoscoocos/rvswdog) | STM8 | ESP32実装と同じ52-clock bit-bang。target検証範囲はREADME上不明 |
 
 ## 5. 未解読 / 要調査
 
-2026-09-11 に WCH-LinkE ↔ V003/X035 の線上波形を 50 MHz で収録し、同時間帯の USB DMI capture と既知 4 KiB payload を保存した。生データと予備解析は [captures/fixtures/wire-flash-v003-x035-2026-09-11/](../captures/fixtures/wire-flash-v003-x035-2026-09-11/README.ja.md)。SWIO の 2 pulse 幅群と RVSWD の clock/data activity は実 target で確認できたが、bit 方向・parity/status・STOP/turnaround の全デコード前なので、§3 の status はまだ上げない。
+2026-09-11 に WCH-LinkE ↔ V003/X035 の線上波形を50 MHzで収録し、同時間帯のUSB DMI captureと既知4 KiB payloadを保存した。生データ・再現script・詳細解析は[captures/fixtures/wire-flash-v003-x035-2026-09-11/](../captures/fixtures/wire-flash-v003-x035-2026-09-11/README.ja.md)。V003の41/33-pulse frame、X035の52-bit short packetと585-edge/15-word burstは4096 byte全体で検算した。shortのparity/status/turnaroundは既存実装との照合でも支持された。
 
-- **SWIO 1 線**の bit タイミング/フレーミング(pulse 幅符号化)、pull-up 前提。RVSWD(§3)ほど整理された公開解析がまだ無い。
-- RVSWD の STOP 条件波形・クロック周波数・トランザクション間アイドル(§3 末尾)。
+- **SWIO 1 線**の実 target が受理する 0/1 pulse 幅の限界値、pull-up/open-drain の電気条件、33-pulse fast-read response 先頭 bit の意味。LinkE 2.22 の通常 41-pulse frame と出力 pulse 幅は上記 capture で実測済み。
+- RVSWD bulk burstを選ぶcommand条件、termination clockの役割、long/short選択規則、トランザクション間アイドル規則。LinkE 2.22 + X035の52/585構造と位相ごとのclock周期は実測済み。
 - 1/2 線切替 target の判定と entry シーケンス(debug mode 突入の初期化)。
-- §3 の bit 仕様をロジアナ自前実測で `verified` 化。
+- `status=2/3`（fail/busy）を意図的に発生させ、shortとbulkの再試行動作を実測する。
 
 ## 6. 調査の入口
 
-1. §3 の RVSWD フレームをロジックアナライザで LinkE ↔ target 実測し、[riscv-debug-module.ja.md](riscv-debug-module.ja.md) の DMI トランザクション(addr/data/op/status)と 1:1 対応を確認。
+1. 単独 `DmiOp` ごとに GPIO marker を併記して LinkE ↔ target を収録し、USB request と線上の変換・再試行・内部 polling を 1:1 で時刻対応させる。
 2. SWIO(1 線)は PicoRVD PIO / cnlohr minichlink の bit-bang を読み、pulse 幅規則を抽出。
 3. RINS の論理層記述と fxsheep 解析で裏を取り、status を上げる。
 
