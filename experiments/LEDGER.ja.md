@@ -83,6 +83,7 @@
 | **E064** | PSRAM上のdataをUSB 2.0 HSのCDC bulk INでWindowsへ連続送出したとき、実効帯域は何MB/sか。chunk sizeと転送総量でどう変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[harness-channels](../references/harness-channels.ja.md) §物理IF | **完了 — 約5.6〜5.7 MB/sで飽和、16 MiBが2.968秒**([e064_p4_usb_hs_cdc_rate/](e064_p4_usb_hs_cdc_rate/README.ja.md)) |
 | **E065** | USB 2.0 HS上のCDCを2本同時に流したとき、合計帯域は1本の約5.6 MB/sより上がるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [harness-channels](../references/harness-channels.ja.md) §CDCの上限は endpoint 予算、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — 反証。2本でも合計は上がらない(比0.943)。ただし送出taskを分けた1本が7.94 MB/s**([e065_p4_usb_hs_dual_cdc_rate/](e065_p4_usb_hs_dual_cdc_rate/README.ja.md)) |
 | **E066** | CDC 1本のdownload帯域は送出を実行するcontext(`loop()`か専用taskか、優先度、pin先core)で変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[E065](e065_p4_usb_hs_dual_cdc_rate/README.ja.md)の事実5 | **完了 — 変わる。効くのは優先度ではなくpin先core。core 0で7.4〜8.1、core 1で5.2〜5.7 MB/s**([e066_p4_usb_hs_tx_context/](e066_p4_usb_hs_tx_context/README.ja.md)) |
+| **E067** | PARLIO captureとUSB HS送出を同時に走らせると互いをどれだけ食うか。core配分で変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — captureは不変(8.00 MB/s、overflow 0)、USBのみ7〜16%低下。最良はharvest=core 1 / USB=core 0の7.42 MB/s。**副産物として転送末尾の間欠欠落を観測**([e067_p4_usb_vs_capture_core/](e067_p4_usb_vs_capture_core/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -236,6 +237,27 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E067 ESP32-P4: captureとUSB送出のcore競合 — 完了 2026-09-12
+
+全文: [e067_p4_usb_vs_capture_core/README.ja.md](e067_p4_usb_vs_capture_core/README.ja.md)。採用run: `_runs/E067_20260912T04*`。2 channel / 32 MHz(8.0 MB/s)固定で、振ったのはcore配分だけ。
+
+**事実**
+
+1. **captureは同時実行の影響を受けない。** 18回すべてで**8.00 MB/s**(min 7.999 / max 8.000)、queue overflow 0、`callback_bytes`と`copied`の差0。USBが何をしていても揺れなかった。
+2. **落ちるのはUSB側だけで7〜16%。** 最良`cap1_usb0`が単独比93.1%、最悪`cap0_usb0`が84.0%。
+3. **最良は`cap1_usb0`(harvest = core 1、USB = core 0)の7.42 MB/s**で、仮説の予測どおり。
+4. **ただし理由は仮説と違う。** 分離の効果は93%対84%の**約9 point**、対して「USBをcore 0へ」は単独時点で7.97対5.96の**+34%**。**順位を決めているのは主にUSB taskのcore**で、分離はその上の小さな上積み。
+5. **同居でも配置次第で分離を上回る**(`cap0_usb0` 6.69 > `cap0_usb1` 5.52)。**反証条件3が部分的に発火** — 「分ければ速い」は成り立たない。
+6. [E066](e066_p4_usb_hs_tx_context/README.ja.md)のcore依存はcapture負荷の下でもそのまま残る。
+
+**経路の異常(観測として記録、[README.ja.md §7-6](README.ja.md))**: 掃引完走までの5回中**4回で、device側は全byte書き終えているのにhost側へ末尾が届かない**現象が出た。欠落量は**常に512 B(bulkの`wMaxPacketSize`)の整数倍で2,048〜5,120 B**。送出後に10 ms×10回flushしても届かず(FIFO 512 Bには収まらない量)、**転送長を512 Bの整数倍から外しても消えず**、発生するmodeは実行ごとに変わる。**原因未特定。downloadが末尾を静かに失う経路は使えないので、次に潰すべき最優先**(`p4-hs-cdc-tail-loss`)。帯域の数値はdevice側時計なのでこの欠落に影響されない。
+
+**候補**: **USB送出はcore 0、captureのharvestはcore 1**(採用)/ 譲るならUSB側(captureの方が丈夫)/ **転送完了をhostが確実に知る仕組み**(長さの事前通知・終端marker・CRC)が要る。
+
+**未決**: **末尾欠落の原因** `—`(**最優先**)/ captureが折れるsample rate `—`(32 MHzでは全く揺れない)/ 真のstreaming(ring → USBの受け渡しを挟んだ費用) `—` / vendor bulk `—` / core 1が遅い理由 `—`。
+
+**近直の目標への含み**: 生成8.00 MB/sに対し排出は最良7.42 MB/sで釣り合わない。**釣り合う点は約29.7 Msps**。つまり**2chで約30 Mspsまでは連続streamingが成立する見込み**(末尾欠落を潰した上で)。それ以上はPSRAMへbatchしてから出す。
 
 ### E066 ESP32-P4: CDCの帯域は送出contextで決まるか — 完了 2026-09-12
 
