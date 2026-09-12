@@ -1,6 +1,16 @@
 # Windows が WinUSB を当てない — 調査記録
 
-状態: **未解決**(2026-09-12。切り分けはかなり進んだが最後の 1 手が残っている)
+状態: **解決**(2026-09-13。**原因は MS OS 2.0 descriptor set の subset 構造**だった。[E081](../experiments/e081_p4_winusb_bind/README.ja.md) で対照実験済み)
+
+> **結論**: **単一 interface の device では compatible ID を set header の直下(flat)に置く。** configuration / function subset は composite device の function に紐付けるための入れ子で、**interface が 1 本だと compatible ID が結び付く先を失い、Windows は driver を当てない**。
+>
+> [E081](../experiments/e081_p4_winusb_bind/README.ja.md): 同じ board・同じ firmware で layout flag だけ変えた 2 本 — **flat(162 byte)は `Status=OK` / `Service=WinUSB` / `USB\MS_COMP_WINUSB` あり**、**subsets(178 byte)は `CM_PROB_FAILED_INSTALL`(Code 28)**。**この台の汚れた `ConfigFlags` は無関係**で、**新しい serial を使えば普通に当たる**。
+>
+> ライブラリ側([CR-1](espusbdevice-change-requests.ja.md))は **interface 数で自動判定**するようになった(1 本なら flat、2 本以上なら subsets)。
+>
+> 副産物: **usbip を外した native の帯域は 21.2 MB/s** で、usbip 経由と差がない。**これまでの測定の「usbip 込みなので下限」という但し書きは外せる。**
+>
+> **以下は解決前の調査記録として残す。**
 
 [E069](../experiments/e069_p4_hs_vendor_bulk_rate/README.ja.md) で ESP32-P4 の vendor bulk endpoint を Windows 11 から driverless に使おうとして詰まった件の記録。**device 側は正しいと確定している**ので、Windows 側の話としてここに分ける。
 

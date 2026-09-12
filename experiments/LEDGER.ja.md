@@ -96,6 +96,7 @@
 | **E077** | BeagleLogicのTCP protocolを演じるPython serverを置くと、stockのsigrok / PulseViewがP4のcaptureをIP経由で取れるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [PulseView / sigrok 連携](../references/pulseview-integration.ja.md) 経路B | **完了 — 取れる。4 M sample @ 80 MHzが0.45秒でsample精度。1回のcaptureを超える要求は継ぎ目が出る**([e077_p4_pulseview_over_ip/](e077_p4_pulseview_over_ip/README.ja.md)) |
 | **E078** | PARLIO の capture を PSRAM に貯めずに OTG HS へ流したとき、欠落なく continuous に保てる sample rate の上限は何 Msps か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 連続streamingの釣り合い点、[E077](e077_p4_pulseview_over_ip/README.ja.md)の継ぎ目 | **完了 — 86 Mspsまで継ぎ目なく降ろせる(線上21.5 MB/s)。88 Mspsからbacklogが時間に比例して積む。capture同居でもUSBは落ちない(`stalls`=0)**([e078_p4_continuous_stream/](e078_p4_continuous_stream/README.ja.md)) |
 | **E080** | sigrok / PulseView が要求する sample 数を、1 回の capture として継ぎ目なく渡せるか。上限は E078 の 86 Msps と一致するか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E077](e077_p4_pulseview_over_ip/README.ja.md)の未決「継ぎ目」、[PulseView / sigrok 連携](../references/pulseview-integration.ja.md) 経路B | **完了 — 継ぎ目は消えた。86 Msps・64 M sampleまで一本で通る。それ以上の律速はdeviceでもserverでもなく`srzip`の書き出し**([e080_p4_pulseview_gapless/](e080_p4_pulseview_gapless/README.ja.md)) |
+| **E081** | MS OS 2.0 descriptor set を flat にすると Windows 11 は vendor bulk device に WinUSB を当てるか。subset のままなら当たらないままか | **一時・配線なし**(`esp32-p4-30eda0e31478`、**HS portはWindows側に置く**) | [Windows が WinUSB を当てない](../references/windows-winusb-binding.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-1 | **完了 — flatは`Status=OK`/`Service=WinUSB`、subsetsは`CM_PROB_FAILED_INSTALL`。汚れた台でも新しいserialなら当たる。nativeは21.2 MB/sでusbip経由と差なし**([e081_p4_winusb_bind/](e081_p4_winusb_bind/README.ja.md)) |
 | **E079** | host 側(PC)が bulk IN の URB を複数同時に投げると、device を変えずに帯域は伸びるか | **一時・配線なし**(同上) | [改修の着手順](../references/usb-library-change-plan.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-7 | **中止 — 同じ測定がライブラリ側で先に行われた。depth 2 で飽和(1=18.64 / 2=22.68 / 8=22.87 MB/s)、約23 MB/sはdevice側の天井**([e079_p4_host_urb_depth/](e079_p4_host_urb_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
@@ -250,6 +251,24 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E081 ESP32-P4: Windows が WinUSB を当てるか — 完了 2026-09-13
+
+全文: [e081_p4_winusb_bind/README.ja.md](e081_p4_winusb_bind/README.ja.md)。**同じ board・同じ firmware で `msOs20Layout` と serial だけ変えた 2 本**を焼き、Windows の判定を並べた。
+
+**事実**
+
+1. **flat(162 byte)なら当たる** — `Status=OK` / `Service=WinUSB` / compatible ID に `USB\MS_COMP_WINUSB` / `DeviceDesc=WinUSB Generic Device`。
+2. **subsets(178 byte)なら当たらない** — `CM_PROB_FAILED_INSTALL`(Code 28)、compatible ID なし。[E069](e069_p4_hs_vendor_bulk_rate/README.ja.md) の症状と同一。
+3. **原因は構造だけ。** 分岐は layout flag 1 つで、[調査記録](../references/windows-winusb-binding.ja.md)の仮説 2(Windows が vendor request を投げていない)は不要になった。
+4. **汚れた台でも直る。** 失敗判定が残る Windows でも、**新しい serial なら普通に当たる**。逆に **serial を使い回すと直った firmware でも Code 28 が返る**([E062](e062_usb_same_identity_layout_change/README.ja.md))。
+5. **usbip を外した native の帯域は 21.21 / 20.97 / 21.20 MB/s**(device 自身の時計で 21.2〜21.5)。**usbip 経由([E078](e078_p4_continuous_stream/README.ja.md) の 21.4〜22.4)と差がない。** 全測定の「usbip 込みなので下限」という但し書きは外せる。
+
+**方法の誤り(観測)**: host 側の計測が最初 **28.58 MB/s** を出した — 先頭 block の完了で時計を始めながらその byte を数に入れていた。直したら今度は **0.46 MB/s** — **長さ 0 の packet が読みを即完了させる**ので、trigger 前の 9 秒が分母に入っていた。空 block を開始点にしないよう直して device 自身の時計と一致。**もう 1 件**: cwd が WSL のプロジェクト内のまま Windows の `uv run` を呼び、**`.venv/pyvenv.cfg` を Windows の CPython に書き換えられて WSL 側の python が起動しなくなった**(`rm -rf .venv && uv sync` で復旧)。**Windows の `uv` は Windows 側の作業ディレクトリで実行する。**
+
+**候補**: **単一 interface の vendor device は flat で出す** / **WinUSB の検証は毎回新しい serial で** / **Windows 直結で 21.2 MB/s、driver 追加不要**。
+
+**未決**: 読み size を変えた native の掃引 `—` / WebUSB からの接続 `—` / 複合 device での layout `—` / リリース版での再確認 `—`。
 
 ### E080 ESP32-P4: PulseView へ継ぎ目なく流す — 完了 2026-09-13
 
