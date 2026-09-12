@@ -20,11 +20,13 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 |---|---:|---:|
 | vendor bulk | 8.80〜10.74 MB/s | **約 21(飽和 23)MB/s** |
 | HID(512 B) | 4.14 MB/s | 4.03 MB/s(**ただし host が URB を 8 本 in-flight にして初めて出る**) |
-| **Windows で WinUSB** | **当たらない**(§3) | **当たる**(MS OS 2.0 を flat 構造にすれば) |
+| **Windows で WinUSB** | **当たらない**(§3) | **当たる**([E081](../experiments/e081_p4_winusb_bind/README.ja.md) でこちらの台でも確認) |
 | 4 MiB の download | 0.48 秒 | **約 0.20 秒**(見込み) |
 | 2 channel の連続 streaming 釣り合い点 | 約 35 Msps | **86 Msps**(実測。[E078](../experiments/e078_p4_continuous_stream/README.ja.md)) |
 
-**§3(Windows で WinUSB が当たらない)は解決した** — 原因は仮説どおり **MS OS 2.0 descriptor set の subset 構造**で、単一 interface では flat に置く必要があった。**byte 列ではなく構造の問題**だった。
+**§3(Windows で WinUSB が当たらない)は解決した** — 原因は仮説どおり **MS OS 2.0 descriptor set の subset 構造**で、単一 interface では flat に置く必要があった。**byte 列ではなく構造の問題**だった。[E081](../experiments/e081_p4_winusb_bind/README.ja.md) でこちらの台でも対照実験済み(flat = OK、subsets = Code 28)。
+
+**あわせて、全測定に付けていた「usbip 込みなので下限である」という但し書きが外れた。** WinUSB が当たったので native で測れるようになり、**21.2 MB/s(host 実測)で usbip 経由と差がなかった**。
 
 **§1〜§6 は 2.2.0 時点の記録として残す。** 新しい木での追試は [E078](../experiments/e078_p4_continuous_stream/README.ja.md) で済ませた(commit `7a6d9dc`)。そこで分かったことを 2 つ足す。
 
