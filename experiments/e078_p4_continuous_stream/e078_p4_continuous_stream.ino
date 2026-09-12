@@ -213,11 +213,17 @@ static size_t fifo_push(const uint8_t *data, size_t length) {
 }
 
 static void harvest_task(void *) {
+  uint32_t idle = 0;
   while (stream_active && harvested < stream_target) {
     Chunk chunk = {};
     if (xQueueReceive(chunk_queue, &chunk, pdMS_TO_TICKS(200)) != pdTRUE) {
+      // Nothing arriving means the capture has stopped; do not hold run_stream.
+      if (++idle >= 10) {
+        break;
+      }
       continue;
     }
+    idle = 0;
     size_t offset = 0;
     while (offset < chunk.length) {
       const size_t taken = fifo_push(chunk.data + offset, chunk.length - offset);
@@ -247,8 +253,8 @@ static void usb_task(void *) {
   while (sent < stream_target) {
     const size_t used = fifo_used();
     if (used == 0) {
-      if (!stream_active && harvested >= stream_target) {
-        break;
+      if (!stream_active) {
+        break;  // producer finished and the FIFO is empty
       }
       taskYIELD();
       continue;
@@ -345,25 +351,31 @@ static void run_stream(size_t total_bytes, uint32_t rate_hz) {
   xTaskCreatePinnedToCore(harvest_task, "e078_hv", 4096, nullptr, 5, nullptr, kHarvestCore);
   parlio_rx_soft_delimiter_start_stop(rx_unit, delimiter, true);
 
-  xSemaphoreTake(usb_done, portMAX_DELAY);
-  stream_active = false;
+  // Stop the capture the moment harvest has what it needs. Leaving it running
+  // while USB drains the backlog makes the ISR pile into a queue nobody is
+  // reading, and every one of those counts as a ring overflow that has nothing
+  // to do with whether the stream kept up.
   xSemaphoreTake(harvest_done, portMAX_DELAY);
-  const uint64_t elapsed = esp_timer_get_time() - started;
-
+  const uint64_t capture_us = esp_timer_get_time() - started;
   parlio_rx_soft_delimiter_start_stop(rx_unit, delimiter, false);
   parlio_rx_unit_disable(rx_unit);
+  stream_active = false;
+
+  xSemaphoreTake(usb_done, portMAX_DELAY);
+  const uint64_t elapsed = esp_timer_get_time() - started;
+
   parlio_del_rx_delimiter(delimiter);
   parlio_del_rx_unit(rx_unit);
   cleanup_pwm();
 
   Console.printf(
     "DONE sent=%lu harvested=%lu ring_overflow=%lu fifo_overflow=%lu high_water=%lu stalls=%lu waits=%lu "
-    "timeouts=%lu elapsed_us=%llu\n",
+    "timeouts=%lu capture_us=%llu elapsed_us=%llu\n",
     static_cast<unsigned long>(usb_sent), static_cast<unsigned long>(harvested),
     static_cast<unsigned long>(ring_overflow), static_cast<unsigned long>(fifo.overflow),
     static_cast<unsigned long>(fifo.high_water), static_cast<unsigned long>(usb_stalls),
     static_cast<unsigned long>(usb_waits), static_cast<unsigned long>(usb_timeouts),
-    static_cast<unsigned long long>(elapsed)
+    static_cast<unsigned long long>(capture_us), static_cast<unsigned long long>(elapsed)
   );
   Console.flush();
 }

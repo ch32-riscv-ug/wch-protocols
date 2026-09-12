@@ -94,7 +94,7 @@
 | **E075** | PARLIOのchannel幅1 / 4 / 8で、どのsample rateまでsample単位の欠落なしに取れるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 限界matrixの※ | **完了 — 1 / 2 / 4 chは160 Mspsでsample精度。8 chは96 MHzまで1 MiBで精度、160 MHzは`overflow=131`**([e075_p4_width_sample_accuracy/](e075_p4_width_sample_accuracy/README.ja.md)) |
 | **E076** | captureしたdataをOTG HSのvendor bulkで降ろすと4 MiBのdownloadは何秒になり、sampleは落ちずに`.sr`まで通るか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [P4 USB HSまとめ](../references/p4-usb-hs-summary.ja.md) §5 / §7、[E074](e074_p4_2ch_capture_to_sr/README.ja.md)の残した律速 | **完了 — 4 MiBが平均0.48秒(8.80 MB/s)、console経路の12倍。7/7でsample精度。PSRAM読み出しは律速ではない**([e076_p4_capture_hs_download/](e076_p4_capture_hs_download/README.ja.md)) |
 | **E077** | BeagleLogicのTCP protocolを演じるPython serverを置くと、stockのsigrok / PulseViewがP4のcaptureをIP経由で取れるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [PulseView / sigrok 連携](../references/pulseview-integration.ja.md) 経路B | **完了 — 取れる。4 M sample @ 80 MHzが0.45秒でsample精度。1回のcaptureを超える要求は継ぎ目が出る**([e077_p4_pulseview_over_ip/](e077_p4_pulseview_over_ip/README.ja.md)) |
-| **E078** | PARLIO の capture を PSRAM に貯めずに OTG HS へ流したとき、欠落なく continuous に保てる sample rate の上限は何 Msps か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 連続streamingの釣り合い点、[E077](e077_p4_pulseview_over_ip/README.ja.md)の継ぎ目 | **計画 — EspUsbDevice の release 待ち**(降ろす側が 8.80 → 約 21 MB/s になり釣り合い点の見積りが約 35 → 約 84 Msps へ動いた)([e078_p4_continuous_stream/](e078_p4_continuous_stream/README.ja.md)) |
+| **E078** | PARLIO の capture を PSRAM に貯めずに OTG HS へ流したとき、欠落なく continuous に保てる sample rate の上限は何 Msps か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 連続streamingの釣り合い点、[E077](e077_p4_pulseview_over_ip/README.ja.md)の継ぎ目 | **完了 — 86 Mspsまで継ぎ目なく降ろせる(線上21.5 MB/s)。88 Mspsからbacklogが時間に比例して積む。capture同居でもUSBは落ちない(`stalls`=0)**([e078_p4_continuous_stream/](e078_p4_continuous_stream/README.ja.md)) |
 | **E079** | host 側(PC)が bulk IN の URB を複数同時に投げると、device を変えずに帯域は伸びるか | **一時・配線なし**(同上) | [改修の着手順](../references/usb-library-change-plan.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-7 | **中止 — 同じ測定がライブラリ側で先に行われた。depth 2 で飽和(1=18.64 / 2=22.68 / 8=22.87 MB/s)、約23 MB/sはdevice側の天井**([e079_p4_host_urb_depth/](e079_p4_host_urb_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
@@ -249,6 +249,26 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E078 ESP32-P4: capture しながら OTG HS へ流す連続 streaming — 完了 2026-09-13
+
+全文: [e078_p4_continuous_stream/README.ja.md](e078_p4_continuous_stream/README.ja.md)。[EspUsbDevice](https://github.com/tanakamasayuki/EspUsbDevice) の working tree(commit `7a6d9dc`、release 前)に対して、TX FIFO 4096 / 1 転送 4096、送出は `waitWritable()`、host は URB 4 本 in-flight。
+
+**事実**
+
+1. **2 channel を継ぎ目なく連続で降ろせるのは 86 Msps まで**(線の上で 21.5 MB/s)。**88 Msps から弾性 FIFO の占有が duration に比例して積む**(16 MiB で 0.5〜0.7 MB → 64 MiB で 2.0〜2.2 MB)。8 MiB を使い切るまでの外挿は 88 MHz で約 11 秒、92 MHz で約 5 秒。
+2. **釣り合い点の見積り(約 84 Msps)はほぼ当たった。** 降ろす側 21.5 MB/s ÷ 0.25 byte/sample。
+3. **capture と同居しても USB は落ちない。** 飽和時 **21.4〜22.4 MB/s** で、ライブラリ側が単体で測った新既定 21.1 MB/s と同等以上。**[E067](e067_p4_usb_vs_capture_core/README.ja.md) の「同居で 7〜16% 落ちる」は再現しなかった。**
+4. **理由は [CR-9](../references/espusbdevice-change-requests.ja.md) の `waitWritable()`。** `stalls` は全条件 0、`waits` は転送数と一致(16 MiB で 4,095、64 MiB で 16,383)。**1 転送につき 1 回だけ block する。** E067 の損は**競合ではなく spin だった**。
+5. **64 Msps までは MB/s が rate ÷ 4 に一致**し、USB は遊んでいる。
+6. **「帯域が出ている」は「追いつけている」ではない。** 96 MHz でも 16 MiB は完走し周期も一致する。**占有が duration に比例するかどうかだけが判定になる。**
+7. **sample は落ちていない。** 全条件で `overflow` 0、周期は head / tail とも一致。92 MHz・16 MiB の全長 scan(67,108,864 sample / 72,944 周期)で期待値と違う周期は **sample 0 の 1 つだけ**(capture 開始時の PWM 位相)。
+
+**方法の誤り(観測)**: 最初の掃引で 88 MHz 以上に出た `ring_overflow`(8〜271)は **teardown の数え間違い**だった。`run_stream()` が usb task の完了を先に待ち、その間 PARLIO を止めていなかったため、harvest が抜けたあとも ISR が誰も読まない queue へ積み続けていた。**backlog が大きい高 rate ほど drain が長い**ので「高 rate でだけ overflow する」という本物らしい形になる。harvest を先に待って PARLIO を止める順序に直すと全条件 0。**`overflow` を信用してよいのは数え方が正しいときだけ。**
+
+**候補**: **連続 streaming は 86 Msps を上限に置く**(余裕を見るなら 84)/ **batch なら 160 Msps まで** — 継ぎ目の可否で上限が 2 倍違う / **送出は `waitWritable()`、host は URB 2 本以上**。
+
+**未決**: 8 MiB を実際に使い切るまで回していない `—`(firmware の上限が 64 MiB = 約 3 秒)/ 86 と 88 の間 `—` / PulseView から continuous で引く `—` / 4・8 channel `—`。
 
 ### E077 ESP32-P4: stockのsigrok / PulseViewからIP経由で取る — 完了 2026-09-12
 
