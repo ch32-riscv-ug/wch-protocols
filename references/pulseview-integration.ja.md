@@ -79,6 +79,14 @@ batchを繋ぐと継ぎ目に空白が入る。**送出元を[E078](../experimen
 - **律速はclientの出力先である。** 256 M sampleを86 MHzで取ると`-O srzip`では欠落し、`-O binary`なら通る。**`.sr`へ落とすなら64 M sample程度まで**
 - **serverの`--samples`はclientの要求に合わせる。** 超えると待ち続ける。上限はfirmwareの268,435,456 sample
 
+### 保存が目的なら経路Dへ回す([E082](../experiments/e082_p4_spool_then_convert/README.ja.md))
+
+**`.sr`に残すのが目的なら、liveで`srzip`へ流し込まない。** capture中は**packedのまま一時ファイルへ追記**し、**終わってから展開してzipする**([`stream_to_sr.py`](../experiments/e082_p4_spool_then_convert/stream_to_sr.py))。
+
+- **E080が落ちた条件(86 MHz × 256 M sample)がそのまま通る** — `fifo_overflow=0`、弾性FIFOの占有57 KB、21.48 MB/s
+- 変換は**無圧縮0.51秒(245 MB)/ deflate 9.5秒(2.6 MB、94分の1)**。**capture の外なので、どれだけ時間をかけてもsampleには影響しない**
+- **liveで見るならE080の経路、残すならこちら**、と用途で分ける
+
 ## 3. 経路C — TCPでSUMP(現行libsigrokでは不可)
 
 libsigrokの**serial層にTCPを足す`ser_tcpraw`は0.5.2に入っていない**。手元の`libsigrok.so.4`(0.5.2)には`tcpraw`系のsymbolが1つも無く、`.so`中の`tcp-raw`という文字列は上の`beaglelogic` driver専用のものだった。実際に`ols:conn=tcp-raw/127.0.0.1/5555`を試すと`serial-libsp: Attempt to open serial port with invalid parameters.`で止まる。
