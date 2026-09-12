@@ -85,6 +85,8 @@
 | **E066** | CDC 1本のdownload帯域は送出を実行するcontext(`loop()`か専用taskか、優先度、pin先core)で変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[E065](e065_p4_usb_hs_dual_cdc_rate/README.ja.md)の事実5 | **完了 — 変わる。効くのは優先度ではなくpin先core。core 0で7.4〜8.1、core 1で5.2〜5.7 MB/s**([e066_p4_usb_hs_tx_context/](e066_p4_usb_hs_tx_context/README.ja.md)) |
 | **E067** | PARLIO captureとUSB HS送出を同時に走らせると互いをどれだけ食うか。core配分で変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — captureは不変(8.00 MB/s、overflow 0)、USBのみ7〜16%低下。最良はharvest=core 1 / USB=core 0の7.42 MB/s。**副産物として転送末尾の間欠欠落を観測**([e067_p4_usb_vs_capture_core/](e067_p4_usb_vs_capture_core/README.ja.md)) |
 | **E068** | USB HS CDCの転送でhostへ届かなかった分は、失われているのか滞留しているのか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [E067](e067_p4_usb_vs_capture_core/README.ja.md)「経路の異常」、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — 前提が誤り。欠落は転送の途中で、dataは失われる。30回中4回(13%)、512 Bの4〜5 packet**([e068_p4_hs_cdc_tail_loss/](e068_p4_hs_cdc_tail_loss/README.ja.md)) |
+| **E069** | OTG HS上のvendor bulkの実効帯域は何MB/sか。CDCの約8 MB/sを超えるか。1 URBの大きさで変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [harness-channels](../references/harness-channels.ja.md) §6c、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — usbip越しで9.73 MB/s。天井は`usbser`側だった**([e069_p4_hs_vendor_bulk_rate/](e069_p4_hs_vendor_bulk_rate/README.ja.md)) |
+| **E070** | 同じvendor bulk構成をcore内蔵stackとEspUsbDevice 2.2.0で作ると、帯域・data完全性・descriptorの正しさはどう違うか | **一時・配線なし**(同上) | (P4でUSBを使う実験すべての土台) | **完了 — 帯域はcore内蔵(9.41 対 7.57 MB/s)、descriptor準拠はEspUsbDevice**([e070_p4_hs_vendor_stack_compare/](e070_p4_hs_vendor_stack_compare/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -238,6 +240,26 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E070 ESP32-P4: vendor bulkのstack比較(core内蔵 対 EspUsbDevice) — 完了 2026-09-12
+
+全文: [e070_p4_hs_vendor_stack_compare/README.ja.md](e070_p4_hs_vendor_stack_compare/README.ja.md)。read size 1 MiB / 4 MiB転送 / 各15回を**背中合わせ**で測った(usbip経由)。
+
+**事実**
+
+1. **帯域はcore内蔵stackが速く安定。** median **9.41 対 7.57 MB/s(+24%)**、ばらつきは7.90–9.70(±9%)対5.83–10.01(**±27%**)。
+2. **EspUsbDeviceはFIFO待ちが約1.9倍**(stalls median 57,980対30,606)。同じ送出loop・同じ512 B FIFOなので、**差はstackがFIFOを掃き出す速さ**にある。
+3. **descriptorの正しさはEspUsbDeviceが上。** **core内蔵はDEVICE_QUALIFIERにもOTHER_SPEED_CONFIGURATIONにも答えない(STALL)** — USB 2.0でHS deviceに必須。[E063](e063_p4_usb_hs_enumerate/README.ja.md)・[E069](e069_p4_hs_vendor_bulk_rate/README.ja.md)でUsbTreeViewが`ERROR_GEN_FAILURE`を出していた正体。
+4. **ただしEspUsbDeviceのOTHER_SPEED_CONFIGURATIONは中身が誤り** — FS側のbulkに`wMaxPacketSize=512`(FSの上限は64)。`EspUsbDeviceVendor::configurationDescriptor()`がper-speedの`endpointSize`を`(void)`で捨て、constructor値を両速度に使うため。
+5. **data完全性は両方とも0/15。** [E068](e068_p4_hs_cdc_tail_loss/README.ja.md)のCDCは30転送中4件(13%)だったので、**あの欠落はCDC class側の問題である疑いがさらに強まった**。
+6. flashはEspUsbDeviceが**約18 KB小さい**(374,242 対 392,098 B)。
+7. **MS OS 2.0はどちらも正しく答えるのにWindowsはどちらでもbindしない** → [E069](e069_p4_hs_vendor_bulk_rate/README.ja.md)のWindows側の問題は**stackと無関係**と確定。
+
+**どちらを使うか**: **いま帯域が要るならcore内蔵**(速く、ばらつきが小さい)。**HS deviceとして正しく振る舞わせたいならEspUsbDevice**。そして**512 B FIFOを深くできるのはEspUsbDeviceだけ**なので、[E069](e069_p4_hs_vendor_bulk_rate/README.ja.md)の「1 microframeあたり約2.4 transaction」という天井を超える道はそちらにある — **現状の−24%はFIFOを深くした効果で逆転しうる**。
+
+**未決**: EspUsbDeviceのFIFO待ちが多い理由 `—` / **FIFOを深くしたときの効果** `—`(`p4-hs-vendor-fifo-depth`。**EspUsbDeviceでしか試せない。次の問い**)/ ばらつき±27%の理由 `—` / usbipなしの値 `—` / vendor OUTはBでは未確認 / HID throughput `—`。
+
+**ベンチの知見**: usbipdの`bind`は**VID:PID + device instanceに紐づく**ので、PIDやserialを変えるたびに管理者権限のbindが要る。**usbipで測る実験はidentityを固定する**。またarduino-cliは**symlinkしたlibrary dirの`.cpp`を拾わない**(Library Manager経由なら問題なし)。
 
 ### E068 ESP32-P4: USB HS CDCの欠落は消失か滞留か — 完了 2026-09-12(**問いの前提が誤っていた**)
 
