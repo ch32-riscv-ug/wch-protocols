@@ -1,6 +1,6 @@
 # PulseView / sigrok から P4 の capture を取る経路
 
-状態: **reference**(2026-09-12。手元のlibsigrok 0.5.2で実地確認した部分と、未確認の部分を分けて書く)
+状態: **reference**(2026-09-12。**経路Bは[E077](../experiments/e077_p4_pulseview_over_ip/README.ja.md)で実機まで通した**。手元のlibsigrok 0.5.2で実地確認した部分と、未確認の部分を分けて書く)
 
 目的は「ESP32-P4で取ったlogic captureを、**PulseViewから直接**、または`.sr`ファイル経由で見られるようにする」。経路は3つあり、**必要な実装量とhost側の前提が違う**。
 
@@ -9,9 +9,9 @@
 | 経路 | host側の前提 | device側に要るもの | 確認状況 |
 |---|---|---|---|
 | **A. COM portへSUMP** | **何も要らない**(stock PulseViewの`ols` driver) | USB CDC上でSUMP wire protocolを話す | **未確認**。[E023](../experiments/e023_p4_sump_basic_trigger_80mhz/README.ja.md)〜[E028](../experiments/e028_p4_sump_four_stage_trigger/README.ja.md)でtrigger側は実装済み、**wire互換は未決のまま** |
-| **B. TCPでBeagleLogicを演じる** | **何も要らない**(stock PulseViewの`beaglelogic` driver) | PC側にPythonのTCP server。deviceはUSBで繋がっていればよい | **接続まで実地確認**(下記) |
+| **B. TCPでBeagleLogicを演じる** | **何も要らない**(stock PulseViewの`beaglelogic` driver) | PC側にPythonのTCP server。deviceはUSBで繋がっていればよい | **実機まで通した**([E077](../experiments/e077_p4_pulseview_over_ip/README.ja.md)) |
 | **C. TCPでSUMPを話す** | **libsigrokをgitから入れる**必要がある | Bと同じ | **現行版では不可**(下記) |
-| **D. `.sr`を書く** | 不要(ファイルを開くだけ) | 無し。PC側でzipを作るだけ | 未着手 |
+| **D. `.sr`を書く** | 不要(ファイルを開くだけ) | 無し。PC側でzipを作るだけ | **実機まで通した**([E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md)) |
 
 **SCPIは選択肢にならない。** sigrokのSCPI supportはoscilloscope / PSU / DMM用で、logic analyzerのdriverはSCPIを使わない。「IPで待ち受けてPulseViewから繋ぐ」を実現するのはBかCで、**stock環境で動くのはBだけ**である。
 
@@ -42,7 +42,33 @@ version  memalloc  samplerate  sampleunit  triggerflags  bufunitsize  get  close
 
 - 利点: host側に何も入れさせない。**Windows / Linux どちらでも同じ**。serverがPythonなので、[E064](../experiments/e064_p4_usb_hs_cdc_rate/README.ja.md)のreaderやchannel詰め替えをそのまま載せられる
 - 制約: BeagleLogicのmodelに合わせる必要がある(sample unitは1 or 2 byte、triggerの表現はBeagleLogic流)。**P4側の機能をそのまま出せるわけではない**
-- 未確認: `version`に何を返せばdriverが先へ進むか、`get`以降のdata streamの形式。**protocolの実体はlibsigrokの`beaglelogic_tcp.c`を読むか、応答を変えながら当たりを取る必要がある**
+
+### protocolの実体([E077](../experiments/e077_p4_pulseview_over_ip/README.ja.md)で確定)
+
+server実装は[`bl_server.py`](../experiments/e077_p4_pulseview_over_ip/bl_server.py)。
+
+| command | serverが返すもの |
+|---|---|
+| `version` | **`BeagleLogic`で始まる文字列**(driverは先頭11文字しか見ない) |
+| `memalloc` | 10進整数。**要求sample × unit byteがこれを超えるとdriverがcaptureを切り詰める**ので大きく返す |
+| `samplerate` / `sampleunit` / `triggerflags` / `bufunitsize` | 10進整数。引数付きなら**`ok`** |
+| `get` | **同じsocketにraw sample**。1 sample = `sampleunit`が1なら1 byte、0なら2 byte。**bit n = channel n** |
+| `close` | **返答不要。socketを閉じないこと**(下記) |
+
+**driverは「何sample欲しいか」をserverに伝えない。** `limit_samples`はhost側だけに留まり、**必要なbyte数を受け取った時点で`close`を送って読むのをやめる**。したがってserverは**clientが止めるまで送り続ける**。
+
+**刺さる2点。**
+
+1. **`close`を受けてserverがsocketを閉じると`sigrok-cli`がCPU 100%で終わらなくなる。** driverは`close`送出後に25 msのdrainをしてから自分で閉じる。**serverは待つ。**
+2. **`numchannels`はdriverのscan optionだが`sigrok-cli` 0.7.2はconn文字列の中で受け付けない。** channelを8以下にする(= sample unitを1 byteにする)には **`--channels P8_45,P8_46`** で index 8以上を無効にする。
+
+```console
+uv run python e077_p4_pulseview_over_ip/bl_server.py --source usb --samples 4000000
+sigrok-cli --driver "beaglelogic:conn=tcp-raw/127.0.0.1/5556" \
+  --channels P8_45,P8_46 --config samplerate=80m --samples 4000000 -o out.sr -O srzip
+```
+
+**rateは80 MHzを既定にする** — PARLIOは160 MHz ÷ 整数、driverのlistは100 MHzまでで、両方が正確に表せる最大がここになる。**1回のcaptureを超えるsample数を要求するとserverはbatchを繋ぐので、継ぎ目に空白が入る。**
 
 ## 3. 経路C — TCPでSUMP(現行libsigrokでは不可)
 
@@ -56,9 +82,13 @@ libsigrokの**serial層にTCPを足す`ser_tcpraw`は0.5.2に入っていない*
 
 channel数が8以下なら1 sample = 1 byteで、bit位置がchannel番号に対応する。**P4のPARLIOは2 channelなら1 byteに4 sampleを詰める**ので、`.sr`へ出す前に**1 sample = 1 byteへ展開する**か、per-channel packingから組み直す必要がある。この詰め替えはPC側で行う。
 
+**読む側の注意**: `srzip`は`logic-1-1`、`logic-1-2`…と**番号付きのchunkに分割する**。`logic-1-10`は文字列順では`logic-1-2`より前に来るので、**名前を文字列順に並べると継ぎ目で偽のedgeが出る**。**数値順に並べること**([E077](../experiments/e077_p4_pulseview_over_ip/README.ja.md)で一度踏んだ)。
+
 ## 5. 帯域との関係
 
 [E064](../experiments/e064_p4_usb_hs_cdc_rate/README.ja.md)でUSB HS CDCの実効帯域は約5.6 MB/s。2 channelのPARLIOは1 byteに4 sampleなので**連続streamingは約22.4 Msps相当**が上限になる。`.sr`へ出すときに1 sample = 1 byteへ展開すると**4倍に膨らむ**ので、**展開はPC側で行い、線の上はpackedのまま運ぶ**。
+
+**現在の経路はvendor bulkで実測8.80 MB/s**([E076](../experiments/e076_p4_capture_hs_download/README.ja.md))。[E077](../experiments/e077_p4_pulseview_over_ip/README.ja.md)は4 M sample(packed 1 MB)を**0.45秒**でPulseViewのdriverへ渡している。
 
 ## 参照
 
