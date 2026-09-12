@@ -305,11 +305,21 @@ batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、fi
 
 **USB 2.0 HSのdevice経路は[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)で開いた。** 別個体のESP32-P4(`esp32-p4-30eda0e31478`)をHS portとUSB-Serial-JTAGの2本でWindows 11へ繋いだベンチで、Arduino-ESP32 3.3.11が**High-Speedで列挙する**ことを確認した(device側`tud_speed_get()=2`、host側`Device Bus Speed 0x02`、bulk endpoint 512 B)。**USB-Serial-JTAGのconsoleと書込みは同時に生きる**ので、download経路を試しながら焼き直せる。
 
-**ただしthroughputはまだ測っていない `—`。** 下の表はCH343 6 Mbaud(約600 KB/s、実測はそれ以下)を前提にした旧ベンチの見積りで、**HS経路の実測が出るまで置き換えない**。HSのbulkは理論上53 MB/s級なので、実測次第でこの表と、そこから導いた優先順位は書き直しになる。
+**CDC経路のthroughputは[E064](../experiments/e064_p4_usb_hs_cdc_rate/README.ja.md)で測った。約5.6〜5.7 MB/sで飽和する。**
+
+| 取得量 | HS CDC実測(5.65 MB/s) | 旧ベンチ CH343 6 Mbaud想定 |
+|---:|---:|---:|
+| 64 KiB(hardware trigger frameの上限) | 約0.012秒 | 約0.11秒 |
+| 1 MiB | 約0.19秒(実測) | 約1.7秒 |
+| 16 MiB([E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)のdeep batch) | **2.968秒(実測)** | 約28秒 |
+
+**9.4倍速くなった結果、「深度を伸ばすことの価値はdownload時間に食われる」という判断は緩む。** 16 MiBが3秒で出るなら、深度はもう律速ではない。ただし**連続streamingの上限としては5.6 MB/s**であり、2 channel(1 byteに4 sample)なら約22.4 Msps相当にとどまる。
+
+飽和の理由はturnaroundと読める。5.6 MB/s ÷ 512 B = 約10,940 transaction/s、HSのmicroframeは8,000回/秒なので1 microframeあたり約1.37 transactionしか出ていない(HSは13まで許す)。TinyUSBのCDC TX FIFOがbulk 1 packet分(`CONFIG_TINYUSB_CDC_TX_BUFSIZE=512`)しかないことと整合する。**帯域が要る経路はvendor bulkへ逃がす余地がある**(未測定)。
 
 ### 旧ベンチ(UART download)の見積り
 
-以下は`esp32-p4-e8f60ae0aa24`(host側portが`1a86:55d3` = WCH CH343のUSB-UART bridge)での見積りである。
+以下は`esp32-p4-e8f60ae0aa24`(host側portが`1a86:55d3` = WCH CH343のUSB-UART bridge)での見積りで、**上のHS実測に置き換わった**。
 
 | 取得量 | 6 Mbaud想定のdownload時間 |
 |---:|---:|
@@ -317,7 +327,7 @@ batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、fi
 | 1 MiB | 約1.7秒 |
 | 16 MiB([E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)のdeep batch) | 約28秒 |
 
-この前提のもとでは**深度を伸ばすことの価値はdownload時間に食われる**。16 MiBを取れてもhostへ出すのに30秒かかるなら、深度より次の二つが効く。**この判断はHS経路の実測で覆りうる。**
+この前提のもとでは**深度を伸ばすことの価値はdownload時間に食われる**。16 MiBを取れてもhostへ出すのに30秒かかるなら、深度より次の二つが効く。**HS経路(E064)ではこの前提が崩れており、以下はUART経路に限った話である。**
 
 - **capture qualification**([E040](../experiments/e040_p4_parlio_level_open_frame/README.ja.md))— gateのdutyだけ保存量が減り、CPU負荷はゼロ
 - **内部圧縮** — 上の表の方式
