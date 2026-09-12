@@ -82,6 +82,7 @@
 | **E063** | Arduino-ESP32 3.3.11でESP32-P4のUSB 2.0 OTG HS portをdeviceとして列挙でき、negotiateする速度はHSかFSか。USB-Serial-JTAG(FS)のconsole経路は生き続けるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[harness-channels](../references/harness-channels.ja.md) §物理IF | **完了 — High-Speedで列挙、consoleも同時に生きる**([e063_p4_usb_hs_enumerate/](e063_p4_usb_hs_enumerate/README.ja.md)) |
 | **E064** | PSRAM上のdataをUSB 2.0 HSのCDC bulk INでWindowsへ連続送出したとき、実効帯域は何MB/sか。chunk sizeと転送総量でどう変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[harness-channels](../references/harness-channels.ja.md) §物理IF | **完了 — 約5.6〜5.7 MB/sで飽和、16 MiBが2.968秒**([e064_p4_usb_hs_cdc_rate/](e064_p4_usb_hs_cdc_rate/README.ja.md)) |
 | **E065** | USB 2.0 HS上のCDCを2本同時に流したとき、合計帯域は1本の約5.6 MB/sより上がるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [harness-channels](../references/harness-channels.ja.md) §CDCの上限は endpoint 予算、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — 反証。2本でも合計は上がらない(比0.943)。ただし送出taskを分けた1本が7.94 MB/s**([e065_p4_usb_hs_dual_cdc_rate/](e065_p4_usb_hs_dual_cdc_rate/README.ja.md)) |
+| **E066** | CDC 1本のdownload帯域は送出を実行するcontext(`loop()`か専用taskか、優先度、pin先core)で変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[E065](e065_p4_usb_hs_dual_cdc_rate/README.ja.md)の事実5 | **完了 — 変わる。効くのは優先度ではなくpin先core。core 0で7.4〜8.1、core 1で5.2〜5.7 MB/s**([e066_p4_usb_hs_tx_context/](e066_p4_usb_hs_tx_context/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -235,6 +236,27 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E066 ESP32-P4: CDCの帯域は送出contextで決まるか — 完了 2026-09-12
+
+全文: [e066_p4_usb_hs_tx_context/README.ja.md](e066_p4_usb_hs_tx_context/README.ja.md)。run: `_runs/E066_20260912T030*`。1実行で18条件(6 mode × 3)。
+
+**事実**
+
+1. **帯域はcontextで変わる。最大と最小の比は1.53倍**(8.08 対 5.27 MB/s)。
+2. **効いているのはpin先coreである。** core 0で走った12条件はすべて**7.43〜8.11 MB/s**、core 1で走った6条件はすべて**5.24〜5.74 MB/s**で、**2群は重ならない**。
+3. **優先度は効かない。** core 0の中で優先度1 / 5 / 20は7.96 / 7.64 / 8.08 MB/sで、3回ずつの範囲が重なる。**[E065](e065_p4_usb_hs_dual_cdc_rate/README.ja.md)の「効くのは優先度」は誤り。**
+4. **`loop()`が遅いのはcore 1で走るから。** `ARDUINO_RUNNING_CORE`は1で、`loop`の5.60 MB/sは同じcoreに置いた専用task(5.27 MB/s)とほぼ同じ。
+5. **[E064](e064_p4_usb_hs_cdc_rate/README.ja.md)の5.59 MB/sを`loop` modeが5.60 MB/sで再現した。** E064とE065の+42%差は**core placementで説明され、2本目のCDCの有無ではない**。E065の事実5は方向は正しく、**帰属が誤っていた**。
+6. pinしない場合は3回ともcore 0で走り、core 0群に入る(7.67 MB/s)。
+7. 最速でも8.08 MB/s ÷ 512 B = **1 microframeあたり約1.97 transaction**(HSは13まで)。**coreを変えても天井の性質は変わらない。**
+8. pattern検証6回で不一致0、短write 0、stall 0。
+
+**候補**: **USBへ流すtaskは`loop()`と別coreへpinする**(採用。`ARDUINO_RUNNING_CORE`=1なのでcore 0)。優先度は既定でよい。[E061](e061_p4_drain_core_split/README.ja.md)の「回収を別coreへ移すとdrainが上がる」と**同じ形の効果**。
+
+**未決**: **core 1が遅い理由** `—`(`USB.begin()`が`setup()`= core 1から呼ばれるのでUSB割り込みがcore 1に登録されているはず、という構造の読み。未測定。`p4-usb-isr-core`)/ 1.97 transaction/microframeの天井を超える手段 `—` / **PARLIO回収も別coreを欲しがるので、captureとUSB送出でcoreを取り合う** `—`(`p4-usb-vs-drain`の中心)/ vendor bulkでの同条件 `—`。
+
+**近直の目標への含み**: 8.08 MB/sは2 channelのPARLIOなら**約32.3 Msps相当の連続streaming**で、「2chで数十Msps」は届く。ただし条件は「送出taskをcore 0」であり、**PARLIO回収との両立は未測定**。
 
 ### E065 ESP32-P4: CDCを2本にすると合計帯域は上がるか — 完了 2026-09-12(**仮説は反証された**)
 
