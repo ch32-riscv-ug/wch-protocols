@@ -80,6 +80,7 @@
 | **E061** | PARLIOのISRが走るcoreとmemcpyするcoreを分けると、window中のdrain帯域は上がるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — core分離でdrainが82.3→119.7 MB/s**([e061_p4_drain_core_split/](e061_p4_drain_core_split/README.ja.md)) |
 | **E062** | 同一VID:PID・同一serialでinterface構成(HID単機能↔composite、末尾追加、interface番号の機能入替)を変えたとき、Windows 11はどの切替で既存devnodeとdriverを再利用するか。`bcdDevice`のみ・serialのみの変更は結果を変えるか。Linuxは全条件で再認識するか | **一時・専用機材**(E013と同じESP32-S3 native USB、Windows 11、Linux) | [probe-feasibility-gates](../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 4、[usb-host-descriptor-persistence](../references/usb-host-descriptor-persistence.ja.md) | **計画**([e062_usb_same_identity_layout_change/](e062_usb_same_identity_layout_change/README.ja.md)) |
 | **E063** | Arduino-ESP32 3.3.11でESP32-P4のUSB 2.0 OTG HS portをdeviceとして列挙でき、negotiateする速度はHSかFSか。USB-Serial-JTAG(FS)のconsole経路は生き続けるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[harness-channels](../references/harness-channels.ja.md) §物理IF | **完了 — High-Speedで列挙、consoleも同時に生きる**([e063_p4_usb_hs_enumerate/](e063_p4_usb_hs_enumerate/README.ja.md)) |
+| **E064** | PSRAM上のdataをUSB 2.0 HSのCDC bulk INでWindowsへ連続送出したとき、実効帯域は何MB/sか。chunk sizeと転送総量でどう変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[harness-channels](../references/harness-channels.ja.md) §物理IF | **完了 — 約5.6〜5.7 MB/sで飽和、16 MiBが2.968秒**([e064_p4_usb_hs_cdc_rate/](e064_p4_usb_hs_cdc_rate/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -233,6 +234,29 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E064 ESP32-P4: USB HS CDCのdownload帯域 — 完了 2026-09-12
+
+全文: [e064_p4_usb_hs_cdc_rate/README.ja.md](e064_p4_usb_hs_cdc_rate/README.ja.md)。run: `_runs/E064_20260912T024*`。1実行で24条件。
+
+**事実**
+
+1. **実効帯域は約5.6〜5.7 MB/sで飽和する。** chunk 512 B以上ではどの値でも同じ(512 B / 4 KiB / 16 KiB / 64 KiBのmedianが5.60 / 5.74 / 5.70 / 5.73 MB/s)。
+2. **chunk 512 Bが膝。** 64 Bでは1.51 MB/s(飽和値の約1/3.8)。512 BはHS bulkの`wMaxPacketSize`であり`CONFIG_TINYUSB_CDC_TX_BUFSIZE`の値でもある。
+3. **転送量1 → 16 MiBで帯域は落ちない**(5.51 → 5.65 MB/s)。**16 MiBは2.968秒**で出る。
+4. **律速はhost側readerではない。** device側`esp_timer_get_time()`とhost側`perf_counter()`の比が全24条件で1.000〜1.001。**USB経路そのものが上限**。
+5. **data化けと欠落は無い。** 検証した8条件で全word一致、短write 0、stall 0。
+6. **HS bulk理論上限53.2 MB/sの約10.6%。** 5.6 MB/s ÷ 512 B = 約10,940 transaction/s、microframeは8,000回/秒なので**1 microframeあたり約1.37 transaction**。HSは13まで許すので、**帯域ではなくturnaroundが上限**と読める。TX FIFOがbulk 1 packet分しかないことと整合する。
+7. **旧ベンチ(CH343 6 Mbaud、約600 KB/s)の9.4倍。** 16 MiBの見積り約28秒 → **実測2.968秒**。
+8. PIDを`1209:0003`に変えるとWindowsは**COM9**を割り当てた(E063の`1209:0002`はCOM8)。PIDごとに別instanceになることの傍証。
+
+**候補**: chunkは4 KiB以上を既定に(採用)/ 帯域が要る経路はvendor bulkへ逃がす(未検証。[harness-channels](../references/harness-channels.ja.md) §6cと同じ結論に実測から到達)/ device側とhost側の時間を両方記録する型(採用)。
+
+**未決**: **vendor bulk(WinUSB)ならいくつ出るか** `—`(`p4-hs-cdc-vs-bulk`。次の問い)/ CDCのTX FIFOを512 Bより深くできるか / 1 microframe 1.37 transactionの直接確認 `—` / CDC複数本の合計帯域(`p4-cdc-budget-hs`)/ OUT方向 `—` / PARLIO同時動作(`p4-usb-vs-drain`)/ usbip経由との差 `—`。
+
+**近直の目標への含み**: 2 channelのPARLIOは1 byteに4 sampleを詰めるので、**5.6 MB/sは約22.4 Msps相当の連続streaming**。「2chで数十Msps」を連続で出すにはvendor bulkで上げるか、**PSRAMへbatchしてから出す**(16 MiB = 2ch/50 Mspsで約1.34秒ぶん、downloadは2.968秒)かのどちらかになる。
+
+**反映**: [p4-logic-analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段のdownload時間の表を実測で置き換え。**仕様のstatusは動かない**。
 
 ### E063 ESP32-P4: USB 2.0 OTG HSは列挙するか — 完了 2026-09-12
 
