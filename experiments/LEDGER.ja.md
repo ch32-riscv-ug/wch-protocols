@@ -93,6 +93,7 @@
 | **E074** | 2 channelのPARLIO captureを取り、hostで`.sr`に変換してsigrokが読み戻せるところまで通るか。どのrateまでsample単位の欠落なしか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 限界matrix、[PulseView / sigrok 連携](../references/pulseview-integration.ja.md) | **完了 — 160 Mspsまでsample精度、16 Mi sampleの深さも通り、`.sr`をsigrokが読み戻す**([e074_p4_2ch_capture_to_sr/](e074_p4_2ch_capture_to_sr/README.ja.md)) |
 | **E075** | PARLIOのchannel幅1 / 4 / 8で、どのsample rateまでsample単位の欠落なしに取れるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 限界matrixの※ | **完了 — 1 / 2 / 4 chは160 Mspsでsample精度。8 chは96 MHzまで1 MiBで精度、160 MHzは`overflow=131`**([e075_p4_width_sample_accuracy/](e075_p4_width_sample_accuracy/README.ja.md)) |
 | **E076** | captureしたdataをOTG HSのvendor bulkで降ろすと4 MiBのdownloadは何秒になり、sampleは落ちずに`.sr`まで通るか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [P4 USB HSまとめ](../references/p4-usb-hs-summary.ja.md) §5 / §7、[E074](e074_p4_2ch_capture_to_sr/README.ja.md)の残した律速 | **完了 — 4 MiBが平均0.48秒(8.80 MB/s)、console経路の12倍。7/7でsample精度。PSRAM読み出しは律速ではない**([e076_p4_capture_hs_download/](e076_p4_capture_hs_download/README.ja.md)) |
+| **E077** | BeagleLogicのTCP protocolを演じるPython serverを置くと、stockのsigrok / PulseViewがP4のcaptureをIP経由で取れるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [PulseView / sigrok 連携](../references/pulseview-integration.ja.md) 経路B | **完了 — 取れる。4 M sample @ 80 MHzが0.45秒でsample精度。1回のcaptureを超える要求は継ぎ目が出る**([e077_p4_pulseview_over_ip/](e077_p4_pulseview_over_ip/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -246,6 +247,26 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E077 ESP32-P4: stockのsigrok / PulseViewからIP経由で取る — 完了 2026-09-12
+
+全文: [e077_p4_pulseview_over_ip/README.ja.md](e077_p4_pulseview_over_ip/README.ja.md)。[連携メモ](../references/pulseview-integration.ja.md)の経路B。libsigrokの`beaglelogic` driverのTCP modeを演じるPython serverを書き、その背後に[E076](e076_p4_capture_hs_download/README.ja.md)の経路で実機を置いた。
+
+**事実**
+
+1. **stockの`sigrok-cli`がserver経由で実機のcaptureを取れる。** driverの追加もlibsigrokの入れ替えも要らない。**経路Bが成立した。**
+2. **波形は[E074](e074_p4_2ch_capture_to_sr/README.ja.md)の周期判定を通る。** 3回とも D0 / D1 が 800 / 800.00 / 800(80 MHz ÷ 100 kHz)、duty 25.00% / 50.00%。
+3. **4 M sample @ 80 MHzが0.45秒**(capture 50 ms + download 0.10秒 + TCP送出)。sample数はちょうど4,000,000。
+4. **driverは「何sample欲しいか」をserverに伝えない。** `limit_samples`はhost側だけに留まり、**必要なbyte数を受け取ったら`close`を送って読むのをやめる**。serverは**clientが止めるまで送り続ける**実装になる。
+5. **`close`を受けてserverがsocketを閉じると`sigrok-cli`がCPU 100%で終わらなくなる**(2分以上回してkillした)。driverは`close`送出後に25 msのdrainをしてから自分で閉じるので、**serverは待つ**。
+6. **`numchannels`はdriverのscan optionだが`sigrok-cli` 0.7.2はconn文字列で受け付けない。** 1 byte/sampleにするには`--channels P8_45,P8_46`でindex 8以上を無効にする。
+7. **1回のcaptureを超える要求は継ぎ目が出る。** 16 M sampleは4 M batch × 4回のcaptureになり、**周期が800でない箇所は4つだけ、すべてbatch境界**(3,999,837 / 7,999,487 / 11,999,549 / 12,000,000)。**欠落ではなく実際の空白。**
+
+**候補**: **PulseViewから使うときは`--samples`をserverのbatch以下にする** / **rateは80 MHzを既定にする**(PARLIOは160 MHz ÷ 整数、driverのlistは100 MHzまで)/ **BeagleLogicを演じるserverは`close`でsocketを閉じない**。
+
+**未決**: PulseView(GUI)での確認 `—` / 継ぎ目のない連続streaming `—` / trigger `—` / 160 MspsをPulseViewへ出す `—`(driverのrate listが100 MHzまで)。
+
+**道具の注意**: `srzip`は`logic-1-1`…`logic-1-10`…と分割するので、**chunkを文字列順に並べると継ぎ目で偽のedgeが出る**。数値順に並べること。
 
 ### E076 ESP32-P4: captureをOTG HSのvendor bulkで降ろす — 完了 2026-09-12
 
