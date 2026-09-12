@@ -68,7 +68,16 @@ sigrok-cli --driver "beaglelogic:conn=tcp-raw/127.0.0.1/5556" \
   --channels P8_45,P8_46 --config samplerate=80m --samples 4000000 -o out.sr -O srzip
 ```
 
-**rateは80 MHzを既定にする** — PARLIOは160 MHz ÷ 整数、driverのlistは100 MHzまでで、両方が正確に表せる最大がここになる。**1回のcaptureを超えるsample数を要求するとserverはbatchを繋ぐので、継ぎ目に空白が入る。**
+**rateは80 MHzを既定にする** — PARLIOは160 MHz ÷ 整数、driverのlistは100 MHzまでで、両方が正確に表せる最大がここになる。
+
+### 継ぎ目を消す([E080](../experiments/e080_p4_pulseview_gapless/README.ja.md))
+
+batchを繋ぐと継ぎ目に空白が入る。**送出元を[E078](../experiments/e078_p4_continuous_stream/README.ja.md)のstreaming firmwareに替えると、1回の`get`が1回のcaptureになって継ぎ目が消える**([`bl_stream_server.py`](../experiments/e080_p4_pulseview_gapless/bl_stream_server.py)。protocolの実装はE077のものをimportして共有)。
+
+- **86 Msps・64 M sample(0.74秒の連続capture)まで一本で通る**
+- **展開はnumpyで行う。** E077のPython loopでは実時間に間に合わない(numpyなら展開後89 MB/s)
+- **律速はclientの出力先である。** 256 M sampleを86 MHzで取ると`-O srzip`では欠落し、`-O binary`なら通る。**`.sr`へ落とすなら64 M sample程度まで**
+- **serverの`--samples`はclientの要求に合わせる。** 超えると待ち続ける。上限はfirmwareの268,435,456 sample
 
 ## 3. 経路C — TCPでSUMP(現行libsigrokでは不可)
 
