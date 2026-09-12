@@ -315,7 +315,11 @@ batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、fi
 
 **9.4倍速くなった結果、「深度を伸ばすことの価値はdownload時間に食われる」という判断は緩む。** 16 MiBが3秒で出るなら、深度はもう律速ではない。ただし**連続streamingの上限としては5.6 MB/s**であり、2 channel(1 byteに4 sample)なら約22.4 Msps相当にとどまる。
 
-飽和の理由はturnaroundと読める。5.6 MB/s ÷ 512 B = 約10,940 transaction/s、HSのmicroframeは8,000回/秒なので1 microframeあたり約1.37 transactionしか出ていない(HSは13まで許す)。TinyUSBのCDC TX FIFOがbulk 1 packet分(`CONFIG_TINYUSB_CDC_TX_BUFSIZE=512`)しかないことと整合する。**帯域が要る経路はvendor bulkへ逃がす余地がある**(未測定)。
+**送出taskをどのcoreに置くかで1.53倍変わる**([E066](../experiments/e066_p4_usb_hs_tx_context/README.ja.md))。`ARDUINO_RUNNING_CORE`は1で、**core 1(= `loop()`と同じ側)では5.2〜5.7 MB/s、core 0では7.4〜8.1 MB/s**。優先度は効かない。上の5.65 MB/sは`loop()`から流した値なので、**core 0へ置けば16 MiBは約2.08秒**になる。`USB.begin()`が`setup()`(core 1)から呼ばれるためUSB割り込みがcore 1にあり、送出がそれと競合している、というのが構造からの読み(未測定)。
+
+飽和の理由はturnaroundと読める。最速の8.08 MB/s ÷ 512 B = 約15,800 transaction/s、HSのmicroframeは8,000回/秒なので**1 microframeあたり約1.97 transaction**しか出ていない(HSは13まで許す)。TinyUSBのCDC TX FIFOがbulk 1 packet分(`CONFIG_TINYUSB_CDC_TX_BUFSIZE=512`)しかないことと整合する。**endpointを増やしても合計は増えない**ことは[E065](../experiments/e065_p4_usb_hs_dual_cdc_rate/README.ja.md)で確認済み(2本で比0.943)なので、**vendor bulkへ逃がしても同じ天井に当たる可能性が高い**(未測定)。
+
+**captureとUSB送出はcoreを取り合う。** [E061](../experiments/e061_p4_drain_core_split/README.ja.md)はPARLIOの回収を別coreへ移すとdrainが82.3 → 119.7 MB/sへ上がると言い、E066はUSB送出も`loop()`と別coreを欲しがると言う。**2つが同じcore 0を要求するので、同時に走らせたときの配分は別に測る必要がある**。
 
 ### 旧ベンチ(UART download)の見積り
 
