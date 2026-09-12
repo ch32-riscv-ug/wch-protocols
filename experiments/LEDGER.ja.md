@@ -89,6 +89,7 @@
 | **E070** | 同じvendor bulk構成をcore内蔵stackとEspUsbDevice 2.2.0で作ると、帯域・data完全性・descriptorの正しさはどう違うか | **一時・配線なし**(同上) | (P4でUSBを使う実験すべての土台) | **完了 — 帯域はcore内蔵(9.41 対 7.57 MB/s)、descriptor準拠はEspUsbDevice**([e070_p4_hs_vendor_stack_compare/](e070_p4_hs_vendor_stack_compare/README.ja.md)) |
 | **E071** | vendor bulkの送信FIFOを深くするとdevice側の帯域はどこまで伸びるか。天井はFIFOか別か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-4 / CR-7 | **完了 — 8 KiBで飽和(9.03 → 10.59 MB/s、+17%)。64 KiBはmountせず。host役の36.4 MB/sには遠い**([e071_p4_hs_vendor_fifo_depth/](e071_p4_hs_vendor_fifo_depth/README.ja.md)) |
 | **E072** | P4を2枚HS port同士で直結し、PCを経路から外してdevice → hostのbulk INを測ると何MB/sか | **一時・要配線**(`...78` = device / `...f5` = host、OTG HS同士を直結) | [EspUsbHostへの改修依頼](../references/espusbhost-change-requests.ja.md) HR-1 | **完了 — 5.6 MB/s。直結の方が遅い。host側の継続INが512 B×depth 1のため**([e072_p4_hs_device_to_host_native/](e072_p4_hs_device_to_host_native/README.ja.md)) |
+| **E073** | USB 2.0 HSのinterrupt endpoint(HID)でdevice → hostへ流せる実効帯域は何MB/sか。packet sizeでどう変わるか | **一時・要配線**(P4 2枚のOTG HS直結) | [harness-channels](../references/harness-channels.ja.md) §USBクラス8種の得失 | **完了 — 既定64 Bで0.52 MB/s、512 Bで4.14 MB/s。「HID = 64 kB/s」はFSの値**([e073_p4_hs_hid_throughput/](e073_p4_hs_hid_throughput/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -242,6 +243,25 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E073 ESP32-P4: HSでのHID限界throughput — 完了 2026-09-12
+
+全文: [e073_p4_hs_hid_throughput/README.ja.md](e073_p4_hs_hid_throughput/README.ja.md)。[E072](e072_p4_hs_device_to_host_native/README.ja.md)と同じ2枚直結ベンチ。device = `EspUsbDeviceHidVendor`、host = `onHIDVendorInput()`。
+
+**事実**
+
+1. **既定(64 B endpoint)で0.517 MB/s。** [harness-channels](../references/harness-channels.ja.md)の「HID = interrupt 64 B/1 ms = 64 kB/s」は**full speedの値**で、**HSでは約8倍**。
+2. **帯域はpacket sizeに比例する。** 64 / 128 / 512 Bで **0.517 / 1.034 / 4.136 MB/s**。`packet size × 8,000/s`がそのまま出る(HSのmicroframe周期125 us)。
+3. **1 microframeあたり1 transactionのみ。** high-bandwidth(最大3回)は使われていない → **理論上あと3倍**。
+4. **1,024 Bは動かない。** `begin()`は通るがstreamが流れない。`EspUsbHost`側のperiodic FIFO配分が疑わしい([HR-3](../references/espusbhost-change-requests.ja.md))。
+5. **`EspUsbDevice`はHIDのpacket sizeを2か所でハードに64 Bへ縛っている**(`begin()`の`reportSize_ <= 63`、`configurationDescriptor()`の`mps > 64`)。`CFG_TUD_HID_EP_BUFSIZE`も`#ifndef`ガード無し → [CR-8](../references/espusbdevice-change-requests.ja.md)。
+6. **HID(512 B)は vendor bulk(10.74 MB/s)の約40%** まで届き、しかも**driverレス**で**帯域が予約される**。
+
+**候補**: **HIDを「帯域不足」として捨てない。** driverレスを優先するならHID(512 B)、生帯域を優先するならvendor bulk。2 channelのPARLIO captureなら**HID 512 Bでも約16.5 Msps相当**。
+
+**未決**: 1,024 Bが動かない理由 `—` / high-bandwidth transactionを使えるか `—`(使えれば3倍)/ PCをhostにしたときの値 `—` / HID OUT方向 `—` / HID interfaceを複数並べたら合算されるか `—`。
+
+**反映**: [harness-channels](../references/harness-channels.ja.md) §USBクラス8種の得失の**HID行はFS前提**で、HSでは書き直しが要る。
 
 ### E072 ESP32-P4: 2枚直結でのdevice → host bulk IN — 完了 2026-09-12(**仮説は反証された**)
 

@@ -86,6 +86,31 @@ queue 深さまで手を入れるのが重いなら、**`vendorOpen()` に「1 �
 
 ---
 
+## HR-3 1,024 B の interrupt IN endpoint を受けられるようにしたい
+
+**優先度: 中**
+
+### 症状
+
+device 側の HID interrupt IN を **1,024 B** にすると、`vendorOpen` 相当の HID 経路で **stream が流れない**。device は 1 report 送って止まり、host 側の `onHIDVendorInput()` に何も届かない([E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md))。512 B までは問題なく **4.14 MB/s** 出る。
+
+### 心当たり
+
+README.ja.md に OUT 側の同じ話が書かれている。
+
+> 512バイトを超えるinterrupt OUTエンドポイントを持つデバイス(…)はclaimに失敗して `ESP_ERR_NOT_SUPPORTED` となり、host driver が `HCD DWC: EP MPS (1024) exceeds supported limit (512)` を出力します。FIFO を再分割して領域を確保してください。
+
+`ESP_USB_HOST_FIFO_LARGE_PERIODIC_OUT` が OUT 側の答えとして用意されている。**IN 側にも同じ配分の問題があるのではないか。**
+
+### お願いしたいこと
+
+- IN 側にも `ESP_USB_HOST_FIFO_LARGE_PERIODIC_*` 相当の配分が要るなら、その旨をドキュメントに一行
+- 可能なら 1,024 B の periodic IN を受けられる配分オプション
+
+**1,024 B が通れば HID は 8.2 MB/s**(= 1,024 × 8,000)になり、driver レスのまま vendor bulk に迫る。
+
+---
+
 ## 参考になった点(記録として)
 
 - **`docs/usb-host-advanced.md` の帯域表が、device 側を調べるうえで一番効いた。** 「同じ P4 が host 役なら 36.4 MB/s」という 1 行があったおかげで、**device 側の 9〜10 MB/s は hardware の限界ではない**と即断でき、[E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md) / [E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) の設計がそこから決まった
