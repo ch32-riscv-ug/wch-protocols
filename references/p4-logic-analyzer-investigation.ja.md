@@ -331,6 +331,19 @@ batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、fi
 
 したがって**この節の帯域の数値(device側時計で測ったもの)は有効だが、「その帯域でdataが正しく渡る」とは言えない**。原因は未特定で、候補はTinyUSBのCDC TX FIFOに対するapplication taskとusbd taskの跨core競合。**当面は転送に長さとCRCを付けてhostが検証・再送要求できるようにし、pattern照合なしの転送を信用しないこと。**
 
+**vendor bulkへ逃がすと天井は上がり、欠落もなくなる。** [E069](../experiments/e069_p4_hs_vendor_bulk_rate/README.ja.md)がCDCの8.08 MB/sを超える9.73 MB/sを出し(**上の「同じ天井に当たる可能性が高い」は否定された** — 天井はdeviceではなくWindowsの`usbser`側だった)、[E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md)がTX FIFOを8 KiBにして10.74 MB/sへ伸ばした。**data欠落は2つのstack合わせて33転送で0件。**
+
+**capture → download → `.sr`の通しは[E076](../experiments/e076_p4_capture_hs_download/README.ja.md)で成立した。**
+
+| 取得量 | **OTG HS vendor bulk 実測(8.80 MB/s)** | HS CDC(5.65 MB/s) | 旧ベンチ CH343 6 Mbaud |
+|---:|---:|---:|---:|
+| 64 KiB | 約0.007秒 | 約0.012秒 | 約0.11秒 |
+| 1 MiB | 約0.12秒 | 約0.19秒 | 約1.7秒 |
+| **4 MiB** | **0.48秒(実測、7回)** | 約0.74秒 | 約7秒 |
+| 16 MiB | 約1.9秒 | 2.968秒(実測) | 約28秒 |
+
+送出元がPSRAMであることの不利はない — 同じloopでinternal RAMから送った対照は8.38、PSRAMは9.04 MB/sで**PSRAMの方がわずかに速い**。**ただし同一条件で1.65倍ばらつく**(6.6〜10.9 MB/s)ので、**連続streamingの釣り合い点は最良値ではなく実測mean 8.80 MB/s = 約35 Msps(2 channel)で見る**。
+
 ### 旧ベンチ(UART download)の見積り
 
 以下は`esp32-p4-e8f60ae0aa24`(host側portが`1a86:55d3` = WCH CH343のUSB-UART bridge)での見積りで、**上のHS実測に置き換わった**。

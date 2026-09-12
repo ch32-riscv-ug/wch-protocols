@@ -86,12 +86,13 @@
 | **E067** | PARLIO captureとUSB HS送出を同時に走らせると互いをどれだけ食うか。core配分で変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — captureは不変(8.00 MB/s、overflow 0)、USBのみ7〜16%低下。最良はharvest=core 1 / USB=core 0の7.42 MB/s。**副産物として転送末尾の間欠欠落を観測**([e067_p4_usb_vs_capture_core/](e067_p4_usb_vs_capture_core/README.ja.md)) |
 | **E068** | USB HS CDCの転送でhostへ届かなかった分は、失われているのか滞留しているのか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [E067](e067_p4_usb_vs_capture_core/README.ja.md)「経路の異常」、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — 前提が誤り。欠落は転送の途中で、dataは失われる。30回中4回(13%)、512 Bの4〜5 packet**([e068_p4_hs_cdc_tail_loss/](e068_p4_hs_cdc_tail_loss/README.ja.md)) |
 | **E069** | OTG HS上のvendor bulkの実効帯域は何MB/sか。CDCの約8 MB/sを超えるか。1 URBの大きさで変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [harness-channels](../references/harness-channels.ja.md) §6c、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — usbip越しで9.73 MB/s。天井は`usbser`側だった**([e069_p4_hs_vendor_bulk_rate/](e069_p4_hs_vendor_bulk_rate/README.ja.md)) |
-| **E070** | 同じvendor bulk構成をcore内蔵stackとEspUsbDevice 2.2.0で作ると、帯域・data完全性・descriptorの正しさはどう違うか | **一時・配線なし**(同上) | (P4でUSBを使う実験すべての土台) | **完了 — 帯域はcore内蔵(9.41 対 7.57 MB/s)、descriptor準拠はEspUsbDevice**([e070_p4_hs_vendor_stack_compare/](e070_p4_hs_vendor_stack_compare/README.ja.md)) |
+| **E070** | 同じvendor bulk構成をcore内蔵stackとEspUsbDevice 2.2.0で作ると、帯域・data完全性・descriptorの正しさはどう違うか | **一時・配線なし**(同上) | (P4でUSBを使う実験すべての土台) | **完了 — 帯域は互角(9.04 対 9.03 MB/s、clean buildで測り直し)、descriptor準拠とFIFOの自由度はEspUsbDevice**([e070_p4_hs_vendor_stack_compare/](e070_p4_hs_vendor_stack_compare/README.ja.md)) |
 | **E071** | vendor bulkの送信FIFOを深くするとdevice側の帯域はどこまで伸びるか。天井はFIFOか別か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-4 / CR-7 | **完了 — 8 KiBで飽和(9.03 → 10.59 MB/s、+17%)。64 KiBはmountせず。host役の36.4 MB/sには遠い**([e071_p4_hs_vendor_fifo_depth/](e071_p4_hs_vendor_fifo_depth/README.ja.md)) |
 | **E072** | P4を2枚HS port同士で直結し、PCを経路から外してdevice → hostのbulk INを測ると何MB/sか | **一時・要配線**(`...78` = device / `...f5` = host、OTG HS同士を直結) | [EspUsbHostへの改修依頼](../references/espusbhost-change-requests.ja.md) HR-1 | **完了 — 5.6 MB/s。直結の方が遅い。host側の継続INが512 B×depth 1のため**([e072_p4_hs_device_to_host_native/](e072_p4_hs_device_to_host_native/README.ja.md)) |
 | **E073** | USB 2.0 HSのinterrupt endpoint(HID)でdevice → hostへ流せる実効帯域は何MB/sか。packet sizeでどう変わるか | **一時・要配線**(P4 2枚のOTG HS直結) | [harness-channels](../references/harness-channels.ja.md) §USBクラス8種の得失 | **完了 — 既定64 Bで0.52 MB/s、512 Bで4.14 MB/s。「HID = 64 kB/s」はFSの値**([e073_p4_hs_hid_throughput/](e073_p4_hs_hid_throughput/README.ja.md)) |
 | **E074** | 2 channelのPARLIO captureを取り、hostで`.sr`に変換してsigrokが読み戻せるところまで通るか。どのrateまでsample単位の欠落なしか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 限界matrix、[PulseView / sigrok 連携](../references/pulseview-integration.ja.md) | **完了 — 160 Mspsまでsample精度、16 Mi sampleの深さも通り、`.sr`をsigrokが読み戻す**([e074_p4_2ch_capture_to_sr/](e074_p4_2ch_capture_to_sr/README.ja.md)) |
 | **E075** | PARLIOのchannel幅1 / 4 / 8で、どのsample rateまでsample単位の欠落なしに取れるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 限界matrixの※ | **完了 — 1 / 2 / 4 chは160 Mspsでsample精度。8 chは96 MHzまで1 MiBで精度、160 MHzは`overflow=131`**([e075_p4_width_sample_accuracy/](e075_p4_width_sample_accuracy/README.ja.md)) |
+| **E076** | captureしたdataをOTG HSのvendor bulkで降ろすと4 MiBのdownloadは何秒になり、sampleは落ちずに`.sr`まで通るか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [P4 USB HSまとめ](../references/p4-usb-hs-summary.ja.md) §5 / §7、[E074](e074_p4_2ch_capture_to_sr/README.ja.md)の残した律速 | **完了 — 4 MiBが平均0.48秒(8.80 MB/s)、console経路の12倍。7/7でsample精度。PSRAM読み出しは律速ではない**([e076_p4_capture_hs_download/](e076_p4_capture_hs_download/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -245,6 +246,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E076 ESP32-P4: captureをOTG HSのvendor bulkで降ろす — 完了 2026-09-12
+
+全文: [e076_p4_capture_hs_download/README.ja.md](e076_p4_capture_hs_download/README.ja.md)。[E074](e074_p4_2ch_capture_to_sr/README.ja.md)のfirmwareの`run_dump()`だけをvendor bulkへ差し替えた。制御はconsole、dataはOTG HS。host側はlibusbで1 MiBずつread。
+
+**事実**
+
+1. **capture → download → `.sr`が通る。** 4 MiB × 7回すべてでsample精度(周期1600がmin = mean = max)、byte欠落0、`sigrok-cli`が160 MHz / 2 channel / 16,777,216 sampleとして読み戻す。
+2. **4 MiBのdownloadは平均0.48秒(8.80 MB/s、0.416〜0.579秒)。** console経路の5.8秒([E074](e074_p4_2ch_capture_to_sr/README.ja.md))に対し**12倍**。[まとめ](../references/p4-usb-hs-summary.ja.md)の見積もり0.39秒よりは遅い(あれはTX FIFO 8 KiBの[E071](e071_p4_hs_vendor_fifo_depth/README.ja.md)の値、本実験は既定の512 B)。
+3. **PSRAMからの読み出しは律速ではない。** 同じloopで送出元だけを差し替えた対照(交互に8回ずつ)で、internal RAM mean **8.38**、PSRAM mean **9.04 MB/s**。**分布は完全に重なり、PSRAMの方がわずかに速い。**
+4. **同一条件で1.65倍ばらつく**(6.62〜10.91 MB/s)。**`stalls`がrateと逆相関する**(25,413回で10.91、70,318回で6.62 MB/s)。送出元でも captureの有無でも動かないので、**stackかusbip経路に由来する**と見ている。[E070](e070_p4_hs_vendor_stack_compare/README.ja.md)のEspUsbDevice側のばらつき(6.79〜10.02)と一致。
+5. **device側実測とhost側実測の差は2%以内。** usbipとlibusbの取り分は小さい。
+
+**候補**: **captureのdownloadはOTG HS vendor bulkで行う**(consoleは制御用に残す)/ **送出元をPSRAMに置くことに帯域上の不利はない** / **1回の測定で帯域を語らない**。
+
+**未決**: ばらつきの出どころ `—`(stack側かusbip経路か)/ TX FIFOを深くした状態での再測 `—`([CR-4](../references/espusbdevice-change-requests.ja.md))/ 連続streaming `—` / native(usbipなし)での帯域 `—`。
 
 ### E075 ESP32-P4: channel幅ごとのsample単位精度 — 完了 2026-09-12
 

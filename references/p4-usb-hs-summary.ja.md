@@ -1,6 +1,6 @@
 # ESP32-P4 の USB 2.0 HS と 2 channel capture — 到達点まとめ
 
-状態: **まとめ**(2026-09-12。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E075](../experiments/e075_p4_width_sample_accuracy/README.ja.md) の 13 実験の結論を 1 枚にした索引)
+状態: **まとめ**(2026-09-12。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E076](../experiments/e076_p4_capture_hs_download/README.ja.md) の 14 実験の結論を 1 枚にした索引)
 
 各実験の全文は `experiments/e0xx_*/README.ja.md`、番号順の索引は [LEDGER](../experiments/LEDGER.ja.md)。
 
@@ -89,12 +89,17 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 **`.sr` は 1 sample = 1 byte** なので 2 channel では 4 倍に膨らむ。**線の上は packed のまま運び、host で展開する**。
 
-### 残る律速は download だけ
+### download は OTG HS で 12 倍になる — 実測済み
 
-| download 経路 | 4 MiB の所要 |
-|---|---:|
-| console(FS CDC、0.72 MB/s) | **5.8 秒** |
-| OTG HS vendor bulk(10.74 MB/s) | **0.39 秒** |
+| download 経路 | 4 MiB の所要 | 出典 |
+|---|---:|---|
+| console(FS CDC、0.72 MB/s) | **5.8 秒** | [E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md) |
+| **OTG HS vendor bulk**(既定 FIFO 512 B) | **0.48 秒**(0.42〜0.58、7回) | **[E076](../experiments/e076_p4_capture_hs_download/README.ja.md)** |
+| (見込み)TX FIFO 8 KiB なら | 0.39 秒 | [E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md) の 10.74 MB/s から |
+
+**capture → download → `.sr` が通しで成立している**(7回すべて sample 精度、`sigrok-cli` が読み戻す)。**送出元が PSRAM であることの不利はない** — internal RAM を送出元にした対照は 8.38 対 9.04 MB/s で、**PSRAM の方がわずかに速い**([E076](../experiments/e076_p4_capture_hs_download/README.ja.md))。
+
+**ただし同一条件で 1.65 倍ばらつく**(6.6〜10.9 MB/s)。**1回の測定で帯域を語らない。**
 
 ## 6. ベンチ運用の注意(実測で刺さったもの)
 
@@ -107,8 +112,8 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 | やること | 要るもの |
 |---|---|
-| capture → **OTG HS vendor bulk** で download する通し(4 MiB が 0.39 秒) | **HS port を PC 側へ戻す配線** |
-| 連続 streaming(釣り合い点は CDC で約 29.7 Msps、vendor bulk なら約 43 Msps) | 同上 |
+| 連続 streaming(釣り合い点は vendor bulk の実測 8.80 MB/s で約 35 Msps) | — **いま測れる** |
+| **帯域のばらつき(1.65 倍)の出どころ**を切り分ける | — core 内蔵 stack で [E076](../experiments/e076_p4_capture_hs_download/README.ja.md) の A/B を回す |
 | **device 側の本当の天井**を測る | [HR-1](espusbhost-change-requests.ja.md)(host の IN async queue) |
 | **FIFO を深くした状態での再評価** | [CR-4](espusbdevice-change-requests.ja.md) |
 | **HID を 1,024 B に上げる**(8.2 MB/s 見込み) | [CR-8](espusbdevice-change-requests.ja.md) + [HR-3](espusbhost-change-requests.ja.md) |
