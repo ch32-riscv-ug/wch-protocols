@@ -122,6 +122,8 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 ## 6. ベンチ運用の注意(実測で刺さったもの)
 
 - **sketch 固有のビルドオプションは `build_opt.h` に置く。** `--build-property 'build.extra_flags=...'` は platform が組み立てる変数を潰し、**`-DBOARD_HAS_PSRAM` と `-DARDUINO_USB_*` が消える**。しかも arduino-cli が `core.a` を cache するので**後から直しても症状が残る**。変更時は `--clean`
+- **書き込みの前に usbipd で detach する。** attach したまま書き込む(= チップ reset)と**死んだ vhci entry が残り、serial 側まで巻き込んで落ちる**。`esptool` が `_update_rts_state` で `TimeoutError: [Errno 110]`、`dmesg` に `vhci_hcd: urb->status -104`、やがて read が返らなくなり、Windows 側では `デバイス記述子要求の失敗` として列挙される。**復旧は物理的な挿し直しだけ**
+- **usbip は interrupt OUT の URB を配送しない。** control の SET_REPORT は通る(hidraw の `HIDIOCSFEATURE` で確認)。**HID の OUT 方向を usbip 越しに測ろうとすると無反応になる**
 - **usbipd の `bind` は VID:PID と device instance に紐づく。** PID や serial を変えるたびに管理者権限の bind が要る。**usbip で測る実験は identity を固定する**
 - **arduino-cli は symlink した library dir の `.cpp` を拾わない。** Library Manager 経由なら問題ない
 - **usbip 経由の CDC console は 20 秒級の遅延が出ることがある。** console 待ちの timeout は 45 秒を見込む
