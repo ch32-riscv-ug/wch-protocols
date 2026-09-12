@@ -1,0 +1,9 @@
+profiles:
+  esp32p4_usb:
+    # Same board and USB layout as E063/E064: TinyUSB on the OTG HS port,
+    # console left on the USB-Serial-JTAG. Flash is 16M on this board.
+    fqbn: esp32:esp32:esp32p4:FlashSize=16M,PSRAM=enabled,ChipVariant=prev3,USBMode=default,CDCOnBoot=default,UploadMode=default
+    platforms:
+      - platform: esp32:esp32 (3.3.11)
+        platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+default_profile: esp32p4_usb

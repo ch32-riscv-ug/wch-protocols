@@ -1,0 +1,67 @@
+# PulseView / sigrok から P4 の capture を取る経路
+
+状態: **reference**(2026-09-12。手元のlibsigrok 0.5.2で実地確認した部分と、未確認の部分を分けて書く)
+
+目的は「ESP32-P4で取ったlogic captureを、**PulseViewから直接**、または`.sr`ファイル経由で見られるようにする」。経路は3つあり、**必要な実装量とhost側の前提が違う**。
+
+## 0. 結論の要約
+
+| 経路 | host側の前提 | device側に要るもの | 確認状況 |
+|---|---|---|---|
+| **A. COM portへSUMP** | **何も要らない**(stock PulseViewの`ols` driver) | USB CDC上でSUMP wire protocolを話す | **未確認**。[E023](../experiments/e023_p4_sump_basic_trigger_80mhz/README.ja.md)〜[E028](../experiments/e028_p4_sump_four_stage_trigger/README.ja.md)でtrigger側は実装済み、**wire互換は未決のまま** |
+| **B. TCPでBeagleLogicを演じる** | **何も要らない**(stock PulseViewの`beaglelogic` driver) | PC側にPythonのTCP server。deviceはUSBで繋がっていればよい | **接続まで実地確認**(下記) |
+| **C. TCPでSUMPを話す** | **libsigrokをgitから入れる**必要がある | Bと同じ | **現行版では不可**(下記) |
+| **D. `.sr`を書く** | 不要(ファイルを開くだけ) | 無し。PC側でzipを作るだけ | 未着手 |
+
+**SCPIは選択肢にならない。** sigrokのSCPI supportはoscilloscope / PSU / DMM用で、logic analyzerのdriverはSCPIを使わない。「IPで待ち受けてPulseViewから繋ぐ」を実現するのはBかCで、**stock環境で動くのはBだけ**である。
+
+## 1. 経路A — COM portへSUMP(最短)
+
+[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)で、P4のOTG HS上のCDCはWindowsに`usbser`のCOM portとして生えた(driver追加なし)。PulseViewの`ols` driverはserial portに対して話すので、**そのCOM portでSUMPを話せば、PulseViewは何の追加設定もなく繋がる**。
+
+```console
+sigrok-cli --driver ols:conn=COM8 --scan          # Windows
+sigrok-cli --driver ols:conn=/dev/ttyACM1 --scan  # Linux
+```
+
+`ols` driverのscan optionは`conn`と`serialcomm`の2つだけである(実機で確認)。
+
+残っているのは**SUMP wire protocolの互換範囲**で、これは[E028](../experiments/e028_p4_sump_four_stage_trigger/README.ja.md)の未決に「SUMP wire互換範囲」として既に立っている。SUMPはsample数が24 bit、rateがdivisorで決まるなど表現力に制限があるので、[P4 logic analyzer予備調査](p4-logic-analyzer-investigation.ja.md)の限界matrix全部は載らない。
+
+## 2. 経路B — TCPでBeagleLogicを演じる(IP経由で唯一stockで動く)
+
+libsigrok 0.5.2の`beaglelogic` driverは**TCP modeを持つ**。`conn`が`tcp-raw/<host>/<port>`の形を受け付けることと、接続後の最初のcommandが`version\n`であることを、**手元で実地確認した**(ダミーのPython serverを立て、`sigrok-cli --driver "beaglelogic:conn=tcp-raw/127.0.0.1/5556" --scan`が接続して`version\n`を送ってきた)。
+
+driverが使うcommand語彙は`.so`の文字列から次が読める。
+
+```text
+version  memalloc  samplerate  sampleunit  triggerflags  bufunitsize  get  close
+```
+
+つまり**PC側にこの数個のtext commandを話すTCP serverを1本書けば、stockのPulseViewが繋がる**。deviceとの間はUSB(CDCでもvendorでも)で、serverが仲介する。
+
+- 利点: host側に何も入れさせない。**Windows / Linux どちらでも同じ**。serverがPythonなので、[E064](../experiments/e064_p4_usb_hs_cdc_rate/README.ja.md)のreaderやchannel詰め替えをそのまま載せられる
+- 制約: BeagleLogicのmodelに合わせる必要がある(sample unitは1 or 2 byte、triggerの表現はBeagleLogic流)。**P4側の機能をそのまま出せるわけではない**
+- 未確認: `version`に何を返せばdriverが先へ進むか、`get`以降のdata streamの形式。**protocolの実体はlibsigrokの`beaglelogic_tcp.c`を読むか、応答を変えながら当たりを取る必要がある**
+
+## 3. 経路C — TCPでSUMP(現行libsigrokでは不可)
+
+libsigrokの**serial層にTCPを足す`ser_tcpraw`は0.5.2に入っていない**。手元の`libsigrok.so.4`(0.5.2)には`tcpraw`系のsymbolが1つも無く、`.so`中の`tcp-raw`という文字列は上の`beaglelogic` driver専用のものだった。実際に`ols:conn=tcp-raw/127.0.0.1/5555`を試すと`serial-libsp: Attempt to open serial port with invalid parameters.`で止まる。
+
+したがって**`ols`をIP経由で使うにはlibsigrokをgitから入れる**ことになる。stock環境を前提にするならBを採る。
+
+## 4. 経路D — `.sr`を書く
+
+`.sr`はzipで、`version`(中身は`2`)、`metadata`(INI)、`logic-1-1`以降のdata chunkから成る。**PC側でzipを組むだけ**なので、device側には何も要らない。捨てられないrawを残す用途と、PulseViewで後から開く用途に向く。
+
+channel数が8以下なら1 sample = 1 byteで、bit位置がchannel番号に対応する。**P4のPARLIOは2 channelなら1 byteに4 sampleを詰める**ので、`.sr`へ出す前に**1 sample = 1 byteへ展開する**か、per-channel packingから組み直す必要がある。この詰め替えはPC側で行う。
+
+## 5. 帯域との関係
+
+[E064](../experiments/e064_p4_usb_hs_cdc_rate/README.ja.md)でUSB HS CDCの実効帯域は約5.6 MB/s。2 channelのPARLIOは1 byteに4 sampleなので**連続streamingは約22.4 Msps相当**が上限になる。`.sr`へ出すときに1 sample = 1 byteへ展開すると**4倍に膨らむ**ので、**展開はPC側で行い、線の上はpackedのまま運ぶ**。
+
+## 参照
+
+- [P4 logic analyzer予備調査](p4-logic-analyzer-investigation.ja.md) — 限界matrixと後段の設計
+- [E023](../experiments/e023_p4_sump_basic_trigger_80mhz/README.ja.md)〜[E028](../experiments/e028_p4_sump_four_stage_trigger/README.ja.md) — SUMP trigger側の実装と未決
+- [E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md) / [E064](../experiments/e064_p4_usb_hs_cdc_rate/README.ja.md) — HS経路の列挙と帯域

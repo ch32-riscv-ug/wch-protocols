@@ -81,6 +81,7 @@
 | **E062** | 同一VID:PID・同一serialでinterface構成(HID単機能↔composite、末尾追加、interface番号の機能入替)を変えたとき、Windows 11はどの切替で既存devnodeとdriverを再利用するか。`bcdDevice`のみ・serialのみの変更は結果を変えるか。Linuxは全条件で再認識するか | **一時・専用機材**(E013と同じESP32-S3 native USB、Windows 11、Linux) | [probe-feasibility-gates](../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 4、[usb-host-descriptor-persistence](../references/usb-host-descriptor-persistence.ja.md) | **計画**([e062_usb_same_identity_layout_change/](e062_usb_same_identity_layout_change/README.ja.md)) |
 | **E063** | Arduino-ESP32 3.3.11でESP32-P4のUSB 2.0 OTG HS portをdeviceとして列挙でき、negotiateする速度はHSかFSか。USB-Serial-JTAG(FS)のconsole経路は生き続けるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[harness-channels](../references/harness-channels.ja.md) §物理IF | **完了 — High-Speedで列挙、consoleも同時に生きる**([e063_p4_usb_hs_enumerate/](e063_p4_usb_hs_enumerate/README.ja.md)) |
 | **E064** | PSRAM上のdataをUSB 2.0 HSのCDC bulk INでWindowsへ連続送出したとき、実効帯域は何MB/sか。chunk sizeと転送総量でどう変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[harness-channels](../references/harness-channels.ja.md) §物理IF | **完了 — 約5.6〜5.7 MB/sで飽和、16 MiBが2.968秒**([e064_p4_usb_hs_cdc_rate/](e064_p4_usb_hs_cdc_rate/README.ja.md)) |
+| **E065** | USB 2.0 HS上のCDCを2本同時に流したとき、合計帯域は1本の約5.6 MB/sより上がるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [harness-channels](../references/harness-channels.ja.md) §CDCの上限は endpoint 予算、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — 反証。2本でも合計は上がらない(比0.943)。ただし送出taskを分けた1本が7.94 MB/s**([e065_p4_usb_hs_dual_cdc_rate/](e065_p4_usb_hs_dual_cdc_rate/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -234,6 +235,28 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E065 ESP32-P4: CDCを2本にすると合計帯域は上がるか — 完了 2026-09-12(**仮説は反証された**)
+
+全文: [e065_p4_usb_hs_dual_cdc_rate/README.ja.md](e065_p4_usb_hs_dual_cdc_rate/README.ja.md)。run: `_runs/E065_20260912T025*`。
+
+**事実**
+
+1. **2本にしても合計帯域は上がらない。** 1本7.94 MB/sに対し2本合計7.49 MB/s(比**0.943**)で、わずかに下がる。**律速はendpointごとのturnaroundではなく共有部分にある**(反証条件1が発火)。
+2. **2本のとき帯域はほぼ等分される**(device側4.63と3.74 MB/s)。片方を増やせば他方が減る形で、増分は無い。
+3. **port 0(core 0にpin)が常にport 1(core 1)より速い**(906〜927 ms 対 1,100〜1,121 ms、3回とも同順)。
+4. **共有部分の候補はTinyUSBのdevice task。** `esp32-hal-tinyusb.c:886`は`xTaskCreate(usb_device_task, "usbd", 4096, NULL, configMAX_PRIORITIES - 1, NULL)`で、**全endpointを1本の最高優先度・core非指定taskが捌く**。**構造の読みであって、この実験が直接測ったものではない。**
+5. **同条件(1 port / 4 MiB / chunk 4,096 B)で[E064](e064_p4_usb_hs_cdc_rate/README.ja.md)の5.59 MB/sに対し7.94 MB/s(+42%)。** 違いは送出の実行contextで、E064は`loop()`(`loopTask`、優先度1、pin済み)、E065は**専用task(優先度5、coreにpin)**。**ただしE065は2本目のCDCもbuildに含むので変数が1つではない。統制した比較が要る。**
+6. 7.94 MB/s ÷ 512 B = 約15,500 transaction/s = **1 microframeあたり約1.94 transaction**(HSは13まで許す)。上限は依然turnaround。
+7. pattern検証3回で不一致0、短write 0、stall 0。
+
+**候補**: 送出は`loop()`ではなく専用taskから(事実5。統制前)/ **endpointを増やすのは効かない**(却下)/ 残る手段は共有service taskの負荷を下げる・1 transferのbyte数を増やす(Arduinoでは不可)・**PSRAMへbatchしてから出す**。
+
+**未決**: **事実5の統制** `—`(`p4-hs-tx-context`。次の問い)/ 共有部分が本当にusbd taskか `—` / port 0と1の非対称の理由 `—` / vendor bulkでも同じ天井か `—`(事実1から**vendorに期待する理由は弱まった**)/ 3本以上は`CFG_TUD_CDC=2`のため不可。
+
+**近直の目標への含み**: 7.94 MB/sは2 channelのPARLIO(1 byteに4 sample)なら**約31.8 Msps相当の連続streaming**。「2chで数十Msps」は射程に入ったが、事実5の統制が先。
+
+**反映**: [harness-channels](../references/harness-channels.ja.md) §CDCの上限は endpoint 予算に「**本数を増やしても帯域は増えない**」を実測で付ける。**仕様のstatusは動かない**。
 
 ### E064 ESP32-P4: USB HS CDCのdownload帯域 — 完了 2026-09-12
 
