@@ -95,6 +95,7 @@
 | **E076** | captureしたdataをOTG HSのvendor bulkで降ろすと4 MiBのdownloadは何秒になり、sampleは落ちずに`.sr`まで通るか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [P4 USB HSまとめ](../references/p4-usb-hs-summary.ja.md) §5 / §7、[E074](e074_p4_2ch_capture_to_sr/README.ja.md)の残した律速 | **完了 — 4 MiBが平均0.48秒(8.80 MB/s)、console経路の12倍。7/7でsample精度。PSRAM読み出しは律速ではない**([e076_p4_capture_hs_download/](e076_p4_capture_hs_download/README.ja.md)) |
 | **E077** | BeagleLogicのTCP protocolを演じるPython serverを置くと、stockのsigrok / PulseViewがP4のcaptureをIP経由で取れるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [PulseView / sigrok 連携](../references/pulseview-integration.ja.md) 経路B | **完了 — 取れる。4 M sample @ 80 MHzが0.45秒でsample精度。1回のcaptureを超える要求は継ぎ目が出る**([e077_p4_pulseview_over_ip/](e077_p4_pulseview_over_ip/README.ja.md)) |
 | **E078** | PARLIO の capture を PSRAM に貯めずに OTG HS へ流したとき、欠落なく continuous に保てる sample rate の上限は何 Msps か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 連続streamingの釣り合い点、[E077](e077_p4_pulseview_over_ip/README.ja.md)の継ぎ目 | **完了 — 86 Mspsまで継ぎ目なく降ろせる(線上21.5 MB/s)。88 Mspsからbacklogが時間に比例して積む。capture同居でもUSBは落ちない(`stalls`=0)**([e078_p4_continuous_stream/](e078_p4_continuous_stream/README.ja.md)) |
+| **E080** | sigrok / PulseView が要求する sample 数を、1 回の capture として継ぎ目なく渡せるか。上限は E078 の 86 Msps と一致するか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E077](e077_p4_pulseview_over_ip/README.ja.md)の未決「継ぎ目」、[PulseView / sigrok 連携](../references/pulseview-integration.ja.md) 経路B | **完了 — 継ぎ目は消えた。86 Msps・64 M sampleまで一本で通る。それ以上の律速はdeviceでもserverでもなく`srzip`の書き出し**([e080_p4_pulseview_gapless/](e080_p4_pulseview_gapless/README.ja.md)) |
 | **E079** | host 側(PC)が bulk IN の URB を複数同時に投げると、device を変えずに帯域は伸びるか | **一時・配線なし**(同上) | [改修の着手順](../references/usb-library-change-plan.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-7 | **中止 — 同じ測定がライブラリ側で先に行われた。depth 2 で飽和(1=18.64 / 2=22.68 / 8=22.87 MB/s)、約23 MB/sはdevice側の天井**([e079_p4_host_urb_depth/](e079_p4_host_urb_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
@@ -249,6 +250,25 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E080 ESP32-P4: PulseView へ継ぎ目なく流す — 完了 2026-09-13
+
+全文: [e080_p4_pulseview_gapless/README.ja.md](e080_p4_pulseview_gapless/README.ja.md)。[E077](e077_p4_pulseview_over_ip/README.ja.md)の server の**送出元だけ**を [E078](e078_p4_continuous_stream/README.ja.md) の streaming firmware に差し替えた(protocol の実装は import して共有)。
+
+**事実**
+
+1. **継ぎ目は消えた。** [E077](e077_p4_pulseview_over_ip/README.ja.md)で batch 境界に 3 箇所の乱れが出ていた **16 M sample** が、32 / 48 / 64 / 80 / **86 MHz** の全 rate で**周期完全一致**。
+2. **86 Msps・64 M sample(0.74 秒の連続 capture)まで一本で取れる。** 74,419 周期すべて 860、`fifo_overflow=0`。**[E078](e078_p4_continuous_stream/README.ja.md) の上限がそのまま PulseView 経路の上限になっている。**
+3. **律速は device でも server でもない。** 256 M sample を 86 MHz で要求すると壊れるが、**client 側の出力先だけを変えると同じ run が通る** — `-O srzip` は `fifo_overflow=31,506` で欠落、`-O binary` は 21.72 MB/s で `fifo_overflow=0`、protocol だけ話して捨てる client は 22.60 MB/s(展開後 89.32 MB/s)。
+4. **server の展開(numpy)は 89 MB/s 出ており余裕がある。** **仮説(展開が律速になる)は外れた。**
+5. **`srzip` の遅さは rate ではなく出力の総量で効く。** 64 MB は 18.56 MB/s で通るのに、256 MB では **16 Msps でも溢れる**。chunk ごとに zip entry を足す形式なので entry 数が効いていると読んでいる(未確認)。
+6. **弾性 FIFO は burst を買うだけ。** 短い capture なら sink が遅くても吸収するが、総量が増えれば必ず効く。
+7. **`fifo_overflow` は sample 欠落と一致した。** 溢れた run は周期が 60〜1392 に乱れ、溢れなかった run は完全一致。
+8. **1 回の capture を超える要求は、繋がずに止まる。** server は `--samples` ぶんを 1 回流すだけなので、**client の要求に合わせて起動する**。上限は firmware の 268,435,456 sample。
+
+**候補**: **`.sr` へ落とすなら 64 M sample 程度まで**、それ以上は `-O binary` か生受け / **server の `--samples` は client の要求に合わせる** / **継ぎ目不要なら 86 Msps、継ぎ目可なら batch で 160 Msps**。
+
+**未決**: `srzip` が総量に対してどう重くなるか `—`(libsigrok 側)/ PulseView GUI での挙動 `—` / 268 M sample を超える連続 capture `—` / client が要求 sample 数を伝えられないこと `—`。
 
 ### E078 ESP32-P4: capture しながら OTG HS へ流す連続 streaming — 完了 2026-09-13
 
