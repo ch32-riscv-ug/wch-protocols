@@ -319,7 +319,11 @@ batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、fi
 
 飽和の理由はturnaroundと読める。最速の8.08 MB/s ÷ 512 B = 約15,800 transaction/s、HSのmicroframeは8,000回/秒なので**1 microframeあたり約1.97 transaction**しか出ていない(HSは13まで許す)。TinyUSBのCDC TX FIFOがbulk 1 packet分(`CONFIG_TINYUSB_CDC_TX_BUFSIZE=512`)しかないことと整合する。**endpointを増やしても合計は増えない**ことは[E065](../experiments/e065_p4_usb_hs_dual_cdc_rate/README.ja.md)で確認済み(2本で比0.943)なので、**vendor bulkへ逃がしても同じ天井に当たる可能性が高い**(未測定)。
 
-**captureとUSB送出はcoreを取り合う。** [E061](../experiments/e061_p4_drain_core_split/README.ja.md)はPARLIOの回収を別coreへ移すとdrainが82.3 → 119.7 MB/sへ上がると言い、E066はUSB送出も`loop()`と別coreを欲しがると言う。**2つが同じcore 0を要求するので、同時に走らせたときの配分は別に測る必要がある**。
+**captureとUSB送出を同時に走らせても、折れるのはUSB側だけである**([E067](../experiments/e067_p4_usb_vs_capture_core/README.ja.md))。2 channel / 32 MHz(8.0 MB/s)のcaptureは18回すべてで**8.00 MB/s、overflow 0、取りこぼし0**で、USBが何をしていても揺れなかった。USB側は単独比**93%(分離)〜84%(同居)**へ落ちる。最良の配置は**harvest = core 1、USB = core 0で7.42 MB/s**。順位を決めているのは主に**USB taskのcore**で、2つを分けることの上積みは約9 pointにとどまる。
+
+したがって**連続streamingの釣り合い点は約29.7 Msps(2 channel)**である — 生成8.00 MB/sに対し排出7.42 MB/s。それを超える rate は**PSRAMへbatchしてから出す**。
+
+⚠ **ただしdownload経路には未解決の異常がある。** [E067](../experiments/e067_p4_usb_vs_capture_core/README.ja.md)の掃引中、5回のうち4回で**device側は全byte書き終えているのにhostへ末尾(512 Bの整数倍、2,048〜5,120 B)が届かない**現象が出た。間欠的で原因は未特定。**downloadが末尾を静かに失う経路はlogic analyzerには使えないので、ここを潰すまでこの節の帯域は「条件付き」である。**
 
 ### 旧ベンチ(UART download)の見積り
 

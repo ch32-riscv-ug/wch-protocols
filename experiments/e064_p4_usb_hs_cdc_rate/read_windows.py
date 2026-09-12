@@ -26,7 +26,7 @@ def main() -> int:
     parser.add_argument("--port", required=True)
     parser.add_argument("--bytes", type=int, required=True)
     parser.add_argument("--read-size", type=int, default=65536)
-    parser.add_argument("--timeout", type=float, default=30.0)
+    parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--verify", action="store_true")
     args = parser.parse_args()
 
