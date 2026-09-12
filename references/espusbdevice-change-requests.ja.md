@@ -214,6 +214,61 @@ vendor(できれば CDC も)の送信で、**転送を 2 つ以上 in-flight に
 
 ---
 
+## CR-8 HID の packet size が 64 B にハードで縛られている
+
+**優先度: 高**(HS の HID の帯域が 8 分の 1 になっている)
+
+### 症状
+
+`EspUsbDeviceHidVendor` は HS でも **64 B の interrupt endpoint しか作れない**。HS の interrupt は `wMaxPacketSize` 最大 1,024 B、周期 125 us なので、**64 B に縛ると 0.512 MB/s が上限**になる。
+
+縛っているのは 2 か所。
+
+```cpp
+// EspUsbDeviceHidVendor::begin()
+return reportSize_ > 0 && reportSize_ <= 63;
+
+// EspUsbDeviceHidVendor::configurationDescriptor()
+if (mps > 64) { mps = 64; }
+```
+
+さらに `src/internal/EspUsbTinyUsbConfig.h` の
+
+```c
+#define CFG_TUD_HID_EP_BUFSIZE 64
+```
+
+も `#ifndef` ガードが無く、`build_opt.h` から上書きできない。
+
+### 実測([E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md))
+
+上の 2 か所を `CFG_TUD_HID_EP_BUFSIZE` 基準に緩め、その値を可変にして測った(P4 を 2 枚直結、host は `EspUsbHost` 2.8.0)。
+
+| `wMaxPacketSize` | report/s | **MB/s** |
+|---:|---:|---:|
+| **64 B**(現状) | 8,046 | **0.517** |
+| 128 B | 8,078 | **1.034** |
+| **512 B** | 8,077 | **4.136** |
+| 1,024 B | — | 動作せず(host 側の periodic FIFO 配分が疑わしい。[HR-3](espusbhost-change-requests.ja.md)) |
+
+**`packet size × 8,000/s` にそのまま比例する。** 512 B にできれば **8 倍**で、vendor bulk(10.74 MB/s)の約 40% まで届く。
+
+### なぜ効くか
+
+**HID は driver を当てる必要が無い唯一の class** で、いま Windows で詰まっている [WinUSB の問題](windows-winusb-binding.ja.md)が丸ごと無関係になる。しかも interrupt endpoint は**帯域が予約される**ので、bulk のように他の traffic に押されない。**「HID は帯域不足」という一般的な理解は full speed 前提**で、HS では成立しない。
+
+### お願いしたいこと
+
+- `CFG_TUD_HID_EP_BUFSIZE` に `#ifndef` ガードを付けて `build_opt.h` から上げられるようにする
+- `EspUsbDeviceHidVendor::begin()` と `configurationDescriptor()` の 64 固定を `CFG_TUD_HID_EP_BUFSIZE` 基準にする
+- 可能なら **HS のとき既定を 512 B** にする(1,024 B は host 側の事情で通らないことがある)
+
+### こちらでの代替
+
+**無い。**(測定のためにライブラリのコピーを 2 行書き換えた)
+
+---
+
 ## CR-6 (参考)arduino-cli は symlink した library dir の `.cpp` を拾わない
 
 **優先度: 低**(ライブラリの不具合ではない。ドキュメント向け)
