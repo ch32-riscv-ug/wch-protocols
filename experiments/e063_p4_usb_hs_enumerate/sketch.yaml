@@ -1,0 +1,10 @@
+profiles:
+  esp32p4_usb:
+    # FlashSize is 16M on this board (esp32-p4-30eda0e31478), not the 32M the
+    # earlier P4 experiments used. USBMode=default puts TinyUSB on the OTG HS
+    # port; CDCOnBoot stays disabled so the console keeps the USB-Serial-JTAG.
+    fqbn: esp32:esp32:esp32p4:FlashSize=16M,PSRAM=enabled,ChipVariant=prev3,USBMode=default,CDCOnBoot=default,UploadMode=default
+    platforms:
+      - platform: esp32:esp32 (3.3.11)
+        platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+default_profile: esp32p4_usb

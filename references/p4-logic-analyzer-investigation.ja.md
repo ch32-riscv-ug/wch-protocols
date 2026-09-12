@@ -303,9 +303,13 @@ hostへはsample列とwindow長の列を組で渡せば、間引いたまま時�
 
 batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、file保存を測る。streamingは最後に独立して測り、batch側のsample rateやtrigger結果と混ぜない。PC側applicationでsigrok互換形式、VCD、CSV等へ変換する。
 
-**現ベンチではdownload経路がUARTに限られる。** 実験に使っているESP32-P4(`esp32-p4-e8f60ae0aa24`)のhost側portは`1a86:55d3`、つまりWCH CH343のUSB-UART bridgeである。環境に列挙されているUSB deviceはCH343 3台とCH340 3台だけで、**Espressif native USB(`303a:*`)は1台も出ていない。** したがってP4のUSB 2.0 HS device経路は配線を変えない限り測れない。
+**USB 2.0 HSのdevice経路は[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)で開いた。** 別個体のESP32-P4(`esp32-p4-30eda0e31478`)をHS portとUSB-Serial-JTAGの2本でWindows 11へ繋いだベンチで、Arduino-ESP32 3.3.11が**High-Speedで列挙する**ことを確認した(device側`tud_speed_get()=2`、host側`Device Bus Speed 0x02`、bulk endpoint 512 B)。**USB-Serial-JTAGのconsoleと書込みは同時に生きる**ので、download経路を試しながら焼き直せる。
 
-この制約は設計の優先順位を変える。CH343の上限は6 Mbaudなので、download帯域は良くても約600 KB/s、実測はそれ以下である。
+**ただしthroughputはまだ測っていない `—`。** 下の表はCH343 6 Mbaud(約600 KB/s、実測はそれ以下)を前提にした旧ベンチの見積りで、**HS経路の実測が出るまで置き換えない**。HSのbulkは理論上53 MB/s級なので、実測次第でこの表と、そこから導いた優先順位は書き直しになる。
+
+### 旧ベンチ(UART download)の見積り
+
+以下は`esp32-p4-e8f60ae0aa24`(host側portが`1a86:55d3` = WCH CH343のUSB-UART bridge)での見積りである。
 
 | 取得量 | 6 Mbaud想定のdownload時間 |
 |---:|---:|
@@ -313,7 +317,7 @@ batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、fi
 | 1 MiB | 約1.7秒 |
 | 16 MiB([E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)のdeep batch) | 約28秒 |
 
-つまり**深度を伸ばすことの価値はdownload時間に食われる**。16 MiBを取れてもhostへ出すのに30秒かかるなら、深度より次の二つが効く。
+この前提のもとでは**深度を伸ばすことの価値はdownload時間に食われる**。16 MiBを取れてもhostへ出すのに30秒かかるなら、深度より次の二つが効く。**この判断はHS経路の実測で覆りうる。**
 
 - **capture qualification**([E040](../experiments/e040_p4_parlio_level_open_frame/README.ja.md))— gateのdutyだけ保存量が減り、CPU負荷はゼロ
 - **内部圧縮** — 上の表の方式
