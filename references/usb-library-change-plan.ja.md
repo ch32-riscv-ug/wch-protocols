@@ -1,8 +1,27 @@
 # EspUsbDevice と EspUsbHost、どちらから先に改修するか
 
-状態: **提案**(2026-09-12。[EspUsbDevice への依頼](espusbdevice-change-requests.ja.md) CR-1〜CR-9 と [EspUsbHost への依頼](espusbhost-change-requests.ja.md) HR-1〜HR-3 を前提)
+状態: **決着**(2026-09-13。**device 側は CR-1〜CR-9 が全件対応済み**。host 側([EspUsbHost への依頼](espusbhost-change-requests.ja.md))は**まだ依頼していない**)
 
-## 結論
+## 結果 — 順序の判断は当たり、理由の一つは外れた
+
+**device 側から、で正しかった。** CR-1〜CR-9 はすべて device 側だけで完結し、**HS 同士の結線に戻す必要は最後まで出なかった**([結果](espusbdevice-change-requests.ja.md))。
+
+**ただし §3 の見立ては半分外れた。** 「PC 側の URB を複数 in-flight にすれば天井が分かる」は正しく、実際に測られた(depth 1 = 18.64 / 2 = 22.68 / 4 = 22.69 / 8 = 22.87 MB/s)。**しかし天井を押し上げたのは in-flight 数ではなく 1 転送あたりの packet 数**だった。**depth は 2 で飽和し、約 23 MB/s は device 側の天井**である。
+
+→ **[CR-7](espusbdevice-change-requests.ja.md)(device 側 in-flight 2 本)は不要**と結論された。**[E079](../experiments/e079_p4_host_urb_depth/README.ja.md) はこの測定に置き換わる。**
+
+### 残っているもの
+
+| | 状態 |
+|---|---|
+| **device 側の release** | **待ち**。新規バグの修正 → `--clean` フルテスト → 問題なければ release。**こちらはその版でピンし直してから追試する** |
+| [E078](../experiments/e078_p4_continuous_stream/README.ja.md)(capture と同時に降ろす) | **release 待ち**。唯一こちらで追試する項目(先方の測定と重複しない) |
+| [HR-3](espusbhost-change-requests.ja.md)(1,024 B periodic IN) | **未依頼**。HID を 1,024 B にする段で device 側と対で要る。512 B は device 側だけで通った |
+| [HR-1](espusbhost-change-requests.ja.md) / [HR-2](espusbhost-change-requests.ja.md) | **未依頼**。測定の動機は消えた(PC 側で天井が出た)。**P4 を host として使う段になってから** |
+
+---
+
+## 以下は当初の提案(記録として残す)
 
 **device 側(EspUsbDevice)から。** 順序は
 

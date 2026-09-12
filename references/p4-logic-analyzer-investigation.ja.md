@@ -344,6 +344,8 @@ batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、fi
 
 送出元がPSRAMであることの不利はない — 同じloopでinternal RAMから送った対照は8.38、PSRAMは9.04 MB/sで**PSRAMの方がわずかに速い**。**ただし同一条件で1.65倍ばらつく**(6.6〜10.9 MB/s)ので、**連続streamingの釣り合い点は最良値ではなく実測mean 8.80 MB/s = 約35 Msps(2 channel)で見る**。
 
+> **2026-09-13 追記**: [EspUsbDevice の改修](../references/espusbdevice-change-requests.ja.md)で **vendor bulk は約 21 MB/s(飽和 23)** になった。効いたのは 1 転送あたりの packet 数で、**ばらつきの機序(ZLP と short packet による URB 再投入)も特定された**。**4 MiB は約 0.20 秒、2 channel の釣り合い点は約 84 Msps** になる見込みで、**持続 spool 帯域(約 98 MB/s)に近づくため律速が USB から capture 側へ移る可能性がある**。実測は [E078](../experiments/e078_p4_continuous_stream/README.ja.md)。
+
 ### 旧ベンチ(UART download)の見積り
 
 以下は`esp32-p4-e8f60ae0aa24`(host側portが`1a86:55d3` = WCH CH343のUSB-UART bridge)での見積りで、**上のHS実測に置き換わった**。
