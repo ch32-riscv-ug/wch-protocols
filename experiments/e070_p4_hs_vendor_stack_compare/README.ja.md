@@ -1,6 +1,6 @@
 # E070 ESP32-P4 USB HS vendor bulk — core内蔵stackと EspUsbDevice の比較
 
-状態: **完了 — 帯域はcore内蔵が速く安定(9.41 対 7.57 MB/s)、descriptor準拠はEspUsbDeviceが上**(2026-09-12)
+状態: **完了(訂正あり)— 帯域は clean build では互角(9.0 対 9.1 MB/s)。descriptor準拠と FIFO の可変性で EspUsbDevice を採る**(2026-09-12)
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E069](../e069_p4_hs_vendor_bulk_rate/README.ja.md)(core内蔵stackで9.73 MB/s)
 
@@ -159,7 +159,31 @@ read sizeを振った段(各3回)では、Bは4 KiBで1.91 MB/s、64 KiBで6.53�
 7. **flashはBの方が小さい。** 374,242 B(28%)対392,098 B(29%)で**約18 KB少ない**。
 8. **MS OS 2.0はどちらも正しく答えるのに、Windowsはどちらでもbindしない。** → **反証条件5が成立。[E069](../e069_p4_hs_vendor_bulk_rate/README.ja.md)のWindows側の問題はstackと無関係**である。
 
-### どちらを使うべきか(完了条件4)
+
+### ⚠ 訂正 — 上の帯域比較は壊れたビルドで測っていた(2026-09-12 同日)
+
+上の A/B は **`--build-property 'build.extra_flags=...'` で焼いた binary** で測っており、その override が platform の組み立てる `build.extra_flags`(`-DBOARD_HAS_PSRAM` と 4 つの `-DARDUINO_USB_*` を運ぶ)を丸ごと潰していた([E069](../e069_p4_hs_vendor_bulk_rate/README.ja.md) の「ベンチの異常」を参照)。**`build_opt.h` + `--clean` で焼き直して測り直した結果、結論が変わる。**
+
+| read 1 MiB / 4 MiB 転送 | core 内蔵(clean) | **EspUsbDevice 2.2.0(clean)** |
+|---|---:|---:|
+| 15 回 median | 9.04 | **9.18** |
+| 25 回 median | 8.96 | **9.03** |
+| min–max(25回) | **8.68 – 9.11** | 6.79 – 10.02 |
+| `stalls` median | **33,743** | 39,746 |
+| pattern 不一致 | 0/40 | 0/40 |
+
+**訂正後の事実**
+
+1. **帯域の median はほぼ同じ**(差 1〜2%、測定のばらつきの中)。**「core 内蔵が 24% 速い」は壊れたビルドの産物だった。**
+2. **ばらつきは core 内蔵の方が小さい**(8.68–9.11 対 6.79–10.02)。これは訂正後も変わらない。
+3. `stalls` が EspUsbDevice の方が多い傾向も残る(39,746 対 33,743、約 1.18 倍。**当初の 1.9 倍ではない**)。
+4. **[E071](../e071_p4_hs_vendor_fifo_depth/README.ja.md) で TX FIFO を 8 KiB にすると EspUsbDevice は 10.59 MB/s まで伸びる。** core 内蔵は FIFO が precompiled libs に焼かれていて**動かせない**ので、**この時点で EspUsbDevice が明確に上回る**。
+
+**どちらを使うべきか(訂正後)**
+
+**EspUsbDevice を使う。** 既定同士なら帯域は互角、descriptor の正しさ(DEVICE_QUALIFIER / OTHER_SPEED_CONFIGURATION)は EspUsbDevice が上、flash も約 18 KB 小さく、そして **FIFO を開けられる分だけ上限が高い**(10.59 対 9.0 MB/s)。残る弱点はばらつきの大きさで、これは [CR-5](../../references/espusbdevice-change-requests.ja.md) として残す。
+
+### どちらを使うべきか(当初の判断。上の訂正を優先する)
 
 **帯域が要る経路は今のところcore内蔵stackが速い。ただしspec準拠とFIFO等の可変性はEspUsbDeviceが上で、伸びしろもそちらにある。**
 

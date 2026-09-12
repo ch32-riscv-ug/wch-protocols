@@ -87,6 +87,7 @@
 | **E068** | USB HS CDCの転送でhostへ届かなかった分は、失われているのか滞留しているのか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [E067](e067_p4_usb_vs_capture_core/README.ja.md)「経路の異常」、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — 前提が誤り。欠落は転送の途中で、dataは失われる。30回中4回(13%)、512 Bの4〜5 packet**([e068_p4_hs_cdc_tail_loss/](e068_p4_hs_cdc_tail_loss/README.ja.md)) |
 | **E069** | OTG HS上のvendor bulkの実効帯域は何MB/sか。CDCの約8 MB/sを超えるか。1 URBの大きさで変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [harness-channels](../references/harness-channels.ja.md) §6c、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — usbip越しで9.73 MB/s。天井は`usbser`側だった**([e069_p4_hs_vendor_bulk_rate/](e069_p4_hs_vendor_bulk_rate/README.ja.md)) |
 | **E070** | 同じvendor bulk構成をcore内蔵stackとEspUsbDevice 2.2.0で作ると、帯域・data完全性・descriptorの正しさはどう違うか | **一時・配線なし**(同上) | (P4でUSBを使う実験すべての土台) | **完了 — 帯域はcore内蔵(9.41 対 7.57 MB/s)、descriptor準拠はEspUsbDevice**([e070_p4_hs_vendor_stack_compare/](e070_p4_hs_vendor_stack_compare/README.ja.md)) |
+| **E071** | vendor bulkの送信FIFOを深くするとdevice側の帯域はどこまで伸びるか。天井はFIFOか別か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-4 / CR-7 | **完了 — 8 KiBで飽和(9.03 → 10.59 MB/s、+17%)。64 KiBはmountせず。host役の36.4 MB/sには遠い**([e071_p4_hs_vendor_fifo_depth/](e071_p4_hs_vendor_fifo_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -241,6 +242,23 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
 
+### E071 ESP32-P4: device側 vendor bulkの天井 — 送信FIFOの深さ — 完了 2026-09-12
+
+全文: [e071_p4_hs_vendor_fifo_depth/README.ja.md](e071_p4_hs_vendor_fifo_depth/README.ja.md)。EspUsbDevice 2.2.0のコピーで`CFG_TUD_VENDOR_TX_BUFSIZE`だけを振った。
+
+**事実**
+
+1. **512 B → 8 KiBで9.03 → 10.59 MB/s(+17%)。** ばらつきも6.79–10.02 → 10.27–10.76へ縮む。
+2. **8 KiBで飽和。** 16 KiB 10.33、32 KiB 10.39で差が無い。
+3. **64 KiBでは動かない。** `usb_ready=1`だが**`mounted=0`**でhostがconfigureせず、転送も全て失敗。
+4. `stalls`は39,746 → 28,844で**下げ止まる**(1 packetあたり約3.5回のspinが残る)。
+5. **同じP4がhost役では36.4 MB/s**([EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost)の`vendor_bulk_throughput`、**async queue depth 2**、8 KB転送)。device役の10.74 MB/sは**その約30%**で、**FIFOの深さで説明できるのは17%だけ**。
+6. host read sizeは深いFIFOでもまだ効く(64 KiBで8.31、4 MiBで10.74)→ usbipのoverheadは残っている。
+
+**候補**: vendor bulkのTX FIFOは**8 KiBを既定に**(採用)/ 16 KiB以上は無意味、**64 KiBは壊れる** / 次に効くのは**FIFOではなく「同時に投げる転送の数」**([CR-7](../references/espusbdevice-change-requests.ja.md))。
+
+**未決**: **転送を2つin-flightにしたらどこまで伸びるか** `—`(**本命**)/ usbipのoverheadの大きさ `—`(**2枚目のP4をEspUsbHostでhostにしてHS port同士を繋げばPCを外せる。要配線**)/ 64 KiBでmountしない理由 `—` / RX側・CDC・HIDでの同じ掃引 `—`。
+
 ### E070 ESP32-P4: vendor bulkのstack比較(core内蔵 対 EspUsbDevice) — 完了 2026-09-12
 
 全文: [e070_p4_hs_vendor_stack_compare/README.ja.md](e070_p4_hs_vendor_stack_compare/README.ja.md)。read size 1 MiB / 4 MiB転送 / 各15回を**背中合わせ**で測った(usbip経由)。
@@ -255,7 +273,9 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 6. flashはEspUsbDeviceが**約18 KB小さい**(374,242 対 392,098 B)。
 7. **MS OS 2.0はどちらも正しく答えるのにWindowsはどちらでもbindしない** → [E069](e069_p4_hs_vendor_bulk_rate/README.ja.md)のWindows側の問題は**stackと無関係**と確定。
 
-**どちらを使うか**: **いま帯域が要るならcore内蔵**(速く、ばらつきが小さい)。**HS deviceとして正しく振る舞わせたいならEspUsbDevice**。そして**512 B FIFOを深くできるのはEspUsbDeviceだけ**なので、[E069](e069_p4_hs_vendor_bulk_rate/README.ja.md)の「1 microframeあたり約2.4 transaction」という天井を超える道はそちらにある — **現状の−24%はFIFOを深くした効果で逆転しうる**。
+**訂正(同日)**: 上の帯域比較は`--build-property 'build.extra_flags=...'`で潰れたビルドで測っていた。`build_opt.h` + `--clean`で測り直すと**median 9.04 対 9.03 MB/sでほぼ同じ**、`stalls`比も1.9倍ではなく約1.18倍。残る差は**ばらつき**(core 8.68–9.11、EspUsbDevice 6.79–10.02、各25回)。さらに[E071](e071_p4_hs_vendor_fifo_depth/README.ja.md)でTX FIFOを8 KiBにするとEspUsbDeviceは**10.59 MB/s**まで伸び、core内蔵はFIFOを動かせないため**EspUsbDeviceが上回る**。
+
+**どちらを使うか(当初の判断)**: **いま帯域が要るならcore内蔵**(速く、ばらつきが小さい)。**HS deviceとして正しく振る舞わせたいならEspUsbDevice**。そして**512 B FIFOを深くできるのはEspUsbDeviceだけ**なので、[E069](e069_p4_hs_vendor_bulk_rate/README.ja.md)の「1 microframeあたり約2.4 transaction」という天井を超える道はそちらにある — **現状の−24%はFIFOを深くした効果で逆転しうる**。
 
 **未決**: EspUsbDeviceのFIFO待ちが多い理由 `—` / **FIFOを深くしたときの効果** `—`(`p4-hs-vendor-fifo-depth`。**EspUsbDeviceでしか試せない。次の問い**)/ ばらつき±27%の理由 `—` / usbipなしの値 `—` / vendor OUTはBでは未確認 / HID throughput `—`。
 

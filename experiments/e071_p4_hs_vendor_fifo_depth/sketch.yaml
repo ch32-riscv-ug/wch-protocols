@@ -1,0 +1,12 @@
+profiles:
+  esp32p4_usb:
+    # EspUsbDevice needs one local change to make the vendor TX FIFO size
+    # reachable from build_opt.h; see README.ja.md "ライブラリ側の細工".
+    # Point `dir:` at that patched copy.
+    fqbn: esp32:esp32:esp32p4:FlashSize=16M,PSRAM=enabled,ChipVariant=prev3,USBMode=default,CDCOnBoot=default,UploadMode=default
+    platforms:
+      - platform: esp32:esp32 (3.3.11)
+        platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+    libraries:
+      - EspUsbDevice (2.2.0)
+default_profile: esp32p4_usb
