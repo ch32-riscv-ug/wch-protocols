@@ -1,5 +1,9 @@
 // E078: stream a PARLIO capture straight out of the OTG HS vendor endpoint
 // instead of filling PSRAM first, and find the rate where it stops keeping up.
+//
+// Built against the EspUsbDevice working tree (CR-4/CR-7/CR-9), not a release:
+// the TX FIFO and the per-transfer size are set in build_opt.h, and the sender
+// blocks on waitWritable() rather than spinning.
 // Plan and report: README.ja.md
 //
 // E076 captured, then sent. Here the two run together with an elastic FIFO in
@@ -38,6 +42,11 @@ static constexpr size_t kDelimiterSize = 65408;
 static constexpr size_t kQueueDepth = 128;
 static constexpr size_t kFifoSize = 8u * 1024u * 1024u;
 static constexpr size_t kUsbChunk = 16 * 1024;
+// What one waitWritable() asks for. It is clamped to writeCapacity() (= the TX
+// FIFO, 4 KiB here), so a slice keeps the sender moving as soon as any room
+// appears rather than waiting for the FIFO to drain completely.
+static constexpr size_t kWaitSlice = 1024;
+static constexpr uint32_t kWaitTimeoutMs = 1000;
 static constexpr size_t kStreamBytesMax = 64u * 1024u * 1024u;
 
 static constexpr uint16_t kTestVid = 0x1209;
@@ -80,6 +89,8 @@ static volatile size_t stream_target;
 static volatile size_t harvested;
 static volatile size_t usb_sent;
 static volatile uint32_t usb_stalls;
+static volatile uint32_t usb_waits;
+static volatile uint32_t usb_timeouts;
 static volatile uint64_t usb_elapsed_us;
 static SemaphoreHandle_t usb_done;
 static SemaphoreHandle_t harvest_done;
@@ -222,9 +233,16 @@ static void harvest_task(void *) {
   vTaskDelete(nullptr);
 }
 
+// waitWritable() instead of spinning on write(): the point of this experiment is
+// that the sender shares the CPU with harvest, and a task that spins is a task
+// that takes it away. The wait is for a slice, not for the whole chunk --
+// waitWritable() clamps to the FIFO size, so asking for kUsbChunk would mean
+// "wait until the FIFO is completely empty" and give the drain away again.
 static void usb_task(void *) {
   size_t sent = 0;
   uint32_t stalls = 0;
+  uint32_t waits = 0;
+  uint32_t timeouts = 0;
   const uint64_t started = esp_timer_get_time();
   while (sent < stream_target) {
     const size_t used = fifo_used();
@@ -243,10 +261,21 @@ static void usb_task(void *) {
     if (span > stream_target - sent) {
       span = stream_target - sent;
     }
+    // Look before waiting: on most passes there is already room, and then the
+    // semaphore is never touched.
+    if (HsVendor.writeAvailable() < kWaitSlice) {
+      ++waits;
+      if (!HsVendor.waitWritable(kWaitSlice, kWaitTimeoutMs)) {
+        ++timeouts;
+        if (!HsVendor.mounted()) {
+          break;  // unplugged: do not spin here forever
+        }
+        continue;
+      }
+    }
     const size_t written = HsVendor.write(fifo.buffer + offset, span);
     if (written == 0) {
       ++stalls;
-      HsVendor.flush();
       taskYIELD();
       continue;
     }
@@ -257,6 +286,8 @@ static void usb_task(void *) {
   usb_elapsed_us = esp_timer_get_time() - started;
   usb_sent = sent;
   usb_stalls = stalls;
+  usb_waits = waits;
+  usb_timeouts = timeouts;
   xSemaphoreGive(usb_done);
   vTaskDelete(nullptr);
 }
@@ -271,6 +302,8 @@ static void run_stream(size_t total_bytes, uint32_t rate_hz) {
   harvested = 0;
   usb_sent = 0;
   usb_stalls = 0;
+  usb_waits = 0;
+  usb_timeouts = 0;
   usb_elapsed_us = 0;
   stream_target = total_bytes;
   stream_active = true;
@@ -324,10 +357,12 @@ static void run_stream(size_t total_bytes, uint32_t rate_hz) {
   cleanup_pwm();
 
   Console.printf(
-    "DONE sent=%lu harvested=%lu ring_overflow=%lu fifo_overflow=%lu high_water=%lu stalls=%lu elapsed_us=%llu\n",
+    "DONE sent=%lu harvested=%lu ring_overflow=%lu fifo_overflow=%lu high_water=%lu stalls=%lu waits=%lu "
+    "timeouts=%lu elapsed_us=%llu\n",
     static_cast<unsigned long>(usb_sent), static_cast<unsigned long>(harvested),
     static_cast<unsigned long>(ring_overflow), static_cast<unsigned long>(fifo.overflow),
     static_cast<unsigned long>(fifo.high_water), static_cast<unsigned long>(usb_stalls),
+    static_cast<unsigned long>(usb_waits), static_cast<unsigned long>(usb_timeouts),
     static_cast<unsigned long long>(elapsed)
   );
   Console.flush();
@@ -339,10 +374,11 @@ static void handle_command(void) {
                    __TIME__);
     Console.printf(
       "ENV chip=%s psram_found=%u psram_size=%lu lanes=%u pins=%d,%d pwm_hz=%lu fifo=%lu ring=%lu stream_max=%lu "
-      "usb_ready=%u mounted=%u ready=%u\n",
+      "tx_fifo=%lu usb_ready=%u mounted=%u ready=%u\n",
       ESP.getChipModel(), psramFound() ? 1U : 0U, static_cast<unsigned long>(ESP.getPsramSize()), kLaneCount, pins[0],
       pins[1], static_cast<unsigned long>(kPwmFrequencyHz), static_cast<unsigned long>(kFifoSize),
-      static_cast<unsigned long>(kRingSize), static_cast<unsigned long>(kStreamBytesMax), usb_ready ? 1U : 0U,
+      static_cast<unsigned long>(kRingSize), static_cast<unsigned long>(kStreamBytesMax),
+      static_cast<unsigned long>(EspUsbDeviceVendor::writeCapacity()), usb_ready ? 1U : 0U,
       HsVendor.mounted() ? 1U : 0U, (fifo.buffer && ring_buffer) ? 1U : 0U
     );
     Console.flush();
