@@ -126,7 +126,7 @@ WinUSBに自動bindしない場合は、反証条件3を記録して完了とし
 |---|---|---|---|
 | **host** | Windows + WinUSB + pyusb | **WSL(usbip経由)+ libusb** | **WindowsがWinUSBにbindしなかった**(下記)。usbipは経路にoverheadを足すので、**得られた数値は下限**である |
 | **開始の合図** | vendor OUT endpointへ`G` | **consoleから`C`** | **vendor OUT endpointがdataを受け付けない**(下記)。bulk INはhostがpollする方式なので、deviceが先に送り始めても取りこぼしは起きない |
-| **送出元** | PSRAM 8 MiB | **internal RAM 64 KiBを繰り返し** | **boardのPSRAMが検出されなくなった**(下記)。USB経路の測定にPSRAMのread帯域を混ぜずに済む点ではむしろ素直 |
+| **送出元** | PSRAM 8 MiB | **internal RAM 64 KiBを繰り返し** | 当時PSRAMが検出されなかったため(**後に自分のビルドミスと判明。下記**)。USB経路の測定にPSRAMのread帯域を混ぜずに済む点ではむしろ素直なので、そのまま採用した |
 
 ### 帯域(4 MiB転送、各3回、usbip経由)
 
@@ -172,15 +172,18 @@ WinUSBに自動bindしない場合は、反証条件3を記録して完了とし
 
 [E062](../e062_usb_same_identity_layout_change/README.ja.md)の仮説「`bcdDevice`はidentityに効かない / serialは効く」が、**実機で片側ずつ確認できた**。さらに**失敗したdriver判定は古いinstanceに貼り付いたまま再判定されない**という実害も観測した。
 
-### ベンチの異常 — PSRAMが検出されなくなった
+### ベンチの異常 — PSRAMが検出されなくなった(**原因判明・自分のビルドミス。解決済み**)
 
-[E068](../e068_p4_hs_cdc_tail_loss/README.ja.md)までは`psram_found=1 / psram_size=33554432`(32 MiB)だったが、E069の作業中に`psram_found=0 / psram_size=0`になった。
+作業中に`psram_found=0 / psram_size=0`になり、board側の故障を疑ったが、**原因はこの実験の手動ビルドだった**。
 
-- **[E064](../e064_p4_usb_hs_cdc_rate/README.ja.md)のfirmwareを焼き戻しても再現する** → buildではなくboard側
-- esptoolのhard resetで戻らない
-- **両方のUSBケーブルを抜いた電源断でも戻らない**
+- **`arduino-cli compile --build-property 'build.extra_flags=-DBANNER_GIT=...'`で、platformが組み立てている`build.extra_flags`を丸ごと上書きしていた。** この変数は実際には
+  `-DBOARD_HAS_PSRAM -DARDUINO_USB_MODE=0 -DARDUINO_USB_CDC_ON_BOOT=0 ...`を運んでおり、**`BOARD_HAS_PSRAM`ごと消えていた**
+- さらに**arduino-cliがその条件で作った`core.a`をcacheし、以後は正しいpropertyで組んでも古いcoreが再利用された**ため、症状が残り続けた
+- `~/.cache/arduino/cores`と`~/.cache/arduino/sketches`を消して再ビルドしたら、**2枚のboard両方で`psram_found=1 / psram_size=33554432`に復帰した**
 
-**原因未特定。** [E014](../e014_p4_parlio_internal_capture/README.ja.md)〜[E068](../e068_p4_hs_cdc_tail_loss/README.ja.md)のPSRAM前提の実験は、**この個体では現状そのまま再現できない**。
+**PSRAMのhardwareは両board正常である。** 切り分けの過程で、`esp_psram_init()`を手で呼ぶと`ESP_OK`で初期化できることも確認した(= 起動時の初期化だけが抜けていた)。
+
+**規則として**: **sketch固有のビルドオプションは`build_opt.h`に置く**。`--build-property`で`build.extra_flags`を触らない。**変更を反映するには`--clean`でフルビルドする**。repoのpytest harnessは`build_config.toml`から`compiler.cpp.extra_flags` / `compiler.c.extra_flags`へ注入しており、**こちらは元から正しい** — 壊れていたのは手動ビルドだけである。
 
 ### vendor OUT endpointがdataを受け付けない
 
@@ -200,7 +203,7 @@ WinUSBに自動bindしない場合は、反証条件3を記録して完了とし
 - **[E068](../e068_p4_hs_cdc_tail_loss/README.ja.md)のpacket欠落がvendorでも起きるか** — 18転送で0件だが、**30転送以上で確かめる必要がある**
 - **FIFOを512 Bより深くしたらどこまで伸びるか** `—`。coreのstackでは変えられない → **[E070](../e070_p4_hs_vendor_stack_compare/README.ja.md)で`EspUsbDevice`と比較する**
 - vendor OUT endpointが受け付けない理由 `—`
-- **PSRAMが検出されない理由** `—`。ベンチの問題として別に追う
+- ~~PSRAMが検出されない理由~~ → **解決**(上記。自分のビルドミスで、boardは正常)
 
 ### 反映
 
