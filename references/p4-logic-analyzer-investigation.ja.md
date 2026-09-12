@@ -46,6 +46,8 @@ Arduino-ESP32 3.3.11が使用するESP32-P4のSoC定義では、PARLIOは1 group
 
 channel幅とpackingは[E031](../experiments/e031_p4_parlio_channel_width/README.ja.md)、width別raw rateは[E032](../experiments/e032_p4_parlio_width_rate_coarse/README.ja.md)と[E033](../experiments/e033_p4_parlio_width_rate_fine/README.ja.md)、sample単位再検証は8 channelが[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)、16 channelが[E042](../experiments/e042_p4_parlio_16ch_seq_verify/README.ja.md)、8 channelのtrigger・深度は[E025](../experiments/e025_p4_sump_trigger_rate_boundary/README.ja.md)、[E028](../experiments/e028_p4_sump_four_stage_trigger/README.ja.md)、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)による。triggerなしPSRAM spoolは約98 MB/sで飽和するため、80 MB/sを安定tierとする。
 
+**2 channel行は[E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md)でsample単位の裏付けが付いた** — 32 / 64 / 128 / 160 MHzすべてで立ち上がりedge間隔のmin = mean = max が期待値と一致し、16 Mi sampleの深さでも欠落0だった。以下の注記は残る1 / 4 channel行に当たる。
+
 ※ を付けた行の検証は、100 kHzのLEDC PWMを信号源としたlaneごとのdutyとedge数によるものである。定常・周期的な信号源では、ringがcopy前に上書きされてもdutyとedge数がほぼ変わらないため、この検証はsample単位の欠落を検出できない（[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)で実証）。8 / 16 channel行はgray code rampによるsample単位検証を通っている。1 / 2 / 4 channelは160 MHz設定でもpacking後20 / 40 / 80 MB/sで持続spool帯域に余裕があり、E036とE042でbyte rate modelがwidthをまたいで成立したので、再検証の優先度は低い。
 
 ## rate限界は単一の値にならない

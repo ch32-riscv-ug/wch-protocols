@@ -90,6 +90,7 @@
 | **E071** | vendor bulkの送信FIFOを深くするとdevice側の帯域はどこまで伸びるか。天井はFIFOか別か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-4 / CR-7 | **完了 — 8 KiBで飽和(9.03 → 10.59 MB/s、+17%)。64 KiBはmountせず。host役の36.4 MB/sには遠い**([e071_p4_hs_vendor_fifo_depth/](e071_p4_hs_vendor_fifo_depth/README.ja.md)) |
 | **E072** | P4を2枚HS port同士で直結し、PCを経路から外してdevice → hostのbulk INを測ると何MB/sか | **一時・要配線**(`...78` = device / `...f5` = host、OTG HS同士を直結) | [EspUsbHostへの改修依頼](../references/espusbhost-change-requests.ja.md) HR-1 | **完了 — 5.6 MB/s。直結の方が遅い。host側の継続INが512 B×depth 1のため**([e072_p4_hs_device_to_host_native/](e072_p4_hs_device_to_host_native/README.ja.md)) |
 | **E073** | USB 2.0 HSのinterrupt endpoint(HID)でdevice → hostへ流せる実効帯域は何MB/sか。packet sizeでどう変わるか | **一時・要配線**(P4 2枚のOTG HS直結) | [harness-channels](../references/harness-channels.ja.md) §USBクラス8種の得失 | **完了 — 既定64 Bで0.52 MB/s、512 Bで4.14 MB/s。「HID = 64 kB/s」はFSの値**([e073_p4_hs_hid_throughput/](e073_p4_hs_hid_throughput/README.ja.md)) |
+| **E074** | 2 channelのPARLIO captureを取り、hostで`.sr`に変換してsigrokが読み戻せるところまで通るか。どのrateまでsample単位の欠落なしか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 限界matrix、[PulseView / sigrok 連携](../references/pulseview-integration.ja.md) | **完了 — 160 Mspsまでsample精度、16 Mi sampleの深さも通り、`.sr`をsigrokが読み戻す**([e074_p4_2ch_capture_to_sr/](e074_p4_2ch_capture_to_sr/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -243,6 +244,25 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E074 ESP32-P4: 2 channel captureからsigrok `.sr`まで — 完了 2026-09-12
+
+全文: [e074_p4_2ch_capture_to_sr/README.ja.md](e074_p4_2ch_capture_to_sr/README.ja.md)。PARLIO RX data_width 2、信号源は内部LEDC PWM 100 kHz(duty 25% / 50%)、downloadはUSB-Serial-JTAG console経由。
+
+**事実**
+
+1. **2 channelのcaptureは160 Mspsまでsample単位で正確。** 32 / 64 / 128 / 160 MHzすべてで**立ち上がりedge間隔のmin = mean = max = 期待値**(320 / 640 / 1280 / 1600 sample)、overflow 0、取りこぼし0。**dutyでは欠落を検出できない**([E036](e036_p4_parlio_rate_seq_verify/README.ja.md))ので周期で判定した。
+2. **160 MHzはP4の内部clock源の上限。** [限界matrix](../references/p4-logic-analyzer-investigation.ja.md)の「1 / 2 / 4 channelは160 MHz成立(※sample単位未検証)」に**sample単位の裏付けが付いた**。
+3. **深さは16,777,216 sample(4 MiB packed、104.9 ms @ 160 Msps)まで通る。** PSRAMは32 MiBあるのでfirmwareの上限を上げればさらに伸びる。
+4. **`.sr`をsigrokが正しく読み戻す**(channel数・rate・sample数・波形すべて一致)。`.sr`は`version` / `metadata` / `logic-1-1`のzipで、**1 sample = 1 byte**。
+5. **packedのまま運んでhostで展開する方式が成立**。2 channelでは`.sr`が4倍に膨らむので、**線の上でpackedのままにするだけで転送量が1/4**になる。
+6. downloadはconsole(FS CDC)で**0.72〜0.80 MB/s**。4 MiBに5.8秒。**深さを使い切ると律速はここ**。
+
+**近直の目標への到達**: **「2chで数十Msps」は160 Mspsで達成(約5倍)**、**「ローカルで`.sr`保存」も達成**、**「ch単位の詰め替え」はpackedのまま運んでhostで展開する形で達成**(転送量1/4)。
+
+**候補**: capture側は2 channelについては**完了扱いでよい** / **downloadをOTG HSのvendor bulk(10.74 MB/s)へ差し替える** — 経路を変えるだけで**4 MiBが5.8秒 → 0.39秒**。
+
+**未決**: OTG HS経由との通し `—`(いまHS portは2枚目へ配線)/ 連続streaming `—` / 4 MiB超の深さ `—` / **外部信号** `—`(信号源は内部PWM)/ 3 channel以上 `—` / triggerとの組み合わせ `—`。
 
 ### E073 ESP32-P4: HSでのHID限界throughput — 完了 2026-09-12
 
