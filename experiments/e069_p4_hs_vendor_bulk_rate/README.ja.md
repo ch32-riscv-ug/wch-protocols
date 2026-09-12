@@ -197,7 +197,7 @@ WinUSBに自動bindしない場合は、反証条件3を記録して完了とし
 
 ### 未決
 
-- **WindowsでWinUSBが当たらない理由** `—`。deviceは正しいと確定したので、次はWindows側(driver install policy、Code 28の貼り付き)を見る
+- **WindowsでWinUSBが当たらない理由** `—`。deviceは正しいと確定。追った範囲と残る仮説は[Windows が WinUSB を当てない — 調査記録](../../references/windows-winusb-binding.ja.md)へ分けた
 - **ネイティブ(usbipなし)での帯域** `—`。上の9.73 MB/sは下限
 - **usbipのoverheadの大きさ** `—`。CDCを同じusbip経路で測れば較正できる
 - **[E068](../e068_p4_hs_cdc_tail_loss/README.ja.md)のpacket欠落がvendorでも起きるか** — 18転送で0件だが、**30転送以上で確かめる必要がある**
