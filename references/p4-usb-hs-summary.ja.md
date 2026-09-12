@@ -10,7 +10,25 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 **過去の P4 実験(E014〜E061)は別個体 `esp32-p4-e8f60ae0aa24`**(flash 32 MiB)で、値をそのまま引き継がない。
 
-## 1. USB 2.0 HS で何が出るか
+## 0. 2026-09-13 の更新 — 天井は約 23 MB/s だった
+
+**以下の §1 の数字は 2.2.0(旧既定)のもの**である。[改修依頼](espusbdevice-change-requests.ja.md) CR-1〜CR-9 が全件対応され、**vendor bulk の天井は約 23 MB/s、実用既定で約 21 MB/s** になった(**ライブラリ側の実測。こちらの追試は未了**)。
+
+**効いていたのは in-flight 数ではなく 1 転送あたりの packet 数**(`CFG_TUD_VENDOR_TX_EPSIZE`、旧既定は bulk 1 packet)。512 byte ごとに完了割り込み → event queue → usbd task → 再 arm の往復が入り、**線上 46 us に対し往復 52 us**。§1 の「1 microframe あたり 2.4 transaction」の正体である。
+
+| | 旧既定(§1 の値) | **新既定** |
+|---|---:|---:|
+| vendor bulk | 8.80〜10.74 MB/s | **約 21(飽和 23)MB/s** |
+| HID(512 B) | 4.14 MB/s | 4.03 MB/s(**ただし host が URB を 8 本 in-flight にして初めて出る**) |
+| **Windows で WinUSB** | **当たらない**(§3) | **当たる**(MS OS 2.0 を flat 構造にすれば) |
+| 4 MiB の download | 0.48 秒 | **約 0.20 秒**(見込み) |
+| 2 channel の連続 streaming 釣り合い点 | 約 35 Msps | **約 84 Msps**(見込み。[E078](../experiments/e078_p4_continuous_stream/README.ja.md)で実測する) |
+
+**§3(Windows で WinUSB が当たらない)は解決した** — 原因は仮説どおり **MS OS 2.0 descriptor set の subset 構造**で、単一 interface では flat に置く必要があった。**byte 列ではなく構造の問題**だった。
+
+**§1〜§6 は 2.2.0 時点の記録として残す。** 新しい版での追試は [E078](../experiments/e078_p4_continuous_stream/README.ja.md) で行う。
+
+## 1. USB 2.0 HS で何が出るか(2.2.0 時点)
 
 | 経路 | **実測** | driver | 出典 |
 |---|---:|---|---|

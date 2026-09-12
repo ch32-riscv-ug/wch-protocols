@@ -1,12 +1,49 @@
 # EspUsbDevice への改修依頼
 
-状態: **依頼**(2026-09-12 更新。対象 [EspUsbDevice](https://github.com/tanakamasayuki/EspUsbDevice) 2.2.0)
+状態: **全件対応済み**(2026-09-13。CR-1〜CR-9 すべてライブラリ側で実装・実機確認まで完了との回答。対象は 2.2.0、回答の全文は先方の `docs/CHANGE_REQUESTS.ja.md`)
+
+> **以下の「結果」は、こちらの台(`esp32-p4-30eda0e31478`)で先方が測った値**である。**こちらの harness での追試はまだしていない**([§3.1.2](../experiments/README.ja.md))。追試するのは [E078](../experiments/e078_p4_continuous_stream/README.ja.md)(capture と同時に降ろす)だけで、それ以外は重複しないので再実行しない。
 
 このファイルは、[E069](../experiments/e069_p4_hs_vendor_bulk_rate/README.ja.md)〜[E077](../experiments/e077_p4_pulseview_over_ip/README.ja.md) で ESP32-P4 の USB 2.0 HS を実測する過程で見つかった、`EspUsbDevice` 側の改修候補をまとめたもの。**すぐの対応を前提にしない**。優先度と、こちらで代替できるかを併記する。
 
 **着手順の提案は[別紙](usb-library-change-plan.ja.md)**([EspUsbHost 側](espusbhost-change-requests.ja.md)との兼ね合いを含む)。**各項目には「直ったことをどう確かめるか」を付けた** — こちらで再実行できる実験番号である。
 
+### 結果の要約 — 天井は **10.7 → 約 23 MB/s** に上がった
+
+**効いていたのは in-flight 数ではなく「1 転送が何 packet 運ぶか」だった**(`CFG_TUD_VENDOR_TX_EPSIZE`、既定が bulk 1 packet)。512 byte ごとに「完了割り込み → event queue → usbd task → 再 arm」の往復が入り、**線上時間 46 us に対し往復が約 52 us**。[E069](../experiments/e069_p4_hs_vendor_bulk_rate/README.ja.md) の「1 microframe あたり 2.4 transaction」の正体がこれである。
+
+| FIFO / 1 転送 | MB/s(4 MiB、9 回 median) |
+|---|---:|
+| 512 / 512(**旧既定**) | 9.83 |
+| 8192 / 512 | 10.76 |
+| 8192 / 2048 | 18.64 |
+| **4096 / 4096(新既定)** | **21.12** |
+| 8192 / 8192 | 22.81(飽和) |
+| 32768 / 8192 | 23.34 |
+
+**host 側の URB depth は 2 で飽和する**(1 = 18.64 / 2 = 22.68 / 4 = 22.69 / 8 = 22.87)。**つまり約 23 MB/s は host ではなく device 側の天井**で、[CR-7](#cr-7-endpointごとに転送を2つ以上投げられるようにしたい)(device 側 in-flight 2 本)は**不要**と結論された。→ [E079](../experiments/e079_p4_host_urb_depth/README.ja.md) はこの結果で置き換わる。
+
 ### 一覧
+
+| | 内容 | 結果 |
+|---|---|---|
+| CR-1 | MS OS 2.0 の subset 構造 | **対応**。interface 1 本なら flat 162 byte、2 本以上なら subsets 178 byte を自動判定(`config.msOs20Layout` で上書き可)。**Windows 実機で対照実験済み** — flat = `CM_PROB_NONE` + `USB\MS_COMP_WINUSB` + service WinUSB、subsets 強制 = `CM_PROB_FAILED_INSTALL`。**仮説どおり構造の問題**だった |
+| CR-2 | control request の観測 hook | **対応**。`onAnyControlRequest()`。vendor request は SETUP で報告するので **STALL したものも見える**。標準要求の STALL だけは見えない(`usbd.c` を触らずに塞げない) |
+| CR-3 | per-speed の `endpointSize` | **対応**。FS 64 / HS 512、OTHER_SPEED_CONFIGURATION も 64 |
+| CR-4 | FIFO 深さ | **対応**。class buffer を全部 `#ifndef` 化。**64 KiB が壊れた理由も判明** — `tu_edpt_stream_init()` がサイズを `uint16_t` で受けるので 65536 は depth 0(`usb_ready=1` / `mounted=0` と一致)。32768 超はビルドエラーに |
+| **CR-7** | 転送を 2 つ以上 in-flight に | **不要と判明**。上の表のとおり、効くのは転送長。device 側 in-flight を 2 本にしても残りは数 % |
+| CR-5 | 帯域のばらつき | **機序が判明**。`tu_edpt_stream_write_zlp_if_needed()` が「FIFO 空 かつ 直前の転送長が mps の倍数」で ZLP を送る → **512 byte 単位だと送出が途切れるたびに毎回成立**し、host の bulk read は short packet で URB が完了して再投入の往復になる。旧既定 9 run で「短く返った URB」を数えると**遅い run と完全相関**(8.33 MB/s で 47 本、10.21 MB/s で 9 本)。**FIFO 4096 以上では全 run 0 本**。加えて core 内蔵は DWC2 **slave mode**(ISR で再充填)、このライブラリは **DMA mode**(task 往復)という差もあり、CR-7 の修正で往復が 1/8 になるので実質解消 |
+| CR-8 | HID の 64 B 固定 | **対応**。上限 `CFG_TUD_HID_EP_BUFSIZE - 1`(P4 で 511)、P4 既定 512。**依頼書に無かった必須修正あり** — `VENDOR_REPORT_DESCRIPTOR` の Report Count が 63 で焼き込まれており、endpoint だけ 512 にしても host は 64 byte しか読まない。instance ごとに組み立てて reportSize に追従する形へ。実測 **4.03 MB/s / 7,866 report/s / 欠落 0**、Linux の hidraw が bind |
+| CR-9 | FIFO 空き待ち API | **対応**。`writeAvailable()` / `writeCapacity()` / `waitWritable()`。**実装中に TinyUSB 側のバグを 1 件発見** — `tud_vendor_tx_cb` が FIFO を次の転送へ吸い出す**前**に呼ばれるので、give の時点で空きがなく dual core だと待機側が空振りする。**修正前 1.85 → 修正後 20.94 MB/s、stalls 0**(従来は 4 MiB あたり約 25,000 回の spin) |
+| CR-6 | symlink と arduino-cli | **対応**。troubleshooting に追記(`build_opt.h` の置き場所と `--clean` も) |
+
+### こちらが間違えていた点
+
+- **CR-8 の「512 B までなら Linux の hidraw で確認できる」は誤り**だった。**report descriptor の Report Count が 63 固定**であることを見落としており、endpoint size だけ上げても host は 64 byte しか読まない。[E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) が通っていたのは host が `EspUsbHost` の raw transfer だったため
+- **CR-7 の見立て(in-flight 2 本が要る)は外れ**だった。往復の回数は合っていたが、**減らす手段は転送長**だった
+- **HID の 4.03 MB/s は host 側が URB を複数 in-flight にして初めて出る**(depth 1 で約 1,100 report/s、8 以上で 7,866)。**HID は driver レスだが、host 側の投げ方は要る**
+
+### 当初の依頼(記録として残す)
 
 | | 内容 | 優先度 | 規模 | 直ったことの確認 |
 |---|---|---|---|---|

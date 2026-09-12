@@ -1,6 +1,8 @@
 # EspUsbHost への改修依頼
 
-状態: **依頼**(2026-09-12 更新。対象 [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 2.8.0)
+状態: **未依頼**(2026-09-13 更新。対象 [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 2.8.0)
+
+> **まだ先方へ出していない。** [device 側](espusbdevice-change-requests.ja.md)が先に片付き、**HR-1 の当初の動機(device の天井が測れない)は消えた** — PC 側で URB depth を振ったら **depth 2 で飽和**し、約 23 MB/s が device 側の天井だと分かったため。**残る実需は HR-3(HID 1,024 B)だけ**で、それも device 側の 512 B が通ったのでいますぐではない。
 
 [E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) / [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) で ESP32-P4 を 2 枚直結し、device → host の bulk IN / interrupt IN を測る過程で見つかったもの。**すぐの対応を前提にしない**。
 
@@ -82,11 +84,13 @@ bool vendorReadQueueBegin(size_t depth, size_t bufferBytes, uint8_t address = ..
 
 となっていて、**「P4 同士で HS の実力を測る」ことがまだできない**。HR-1 が入れば、PC を一切介さずに device 側の天井を出せる。
 
-### 急ぐ必要はなくなった(2026-09-12 追記)
+### 測定の動機は消えた(2026-09-13 追記)
 
-HR-1 を立てた当初の動機は **「device 側の天井を測りたい」**だったが、**それは PC 側でも測れる**ことが分かった。`libusb` の async API で **URB を複数 in-flight** にすれば、**board 2 枚を直結しなくても「device の天井か host の投げ方か」を切り分けられる**([別紙](usb-library-change-plan.ja.md))。
+HR-1 を立てた当初の動機は **「device 側の天井を測りたい」**だったが、**PC 側で測れてしまった**。`libusb` の async API で URB depth を振った結果は **1 = 18.64 / 2 = 22.68 / 4 = 22.69 / 8 = 22.87 MB/s**([device 側の回答](espusbdevice-change-requests.ja.md))。**depth 2 で飽和するので、約 23 MB/s は device 側の天井**である。
 
-したがって HR-1 は **「測定のために要る」から「P4 を host として使うときに要る」**へ性格が変わった。**優先度は高いままだが、device 側の改修より後で構わない。**
+したがって HR-1 は **「測定のために要る」から「P4 を host として使うときに要る」**へ性格が変わった。**実需が立つまで依頼しない。**
+
+なお **P4 host 相手の 5.6 MB/s**([E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md))は、device 側が 1 転送 512 byte だった頃の値である。**device 側が 1 転送 4 KiB を送るようになったいま、同じ測定をやり直す価値がある** — host 側の 512 B × depth 1 が本当に律速なのかは、**再測定するまで分からない**。
 
 ### 直ったことの確認
 

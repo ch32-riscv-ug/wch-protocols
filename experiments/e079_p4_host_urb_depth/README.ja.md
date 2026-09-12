@@ -1,6 +1,8 @@
 # E079 PC 側の URB を複数 in-flight にすると帯域は伸びるか
 
-状態: **計画 — 機材待ち**(2026-09-12。board 1 / board 2 の console(USB-Serial-JTAG)が usbip 越しに応答しなくなっており、**物理的な挿し直しが要る**)
+状態: **中止 — 同じ測定が [EspUsbDevice](https://github.com/tanakamasayuki/EspUsbDevice) 側で先に行われ、結果が出た**(2026-09-13)
+
+> **こちらの harness では実行していない。** 下の計画は記録として残す。
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E069](../e069_p4_hs_vendor_bulk_rate/README.ja.md)(URB の**大きさ**が 2.7 倍効く)、[E071](../e071_p4_hs_vendor_fifo_depth/README.ja.md)(FIFO 8 KiB で 10.74 MB/s)、[E076](../e076_p4_capture_hs_download/README.ja.md)(実用経路で 8.80 MB/s、1.65 倍のばらつき) / 設計: [改修の着手順](../../references/usb-library-change-plan.ja.md)
 
@@ -72,3 +74,26 @@ board(単体)
 - [改修の着手順](../../references/usb-library-change-plan.ja.md) — **CR-7 と HR-1 の優先度がこの結果で決まる**
 - [EspUsbDevice への改修依頼](../../references/espusbdevice-change-requests.ja.md) CR-7
 - [P4 USB HS まとめ](../../references/p4-usb-hs-summary.ja.md) §1 — 「host の 1 URB の大きさ」に「本数」が加わる
+
+## 結果(こちらの実行ではない)
+
+ライブラリ側が**同じ board(`esp32-p4-30eda0e31478`)で**、URB depth を振って測った値。
+
+| host 側 URB depth | MB/s |
+|---:|---:|
+| 1 | 18.64 |
+| **2** | **22.68** |
+| 4 | 22.69 |
+| 8 | 22.87 |
+
+**depth 2 で飽和する。** したがって
+
+1. **仮説は当たった** — 同期 API(depth 1)は実際に損をしていた。18.64 → 22.68 で **+22%**
+2. **ただし天井を押し上げたのは depth ではなかった。** 上の 18.64 はすでに **device 側で 1 転送 2 KiB** にした後の値で、**旧既定(1 転送 512 B)では depth をいくら上げても 10 MB/s 台**だった。効いていたのは `CFG_TUD_VENDOR_TX_EPSIZE`(1 転送が何 packet 運ぶか)である
+3. **約 23 MB/s は host ではなく device 側の天井**。→ **反証条件 2 が成立**(depth 2 で頭打ち)。[CR-7](../../references/espusbdevice-change-requests.ja.md)(device 側 in-flight 2 本)は**不要**と結論された
+
+**この実験の目的(改修の着手順を決める)は果たされた**ので、こちらで同じ掃引はしない。**[E078](../e078_p4_continuous_stream/README.ja.md) が残る唯一の追試**である。
+
+### 残る差分
+
+こちらの host script は**まだ同期 API**である。**`--read-size` を大きく取ることで depth 1 の不利をある程度埋めている**([E069](../e069_p4_hs_vendor_bulk_rate/README.ja.md): 1 MiB URB で 2.7 倍)が、**depth 2 相当の +22% は取り逃している**。[E078](../e078_p4_continuous_stream/README.ja.md) の host 側は [`urb_depth.py`](urb_depth.py) の async reader を使う。

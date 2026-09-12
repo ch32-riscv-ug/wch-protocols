@@ -1,8 +1,26 @@
 # E078 2 channel を継ぎ目なく連続で降ろせる rate の上限
 
-状態: **計画 — firmware は board へ焼済み、console 復帰待ち**(2026-09-12)
+状態: **計画 — EspUsbDevice の release 待ち**(2026-09-13 更新)
 
-> **止まっている理由**: `S <bytes> <rate>` を送る console(USB-Serial-JTAG)が、**2 枚とも usbip 越しに応答しなくなった**。board 1 は Windows 側で `デバイス記述子要求の失敗` として列挙され、board 2 は `/dev/ttyACM1` が読めるが応答しない。**OTG HS 側(vendor bulk)は生きており、firmware も動いている**(`iProduct` が `OEP P4 Continuous Stream` を返す)。**console ケーブルの挿し直しで再開できる。**
+> **止まっている理由**: console は復旧した(挿し直し済み)が、**この実験は [EspUsbDevice](https://github.com/tanakamasayuki/EspUsbDevice) の新しい版で回したい**。[CR-4 / CR-7 / CR-9](../../references/espusbdevice-change-requests.ja.md) が入って **降ろす側が 8.80 → 約 21 MB/s** になり、**`waitWritable()` で spin を潰せる**ようになったため、**旧版で測っても釣り合い点がすぐ古くなる**。release が出た版でピンして回す。
+>
+> なお board 1 の sketch は先方の検証 firmware で上書きされている。**焼き直しが要る。**
+
+## 前提の更新(2026-09-13、計画は書き換えず追記)
+
+**降ろす側が 2.4 倍速くなったので、釣り合い点の見積りが動く。**
+
+| | 計画時(2026-09-12) | **更新後** |
+|---|---:|---:|
+| vendor bulk の実測 | 8.80 MB/s(既定 FIFO 512 B) | **約 21 MB/s**(FIFO 4096 / 1 転送 4096、新既定) |
+| 2 channel の釣り合い点(= MB/s ÷ 0.25) | 約 35 Msps | **約 84 Msps** |
+| [E067](../e067_p4_usb_vs_capture_core/README.ja.md) の同居損(84〜93%)を当てると | 29〜33 Msps | **70〜78 Msps** |
+
+**持続 spool 帯域(約 98 MB/s)に近づくので、律速が USB から capture 側へ移る可能性がある。** 掃引する rate を **16 / 32 / 48 / 64 / 80 / 96 MHz** へ広げる。
+
+**送出ループも変える。** [CR-9](../../references/espusbdevice-change-requests.ja.md) の `waitWritable()` で spin を置き換える(旧: 4 MiB あたり 2.5〜7 万回の `taskYIELD()`)。**harvest task と CPU を取り合わなくなるはずで、それ自体が [CR-9](../../references/espusbdevice-change-requests.ja.md) の合格条件**でもある。
+
+**host 側も同期 API から [E079](../e079_p4_host_urb_depth/README.ja.md) の async reader(depth 2 以上)へ変える** — depth 1 では 18.64、depth 2 で 22.68 MB/s と **+22%** 違うため、**host 側が律速だったという読み違いを避ける**。
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E076](../e076_p4_capture_hs_download/README.ja.md)(download 8.80 MB/s)、[E067](../e067_p4_usb_vs_capture_core/README.ja.md)(capture と USB の同居)、[E077](../e077_p4_pulseview_over_ip/README.ja.md)(batch を繋ぐと継ぎ目が出る)
 
