@@ -91,6 +91,7 @@
 | **E072** | P4を2枚HS port同士で直結し、PCを経路から外してdevice → hostのbulk INを測ると何MB/sか | **一時・要配線**(`...78` = device / `...f5` = host、OTG HS同士を直結) | [EspUsbHostへの改修依頼](../references/espusbhost-change-requests.ja.md) HR-1 | **完了 — 5.6 MB/s。直結の方が遅い。host側の継続INが512 B×depth 1のため**([e072_p4_hs_device_to_host_native/](e072_p4_hs_device_to_host_native/README.ja.md)) |
 | **E073** | USB 2.0 HSのinterrupt endpoint(HID)でdevice → hostへ流せる実効帯域は何MB/sか。packet sizeでどう変わるか | **一時・要配線**(P4 2枚のOTG HS直結) | [harness-channels](../references/harness-channels.ja.md) §USBクラス8種の得失 | **完了 — 既定64 Bで0.52 MB/s、512 Bで4.14 MB/s。「HID = 64 kB/s」はFSの値**([e073_p4_hs_hid_throughput/](e073_p4_hs_hid_throughput/README.ja.md)) |
 | **E074** | 2 channelのPARLIO captureを取り、hostで`.sr`に変換してsigrokが読み戻せるところまで通るか。どのrateまでsample単位の欠落なしか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 限界matrix、[PulseView / sigrok 連携](../references/pulseview-integration.ja.md) | **完了 — 160 Mspsまでsample精度、16 Mi sampleの深さも通り、`.sr`をsigrokが読み戻す**([e074_p4_2ch_capture_to_sr/](e074_p4_2ch_capture_to_sr/README.ja.md)) |
+| **E075** | PARLIOのchannel幅1 / 4 / 8で、どのsample rateまでsample単位の欠落なしに取れるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 限界matrixの※ | **完了 — 1 / 2 / 4 chは160 Mspsでsample精度。8 chは96 MHzまで1 MiBで精度、160 MHzは`overflow=131`**([e075_p4_width_sample_accuracy/](e075_p4_width_sample_accuracy/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -244,6 +245,25 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E075 ESP32-P4: channel幅ごとのsample単位精度 — 完了 2026-09-12
+
+全文: [e075_p4_width_sample_accuracy/README.ja.md](e075_p4_width_sample_accuracy/README.ja.md)。[E074](e074_p4_2ch_capture_to_sr/README.ja.md)と同じ周期判定を`LANE_COUNT`で幅を振って行った。
+
+**事実**
+
+1. **1 channelは160 Mspsでsample精度**(周期1600がmin = mean = max)。**限界matrixの※を外せる。**
+2. **4 channelも160 Mspsでsample精度**(3回とも)。同上。
+3. **8 channelは持続spool帯域の内側なら深さを増やしても精度を保つ** — 80 MB/s・1 MiBで`overflow=0`、周期完全一致。**96 MHz(96 MB/s)でも1 MiBで精度。**
+4. **8 channel × 160 MHz(160 MB/s)で1 MiB取ると落ちる** — `overflow=131`、周期が162〜2368にばらける。**burst深度モデルどおり。**
+5. **短い捕捉(131 KiB)なら8 ch × 160 MHzでも通る。** 「rate上限を単一の値で言えない」([E036](e036_p4_parlio_rate_seq_verify/README.ja.md))が8 channelでも再現した。
+6. **`overflow`は欠落を正しく捉える**(落ちた条件のみ非0)。
+
+**経路の異常(観測)**: 掃引の初回に、**`overflow=0`のまま特定の1 channelだけがduty 0.00%になる**ことが3回あった。**再実行すると再現しない**(3回連続で精度)。死ぬchannelは毎回違うのでGPIO固有ではなく、**test firmwareの準備順序**(`create_receiver()`がPARLIOのGPIO matrixを張った後に`ledcAttach`が同じpinを踏む)を疑っている。**capture経路そのものの問題ではないと見ているが未特定**(`p4-ledc-parlio-attach-order`)。
+
+**候補**: **1 / 2 / 4 channelは160 Mspsまで使ってよい** / **8 channelは96 MHzを実用上限に置く** / **`overflow`を信用してよい**。
+
+**未決**: 間欠的に1 channelが定数0になる現象 `—` / 16 channel `—`(`PARLIO_PINS`が8本)/ 8 channelのburst窓の正確な境界 `—` / 外部信号 `—`。
 
 ### E074 ESP32-P4: 2 channel captureからsigrok `.sr`まで — 完了 2026-09-12
 

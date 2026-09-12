@@ -34,10 +34,10 @@ Arduino-ESP32 3.3.11が使用するESP32-P4のSoC定義では、PARLIOは1 group
 
 | channel | bytes/sample | raw rate上限 | basic trigger上限 | multi-stage上限 | 最大確認深度 | 方式 |
 |---:|---:|---:|---:|---:|---:|---|
-| 1 | 1/8 | 160 MHz成立（内部clock源の上限）※ | — | — | 1,048,576 sample | PARLIO |
-| 2 | 1/4 | 160 MHz成立（内部clock源の上限）※ | — | — | 1,048,576 sample | PARLIO |
-| 4 | 1/2 | 160 MHz成立（内部clock源の上限）※ | — | — | 1,048,576 sample | PARLIO |
-| 8 | 1 | 104 MHz（1 Mi burst）／持続98 MB/s | 24 MHz、保守候補20 MHz | 16 MHz（固定4-stage） | 16 MiB / 20 MHz | PARLIO |
+| 1 | 1/8 | **160 MHz（sample精度確認）** | — | — | 1,048,576 sample | PARLIO |
+| 2 | 1/4 | **160 MHz（sample精度確認）** | — | — | **16,777,216 sample** | PARLIO |
+| 4 | 1/2 | **160 MHz（sample精度確認）** | — | — | 1,048,576 sample | PARLIO |
+| 8 | 1 | **96 MHz（1 MiBでsample精度）**／104 MHz（1 Mi burst）／持続98 MB/s | 24 MHz、保守候補20 MHz | 16 MHz（固定4-stage） | 16 MiB / 20 MHz | PARLIO |
 | 16 | 2 | 48 MHz（実効95.884 MB/s、1 Mi burst）／持続98 MB/s | — | — | 1,048,576 sample | PARLIO |
 | 8 + gate | 1 | **160 MHz**（内部clock源の上限。gate前提） | — | — | 1 MiB検証済 | PARLIO + qualification |
 | 24 | 4想定 | — | — | — | — | CPU snapshot候補 |
@@ -46,7 +46,9 @@ Arduino-ESP32 3.3.11が使用するESP32-P4のSoC定義では、PARLIOは1 group
 
 channel幅とpackingは[E031](../experiments/e031_p4_parlio_channel_width/README.ja.md)、width別raw rateは[E032](../experiments/e032_p4_parlio_width_rate_coarse/README.ja.md)と[E033](../experiments/e033_p4_parlio_width_rate_fine/README.ja.md)、sample単位再検証は8 channelが[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)、16 channelが[E042](../experiments/e042_p4_parlio_16ch_seq_verify/README.ja.md)、8 channelのtrigger・深度は[E025](../experiments/e025_p4_sump_trigger_rate_boundary/README.ja.md)、[E028](../experiments/e028_p4_sump_four_stage_trigger/README.ja.md)、[E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)による。triggerなしPSRAM spoolは約98 MB/sで飽和するため、80 MB/sを安定tierとする。
 
-**2 channel行は[E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md)でsample単位の裏付けが付いた** — 32 / 64 / 128 / 160 MHzすべてで立ち上がりedge間隔のmin = mean = max が期待値と一致し、16 Mi sampleの深さでも欠落0だった。以下の注記は残る1 / 4 channel行に当たる。
+**1 / 2 / 4 channel行はsample単位の裏付けが付いた**([E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md) が2 channel、[E075](../experiments/e075_p4_width_sample_accuracy/README.ja.md) が1 / 4 / 8 channel)。判定は**立ち上がりedge間隔のmin = mean = max が `rate ÷ 信号源周波数` と一致するか**で、dutyでは欠落を検出できないため使っていない。2 channelは16 Mi sampleの深さでも欠落0、8 channelは**96 MHz（96 MB/s）までなら1 MiBでsample精度**で、160 MHz（160 MB/s）では1 MiBで`overflow=131`が出た — **持続spool帯域を超えた分はburst窓の内側しか保たない**というモデルどおりである。
+
+(以下は当初の注記。16 channel行に当たる)
 
 ※ を付けた行の検証は、100 kHzのLEDC PWMを信号源としたlaneごとのdutyとedge数によるものである。定常・周期的な信号源では、ringがcopy前に上書きされてもdutyとedge数がほぼ変わらないため、この検証はsample単位の欠落を検出できない（[E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)で実証）。8 / 16 channel行はgray code rampによるsample単位検証を通っている。1 / 2 / 4 channelは160 MHz設定でもpacking後20 / 40 / 80 MB/sで持続spool帯域に余裕があり、E036とE042でbyte rate modelがwidthをまたいで成立したので、再検証の優先度は低い。
 
