@@ -341,6 +341,22 @@ DMI    (addr7, data32, op2)          ← 「細い管」
 | **IP(TCP / WebSocket)** | LAN 次第(十分) | **0** | **port を分ければ ◎** |
 | 物理 UART ピン(USB を介さない) | 線次第 | 0 | ○ |
 
+### high-speed(USB 2.0 HS)の実測 — 上の表はすべて full-speed 前提
+
+**上の行は full-speed の概算である。** ESP32-P4 の USB 2.0 HS で実測すると桁が変わる([E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md))。
+
+| 物理 IF(HS) | **実測** | driver | 備考 |
+|---|---:|---|---|
+| **vendor bulk**(送信 FIFO 8 KiB) | **10.74 MB/s** | WinUSB | [E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md)。既定 FIFO 512 B なら 9.0 |
+| **CDC ×1** | **8.08 MB/s** | 不要 | [E066](../experiments/e066_p4_usb_hs_tx_context/README.ja.md)。⚠ **転送途中の packet 欠落が 13%**([E068](../experiments/e068_p4_hs_cdc_tail_loss/README.ja.md)) |
+| CDC ×2 | **合計は増えない**(比 0.943) | 不要 | [E065](../experiments/e065_p4_usb_hs_dual_cdc_rate/README.ja.md)。共有部分が律速 |
+| **HID(512 B endpoint)** | **4.14 MB/s** | **不要** | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md)。**帯域が予約される** |
+| HID(64 B endpoint) | 0.52 MB/s | 不要 | 同上。**FS の 64 kB/s の 8 倍** |
+| USB-Serial-JTAG(FS CDC) | 0.72〜0.80 MB/s | 不要 | [E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md)。上の「~1 MB/s 級」と整合 |
+
+**要点**: **HID は HS では「帯域不足」ではない**。packet size × 8,000/s(microframe 周期 125 us)で決まり、512 B なら vendor bulk の約 40% に届く。**送出 task を置く core で 1.5 倍変わる**([E066](../experiments/e066_p4_usb_hs_tx_context/README.ja.md))ことにも注意。
+
+
 ⚠ **数値は理論値と一般的な実測の範囲**。**実測は未**(→ §6)。
 
 ## 3. 多重化の方式は 3 つ
@@ -490,7 +506,7 @@ DMI    (addr7, data32, op2)          ← 「細い管」
 
 | class | driver | 帯域(FS) | 素で開けるか | 得 | 損 |
 |---|---|---|:--:|---|---|
-| **HID** | **全 OS 標準・driver レス** | interrupt **64 B/1 ms = 64 kB/s**(LS は 8 B/10 ms ≈ 1 kB/s) | ✗(HID API 経由) | **low-speed でも使える唯一**。**report ID で多重化できる**。**PID の心配が最小** | **帯域が最小**。capture には届かない |
+| **HID** | **全 OS 標準・driver レス** | interrupt **64 B/1 ms = 64 kB/s**(LS は 8 B/10 ms ≈ 1 kB/s)。**HS は 125 us 周期で packet size × 8,000/s** — 64 B で 0.52 MB/s、**512 B で 4.14 MB/s**([E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md)) | ✗(HID API 経由) | **low-speed でも使える唯一**。**report ID で多重化できる**。**PID の心配が最小**。**HS なら capture にも届く**うえ**帯域が予約される** | FS / LS では帯域が最小。~~capture には届かない~~ → **HS では届く** |
 | **CDC-ACM** | 全 OS 標準 | bulk **~1 MB/s** | **○ 素の serial** | **既存ツールがそのまま**。人が見る用途に最適 | **low-speed 不可**。**Windows の COM 番号問題**。1 本 = 3 endpoint |
 | **Vendor + WinUSB** | Win は **MS OS descriptor で自動 bind**、Linux/mac は libusb | bulk **最速** | ✗ | **libusb / WebUSB が使える**。**endpoint 効率が最も良い** | **素で開けない**。MS OS descriptor が要る |
 | **MSC(Mass Storage)** | 全 OS 標準 | bulk | ✗(ドライブに見える) | **UF2 で firmware を配れる**。**capture を「ファイル」として出す**手もある(録り終わったら `.sr` が見える) | 実時間の stream に向かない |
