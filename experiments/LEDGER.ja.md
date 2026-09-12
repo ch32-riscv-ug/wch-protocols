@@ -79,6 +79,7 @@
 | **E060** | 1 chunkあたりの固定costは`xQueueReceive`のまとめ取りと連続chunkのmemcpyまとめで下がるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — どちらも効かず、固定costはISRが支配**([e060_p4_drain_batch_coalesce/](e060_p4_drain_batch_coalesce/README.ja.md)) |
 | **E061** | PARLIOのISRが走るcoreとmemcpyするcoreを分けると、window中のdrain帯域は上がるか | **一時・配線なし**(`esp32-p4-e8f60ae0aa24`) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) raw rate | **完了 — core分離でdrainが82.3→119.7 MB/s**([e061_p4_drain_core_split/](e061_p4_drain_core_split/README.ja.md)) |
 | **E062** | 同一VID:PID・同一serialでinterface構成(HID単機能↔composite、末尾追加、interface番号の機能入替)を変えたとき、Windows 11はどの切替で既存devnodeとdriverを再利用するか。`bcdDevice`のみ・serialのみの変更は結果を変えるか。Linuxは全条件で再認識するか | **一時・専用機材**(E013と同じESP32-S3 native USB、Windows 11、Linux) | [probe-feasibility-gates](../references/probe-feasibility-gates.ja.md) Gate 2 / Gate 4、[usb-host-descriptor-persistence](../references/usb-host-descriptor-persistence.ja.md) | **計画**([e062_usb_same_identity_layout_change/](e062_usb_same_identity_layout_change/README.ja.md)) |
+| **E063** | Arduino-ESP32 3.3.11でESP32-P4のUSB 2.0 OTG HS portをdeviceとして列挙でき、negotiateする速度はHSかFSか。USB-Serial-JTAG(FS)のconsole経路は生き続けるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[harness-channels](../references/harness-channels.ja.md) §物理IF | **完了 — High-Speedで列挙、consoleも同時に生きる**([e063_p4_usb_hs_enumerate/](e063_p4_usb_hs_enumerate/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -232,6 +233,28 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E063 ESP32-P4: USB 2.0 OTG HSは列挙するか — 完了 2026-09-12
+
+全文: [e063_p4_usb_hs_enumerate/README.ja.md](e063_p4_usb_hs_enumerate/README.ja.md)。採用run: `_runs/E063_20260912T023520Z_default` / `T023605Z` / `T023646Z`。
+
+**事実**
+
+1. **Arduino-ESP32 3.3.11はP4のOTG HSをTinyUSB deviceとして立ち上げ、High-Speedでnegotiateする。** device側`tud_speed_get()=2`が10 runすべてで同値。UsbTreeViewも`Device Bus Speed 0x02 (High-Speed)`、`bcdUSB 0x200`、**3本のendpointすべて`wMaxPacketSize=512`**。`bMaxPacketSize0`だけ64。
+2. **USB-Serial-JTAG(FS)とOTG HS(HS)は同時に成立する。** 1 chipから`303a:1001`と`1209:0002`の2 deviceが同時にWindowsへ列挙され、usbipdでも別busid(`3-1` / `3-2`)。**書込み口を失わずにHS側の構成を変えられる** — 単一portのESP32-S3([E013](e013_usb_descriptor_profiles/README.ja.md))には無い性質。
+3. **単機能CDCのつもりの構成がWindowsではcomposite(`usbccgp`)になる。** Arduino-ESP32のUSB stackがIADを付けて`0xEF/0x02/0x01`を名乗るため。COM portは子devnode`&MI_00`側に`usbser`で生え、**driver追加なしにCOM8が出た**。
+4. **P4ではUSB serial stringが`"0"`になる。** `cores/esp32/USB.cpp`の`USB_SERIAL`既定は`CONFIG_IDF_TARGET_ESP32S3`のときだけ`"__MAC__"`、他targetは`"0"`。Windowsのinstance IDは`USB\VID_1209&PID_0002\0`。**同じfirmwareの2枚目のP4はWindows上で同一instanceを名乗る。**
+5. **Windowsはbus speedをPnP propertyとして公開しない。** `Get-PnpDeviceProperty`の全keyで確認。速度の証拠はUsbTreeView(またはUSBView)のdumpに依る。
+6. **Device Qualifier Descriptorの取得が`ERROR_GEN_FAILURE`。** HS deviceでは必須のはずだがWindowsは許容した。
+7. **interrupt IN endpointが512 B / `bInterval=1`(HSでは125 us)で開いている。** notificationだけで大きな帯域を予約しており、CDCを増やすときのendpoint予算に効く。
+8. **console経路(usbip)が不安定な側。** harness修正後13回中10 pass。失敗3回は**console無出力で15秒timeout**が1回(usbip経由CDCで20秒級の遅延)、**usbipd attach断での書込み失敗**が2回で、**HS側の観測には関与していない**。timeout 45秒で3回連続pass。
+9. board `esp32-p4-30eda0e31478` は rev 1.3 / flash **16 MiB** / PSRAM **32 MiB**。E014〜E061の`esp32-p4-e8f60ae0aa24`とは**別個体**で、flash容量が違う。
+
+**候補**: consoleを`HWCDC`の自前宣言で保持する型(採用)/ Windows観測をWSLから`powershell.exe`で駆動する型(採用)/ 速度とdescriptorの証拠はUsbTreeViewのdump(採用)/ 実験ごとにpid.codes test範囲の別PIDを取る(採用。E062の`1209:0001`は温存)。
+
+**未決**: throughputは未測定 `—`(`p4-hs-bulk-rate` / `p4-hs-cdc-vs-bulk` / `p4-batch-download` / `p4-stream-throughput`)/ serial `"0"`を上書きするか([ecosystem-any-hardware](../references/ecosystem-any-hardware.ja.md) §4.5の方針とcore既定の食い違い。E062と同じ論点)/ Device Qualifier無応答が他hostでも許容されるか / interrupt EPの予約がCDC複数本のendpoint予算に効く量(`p4-cdc-budget-hs`)/ 外部hubを介さない直結での再確認 / usbip遅延の原因 / Linux側の列挙は未取得 `—`。
+
+**反映**: [p4-logic-analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段の「配線を変えない限り測れない」を解消済みとして更新。**仕様のstatusは動かない**(boardの能力の測定であってprotocolの検証ではない)。
 
 ### E061 ESP32-P4: 回収を別coreへ移すとdrainは上がるか — 完了 2026-09-09
 
