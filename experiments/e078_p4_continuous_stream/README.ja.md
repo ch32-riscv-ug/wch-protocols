@@ -1,6 +1,8 @@
 # E078 2 channel を継ぎ目なく連続で降ろせる rate の上限
 
-状態: **計画**(2026-09-12)
+状態: **計画 — firmware は board へ焼済み、console 復帰待ち**(2026-09-12)
+
+> **止まっている理由**: `S <bytes> <rate>` を送る console(USB-Serial-JTAG)が、**2 枚とも usbip 越しに応答しなくなった**。board 1 は Windows 側で `デバイス記述子要求の失敗` として列挙され、board 2 は `/dev/ttyACM1` が読めるが応答しない。**OTG HS 側(vendor bulk)は生きており、firmware も動いている**(`iProduct` が `OEP P4 Continuous Stream` を返す)。**console ケーブルの挿し直しで再開できる。**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E076](../e076_p4_capture_hs_download/README.ja.md)(download 8.80 MB/s)、[E067](../e067_p4_usb_vs_capture_core/README.ja.md)(capture と USB の同居)、[E077](../e077_p4_pulseview_over_ip/README.ja.md)(batch を繋ぐと継ぎ目が出る)
 
