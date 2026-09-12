@@ -88,6 +88,7 @@
 | **E069** | OTG HS上のvendor bulkの実効帯域は何MB/sか。CDCの約8 MB/sを超えるか。1 URBの大きさで変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [harness-channels](../references/harness-channels.ja.md) §6c、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — usbip越しで9.73 MB/s。天井は`usbser`側だった**([e069_p4_hs_vendor_bulk_rate/](e069_p4_hs_vendor_bulk_rate/README.ja.md)) |
 | **E070** | 同じvendor bulk構成をcore内蔵stackとEspUsbDevice 2.2.0で作ると、帯域・data完全性・descriptorの正しさはどう違うか | **一時・配線なし**(同上) | (P4でUSBを使う実験すべての土台) | **完了 — 帯域はcore内蔵(9.41 対 7.57 MB/s)、descriptor準拠はEspUsbDevice**([e070_p4_hs_vendor_stack_compare/](e070_p4_hs_vendor_stack_compare/README.ja.md)) |
 | **E071** | vendor bulkの送信FIFOを深くするとdevice側の帯域はどこまで伸びるか。天井はFIFOか別か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-4 / CR-7 | **完了 — 8 KiBで飽和(9.03 → 10.59 MB/s、+17%)。64 KiBはmountせず。host役の36.4 MB/sには遠い**([e071_p4_hs_vendor_fifo_depth/](e071_p4_hs_vendor_fifo_depth/README.ja.md)) |
+| **E072** | P4を2枚HS port同士で直結し、PCを経路から外してdevice → hostのbulk INを測ると何MB/sか | **一時・要配線**(`...78` = device / `...f5` = host、OTG HS同士を直結) | [EspUsbHostへの改修依頼](../references/espusbhost-change-requests.ja.md) HR-1 | **完了 — 5.6 MB/s。直結の方が遅い。host側の継続INが512 B×depth 1のため**([e072_p4_hs_device_to_host_native/](e072_p4_hs_device_to_host_native/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -241,6 +242,34 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E072 ESP32-P4: 2枚直結でのdevice → host bulk IN — 完了 2026-09-12(**仮説は反証された**)
+
+全文: [e072_p4_hs_device_to_host_native/README.ja.md](e072_p4_hs_device_to_host_native/README.ja.md)。board 1 = device(EspUsbDevice 2.2.0、TX FIFO 8 KiB)、board 2 = host(EspUsbHost 2.8.0)、**OTG HS port同士を直結**。4 MiB × 5回。
+
+**事実**
+
+1. **直結の方が遅い。5.6 MB/s**で、usbip + PC経由の10.74 MB/sの約半分。**仮説「PCを外せば速くなる」は反証された。**
+2. **原因はhost側の読み方。** `chunks=8192`、`max_chunk=512` — **512 Bずつ8,192回**受けている(4 MiB ÷ 512 B と一致)。
+3. **`EspUsbHost`の継続IN(`READ_CONTINUOUS`)はendpointの`wMaxPacketSize`ぶんを1転送ずつ投げる。** `device->usbVendorInPacketSize = inEndpoint.maxPacketSize`で固定され、**転送サイズもqueue深さも指定できない**。**OUT側には`vendorWriteQueueBegin(depth, bufferBytes, ...)`があるのにIN側に無い。**
+4. **device側の`stalls`は88,914**(PC host相手では28,844)。**deviceはhostを待っており、まだ余裕がある。**
+5. HSで繋がり(`speed=2`)、5回とも4 MiB全部が届いて欠落0。
+
+**天井の現在地**
+
+| 経路 | hostの読み単位 | 実測 |
+|---|---|---:|
+| P4 device → **P4 host**(継続IN) | **512 B × depth 1** | **5.6 MB/s** |
+| P4 device → PC(usbip + libusb) | 1 MiB URB × depth 1 | **10.74 MB/s** |
+| P4 host → device(async queue) | 8 KB × **depth 2** | **36.4 MB/s**(ライブラリ側実測) |
+
+**ここまでの測定はどれも「hostの読み方」か「deviceのFIFO」で頭打ちで、deviceの本当の天井にはまだ届いていない。**
+
+**候補**: PCを外しても速くなるとは限らない — **経路の長さよりhostの読み単位が効く**。
+
+**未決**: **`EspUsbHost`のIN側にasync queueが入ったらいくつ出るか** `—`([HR-1](../references/espusbhost-change-requests.ja.md)。**本命**)/ deviceの本当の天井 `—` / `vendorReadSync()`で転送サイズを指定できるか `—`。
+
+**副産物**: **usbipは思ったほど悪くない。** 1 MiB URBのPC hostの方が512 BのP4 hostより速い。
 
 ### E071 ESP32-P4: device側 vendor bulkの天井 — 送信FIFOの深さ — 完了 2026-09-12
 
