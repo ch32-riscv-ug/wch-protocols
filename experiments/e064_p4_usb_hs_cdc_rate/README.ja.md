@@ -1,6 +1,6 @@
 # E064 ESP32-P4 USB HS CDCのdownload帯域
 
-状態: **計画**
+状態: **完了 — 約5.6〜5.7 MB/sで飽和、16 MiBが2.968秒**(2026-09-12)
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E063](../e063_p4_usb_hs_enumerate/README.ja.md)(HSで列挙することを確認) / 影響先: [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md) §後段
 

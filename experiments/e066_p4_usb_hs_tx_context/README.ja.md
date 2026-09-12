@@ -1,6 +1,6 @@
 # E066 ESP32-P4 USB HS CDCの帯域は送出contextで決まるか
 
-状態: **計画**
+状態: **完了 — 効くのは優先度ではなくpin先core。core 0で7.4〜8.1、core 1で5.2〜5.7 MB/s**(2026-09-12)
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E064](../e064_p4_usb_hs_cdc_rate/README.ja.md)(`loop()`から5.59 MB/s)、[E065](../e065_p4_usb_hs_dual_cdc_rate/README.ja.md)(専用taskから7.94 MB/s、ただし変数が1つではない)
 

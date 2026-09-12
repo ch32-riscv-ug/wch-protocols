@@ -1,6 +1,6 @@
 # E063 ESP32-P4 USB 2.0 OTG HS の列挙ゲート
 
-状態: **計画**
+状態: **完了 — High-Speedで列挙、consoleも同時に生きる**(2026-09-12)
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E013](../e013_usb_descriptor_profiles/README.ja.md)(中断) / 根拠: [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md) §後段、[harness-channels](../../references/harness-channels.ja.md) §物理IF
 

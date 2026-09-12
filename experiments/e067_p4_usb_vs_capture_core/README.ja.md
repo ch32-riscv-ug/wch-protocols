@@ -1,6 +1,6 @@
 # E067 ESP32-P4 PARLIO captureとUSB HS送出のcore競合
 
-状態: **計画**
+状態: **完了 — captureは不変、USBのみ7〜16%低下。最良はharvest=core 1 / USB=core 0**(2026-09-12)
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E066](../e066_p4_usb_hs_tx_context/README.ja.md)(USB送出はcore 0で速い)、[E061](../e061_p4_drain_core_split/README.ja.md)(captureの回収は別coreでdrainが上がる)、[E021](../e021_p4_parlio_psram_spool/README.ja.md)(spool経路)
 
@@ -150,7 +150,9 @@ pattern照合ではなく**計数**で見る。
 5. **同居でも配置次第で分離を上回る。** `cap0_usb0`(同じcore 0に両方、6.69 MB/s)は`cap0_usb1`(分離だがUSBがcore 1、5.52 MB/s)より速い。**反証条件3は部分的に発火した** — 「分ければ速い」は成り立たない。
 6. [E066](../e066_p4_usb_hs_tx_context/README.ja.md)のcore依存は**capture負荷の下でもそのまま残る**(単独7.97/5.96、同時7.42/5.52で比はほぼ同じ)。
 
-### 経路の異常 — 転送末尾の欠落
+### 経路の異常 — 転送中のdata欠落
+
+⚠ **この節は当初「末尾の欠落」と書いたが、[E068](../e068_p4_hs_cdc_tail_loss/README.ja.md)で前提が誤りと分かった。実際には転送の**途中**で512 B packet単位のdataが落ちており、byte数だけ数えていたため末尾が足りないように見えていた。以下の観測はそのまま残す。**
 
 **規則 [§7-6](../README.ja.md)に従い、failureではなく観測として残す。**
 
@@ -172,7 +174,7 @@ pattern照合ではなく**計数**で見る。
 - **転送長を512 Bの整数倍から外しても消えない。** short packetでの終端が無いことが唯一の原因ではない
 - 発生するmodeは実行ごとに変わる。**間欠的である**
 
-**原因は未特定。** ただし**logic analyzerのdownloadが末尾を静かに失う経路は使えない**ので、**これは次に潰すべき最優先の問題**である(`p4-hs-cdc-tail-loss`)。この実験の帯域の数値はdevice側時計で取っており、欠落の有無に影響されない。
+**→ [E068](../e068_p4_hs_cdc_tail_loss/README.ja.md)で追った。** 欠落は末尾ではなく**転送の途中**で、**dataは失われている**(待っても突いても戻らない)。30回中4回(13%)、2,048〜2,560 B(4〜5 packet)。**deviceは`written`も`short`も正常と申告する。** この実験の帯域の数値はdevice側時計で取っており、欠落の有無に影響されない。
 
 ### 候補
 
