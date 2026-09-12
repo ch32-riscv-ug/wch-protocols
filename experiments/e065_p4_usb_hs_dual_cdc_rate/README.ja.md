@@ -1,6 +1,6 @@
 # E065 ESP32-P4 USB HS CDCを2本並列にしたときの合計帯域
 
-状態: **計画**
+状態: **完了 — 反証。2本でも合計は上がらない(比0.943)**(2026-09-12)
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E064](../e064_p4_usb_hs_cdc_rate/README.ja.md)(1本で約5.6 MB/s飽和)、[E063](../e063_p4_usb_hs_enumerate/README.ja.md)(HSで列挙)
 

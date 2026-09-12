@@ -323,7 +323,9 @@ batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、fi
 
 したがって**連続streamingの釣り合い点は約29.7 Msps(2 channel)**である — 生成8.00 MB/sに対し排出7.42 MB/s。それを超える rate は**PSRAMへbatchしてから出す**。
 
-⚠ **ただしdownload経路には未解決の異常がある。** [E067](../experiments/e067_p4_usb_vs_capture_core/README.ja.md)の掃引中、5回のうち4回で**device側は全byte書き終えているのにhostへ末尾(512 Bの整数倍、2,048〜5,120 B)が届かない**現象が出た。間欠的で原因は未特定。**downloadが末尾を静かに失う経路はlogic analyzerには使えないので、ここを潰すまでこの節の帯域は「条件付き」である。**
+⚠ **この経路は現状そのままでは使えない。** [E068](../experiments/e068_p4_hs_cdc_tail_loss/README.ja.md)で、**4 MiBの転送30回中4回(13%)、転送の途中で512 B packet単位(4〜5 packet、2,048〜2,560 B)のdataが黙って消える**ことが分かった。**待っても突いても戻らず、dataは失われている。** deviceは`written`も`short`も正常と申告し、**device側もhost側も気づかない**。
+
+したがって**この節の帯域の数値(device側時計で測ったもの)は有効だが、「その帯域でdataが正しく渡る」とは言えない**。原因は未特定で、候補はTinyUSBのCDC TX FIFOに対するapplication taskとusbd taskの跨core競合。**当面は転送に長さとCRCを付けてhostが検証・再送要求できるようにし、pattern照合なしの転送を信用しないこと。**
 
 ### 旧ベンチ(UART download)の見積り
 

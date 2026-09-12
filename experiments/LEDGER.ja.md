@@ -84,6 +84,7 @@
 | **E065** | USB 2.0 HS上のCDCを2本同時に流したとき、合計帯域は1本の約5.6 MB/sより上がるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [harness-channels](../references/harness-channels.ja.md) §CDCの上限は endpoint 予算、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — 反証。2本でも合計は上がらない(比0.943)。ただし送出taskを分けた1本が7.94 MB/s**([e065_p4_usb_hs_dual_cdc_rate/](e065_p4_usb_hs_dual_cdc_rate/README.ja.md)) |
 | **E066** | CDC 1本のdownload帯域は送出を実行するcontext(`loop()`か専用taskか、優先度、pin先core)で変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段、[E065](e065_p4_usb_hs_dual_cdc_rate/README.ja.md)の事実5 | **完了 — 変わる。効くのは優先度ではなくpin先core。core 0で7.4〜8.1、core 1で5.2〜5.7 MB/s**([e066_p4_usb_hs_tx_context/](e066_p4_usb_hs_tx_context/README.ja.md)) |
 | **E067** | PARLIO captureとUSB HS送出を同時に走らせると互いをどれだけ食うか。core配分で変わるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — captureは不変(8.00 MB/s、overflow 0)、USBのみ7〜16%低下。最良はharvest=core 1 / USB=core 0の7.42 MB/s。**副産物として転送末尾の間欠欠落を観測**([e067_p4_usb_vs_capture_core/](e067_p4_usb_vs_capture_core/README.ja.md)) |
+| **E068** | USB HS CDCの転送でhostへ届かなかった分は、失われているのか滞留しているのか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはWindows 11へ接続) | [E067](e067_p4_usb_vs_capture_core/README.ja.md)「経路の異常」、[P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) §後段 | **完了 — 前提が誤り。欠落は転送の途中で、dataは失われる。30回中4回(13%)、512 Bの4〜5 packet**([e068_p4_hs_cdc_tail_loss/](e068_p4_hs_cdc_tail_loss/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -237,6 +238,25 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E068 ESP32-P4: USB HS CDCの欠落は消失か滞留か — 完了 2026-09-12(**問いの前提が誤っていた**)
+
+全文: [e068_p4_hs_cdc_tail_loss/README.ja.md](e068_p4_hs_cdc_tail_loss/README.ja.md)。run: `_runs/E068_20260912T05*`。4 MiB / chunk 4,096 B / 送出taskはcore 0 / captureなし、30回。
+
+**事実**
+
+1. **欠落は「末尾」ではなく「転送の途中」で起きている。** 受信streamは`前半 + (gap) + 後半`で、**後半は正しく届く**。[E067](e067_p4_usb_vs_capture_core/README.ja.md)がbyte数だけを数えていたため末尾欠落に見えていた。
+2. **dataは失われている。滞留ではない。** 2秒待っても0 byte、`T`で突いても返るのは**16 byteのterminatorだけ**。欠けた分は二度と来ない。
+3. **30回中4回(13%)。** 欠落量は2,048 B(4 packet)×2、2,560 B(5 packet)×2で、**すべて512 B = bulkの`wMaxPacketSize`の整数倍**。位置は2.2〜3.7 MiBにばらける。
+4. **deviceは気づかない。** 30回すべて`usb_written`は全byte、`usb_short`は0。**`USBCDC::write()`の戻り値は「線に出た」ことを意味しない。**
+5. **突いた後の経路は正常**(terminatorは4件とも届く)。endpointが止まるのではなく、**途中のpacketだけが消える**。
+6. 実効帯域のmedianは7.82 MB/sで[E066](e066_p4_usb_hs_tx_context/README.ja.md)と整合。
+
+**候補(未確認)**: **TinyUSBのCDC TX FIFOに対するapplication taskとusbd taskの跨core競合**。`usbd` taskは`esp32-hal-tinyusb.c:886`で**core指定なし**、`USBCDC::write()`の`tx_lock`はapplication側しか直列化しない。なお[E064](e064_p4_usb_hs_cdc_rate/README.ja.md)は8転送、[E066](e066_p4_usb_hs_tx_context/README.ja.md)は6転送をpattern照合して不一致0で、13%なら約2件出る計算 — **発生率は送出taskのcoreに依存する可能性がある**(E064の送出は`loop()`= core 1)。
+
+**未決**: **送出core別の発生率** `—`(`p4-hs-cdc-drop-rate-by-core`。次の問い)/ **USBPcapで線上を見る** `—`(線に出ていないのかhostが捨てているのか未判定)/ vendor bulkやFS側でも起きるか `—` / ESP-IDF直でFIFOを深くしたら変わるか `—` / 転送量との関係 `—`。
+
+**影響**: **この経路は現状そのままではlogic analyzerのdownloadに使えない。** 13%の転送で数KiBが黙って消え、device側もhost側も気づかない。E064〜E067の帯域の数値(device側時計)は有効だが、**「その帯域でdataが正しく渡る」とは言えない**。当面は**転送に長さとCRCを付け、hostが検証して再送を要求できるようにする**こと、**pattern照合なしの転送を信用しない**ことが要る。
 
 ### E067 ESP32-P4: captureとUSB送出のcore競合 — 完了 2026-09-12
 
