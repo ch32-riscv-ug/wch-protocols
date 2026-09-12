@@ -97,6 +97,7 @@
 | **E078** | PARLIO の capture を PSRAM に貯めずに OTG HS へ流したとき、欠落なく continuous に保てる sample rate の上限は何 Msps か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) 連続streamingの釣り合い点、[E077](e077_p4_pulseview_over_ip/README.ja.md)の継ぎ目 | **完了 — 86 Mspsまで継ぎ目なく降ろせる(線上21.5 MB/s)。88 Mspsからbacklogが時間に比例して積む。capture同居でもUSBは落ちない(`stalls`=0)**([e078_p4_continuous_stream/](e078_p4_continuous_stream/README.ja.md)) |
 | **E080** | sigrok / PulseView が要求する sample 数を、1 回の capture として継ぎ目なく渡せるか。上限は E078 の 86 Msps と一致するか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E077](e077_p4_pulseview_over_ip/README.ja.md)の未決「継ぎ目」、[PulseView / sigrok 連携](../references/pulseview-integration.ja.md) 経路B | **完了 — 継ぎ目は消えた。86 Msps・64 M sampleまで一本で通る。それ以上の律速はdeviceでもserverでもなく`srzip`の書き出し**([e080_p4_pulseview_gapless/](e080_p4_pulseview_gapless/README.ja.md)) |
 | **E081** | MS OS 2.0 descriptor set を flat にすると Windows 11 は vendor bulk device に WinUSB を当てるか。subset のままなら当たらないままか | **一時・配線なし**(`esp32-p4-30eda0e31478`、**HS portはWindows側に置く**) | [Windows が WinUSB を当てない](../references/windows-winusb-binding.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-1 | **完了 — flatは`Status=OK`/`Service=WinUSB`、subsetsは`CM_PROB_FAILED_INSTALL`。汚れた台でも新しいserialなら当たる。nativeは21.2 MB/sでusbip経由と差なし**([e081_p4_winusb_bind/](e081_p4_winusb_bind/README.ja.md)) |
+| **E082** | capture中はpackedのまま一時ファイルへ落とし、終わってから`.sr`へ変換すると、どのrate・どの深さまで通るか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E080](e080_p4_pulseview_gapless/README.ja.md)の未決「受け側が律速」 | **完了 — E080が落ちた条件(86 MHz × 256 M sample)が`fifo_overflow=0`・占有57 KBで通る。変換は無圧縮0.51秒 / deflate 9.5秒で94分の1**([e082_p4_spool_then_convert/](e082_p4_spool_then_convert/README.ja.md)) |
 | **E079** | host 側(PC)が bulk IN の URB を複数同時に投げると、device を変えずに帯域は伸びるか | **一時・配線なし**(同上) | [改修の着手順](../references/usb-library-change-plan.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-7 | **中止 — 同じ測定がライブラリ側で先に行われた。depth 2 で飽和(1=18.64 / 2=22.68 / 8=22.87 MB/s)、約23 MB/sはdevice側の天井**([e079_p4_host_urb_depth/](e079_p4_host_urb_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
@@ -251,6 +252,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E082 ESP32-P4: 一時ファイルへ受けてから `.sr` へ変換する — 完了 2026-09-13
+
+全文: [e082_p4_spool_then_convert/README.ja.md](e082_p4_spool_then_convert/README.ja.md)。[E080](e080_p4_pulseview_gapless/README.ja.md)で受け側(`srzip` の圧縮)が律速になったので、**capture 中は packed のまま追記するだけ**にして、展開と zip を後へ回した。
+
+**事実**
+
+1. **律速は device 側へ戻った。** [E080](e080_p4_pulseview_gapless/README.ja.md)が落ちた条件(86 MHz × 256 M sample)が **`fifo_overflow=0` / 占有 57 KB / 21.48 MB/s** で通る。E080 は同条件で **8 MiB 満杯 + `fifo_overflow=31,506`**、周期 60〜1392 の欠落だった。
+2. **capture 中の仕事は「packed のまま追記」だけでよい。** 展開(4 倍)も圧縮も外へ出せる。
+3. **変換は安い。** 無圧縮 **0.51 秒**(245 MB)、deflate **9.5 秒**で **2.6 MB(94 分の 1)**。どちらも `sigrok-cli` が読み戻す。
+4. **深さの上限は firmware の 1 回の上限(268,435,456 sample)に戻った。**
+5. **live で見る用途と保存する用途は分ける。** [E080](e080_p4_pulseview_gapless/README.ja.md) は PulseView で見るため、E082 は残すため。
+
+**候補**: **`.sr` に残すなら一時ファイル経由** / **保存時は deflate**(9.5 秒で 94 分の 1)/ **live は E080 の経路で深さ 64 M sample 程度まで**。
+
+**未決**: 268 M sample を超える深さ `—` / spool 先が遅い媒体だったら `—` / 変換の並列化 `—`。
 
 ### E081 ESP32-P4: Windows が WinUSB を当てるか — 完了 2026-09-13
 
