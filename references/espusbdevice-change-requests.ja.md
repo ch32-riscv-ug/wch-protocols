@@ -137,17 +137,59 @@ P4 の HS で vendor bulk の実効帯域を測ると、**1 microframe あたり
 
 **これは `EspUsbDevice` の最大の強みが効く場所**でもある — core 内蔵 stack は precompiled libs の `sdkconfig` に焼かれていて**変えようが無い**。ここが可変なら、[E070](../experiments/e070_p4_hs_vendor_stack_compare/README.ja.md) で付いた帯域差(後述)は逆転しうる。
 
+### 実測([E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md))
+
+ライブラリをコピーして`CFG_TUD_VENDOR_TX_BUFSIZE`だけ差し替え、深さを振った。
+
+| TX FIFO | median MB/s | `write()`が0を返した回数(median) |
+|---:|---:|---:|
+| **512 B**(現状) | 9.03 | 39,746 |
+| **8 KiB** | **10.59(+17%)** | 28,844 |
+| 16 KiB | 10.33 | 29,444 |
+| 32 KiB | 10.39 | 29,672 |
+| 64 KiB | **動作せず**(`usb_ready=1`だが`mounted=0`) | — |
+
+**8 KiBで飽和する。** ばらつきも6.79–10.02 → 10.27–10.76と大きく縮むので、**既定を8 KiBにするだけで体感は変わる**。16 KiB以上は無意味、**64 KiBは壊れる**(P4のHS portのhardware FIFOは4 KB = 1,024 lineなので、その辺と衝突している可能性)。
+
+**ただしこれでは足りない。** 同じP4が**host役では36.4 MB/s**([EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) `docs/usb-host-advanced.md`、async **queue depth 2**、8 KB転送)出るので、device役の10.7 MB/sは**その約30%**にとどまる。→ CR-7
+
+### こちらでの代替
+
+**無い。**(測定のためにライブラリのコピーを1行だけ書き換えた)
+
+---
+
+## CR-7 endpointごとに転送を2つ以上投げられるようにしたい
+
+**優先度: 高**(CR-4 より効くはず)
+
+### 根拠
+
+`EspUsbHost` 側の実測が答えを持っている。
+
+> | HS | 13 transactions × 512 B per microframe ≈ 53 MB/s | **36.4 MB/s**(ESP32-P4, **async queue depth 2**, 8 KB transfers) |
+
+full-speed 側でも **「depth 2 あれば転送サイズに関係なく上限(1.098 MB/s = FS 上限の 90%)に張り付く」**と書かれている。**同時に投げる転送を 1 → 2 にすることが、host 側では決定的だった。**
+
+device 側は TinyUSB の class driver が **endpoint ごとに 1 転送ずつしか投げない**構造で、完了 callback で次を詰める。[E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md) で FIFO を深くしても `write()` の spin が 1 packet あたり約 3.5 回で下げ止まったのは、これで説明が付く。
+
+### お願いしたいこと
+
+vendor(できれば CDC も)の送信で、**転送を 2 つ以上 in-flight にできる形**。TinyUSB の class driver に手を入れる話になるので重いのは承知している。**まず「そもそも可能か」の見立てを聞きたい。**
+
 ### こちらでの代替
 
 **無い。**
 
 ---
 
-## CR-5 同じ送出ループで core 内蔵 stack より FIFO 待ちが約 1.9 倍多い
+## CR-5 同じ送出ループで core 内蔵 stack より FIFO 待ちが多く、ばらつきが大きい
 
 **優先度: 中**(原因が分かれば CR-4 と合わせて効く)
 
 ### 実測([E070](../experiments/e070_p4_hs_vendor_stack_compare/README.ja.md))
+
+⚠ **下の表は壊れたビルドフラグで測ったもので、帯域差は訂正されている。** `build_opt.h` + `--clean` で測り直すと **median は 9.04 対 9.03 MB/s でほぼ同じ**、`stalls` の比も **1.9 倍ではなく約 1.18 倍**(33,743 対 39,746)だった。**残る差は「ばらつきの大きさ」**で、core 内蔵が 8.68–9.11、EspUsbDevice が 6.79–10.02(いずれも 25 回)。以下は当初の記録として残す。
 
 条件を完全に揃え(vendor 1 本 / endpoint 512 B / 送出 task を core 0 に pin / 送出元は internal RAM 64 KiB / 4 MiB 転送 / host の read size 1 MiB / usbip 経由)、**15 転送ずつ背中合わせ**で測った。
 

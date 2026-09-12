@@ -1,4 +1,4 @@
-// E070 variant B: the same vendor bulk transfer as E069, built on EspUsbDevice
+// E071 variant B: the same vendor bulk transfer as E069, built on EspUsbDevice
 // instead of the core's USB stack. Plan and report: README.ja.md
 //
 // Everything the measurement depends on is kept identical to E069: one vendor
@@ -70,7 +70,7 @@ static void usb_task(void *) {
 }
 
 static void report_banner(void) {
-  Console.printf("# EXP E070 v1 git=%s probe=esp32p4_usb target=none build=%s %s\n", BANNER_GIT, __DATE__, __TIME__);
+  Console.printf("# EXP E071 v1 git=%s probe=esp32p4_usb target=none build=%s %s\n", BANNER_GIT, __DATE__, __TIME__);
 }
 
 static void report_env(void) {
@@ -162,7 +162,7 @@ void loop() {
     while (Console.available()) {
       Console.read();
     }
-    Console.println("READY E070");
+    Console.println("READY E071");
     Console.flush();
     host_armed = true;
     return;
