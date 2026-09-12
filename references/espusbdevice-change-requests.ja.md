@@ -1,8 +1,24 @@
 # EspUsbDevice への改修依頼
 
-状態: **依頼**(2026-09-12 時点。対象 [EspUsbDevice](https://github.com/tanakamasayuki/EspUsbDevice) 2.2.0)
+状態: **依頼**(2026-09-12 更新。対象 [EspUsbDevice](https://github.com/tanakamasayuki/EspUsbDevice) 2.2.0)
 
-このファイルは、[E069](../experiments/e069_p4_hs_vendor_bulk_rate/README.ja.md) / [E070](../experiments/e070_p4_hs_vendor_stack_compare/README.ja.md) で ESP32-P4 の USB 2.0 HS を実測する過程で見つかった、`EspUsbDevice` 側の改修候補をまとめたもの。**すぐの対応を前提にしない**。優先度と、こちらで代替できるかを併記する。
+このファイルは、[E069](../experiments/e069_p4_hs_vendor_bulk_rate/README.ja.md)〜[E077](../experiments/e077_p4_pulseview_over_ip/README.ja.md) で ESP32-P4 の USB 2.0 HS を実測する過程で見つかった、`EspUsbDevice` 側の改修候補をまとめたもの。**すぐの対応を前提にしない**。優先度と、こちらで代替できるかを併記する。
+
+**着手順の提案は[別紙](usb-library-change-plan.ja.md)**([EspUsbHost 側](espusbhost-change-requests.ja.md)との兼ね合いを含む)。**各項目には「直ったことをどう確かめるか」を付けた** — こちらで再実行できる実験番号である。
+
+### 一覧
+
+| | 内容 | 優先度 | 規模 | 直ったことの確認 |
+|---|---|---|---|---|
+| [CR-4](#cr-4-vendor-の-txrx-fifo-深さを-sketch-から変えたい) | vendor の TX FIFO 深さを sketch から変えたい | **高** | **小**(`#ifndef` ガード) | [E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md) 再実行。既定 512 B で 8.80、8 KiB で 10.59 MB/s |
+| [CR-3](#cr-3-espusbdevicevendorconfigurationdescriptor-が-per-speed-の-endpointsize-を捨てている) | per-speed の `endpointSize` を捨てている | 中 | **小**(1 行) | FS 側 `wMaxPacketSize` が 64 になる |
+| [CR-2](#cr-2-control-request-を観測できる-hook-がほしい) | control request の観測 hook | **高** | 小〜中 | Windows 挿入時に MS OS 2.0 vendor request が来るか見える |
+| [CR-1](#cr-1-ms-os-20-descriptor-set-の構造を単一-function-device-でも通る形にしたい) | MS OS 2.0 の subset 構造 | **高** | 中 | Windows で WinUSB が当たる(Code 28 が消える) |
+| [CR-8](#cr-8-hid-の-packet-size-が-64-b-にハードで縛られている) | HID の packet size 64 B 固定 | **高** | **小**(2 か所 + ガード) | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) 再実行。512 B で 4.14 MB/s |
+| [CR-9](#cr-9-fifo-が空くのを待てる-api-がほしいいまは-spin-するしかない) | FIFO 空き待ちの API(spin しかない) | 中 | 中 | [E078](../experiments/e078_p4_continuous_stream/README.ja.md) で harvest と競合しなくなる |
+| [CR-7](#cr-7-endpointごとに転送を2つ以上投げられるようにしたい) | 転送を 2 つ以上 in-flight に | **高** | **大**(TinyUSB 内部) | PC 側 async URB で先に見立てを取る([別紙](usb-library-change-plan.ja.md)) |
+| [CR-5](#cr-5-同じ送出ループで-core-内蔵-stack よりばらつきが大きい) | 帯域のばらつきが 1.65 倍 | 中 | 不明(原因未特定) | 同一条件 25 回の min–max が縮む |
+| [CR-6](#cr-6-参考arduino-cli-は-symlink-した-library-dir-の-cpp-を拾わない) | (参考)symlink と arduino-cli | 低 | ドキュメント | — |
 
 計測環境: ESP32-P4 rev 1.3(`esp32-p4-30eda0e31478` / `...f5` の 2 枚)、Arduino-ESP32 3.3.11、`EspUsbDevice` 2.2.0(Library Manager 経由)、host は WSL + usbip + libusb。
 
@@ -46,9 +62,13 @@ MS OS 2.0 の **Configuration / Function subset は composite device の「funct
 - interface が 1 本だけのときは自動的に subset を省く
 - MS OS 2.0 descriptor set 全体を sketch から差し替えられる hook を出す
 
+### 直ったことの確認
+
+Windows に挿して **device manager の Code 28 が消え、`USB\MS_COMP_WINUSB` が compatible ID に出る**こと。[E069](../experiments/e069_p4_hs_vendor_bulk_rate/README.ja.md) の host 側を **usbip 経由ではなく Windows ネイティブ**で走らせられるようになる(いまの 8.80〜10.74 MB/s は usbip 込みの値なので、**ネイティブの値も初めて取れる**)。
+
 ### こちらでの代替
 
-**無い。** core 内蔵 stack でも同じ構造で、どちらも sketch から変更できない。現状は **usbip で WSL へ引き込み、libusb で叩く**ことで回避している(Linux は driver 不要)。
+**無い。** core 内蔵 stack でも同じ構造で、どちらも sketch から変更できない。現状は **usbip で WSL へ引き込み、libusb で叩く**ことで回避している(Linux は driver 不要)。**ただしこれは開発者向けの逃げ道で、配る先には使えない。**
 
 ---
 
@@ -65,6 +85,10 @@ CR-1 について、**「Windows が MS OS 2.0 の vendor request を投げて�
 ### お願いしたいこと
 
 **ライブラリが処理したものも含めて、全 control request を観測できる hook。** 例えば `EspUsbDevice::onAnyControlRequest(...)` のような、**戻り値で挙動を変えない純粋な観測用 callback**(`stage`、`bmRequestType`、`bRequest`、`wValue`、`wIndex`、`wLength`、それとライブラリが返した byte 数が分かれば十分)。
+
+### 直ったことの確認
+
+Windows に挿したときの log に **`bmRequestType=0xC0, bRequest=<bMS_VendorCode>, wIndex=7`** が出るかどうか。**出れば CR-1 の descriptor 構造の問題、出なければ Windows がそもそも投げていない**と確定し、**どちらに手を入れるかが決まる**。
 
 ### こちらでの代替
 
@@ -116,7 +140,7 @@ uint16_t EspUsbDeviceVendor::configurationDescriptor(uint8_t *dst, uint8_t inter
 
 ## CR-4 vendor の TX/RX FIFO 深さを sketch から変えたい
 
-**優先度: 中**(帯域の伸びしろがここにしか無い)
+**優先度: 高**(**規模が小さいのに効きが確実**。既定値の変更だけでも 8.80 → 10.59 MB/s)
 
 ### 何が困っているか
 
@@ -151,6 +175,14 @@ P4 の HS で vendor bulk の実効帯域を測ると、**1 microframe あたり
 
 **8 KiBで飽和する。** ばらつきも6.79–10.02 → 10.27–10.76と大きく縮むので、**既定を8 KiBにするだけで体感は変わる**。16 KiB以上は無意味、**64 KiBは壊れる**(P4のHS portのhardware FIFOは4 KB = 1,024 lineなので、その辺と衝突している可能性)。
 
+**その後の実測でこの差はさらに重くなった。** [E076](../experiments/e076_p4_capture_hs_download/README.ja.md)で**既定の512 Bのまま実用経路(PSRAM上の4 MiB capture を降ろす)**を測ると **mean 8.80 MB/s(6.6〜10.9、15回)**。8 KiBの10.59に対して**2割近く損している**うえ、**ばらつきが1.65倍**([CR-5](#cr-5-同じ送出ループで-core-内蔵-stack よりばらつきが大きい))ある。
+
+**送出元がPSRAMかinternal RAMかは効かない**ことも確認した(同じloopで交互に8回ずつ、internal 8.38 対 PSRAM 9.04 MB/s で分布は完全に重なる)。**つまり残っているのはFIFOと転送構造だけである。**
+
+### 直ったことの確認
+
+[E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md)をライブラリのコピーではなく**素のライブラリ + `build_opt.h`**で再実行する。**8 KiBで10.5 MB/s前後、`write()`が0を返す回数が4 MiBあたり3万回を切れば直っている。**
+
 **ただしこれでは足りない。** 同じP4が**host役では36.4 MB/s**([EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) `docs/usb-host-advanced.md`、async **queue depth 2**、8 KB転送)出るので、device役の10.7 MB/sは**その約30%**にとどまる。→ CR-7
 
 ### こちらでの代替
@@ -173,23 +205,58 @@ full-speed 側でも **「depth 2 あれば転送サイズに関係なく上限(
 
 device 側は TinyUSB の class driver が **endpoint ごとに 1 転送ずつしか投げない**構造で、完了 callback で次を詰める。[E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md) で FIFO を深くしても `write()` の spin が 1 packet あたり約 3.5 回で下げ止まったのは、これで説明が付く。
 
+### 追加の根拠([E076](../experiments/e076_p4_capture_hs_download/README.ja.md))
+
+同じ条件を 15 回回すと **6.62〜10.91 MB/s** に散らばり、**`stalls` と帯域が逆相関する**。**送出元(PSRAM / internal RAM)でも capture の有無でも動かない。** device は**ほとんどの時間 FIFO が空くのを待っている**という像が、独立した経路で再現した。
+
 ### お願いしたいこと
 
 vendor(できれば CDC も)の送信で、**転送を 2 つ以上 in-flight にできる形**。TinyUSB の class driver に手を入れる話になるので重いのは承知している。**まず「そもそも可能か」の見立てを聞きたい。**
 
+### 着手前にこちらで詰められること
+
+**host 側(PC)の URB を 1 本ずつしか投げていない**のが効いている可能性がまだ残っている。`libusb` の async API で **URB を 2〜8 本 in-flight** にして同じ device を読めば、**device 側を一切変えずに「device の天井か host の投げ方か」が分かる**。**この測定を先に済ませてから CR-7 の要否を決めたい**([別紙](usb-library-change-plan.ja.md))。
+
 ### こちらでの代替
 
-**無い。**
+**無い**(device 側は)。上の PC 側 async 測定は代替ではなく**切り分け**である。
 
 ---
 
-## CR-5 同じ送出ループで core 内蔵 stack より FIFO 待ちが多く、ばらつきが大きい
+## CR-5 同じ送出ループで core 内蔵 stack よりばらつきが大きい
 
 **優先度: 中**(原因が分かれば CR-4 と合わせて効く)
 
-### 実測([E070](../experiments/e070_p4_hs_vendor_stack_compare/README.ja.md))
+### 実測
 
-⚠ **下の表は壊れたビルドフラグで測ったもので、帯域差は訂正されている。** `build_opt.h` + `--clean` で測り直すと **median は 9.04 対 9.03 MB/s でほぼ同じ**、`stalls` の比も **1.9 倍ではなく約 1.18 倍**(33,743 対 39,746)だった。**残る差は「ばらつきの大きさ」**で、core 内蔵が 8.68–9.11、EspUsbDevice が 6.79–10.02(いずれも 25 回)。以下は当初の記録として残す。
+**帯域そのものは互角である。** `build_opt.h` + `--clean` で測り直した値([E070](../experiments/e070_p4_hs_vendor_stack_compare/README.ja.md)、各 25 回):
+
+| | core 内蔵 stack | **EspUsbDevice 2.2.0** |
+|---|---:|---:|
+| median | 9.04 MB/s | **9.03 MB/s**(互角) |
+| **min–max** | **8.68 – 9.11(±2%)** | **6.79 – 10.02(±19%)** |
+| `write()` が 0 を返した回数 | 33,743 | 39,746(**1.18 倍**) |
+
+**違いは速さではなく「ばらつき」である。**
+
+**このばらつきは別経路でも再現した。** [E076](../experiments/e076_p4_capture_hs_download/README.ja.md)で送出元を変えて交互に 8 回ずつ測ると、**internal RAM でも PSRAM でも同じ 6.62〜10.91 MB/s の幅**に散らばった。
+
+| 送出元 | n | mean | min | max | `stalls` |
+|---|---:|---:|---:|---:|---|
+| internal RAM | 8 | 8.38 | 6.62 | 10.70 | 30,671〜70,318 |
+| PSRAM | 8 | 9.04 | 7.43 | 10.91 | 25,413〜55,791 |
+
+**`stalls` と帯域はきれいに逆相関する**(25,413 回で 10.91 MB/s、70,318 回で 6.62 MB/s)。**送出元でも capture の有無でも動かない**ので、**残る候補は stack 側か usbip 経路のどちらか**である。**こちらではまだ切り分けていない。**
+
+### 直ったことの確認
+
+同一条件 25 回の **min–max の幅**が core 内蔵並み(±数%)に縮むこと。**median が上がる必要はない。**
+
+---
+
+<details><summary>当初の記録(壊れたビルドフラグで測った値。参考)</summary>
+
+⚠ **下の表は `--build-property 'build.extra_flags=...'` で platform の変数を潰したビルドで測ったもので、帯域差は上のとおり訂正されている。**
 
 条件を完全に揃え(vendor 1 本 / endpoint 512 B / 送出 task を core 0 に pin / 送出元は internal RAM 64 KiB / 4 MiB 転送 / host の read size 1 MiB / usbip 経由)、**15 転送ずつ背中合わせ**で測った。
 
@@ -203,6 +270,8 @@ vendor(できれば CDC も)の送信で、**転送を 2 つ以上 in-flight に
 | flash | 392,098 B | **374,242 B** |
 
 **最大値だけ見ると `EspUsbDevice` の 10.01 MB/s が core 内蔵の 9.70 を上回る**ので、速く出せる瞬間はある。持続しないのと、ばらつきが大きいのが違い。
+
+</details>
 
 ### 見立て
 
@@ -263,9 +332,47 @@ if (mps > 64) { mps = 64; }
 - `EspUsbDeviceHidVendor::begin()` と `configurationDescriptor()` の 64 固定を `CFG_TUD_HID_EP_BUFSIZE` 基準にする
 - 可能なら **HS のとき既定を 512 B** にする(1,024 B は host 側の事情で通らないことがある)
 
+### 直ったことの確認
+
+[E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md)をライブラリのコピーなしで再実行して **512 B で 4.1 MB/s 前後**。**1,024 B は [HR-3](espusbhost-change-requests.ja.md) が入るまで通らない**が、512 B までなら **PC を host にしても確かめられる**(Linux の hidraw)ので、**この項目だけは host 側の改修を待たずに検証できる**。
+
 ### こちらでの代替
 
 **無い。**(測定のためにライブラリのコピーを 2 行書き換えた)
+
+---
+
+## CR-9 FIFO が空くのを待てる API がほしい(いまは spin するしかない)
+
+**優先度: 中**(streaming で効く。[CR-7](#cr-7-endpointごとに転送を2つ以上投げられるようにしたい) が入れば軽くなるが消えない)
+
+### 何が困っているか
+
+`EspUsbDeviceVendor::write()` は **FIFO に空きが無いと 0 を返す**。送り切りたい側にできることは
+
+```cpp
+const size_t written = HsVendor.write(data + sent, want);
+if (written == 0) { ++stalls; HsVendor.flush(); taskYIELD(); continue; }
+```
+
+**空きができるまで回し続ける**ことだけで、4 MiB の転送でこの spin が **2.5 万〜7 万回**走る([E076](../experiments/e076_p4_capture_hs_download/README.ja.md))。
+
+**貯めてから送る**用途では CPU が余っているので害は小さい。**問題は capture しながら送る**とき([E078](../experiments/e078_p4_continuous_stream/README.ja.md))で、**送出 task の spin が harvest task と CPU を取り合う**。[E067](../experiments/e067_p4_usb_vs_capture_core/README.ja.md) で「capture と同居させると USB 側が 7〜16% 落ちる」と出ているのは、これが一因と見ている。
+
+### お願いしたいこと
+
+次のどちらか(両方あると嬉しい)。
+
+- **`bool waitWritable(size_t bytes, uint32_t timeoutMs)`** のような、**task を block できる**待ち方(内部で semaphore を待ち、`tud_vendor_tx_cb` で give する形)
+- **`size_t writeAvailable()`**(= `tud_vendor_n_write_available()`)の公開。**いくら書けるか分かれば呼ぶ側で待ち方を決められる**
+
+### 直ったことの確認
+
+[E078](../experiments/e078_p4_continuous_stream/README.ja.md) で、**同じ sample rate に対して `stalls` が桁で減り、harvest 側の余裕(弾性 FIFO の最大占有)が下がる**こと。
+
+### こちらでの代替
+
+`taskYIELD()` で回す(現状)。**優先度を下げると他が動くが、送出が遅れて FIFO が空く時間が増える**ので解にならない。
 
 ---
 
@@ -292,3 +399,5 @@ if (mps > 64) { mps = 64; }
 - [E070 core 内蔵 stack と EspUsbDevice の比較](../experiments/e070_p4_hs_vendor_stack_compare/README.ja.md)
 - [E068 CDC の転送途中 packet 欠落](../experiments/e068_p4_hs_cdc_tail_loss/README.ja.md)
 - [E063 OTG HS の列挙](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)
+- [E071 送信 FIFO の深さ](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md) / [E073 HID の帯域](../experiments/e073_p4_hs_hid_throughput/README.ja.md) / [E076 capture を降ろす通し](../experiments/e076_p4_capture_hs_download/README.ja.md)
+- [着手順の提案](usb-library-change-plan.ja.md) — EspUsbHost 側との兼ね合い

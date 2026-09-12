@@ -114,9 +114,11 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 |---|---|
 | 連続 streaming(釣り合い点は vendor bulk の実測 8.80 MB/s で約 35 Msps) | — **いま測れる** |
 | **帯域のばらつき(1.65 倍)の出どころ**を切り分ける | — core 内蔵 stack で [E076](../experiments/e076_p4_capture_hs_download/README.ja.md) の A/B を回す |
-| **device 側の本当の天井**を測る | [HR-1](espusbhost-change-requests.ja.md)(host の IN async queue) |
+| **device 側の本当の天井**を測る | — **PC 側の async URB で先に切り分ける**([着手順](usb-library-change-plan.ja.md)) |
 | **FIFO を深くした状態での再評価** | [CR-4](espusbdevice-change-requests.ja.md) |
 | **HID を 1,024 B に上げる**(8.2 MB/s 見込み) | [CR-8](espusbdevice-change-requests.ja.md) + [HR-3](espusbhost-change-requests.ja.md) |
 | **Windows で driverless**(WinUSB) | [CR-1](espusbdevice-change-requests.ja.md) / [CR-2](espusbdevice-change-requests.ja.md) |
 | PulseView から IP 経由で取る | [連携メモ](pulseview-integration.ja.md) §2(BeagleLogic の TCP を演じる) |
 | **RVSWD で CH32 に焼く** | 未着手 |
+
+**library の改修に入る前後の段取りは[着手順の提案](usb-library-change-plan.ja.md)にまとめた**(device 側が先)。

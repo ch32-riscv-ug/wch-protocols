@@ -1,8 +1,18 @@
 # EspUsbHost への改修依頼
 
-状態: **依頼**(2026-09-12 時点。対象 [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 2.8.0)
+状態: **依頼**(2026-09-12 更新。対象 [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 2.8.0)
 
-[E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) で ESP32-P4 を 2 枚直結し、device → host の bulk IN を測る過程で見つかったもの。**すぐの対応を前提にしない**。
+[E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) / [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) で ESP32-P4 を 2 枚直結し、device → host の bulk IN / interrupt IN を測る過程で見つかったもの。**すぐの対応を前提にしない**。
+
+**着手順の提案は[別紙](usb-library-change-plan.ja.md)。** 結論だけ先に書くと、**[EspUsbDevice 側](espusbdevice-change-requests.ja.md)を先にするのを勧める** — 理由は「device 側の改修は PC 1 台を host にして今のベンチのまま確認でき、host 側の改修は board 2 枚を直結する必要があって、**その間 PC からどちらの端も覗けなくなる**」ため。
+
+### 一覧
+
+| | 内容 | 優先度 | 規模 | 直ったことの確認 |
+|---|---|---|---|---|
+| [HR-1](#hr-1-bulk-in-にも-async-queue-がほしいout-にはある) | bulk IN の async queue | **高** | **大**(API 追加) | [E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) 再実行。5.6 MB/s を超えるか |
+| [HR-3](#hr-3-1024-b-の-interrupt-in-endpoint-を受けられるようにしたい) | 1,024 B の periodic IN | 中 | 中(FIFO 配分) | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) の 1,024 B 行が埋まる(8.2 MB/s 見込み) |
+| [HR-2](#hr-2-参考継続-in-の-1-転送サイズだけでも指定させてほしい) | (簡易版)継続 IN の転送サイズ | 中 | 小 | 同上、512 B → 8 KiB で伸びるか |
 
 計測環境: ESP32-P4 rev 1.3 × 2 枚(`esp32-p4-30eda0e31478` = device / `...f5` = host)、OTG HS port 同士を直結、Arduino-ESP32 3.3.11、`EspUsbHost` 2.8.0、device 側は `EspUsbDevice` 2.2.0。
 
@@ -72,6 +82,16 @@ bool vendorReadQueueBegin(size_t depth, size_t bufferBytes, uint8_t address = ..
 
 となっていて、**「P4 同士で HS の実力を測る」ことがまだできない**。HR-1 が入れば、PC を一切介さずに device 側の天井を出せる。
 
+### 急ぐ必要はなくなった(2026-09-12 追記)
+
+HR-1 を立てた当初の動機は **「device 側の天井を測りたい」**だったが、**それは PC 側でも測れる**ことが分かった。`libusb` の async API で **URB を複数 in-flight** にすれば、**board 2 枚を直結しなくても「device の天井か host の投げ方か」を切り分けられる**([別紙](usb-library-change-plan.ja.md))。
+
+したがって HR-1 は **「測定のために要る」から「P4 を host として使うときに要る」**へ性格が変わった。**優先度は高いままだが、device 側の改修より後で構わない。**
+
+### 直ったことの確認
+
+[E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) を再実行して **5.6 MB/s を明確に超える**こと。device 側の `stalls` が **88,914 回(PC 相手の 28,844 回に対して 3 倍)**から下がることも併せて見る。
+
 ### こちらでの代替
 
 `vendorReadSync()`(on-demand モード)で大きい buffer を指定すれば 1 転送は大きくできるかもしれないが、**同期なので in-flight は 1 のまま**で、stream 用途には向かない。未試行。
@@ -109,6 +129,10 @@ README.ja.md に OUT 側の同じ話が書かれている。
 
 **1,024 B が通れば HID は 8.2 MB/s**(= 1,024 × 8,000)になり、driver レスのまま vendor bulk に迫る。
 
+### 直ったことの確認
+
+[E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) の 1,024 B 行が埋まること。**device 側は [CR-8](espusbdevice-change-requests.ja.md) が要る**ので、**この項目だけは device 側と対で入れないと確かめられない**。512 B までなら device 側だけで足りる。
+
 ---
 
 ## 参考になった点(記録として)
@@ -122,3 +146,4 @@ README.ja.md に OUT 側の同じ話が書かれている。
 - [E072 P4 同士を直結した device → host の bulk IN 帯域](../experiments/e072_p4_hs_device_to_host_native/README.ja.md)
 - [E071 device 側 vendor bulk の天井 — 送信 FIFO の深さ](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md)
 - [EspUsbDevice への改修依頼](espusbdevice-change-requests.ja.md)(device 側。CR-7 が対になる)
+- [着手順の提案](usb-library-change-plan.ja.md) — device 側と host 側、どちらから手を入れるか
