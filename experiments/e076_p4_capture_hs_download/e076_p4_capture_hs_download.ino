@@ -36,6 +36,7 @@ static constexpr size_t kRingSize = 64 * 1024;
 static constexpr size_t kDelimiterSize = 65408;
 static constexpr size_t kQueueDepth = 64;
 static constexpr size_t kCaptureBytesMax = 4u * 1024u * 1024u;
+static constexpr size_t kControlBytes = 128u * 1024u;  // internal RAM, sent repeatedly
 
 static constexpr uint16_t kTestVid = 0x1209;
 static constexpr uint16_t kTestPid = 0x0008;
@@ -48,6 +49,9 @@ static constexpr size_t kUsbChunk = 4096;
 static constexpr BaseType_t kSenderCore = 0;  // E066: the core, not the priority
 
 static SemaphoreHandle_t usb_done;
+static const uint8_t *tx_base;
+static size_t tx_span;
+static size_t tx_total;
 static volatile uint64_t usb_elapsed_us;
 static volatile size_t usb_written;
 static volatile uint32_t usb_stalls;
@@ -67,6 +71,7 @@ static int pins[kParsePins];
 static bool ledc_attached[kLaneCount];
 static uint8_t *ring_buffer;
 static uint8_t *capture;
+static uint8_t *control_internal;
 static CaptureState capture_state;
 
 static size_t capture_bytes;
@@ -232,14 +237,21 @@ static void run_capture(size_t want_bytes, uint32_t rate_hz) {
 }
 
 // The capture leaves over the OTG HS vendor endpoint. Bulk IN is host-polled,
-// so starting before the host reads loses nothing: write() simply blocks.
+// so starting before the host reads loses nothing: write() simply returns 0.
+// The source is `tx_base` and wraps at `tx_span`, which lets the same loop send
+// either the capture (span = the whole capture) or a smaller buffer repeatedly.
 static void usb_task(void *) {
   size_t sent = 0;
   uint32_t stalls = 0;
+  size_t offset = 0;
   const uint64_t started = esp_timer_get_time();
-  while (sent < capture_bytes) {
-    const size_t want = (capture_bytes - sent) < kUsbChunk ? (capture_bytes - sent) : kUsbChunk;
-    const size_t written = HsVendor.write(capture + sent, want);
+  while (sent < tx_total) {
+    const size_t room = tx_span - offset;
+    size_t want = (tx_total - sent) < room ? (tx_total - sent) : room;
+    if (want > kUsbChunk) {
+      want = kUsbChunk;
+    }
+    const size_t written = HsVendor.write(tx_base + offset, want);
     if (written == 0) {
       ++stalls;
       HsVendor.flush();
@@ -247,6 +259,7 @@ static void usb_task(void *) {
       continue;
     }
     sent += written;
+    offset = (offset + written) % tx_span;
   }
   HsVendor.flush();
   usb_elapsed_us = esp_timer_get_time() - started;
@@ -256,17 +269,39 @@ static void usb_task(void *) {
   vTaskDelete(nullptr);
 }
 
-static void run_dump(void) {
+static void send_over_hs(const uint8_t *base, size_t span, size_t total) {
   usb_elapsed_us = 0;
   usb_written = 0;
   usb_stalls = 0;
-  Console.printf("DUMP bytes=%lu\n", static_cast<unsigned long>(capture_bytes));
-  Console.flush();
+  tx_base = base;
+  tx_span = span;
+  tx_total = total;
   xTaskCreatePinnedToCore(usb_task, "e076_tx", 4096, nullptr, 5, nullptr, kSenderCore);
   xSemaphoreTake(usb_done, portMAX_DELAY);
   Console.printf("SENT bytes=%lu stalls=%lu elapsed_us=%llu\n", static_cast<unsigned long>(usb_written),
                  static_cast<unsigned long>(usb_stalls), static_cast<unsigned long long>(usb_elapsed_us));
   Console.flush();
+}
+
+static void run_dump(void) {
+  Console.printf("DUMP bytes=%lu\n", static_cast<unsigned long>(capture_bytes));
+  Console.flush();
+  send_over_hs(capture, capture_bytes ? capture_bytes : 1, capture_bytes);
+}
+
+// The control for "is PSRAM the reason the download is slower than E069/E071":
+// the same loop, the same endpoint, but the source is internal RAM.
+static void run_bandwidth(size_t total, bool from_psram) {
+  const uint8_t *base = from_psram ? capture : control_internal;
+  if (base == nullptr) {
+    Console.println("DUMP status=nobuf");
+    Console.flush();
+    return;
+  }
+  const size_t span = from_psram ? kCaptureBytesMax : kControlBytes;
+  Console.printf("DUMP bytes=%lu source=%s\n", static_cast<unsigned long>(total), from_psram ? "psram" : "internal");
+  Console.flush();
+  send_over_hs(base, span, total);
 }
 
 static void handle_command(void) {
@@ -275,12 +310,12 @@ static void handle_command(void) {
                    __TIME__);
     Console.printf(
       "ENV chip=%s psram_found=%u psram_size=%lu lanes=%u pins=%d,%d pwm_hz=%lu duties=%lu,%lu capture_max=%lu "
-      "ring=%lu usb_ready=%u mounted=%u ready=%u\n",
+      "ring=%lu control=%lu usb_ready=%u mounted=%u ready=%u\n",
       ESP.getChipModel(), psramFound() ? 1U : 0U, static_cast<unsigned long>(ESP.getPsramSize()), kLaneCount, pins[0],
       pins[1], static_cast<unsigned long>(kPwmFrequencyHz), static_cast<unsigned long>(kDuties[0]),
       static_cast<unsigned long>(kDuties[1]), static_cast<unsigned long>(kCaptureBytesMax),
-      static_cast<unsigned long>(kRingSize), usb_ready ? 1U : 0U, HsVendor.mounted() ? 1U : 0U,
-      (capture && ring_buffer) ? 1U : 0U
+      static_cast<unsigned long>(kRingSize), static_cast<unsigned long>(control_internal ? kControlBytes : 0),
+      usb_ready ? 1U : 0U, HsVendor.mounted() ? 1U : 0U, (capture && ring_buffer) ? 1U : 0U
     );
     Console.flush();
     return;
@@ -300,6 +335,17 @@ static void handle_command(void) {
     run_dump();
     return;
   }
+  if (command[0] == 'B') {
+    unsigned long bytes = 0;
+    unsigned long source = 0;
+    if (sscanf(command + 1, "%lu %lu", &bytes, &source) != 2 || bytes == 0) {
+      Console.println("DUMP status=reject");
+      Console.flush();
+      return;
+    }
+    run_bandwidth(bytes, source != 0);
+    return;
+  }
   Console.println("CFG status=unknown");
   Console.flush();
 }
@@ -310,6 +356,10 @@ void setup() {
   capture_state.queue = xQueueCreate(kQueueDepth, sizeof(Chunk));
   ring_buffer = static_cast<uint8_t *>(heap_caps_aligned_alloc(64, kRingSize, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
   capture = static_cast<uint8_t *>(heap_caps_malloc(kCaptureBytesMax, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  control_internal = static_cast<uint8_t *>(heap_caps_malloc(kControlBytes, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+  if (control_internal) {
+    memset(control_internal, 0x5A, kControlBytes);
+  }
   usb_done = xSemaphoreCreateBinary();
 
   EspUsbDeviceConfig config;
