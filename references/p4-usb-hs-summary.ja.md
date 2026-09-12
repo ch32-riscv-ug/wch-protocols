@@ -22,11 +22,14 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | HID(512 B) | 4.14 MB/s | 4.03 MB/s(**ただし host が URB を 8 本 in-flight にして初めて出る**) |
 | **Windows で WinUSB** | **当たらない**(§3) | **当たる**(MS OS 2.0 を flat 構造にすれば) |
 | 4 MiB の download | 0.48 秒 | **約 0.20 秒**(見込み) |
-| 2 channel の連続 streaming 釣り合い点 | 約 35 Msps | **約 84 Msps**(見込み。[E078](../experiments/e078_p4_continuous_stream/README.ja.md)で実測する) |
+| 2 channel の連続 streaming 釣り合い点 | 約 35 Msps | **86 Msps**(実測。[E078](../experiments/e078_p4_continuous_stream/README.ja.md)) |
 
 **§3(Windows で WinUSB が当たらない)は解決した** — 原因は仮説どおり **MS OS 2.0 descriptor set の subset 構造**で、単一 interface では flat に置く必要があった。**byte 列ではなく構造の問題**だった。
 
-**§1〜§6 は 2.2.0 時点の記録として残す。** 新しい版での追試は [E078](../experiments/e078_p4_continuous_stream/README.ja.md) で行う。
+**§1〜§6 は 2.2.0 時点の記録として残す。** 新しい木での追試は [E078](../experiments/e078_p4_continuous_stream/README.ja.md) で済ませた(commit `7a6d9dc`)。そこで分かったことを 2 つ足す。
+
+- **capture と同居しても USB は落ちない。** 飽和時 21.4〜22.4 MB/s で、ライブラリ側が単体で測った 21.1 MB/s と同等以上。**§4 の [E067](../experiments/e067_p4_usb_vs_capture_core/README.ja.md)「同居で 7〜16% 落ちる」は再現しない** — あれは**競合ではなく送出 task の spin** だった。`waitWritable()` で block するようにすると `stalls` は全条件 0 になる
+- **「帯域が出ている」は「追いつけている」ではない。** 96 Msps でも 16 MiB は完走し周期も一致する。**弾性 buffer の占有が duration に比例して伸びるかどうか**だけが判定になる
 
 ## 1. USB 2.0 HS で何が出るか(2.2.0 時点)
 

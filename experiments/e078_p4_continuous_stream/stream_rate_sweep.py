@@ -71,10 +71,15 @@ class StreamReader:
         self.chunks: list[bytes] = []
         self.received = 0
         self.errors: list[int] = []
+        # Cancelling the leftovers at the end of a run reports every one of them
+        # as cancelled; those are not failures of the run.
+        self.closing = False
 
     def _on_done(self, transfer):
-        if transfer.getStatus() != usb1.TRANSFER_COMPLETED:
-            self.errors.append(transfer.getStatus())
+        status = transfer.getStatus()
+        if status != usb1.TRANSFER_COMPLETED:
+            if not self.closing:
+                self.errors.append(status)
             return
         length = transfer.getActualLength()
         if length:
@@ -96,6 +101,7 @@ class StreamReader:
         while self.received < self.total and time.perf_counter() < deadline and not self.errors:
             context.handleEvents()
         elapsed = time.perf_counter() - started
+        self.closing = True
         for transfer in transfers:
             if transfer.isSubmitted():
                 try:
@@ -155,18 +161,23 @@ def main() -> int:
                 elapsed = reader.run(context, timeout=args.bytes / 2e6 + 30)
                 done = dict(item.split("=", 1) for item in expect(port, b"DONE").split()[1:])
 
-                if reader.errors:
-                    print(f"{mhz:6d}M {repeat + 1:4d}  transfer errors {reader.errors[:3]}")
+                if reader.received < args.bytes:
+                    print(f"{mhz:6d}M {repeat + 1:4d}  short: {reader.received} of {args.bytes}"
+                          f"{' errors ' + str(reader.errors[:3]) if reader.errors else ''}"
+                          f"  ring={done['ring_overflow']} fifo={done['fifo_overflow']}")
                     continue
                 data = b"".join(reader.chunks)
-                head = data[: args.verify_bytes]
-                samples = unpack(head, LANES)
+                # Head and tail both: a stream that starts fine and falls behind
+                # later loses its samples at the end, and checking only the head
+                # would call that a pass.
                 expected = round(rate / PWM_HZ)
                 worst_low, worst_high = expected, expected
-                for bit in range(LANES):
-                    low, _, high, _ = rising_period(samples, bit)
-                    worst_low = min(worst_low, low)
-                    worst_high = max(worst_high, high)
+                for slice_ in (data[: args.verify_bytes], data[-args.verify_bytes :]):
+                    samples = unpack(slice_, LANES)
+                    for bit in range(LANES):
+                        low, _, high, _ = rising_period(samples, bit)
+                        worst_low = min(worst_low, low)
+                        worst_high = max(worst_high, high)
                 clean = (worst_low == worst_high == expected
                          and done["ring_overflow"] == "0" and done["fifo_overflow"] == "0"
                          and reader.received == args.bytes)

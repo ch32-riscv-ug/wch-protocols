@@ -327,6 +327,8 @@ batch本体の限界を確定した後に、PSRAM→USB device Bulk IN、IP、fi
 
 したがって**連続streamingの釣り合い点は約29.7 Msps(2 channel)**である — 生成8.00 MB/sに対し排出7.42 MB/s。それを超える rate は**PSRAMへbatchしてから出す**。
 
+> **2026-09-13 実測([E078](../experiments/e078_p4_continuous_stream/README.ja.md))**: [EspUsbDevice の改修](espusbdevice-change-requests.ja.md)後、**連続 streaming の上限は 86 Msps(線上 21.5 MB/s)**。88 Msps から弾性 FIFO の占有が duration に比例して積む。**同居による USB の損は消えた**(飽和時 21.4〜22.4 MB/s で単体と同等以上)。上の 7〜16% の損は**競合ではなく送出 task の spin**が原因で、`waitWritable()` で block するようにしたら `stalls` は全条件 0 になった。**batch なら 160 Msps まで取れる**([E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md))ので、**継ぎ目を許すかどうかで上限が約 2 倍違う**。
+
 ⚠ **この経路は現状そのままでは使えない。** [E068](../experiments/e068_p4_hs_cdc_tail_loss/README.ja.md)で、**4 MiBの転送30回中4回(13%)、転送の途中で512 B packet単位(4〜5 packet、2,048〜2,560 B)のdataが黙って消える**ことが分かった。**待っても突いても戻らず、dataは失われている。** deviceは`written`も`short`も正常と申告し、**device側もhost側も気づかない**。
 
 したがって**この節の帯域の数値(device側時計で測ったもの)は有効だが、「その帯域でdataが正しく渡る」とは言えない**。原因は未特定で、候補はTinyUSBのCDC TX FIFOに対するapplication taskとusbd taskの跨core競合。**当面は転送に長さとCRCを付けてhostが検証・再送要求できるようにし、pattern照合なしの転送を信用しないこと。**
