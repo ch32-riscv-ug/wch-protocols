@@ -268,6 +268,8 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 
 **候補**: **連続 streaming は 86 Msps を上限に置く**(余裕を見るなら 84)/ **batch なら 160 Msps まで** — 継ぎ目の可否で上限が 2 倍違う / **送出は `waitWritable()`、host は URB 2 本以上**。
 
+**追記(同日)**: 送出を **`waitWritable(4096)` → `write(4096 ちょうど)`** に変えると、**釣り合い点より上で短い URB が 0** になる(半端な長さの転送が消えるため)。88 MHz の積み方は 2.1 → 1.5 MB と約 3 割ゆるむが、**上限は 86 Msps のまま**。**二通りの送出実装で同じ境界**が出た。釣り合い点より下で短い URB が残るのは半端ではなく **ZLP**([CR-5](../references/espusbdevice-change-requests.ja.md))で、**「追いついていない側」の徴候として使える**。
+
 **未決**: 8 MiB を実際に使い切るまで回していない `—`(firmware の上限が 64 MiB = 約 3 秒)/ 86 と 88 の間 `—` / PulseView から continuous で引く `—` / 4・8 channel `—`。
 
 ### E077 ESP32-P4: stockのsigrok / PulseViewからIP経由で取る — 完了 2026-09-12

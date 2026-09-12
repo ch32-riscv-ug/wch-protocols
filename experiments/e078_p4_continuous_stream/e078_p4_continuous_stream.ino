@@ -41,11 +41,12 @@ static constexpr size_t kRingSize = 64 * 1024;
 static constexpr size_t kDelimiterSize = 65408;
 static constexpr size_t kQueueDepth = 128;
 static constexpr size_t kFifoSize = 8u * 1024u * 1024u;
-static constexpr size_t kUsbChunk = 16 * 1024;
-// What one waitWritable() asks for. It is clamped to writeCapacity() (= the TX
-// FIFO, 4 KiB here), so a slice keeps the sender moving as soon as any room
-// appears rather than waiting for the FIFO to drain completely.
-static constexpr size_t kWaitSlice = 1024;
+// Wait for the whole FIFO and then hand over exactly that much. Waiting for a
+// smaller slice means write() takes whatever odd number of bytes happens to be
+// free, and TinyUSB arms a transfer of that length -- not a multiple of the
+// packet size, so it ends in a short packet and completes the host's URB early.
+// The FIFO size is a multiple of the packet size, so writing it whole never is.
+static constexpr size_t kTxChunk = 4096;  // == EspUsbDeviceVendor::writeCapacity()
 static constexpr uint32_t kWaitTimeoutMs = 1000;
 static constexpr size_t kStreamBytesMax = 64u * 1024u * 1024u;
 
@@ -259,19 +260,28 @@ static void usb_task(void *) {
       taskYIELD();
       continue;
     }
-    const size_t offset = fifo.tail % kFifoSize;
-    size_t span = (kFifoSize - offset) < used ? (kFifoSize - offset) : used;
-    if (span > kUsbChunk) {
-      span = kUsbChunk;
+    const size_t remaining = stream_target - sent;
+    // Hold out for a full chunk while the capture is still running; a partial
+    // one would go out as a short transfer. The tail only ever advances by
+    // kTxChunk, and kFifoSize is a multiple of it, so the contiguous run at the
+    // tail is always a whole chunk too.
+    if (used < kTxChunk && remaining >= kTxChunk) {
+      if (!stream_active) {
+        break;
+      }
+      taskYIELD();
+      continue;
     }
-    if (span > stream_target - sent) {
-      span = stream_target - sent;
+    const size_t offset = fifo.tail % kFifoSize;
+    size_t span = used < kTxChunk ? used : kTxChunk;
+    if (span > remaining) {
+      span = remaining;
     }
     // Look before waiting: on most passes there is already room, and then the
     // semaphore is never touched.
-    if (HsVendor.writeAvailable() < kWaitSlice) {
+    if (HsVendor.writeAvailable() < span) {
       ++waits;
-      if (!HsVendor.waitWritable(kWaitSlice, kWaitTimeoutMs)) {
+      if (!HsVendor.waitWritable(span, kWaitTimeoutMs)) {
         ++timeouts;
         if (!HsVendor.mounted()) {
           break;  // unplugged: do not spin here forever

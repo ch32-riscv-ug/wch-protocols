@@ -139,7 +139,7 @@ def main() -> int:
         handle.claimInterface(0)
 
         print(f"{'rate':>7} {'run':>4} {'MB/s':>7} {'ring':>6} {'fifo':>6} {'high water':>11} "
-              f"{'stalls':>7} {'waits':>7} {'period min/max':>16}  verdict")
+              f"{'stalls':>7} {'waits':>7} {'short':>6} {'period min/max':>16}  verdict")
         for mhz in [int(value) for value in args.rates.split(",")]:
             rate = mhz * 1_000_000
             for repeat in range(args.repeats):
@@ -181,9 +181,10 @@ def main() -> int:
                 clean = (worst_low == worst_high == expected
                          and done["ring_overflow"] == "0" and done["fifo_overflow"] == "0"
                          and reader.received == args.bytes)
+                short_urbs = sum(1 for chunk in reader.chunks if len(chunk) < args.size)
                 print(f"{mhz:6d}M {repeat + 1:4d} {reader.received / elapsed / 1e6:7.2f} "
                       f"{done['ring_overflow']:>6} {done['fifo_overflow']:>6} {done['high_water']:>11} "
-                      f"{done['stalls']:>7} {done['waits']:>7} {worst_low:7d}/{worst_high:<8d} "
+                      f"{done['stalls']:>7} {done['waits']:>7} {short_urbs:>6d} {worst_low:7d}/{worst_high:<8d} "
                       f"{'OK' if clean else 'KEEPS UP NO LONGER'}")
         handle.releaseInterface(0)
     port.close()
