@@ -38,6 +38,7 @@ pwm-1: 10.0 μs
 | やること | 待っているもの | 備考 |
 |---|---|---|
 | **[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md)** DWC2 の TX FIFO を 2 packet に | **完了** | 最大は1 packet / 2 packetとも25.575 MB/s。**hardware FIFO段数は天井原因ではなかった** |
+| **[E091](../experiments/e091_p4_bulk_direction_same_peer/README.ja.md) / [E092](../experiments/e092_p4_vendor_out_arm_size/README.ja.md)** bulk方向差 | **完了** | 同一peerでhost→deviceは既定10.365、multi-packet RXで30.840 MB/s。device→host 25.575との調整後差は1.21倍 |
 | **RVSWD** | **CH32 の配線** | 挿す先は確定済み([ピンの当たりを付ける](pin-discovery.ja.md))。**電源と GND だけ人が合わせれば、あとは探索で当てられる**設計まで書いてある |
 | **RVSWD / SWIO の decoder** | **CH32 の配線**(検証用の実信号) | libsigrokdecode(Python)で書く。**目標 1 と同じ材料** |
 | **[HR-3](espusbhost-change-requests.ja.md)**(HID 1,024 B) | **持ち主の判断** | keyboard / mouse / CCID と共有の経路なので、帯域のためだけに触る話ではない。**先方から提示済み** |
