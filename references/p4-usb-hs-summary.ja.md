@@ -12,15 +12,13 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 **過去の P4 実験(E014〜E061)は別個体 `esp32-p4-e8f60ae0aa24`**(flash 32 MiB)で、値をそのまま引き継がない。
 
-**ライブラリは [EspUsbDevice](https://github.com/tanakamasayuki/EspUsbDevice) の working tree(commit `7a6d9dc`、`library.properties` は 2.2.0 のまま)。** [CR-1〜CR-9](espusbdevice-change-requests.ja.md) が入っているが**まだ release されていない**ので、`sketch.yaml` は実パスで木を指している。
-
-> **2026-09-13 現在、両 board の console(USB-Serial-JTAG)が usbip 越しに応答せず、物理的な挿し直し待ち。** OTG HS 側と board 2 の個体そのものは無事。
+**ライブラリは [EspUsbDevice 2.3.0](https://github.com/tanakamasayuki/EspUsbDevice)**([CR-1〜CR-9](espusbdevice-change-requests.ja.md) を含む)。**公開版の `src` は測定に使っていた working tree と byte 単位で同一**(`diff -rq` で差分なし)なので、**ここの数値はすべて 2.3.0 の値として読んでよい**。
 
 ## 0. いま出る値(2026-09-13)
 
 | 経路 | **実測** | driver | 出典 |
 |---|---:|---|---|
-| **vendor bulk**(TX FIFO 8 KiB / 1 転送 8 KiB、n=9) | **23.97 MB/s** | **WinUSB(当たる)** | [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) |
+| **vendor bulk**(TX FIFO 8 KiB / 1 転送 8 KiB) | **約 24 MB/s** | **WinUSB(当たる)** | [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) |
 | vendor bulk(FIFO 4 KiB / 転送 4 KiB = P4 の既定) | 21.99 MB/s | 同上 | 同上 |
 | vendor bulk(**usbip なし、Windows 直**) | **21.2 MB/s**(旧既定での測定) | WinUSB | [E081](../experiments/e081_p4_winusb_bind/README.ja.md) |
 | **HID(512 B endpoint)** | **4.03 MB/s** | **不要** | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) / CR-8 |
@@ -28,7 +26,9 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | (参考)**P4 が host 役で送信**、async queue depth 2 | **36.4 MB/s** | — | EspUsbHost `docs/usb-host-advanced.md` |
 | (参考)HS bulk の理論上限 | 53.2 MB/s | — | 13 transaction × 512 B × 8,000/s |
 
-**2 channel の連続 streaming は 90 Msps**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md)。FIFO 32 KiB で測った値で、**8 KiB での再測は未了**)。**batch なら 160 Msps**([E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md))。
+**2 channel の連続 streaming は 96 Msps**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md) 追測、64 MiB × 4 回 clean)。既定(4 KiB)で 86、32 KiB で 90 なので、**FIFO は大きいほど良いわけではない**。**batch なら 160 Msps**([E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md))。
+
+> **97 / 99 MHz だけ突発的に滞る**という未特定の観測がある([E084](../experiments/e084_p4_transfer_tuning/README.ja.md))。**96 Msps 以下を使えば避けられる。**
 
 ### 何が変わったか(2.2.0 の既定 → 現在)
 
@@ -45,13 +45,14 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 転送長 2 点から `period(S) = S/R + T` を解くと、**こちらの測定とライブラリ側の独立した測定が同じ答え**を出す。
 
-| | **R**(線上の漸近 rate) | **T**(1 転送の死に時間) |
-|---|---:|---:|
-| こちら(n=9、capture 同時) | **26.34 MB/s** | **30.8 us** |
-| ライブラリ側(n=9、単体) | 24.79 MB/s | 28.7 us |
+| | **R**(線上の漸近 rate) | **T**(1 転送の死に時間) | 出典 |
+|---|---:|---:|---|
+| **4 点回帰(残差 1.0%)** | **24.64 MB/s** | **21.67 us** | **[E085](../experiments/e085_p4_transfer_size_model/README.ja.md)** |
+| (旧)2 点外挿 | 26.34 MB/s | 30.8 us | [E084](../experiments/e084_p4_transfer_tuning/README.ja.md)。`R` を 7%、`T` を 42% 過大に見ていた |
 
-- **死に時間を完全に消しても 26 MB/s** で、**36.4 には届かない**([CR-7](espusbdevice-change-requests.ja.md) を入れても説明できない)
-- **`R` は microframe あたり 6.0〜6.4 transaction**(HS は 13、host 役は 8.9)。**device 役はバスの半分しか使えていない**
+- **死に時間を完全に消しても 24.6 MB/s** で、**36.4 には届かない**([CR-7](espusbdevice-change-requests.ja.md) を入れても説明できない)。転送長を倍にするたび利得は半減し、16384 → ∞ で +3.5%
+- **`R` は microframe あたり 6.02 transaction**(HS は 13、host 役は 8.89)。**device 役はバスの半分以下しか使えていない**
+- **`R` は定数ではない。** capture 負荷で動く(96 Msps で 23.9、110 Msps で 23.1 MB/s)。**「上から押して天井を測る」方法は成立しない** — harvest が重くなるぶん USB が削られるので、**釣り合い点は「届いた値が生成値に追いつく最大 rate」で挟む**
 - **比較が対称ではない** — 36.4 は **P4 が host として *送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**
 - こちらが確かめたのは「**host 側の *software* は律速ではない**」まで(URB 64 KiB〜1 MiB、depth 2〜4 で不動、usbip と native も同じ)。**device 側の供給限界か PC の host controller の token 発行かは、[HR-1](espusbhost-change-requests.ja.md) が入るまで言えない**
 
@@ -165,8 +166,8 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 | やること | 中身 |
 |---|---|
-| [E085](../experiments/e085_p4_transfer_size_model/README.ja.md) 転送長 4 点で `R` / `T` を回帰 | §0 の 2 点外挿の裏取り。**計画済み、走らせるだけ** |
-| **FIFO 8 KiB での釣り合い点** | 90 Msps は 32 KiB での値。8 KiB のほうが 0.3 MB/s 速いので上に出る可能性 |
+| **97 / 99 MHz だけ滞る現象**の特定 | [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) の観測。96 以下を使えば実用上は避けられる |
+| **capture を止めた状態での `R`** | [E085](../experiments/e085_p4_transfer_size_model/README.ja.md) は capture 同時のみ。**素の USB 上限がまだ分かっていない** |
 | 8 MiB の弾性 FIFO を実際に使い切るまで回す | [E078](../experiments/e078_p4_continuous_stream/README.ja.md) の外挿(88 MHz で約 11 秒)の確認 |
 | 4 / 8 channel での連続 streaming | [E078](../experiments/e078_p4_continuous_stream/README.ja.md) / [E083](../experiments/e083_p4_attach_order/README.ja.md) の未決 |
 
@@ -176,7 +177,6 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 |---|---|
 | **device 役の天井が device 側かを確定する** | [HR-1](espusbhost-change-requests.ja.md)(host の IN async queue)。**§0 の内訳で、これにしか答えられない問いになった** |
 | **HID を 1,024 B に上げる**(8.2 MB/s 見込み) | [CR-8](espusbdevice-change-requests.ja.md)(済)+ [HR-3](espusbhost-change-requests.ja.md)(未依頼) |
-| release 版でのピン留め | `library.properties` の bump 待ち |
 
 **配線待ち**:
 
