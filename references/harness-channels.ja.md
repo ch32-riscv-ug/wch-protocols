@@ -343,11 +343,11 @@ DMI    (addr7, data32, op2)          ← 「細い管」
 
 ### high-speed(USB 2.0 HS)の実測 — 上の表はすべて full-speed 前提
 
-**上の行は full-speed の概算である。** ESP32-P4 の USB 2.0 HS で実測すると桁が変わる([E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md))。
+**上の行は full-speed の概算である。** ESP32-P4 の USB 2.0 HS で実測すると桁が変わる([E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E084](../experiments/e084_p4_transfer_tuning/README.ja.md))。**現在の値は[P4 USB HS まとめ](p4-usb-hs-summary.ja.md) §0**。下の表は 2026-09-12 時点(ライブラリ改修前)のもので、**vendor bulk は 23.97 MB/s、WinUSB は当たるようになった**。
 
 | 物理 IF(HS) | **実測** | driver | 備考 |
 |---|---:|---|---|
-| **vendor bulk**(送信 FIFO 8 KiB) | **10.74 MB/s** | WinUSB | [E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md)。既定 FIFO 512 B なら 9.0 |
+| **vendor bulk**(送信 FIFO 8 KiB) | **10.74 MB/s** → **23.97**(改修後) | WinUSB | [E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md) → [E084](../experiments/e084_p4_transfer_tuning/README.ja.md)。**効くのは 1 転送あたりの packet 数** |
 | **CDC ×1** | **8.08 MB/s** | 不要 | [E066](../experiments/e066_p4_usb_hs_tx_context/README.ja.md)。⚠ **転送途中の packet 欠落が 13%**([E068](../experiments/e068_p4_hs_cdc_tail_loss/README.ja.md)) |
 | CDC ×2 | **合計は増えない**(比 0.943) | 不要 | [E065](../experiments/e065_p4_usb_hs_dual_cdc_rate/README.ja.md)。共有部分が律速 |
 | **HID(512 B endpoint)** | **4.14 MB/s** | **不要** | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md)。**帯域が予約される** |
