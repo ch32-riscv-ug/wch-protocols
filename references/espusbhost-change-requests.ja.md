@@ -1,6 +1,10 @@
 # EspUsbHost への改修依頼
 
-状態: **HR-2 / HR-1 は実装済み(未リリース・未検証)**(2026-09-13。対象 [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 2.8.0 の working tree)
+状態: **HR-2 / HR-1 とも合格**(2026-09-13。[E089](../experiments/e089_p4_host_in_queue/README.ja.md) で実機検証。未リリース)
+
+> **結果: continuous 6.10 → HR-2 だけで 14.77 → HR-2 + HR-1 で 24.45 MB/s(4.01 倍)。** **両方要る**(device 側の [CR-7](espusbdevice-change-requests.ja.md) は転送長だけで済んだが、host 側は depth も効く)。
+>
+> **そして問いに答えが出た** — **P4 host の 24.45 MB/s は PC の 23.88 MB/s と同水準**で、**別々の host controller 2 つが同じ天井で止まる**。**約 24 MB/s は device 側の限界**であり、**(B) PC の host controller 説は否定された**。
 
 > **同日中に HR-2 と HR-1 が実装された。** `vendorOpen(addr, 0xff, READ_CONTINUOUS, 8192)` で 1 転送の byte 数、`vendorReadQueueBegin(depth, size, addr)` で in-flight 数。**`vendorReadStats()` が `starved`(完了時点で他に 1 本も飛んでいなかった回数)と `bytes / completed`(device が 1 転送に実際に詰めた量)を返す**ので、**「どちらが待っているか」が直接読める**。
 >
