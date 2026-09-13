@@ -16,9 +16,9 @@
 |---|---|
 | **device 側の release** | **待ち**。新規バグの修正 → `--clean` フルテスト → 問題なければ release。**こちらはその版でピンし直してから追試する** |
 | [E078](../experiments/e078_p4_continuous_stream/README.ja.md)(capture と同時に降ろす) | **release 待ち**。唯一こちらで追試する項目(先方の測定と重複しない) |
-| [HR-3](espusbhost-change-requests.ja.md)(1,024 B periodic IN) | **未依頼**。HID を 1,024 B にする段で device 側と対で要る。512 B は device 側だけで通った |
-| [HR-1](espusbhost-change-requests.ja.md) | **未依頼だが動機が戻った。** [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) の内訳で **device 役はバスの半分(microframe あたり 6.4 / 13 transaction)しか使えていない**と分かり、**それが device 側の供給限界か PC の host controller の token 発行かは、訊く側をこちらで作らないと切り分けられない** |
-| [HR-2](espusbhost-change-requests.ja.md) | **未依頼**。HR-1 が重いときの簡易版 |
+| [HR-3](espusbhost-change-requests.ja.md)(1,024 B periodic IN) | **2026-09-13 に依頼済み**(3 番目)。device 側の [CR-8](espusbdevice-change-requests.ja.md) は対応済みなので、対になれば HID が 8.2 MB/s 見込み |
+| [HR-1](espusbhost-change-requests.ja.md) | **2026-09-13 に依頼済み(HR-2 の後)。** [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) の内訳で **device 役はバスの半分(microframe あたり 6.4 / 13 transaction)しか使えていない**と分かり、**それが device 側の供給限界か PC の host controller の token 発行かは、訊く側をこちらで作らないと切り分けられない** |
+| **[HR-2](espusbhost-change-requests.ja.md)** | **2026-09-13 に依頼済み。HR-1 より先に**回すよう伝えた — device 側で「in-flight が原因」と踏んで [CR-7](espusbdevice-change-requests.ja.md) を外し、**効いたのは 1 転送あたりの packet 数**だったため |
 
 ---
 
