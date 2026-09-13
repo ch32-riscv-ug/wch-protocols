@@ -11,6 +11,9 @@ EspUsbDevice device;
 EspUsbDeviceVendor Vendor(device);
 
 static constexpr uint8_t FILL = 0xaf;
+#ifndef E091_VALIDATE_WORDS
+#define E091_VALIDATE_WORDS 1
+#endif
 static uint8_t drainBuffer[8192];
 static bool receiving = false;
 static bool complete = false;
@@ -61,6 +64,9 @@ static void drainPayload()
     }
     lastByteAt = now;
 
+    // E094 can disable only this checker while retaining the same FIFO read and
+    // byte accounting, to measure whether validation itself backpressures RX.
+#if E091_VALIDATE_WORDS
     // Four bytes per comparison keeps validation cheap enough not to turn the
     // pattern checker into the USB limit. The tail is checked byte-wise.
     size_t i = 0;
@@ -80,6 +86,7 @@ static void drainPayload()
         badWords++;
       }
     }
+#endif
     receivedBytes += static_cast<uint32_t>(got);
     if (receivedBytes >= targetBytes)
     {

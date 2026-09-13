@@ -8,13 +8,20 @@
 
 static constexpr uint8_t VENDOR_CLASS = 0xff;
 static constexpr uint8_t FILL = 0xaf;
-static constexpr size_t BYTES_PER_CONDITION = 4 * 1024 * 1024;
+#ifndef E091_BYTES_PER_CONDITION
+#define E091_BYTES_PER_CONDITION (4 * 1024 * 1024)
+#endif
+static constexpr size_t BYTES_PER_CONDITION = E091_BYTES_PER_CONDITION;
 static constexpr uint32_t TIMEOUT_MS = 10000;
 static const size_t DEPTHS[] = {1, 2, 4, 8};
 static const size_t SIZES[] = {512, 2048, 8192, 16384, 32768};
 
 #ifndef E091_VENDOR_AUTO_ZLP
 #define E091_VENDOR_AUTO_ZLP 0
+#endif
+
+#ifndef E091_EXPLICIT_COMMAND_ZLP
+#define E091_EXPLICIT_COMMAND_ZLP 0
 #endif
 
 static EspUsbHost usb;
@@ -57,6 +64,12 @@ static bool sendBegin(uint32_t bytes)
   {
     return false;
   }
+#if E091_EXPLICIT_COMMAND_ZLP
+  if (!usb.vendorWriteZlp(deviceAddress))
+  {
+    return false;
+  }
+#endif
   delay(20);
   return true;
 }
@@ -68,6 +81,12 @@ static bool requestAck()
   {
     return false;
   }
+#if E091_EXPLICIT_COMMAND_ZLP
+  if (!usb.vendorWriteZlp(deviceAddress))
+  {
+    return false;
+  }
+#endif
   const uint32_t deadline = millis() + 2000;
   while (!ackReady && millis() < deadline)
   {

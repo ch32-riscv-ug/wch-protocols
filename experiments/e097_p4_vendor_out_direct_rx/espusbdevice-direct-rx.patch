@@ -1,0 +1,65 @@
+diff --git a/src/EspUsbDevice.cpp b/src/EspUsbDevice.cpp
+index d03a696..e0cc716 100644
+--- a/src/EspUsbDevice.cpp
++++ b/src/EspUsbDevice.cpp
+@@ -651,15 +651,23 @@ bool tud_msc_is_writable_cb(uint8_t lun)
+ // "works" — but the callback is dead). In buffered mode (CFG_TUD_VENDOR_TXRX_BUFFERED,
+ // the default) buffer/bufsize are NULL/0 and the payload is in the RX FIFO, which
+ // handleRx() drains via available()/read().
++#if defined(ESP_USB_DEVICE_EXPERIMENTAL_DIRECT_VENDOR_RX)
++extern "C" void esp_usb_device_direct_vendor_rx(const uint8_t *buffer, uint32_t bufsize);
++#endif
++
+ void tud_vendor_rx_cb(uint8_t idx, const uint8_t *buffer, uint32_t bufsize)
+ {
+   (void)idx;
++#if defined(ESP_USB_DEVICE_EXPERIMENTAL_DIRECT_VENDOR_RX)
++  esp_usb_device_direct_vendor_rx(buffer, bufsize);
++#else
+   (void)buffer;
+   (void)bufsize;
+   if (g_activeVendor)
+   {
+     g_activeVendor->handleRx();
+   }
++#endif
+ }
+ 
+ // Room has just come back in the transmit FIFO. Same signature rule as
+@@ -2479,7 +2487,7 @@ bool EspUsbDeviceVendor::mounted() const
+ 
+ int EspUsbDeviceVendor::available()
+ {
+-#if ESP_USB_DEVICE_HAS_TINYUSB
++#if ESP_USB_DEVICE_HAS_TINYUSB && CFG_TUD_VENDOR_TXRX_BUFFERED
+   return static_cast<int>(tud_vendor_n_available(0));
+ #else
+   return 0;
+@@ -2498,7 +2506,7 @@ size_t EspUsbDeviceVendor::read(uint8_t *buffer, size_t size)
+   {
+     return 0;
+   }
+-#if ESP_USB_DEVICE_HAS_TINYUSB
++#if ESP_USB_DEVICE_HAS_TINYUSB && CFG_TUD_VENDOR_TXRX_BUFFERED
+   return tud_vendor_n_read(0, buffer, static_cast<uint32_t>(size));
+ #else
+   return 0;
+@@ -2619,7 +2627,7 @@ bool EspUsbDeviceVendor::waitWritable(size_t bytes, uint32_t timeoutMs)
+ 
+ void EspUsbDeviceVendor::flush()
+ {
+-#if ESP_USB_DEVICE_HAS_TINYUSB
++#if ESP_USB_DEVICE_HAS_TINYUSB && CFG_TUD_VENDOR_TXRX_BUFFERED
+   tud_vendor_n_write_flush(0);
+ #endif
+ }
+@@ -2689,7 +2697,9 @@ void EspUsbDeviceVendor::handleTxComplete()
+   //
+   // Draining here makes the room real before the wake-up. TinyUSB's refill, one
+   // line later, then finds the FIFO empty and does nothing.
++#if CFG_TUD_VENDOR_TXRX_BUFFERED
+   tud_vendor_n_write_flush(0);
++#endif
+   xSemaphoreGive(static_cast<SemaphoreHandle_t>(writableSignal_));
+ #endif
+ }

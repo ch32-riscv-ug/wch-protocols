@@ -1,6 +1,6 @@
 # E091 同じ P4 device で bulk OUT / IN の方向差は残るか
 
-状態: **完了 — 38.2 MB/sは同一peerの値ではない**(2026-09-13、3 run)
+状態: **完了 — 既定peerは10.365 MB/s、後続で38.2の相手も特定**(2026-09-13、3 run)
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E089](../e089_p4_host_in_queue/README.ja.md)、[E090](../e090_p4_dwc2_double_buffer/README.ja.md)
 
@@ -81,7 +81,7 @@ P4 2枚のOTG HS直結。consoleは両方USB-Serial-JTAG。EspUsbDevice 2.3.0、
 
 ### 未決
 
-- EspUsbHost文書の38.2 MB/sがどのdeviceに対する値か、生ログと銘板がない。P4 HCDの送信能力の参考にはなるが、EspUsbDevice peerとの方向比較には使わない。
+- **後続調査で訂正**: 38.2 MB/sの相手はDisplayLink DL-165 (`17e9:0360`)。`EspUsbHost/tests/manual/vendor_bulk_throughput`が`0xaf`を送る試験で、`docs/usb-display-spec.md`に実deviceが記録されている。EspUsbDevice peerとの方向比較はE092〜E103で条件を揃えて再検証した。
 
 ## 反映
 

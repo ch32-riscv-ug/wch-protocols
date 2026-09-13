@@ -1,0 +1,23 @@
+diff --git a/src/EspUsbDevice.cpp b/src/EspUsbDevice.cpp
+--- a/src/EspUsbDevice.cpp
++++ b/src/EspUsbDevice.cpp
+@@ -674,11 +674,19 @@ void tud_vendor_rx_cb(uint8_t idx, const uint8_t *buffer, uint32_t bufsize)
+ // or it silently stops overriding TinyUSB's weak default and
+ // EspUsbDeviceVendor::waitWritable() waits out its full timeout every call.
++#if defined(ESP_USB_DEVICE_EXPERIMENTAL_DIRECT_VENDOR_TX)
++extern "C" void esp_usb_device_direct_vendor_tx_complete(uint32_t sent_bytes);
++#endif
++
+ void tud_vendor_tx_cb(uint8_t idx, uint32_t sent_bytes)
+ {
+   (void)idx;
++#if defined(ESP_USB_DEVICE_EXPERIMENTAL_DIRECT_VENDOR_TX)
++  esp_usb_device_direct_vendor_tx_complete(sent_bytes);
++#else
+   (void)sent_bytes;
+   if (g_activeVendor)
+   {
+     g_activeVendor->handleTxComplete();
+   }
++#endif
+ }

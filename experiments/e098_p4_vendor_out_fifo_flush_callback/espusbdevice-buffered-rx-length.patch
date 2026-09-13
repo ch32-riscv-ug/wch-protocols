@@ -1,0 +1,12 @@
+diff --git a/src/class/vendor/vendor_device.c b/src/class/vendor/vendor_device.c
+--- a/src/class/vendor/vendor_device.c
++++ b/src/class/vendor/vendor_device.c
+@@ -906,7 +906,7 @@ bool vendord_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, uint
+   if (ep_addr == p_vendor->rx_stream.ep_addr) {
+     // Put received data to FIFO
+     tu_edpt_stream_read_xfer_complete(&p_vendor->rx_stream, xferred_bytes);
+-    tud_vendor_rx_cb(idx, NULL, 0);
++    tud_vendor_rx_cb(idx, NULL, xferred_bytes);
+     #if CFG_TUD_VENDOR_RX_MANUAL_XFER == 0
+     tu_edpt_stream_read_xfer(&p_vendor->rx_stream); // prepare next data
+     #endif
