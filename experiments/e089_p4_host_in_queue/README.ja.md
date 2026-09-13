@@ -121,7 +121,20 @@ peer(board 2 枚、要配線)
 
 ## 結果
 
-[EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) working tree、1 MiB / 条件。`mbps` は MiB/s なので **MB/s に直した列**を足した。
+[EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) working tree、1 MiB / 条件。
+
+> **単位に注意。** 先方の harness の `mbps` は **MiB/s**(`bytes / seconds / 1048576`)、**こちらの測定はすべて MB/s(10^6)**。生ログの `mbps=23.321` は MiB/s で、**下の表は MB/s に直してある**(×1.048576)。[E088](../e088_p4_usb_ceiling_idle/README.ja.md) の 23.88 などと並べるときはここを揃えること。
+
+> **device 側の条件。** この数字は **`peer_device` を直したもの**で出ている。**shipped のままでは 8.2〜8.5 MB/s しか出ない**(下の §方法の誤り)。再現には **device = EspUsbDevice 2.3.0、`CFG_TUD_VENDOR_TX_BUFSIZE` / `CFG_TUD_VENDOR_TX_EPSIZE` = 8192、送出は `writeCapacity()` ぶんを `waitWritable()` で待って渡し `flush()` は最後のみ** が要る。
+
+**FQBN**(P4 同士で測るとき):
+
+```
+host   : esp32:esp32:esp32p4:...,USBMode=hwcdc,CDCOnBoot=cdc,...
+device : esp32:esp32:esp32p4:...,USBMode=default,CDCOnBoot=default,...
+```
+
+**host は `USBMode=hwcdc,CDCOnBoot=cdc` が要る** — 先方の harness は `Serial` に出力するが、`CDCOnBoot=default` は **Disabled** で `Serial` が UART0 になるため、USB console では何も見えない。
 
 | mode | depth | 1 転送 | MB/s | per_transfer | short | **starved** |
 |---|---:|---:|---:|---:|---:|---:|
