@@ -1,20 +1,59 @@
 # EspUsbHost への改修依頼
 
-状態: **未依頼**(2026-09-13 更新。対象 [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 2.8.0)
+状態: **依頼の準備ができた**(2026-09-13 更新。対象 [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 2.8.0)
 
-> **まだ先方へ出していない。** [device 側](espusbdevice-change-requests.ja.md)が先に片付き、**HR-1 の当初の動機(device の天井が測れない)は消えた** — PC 側で URB depth を振ったら **depth 2 で飽和**し、約 23 MB/s が device 側の天井だと分かったため。**残る実需は HR-3(HID 1,024 B)だけ**で、それも device 側の 512 B が通ったのでいますぐではない。
+> **device 側([EspUsbDevice](espusbdevice-change-requests.ja.md))は CR-1〜CR-9 が全件対応され、2.3.0 として公開された。** その過程で **host 側にしか答えられない問いが 1 つ残った**ので、こちらを出す。
 
-[E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) / [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) で ESP32-P4 を 2 枚直結し、device → host の bulk IN / interrupt IN を測る過程で見つかったもの。**すぐの対応を前提にしない**。
+## なぜ出すか — 消去法で host 側しか残っていない
 
-**着手順の提案は[別紙](usb-library-change-plan.ja.md)。** 結論だけ先に書くと、**[EspUsbDevice 側](espusbdevice-change-requests.ja.md)を先にするのを勧める** — 理由は「device 側の改修は PC 1 台を host にして今のベンチのまま確認でき、host 側の改修は board 2 枚を直結する必要があって、**その間 PC からどちらの端も覗けなくなる**」ため。
+**device 役の vendor bulk は 8 KiB 転送で約 24 MB/s** で頭打ちになる。これは **microframe あたり 6.02 transaction**(HS が許すのは 13、**同じ P4 が host 役で送信すると 8.89**)。
+
+**原因の候補を片端から潰した。**
+
+| 潰した候補 | どう潰したか |
+|---|---|
+| host 側 software の投げ方 | **URB を 64 KiB〜1 MiB、depth 2〜4 のどれにしても 23.5〜23.8 MB/s で動かない**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md)) |
+| usbip 経路 | **native(Windows 直)21.2 対 usbip 21.97 MB/s**。差が無い([E081](../experiments/e081_p4_winusb_bind/README.ja.md)) |
+| capture との同居 | **capture を止めても同じ**(idle 23.88 対 同時 23.36 MB/s)([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md)) |
+| 1 転送あたりの死に時間 | 転送長を伸ばすと減るが、**8 KiB で最良、16 KiB はむしろ遅い**([E085](../experiments/e085_p4_transfer_size_model/README.ja.md) / [E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md)) |
+| device 側の in-flight 転送数 | device 側で検討され、**不要と結論**([CR-7](espusbdevice-change-requests.ja.md)) |
+
+**残るのは 2 つだけ。**
+
+- **(A) device 側の供給限界**(DWC2 の device 側が 1 microframe に 6 packet ぶんしか出せない)
+- **(B) PC の host controller が bulk IN に振る token の数**
+
+**(A) と (B) は「訊く側」を自分で作らないと分けられない。** PC の xHCI が 1 microframe に何回 IN token を出すかは、**host 側 software では動かせない**(URB の中に何百もの transaction が入るため)。**P4 を host にして読む**のが唯一の道である。
+
+## 注文の順序について — 転送長を先に
+
+**device 側で同じ形の問いを解いたときの教訓を共有したい。**
+
+こちらは当初 **「endpoint ごとに転送を 1 本しか投げていないのが原因」** と踏んで [CR-7](espusbdevice-change-requests.ja.md)(in-flight 2 本)を出した。**外れだった。** 効いていたのは **1 転送が何 packet 運ぶか**(`CFG_TUD_VENDOR_TX_EPSIZE`)で、**4096 → 8192 で +9%**、in-flight を増やす話は不要になった。
+
+**host 側も同じ非対称がありそう**なので、**[HR-2](#hr-2-参考継続-in-の-1-転送サイズだけでも指定させてほしい)(継続 IN の 1 転送サイズを指定させる)を先に**、**[HR-1](#hr-1-bulk-in-にも-async-queue-がほしいout-にはある)(queue 深さ)を後に**することを勧める。**HR-2 のほうが小さく、効きは大きいかもしれない。**
+
+> 現状 [E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) が 5.6 MB/s で止まったのは、**host が 512 B を 1 転送ずつ、8,192 回**受けていたため。**device 側はもう 8 KiB 単位で出している**ので、**host 側が 8 KiB 単位で受けられるようになるだけで大きく動く可能性がある。**
 
 ### 一覧
 
 | | 内容 | 優先度 | 規模 | 直ったことの確認 |
 |---|---|---|---|---|
-| [HR-1](#hr-1-bulk-in-にも-async-queue-がほしいout-にはある) | bulk IN の async queue | **高** | **大**(API 追加) | [E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) 再実行。5.6 MB/s を超えるか |
-| [HR-3](#hr-3-1024-b-の-interrupt-in-endpoint-を受けられるようにしたい) | 1,024 B の periodic IN | 中 | 中(FIFO 配分) | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) の 1,024 B 行が埋まる(8.2 MB/s 見込み) |
-| [HR-2](#hr-2-参考継続-in-の-1-転送サイズだけでも指定させてほしい) | (簡易版)継続 IN の転送サイズ | 中 | 小 | 同上、512 B → 8 KiB で伸びるか |
+| **[HR-2](#hr-2-参考継続-in-の-1-転送サイズだけでも指定させてほしい)** | **継続 IN の 1 転送サイズを指定させる** | **高(先に)** | **小** | [E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) 再実行。**5.6 MB/s から動くか** |
+| [HR-1](#hr-1-bulk-in-にも-async-queue-がほしいout-にはある) | bulk IN の async queue(depth) | 高(後で) | **大**(API 追加) | HR-2 の上に積んで**さらに伸びるか** |
+| [HR-3](#hr-3-1024-b-の-interrupt-in-endpoint-を受けられるようにしたい) | 1,024 B の periodic IN | 中 | 中(FIFO 配分) | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) の 1,024 B 行が埋まる(8.2 MB/s 見込み)。**device 側の [CR-8](espusbdevice-change-requests.ja.md) は対応済み** |
+
+### 何が分かれば成功か
+
+**P4 を host にして P4 device から bulk IN を読み、どこで頭打ちになるかを見る。**
+
+| 結果 | 意味 |
+|---|---|
+| **24 MB/s 付近で飽和** | **(A) device 側の限界**。PC の xHCI は無罪で、device 役の天井が確定する |
+| **24 を明確に超える**(30 MB/s 以上) | **(B) PC の host controller が律速だった**。これまでの全測定が PC 側の上限を見ていたことになる |
+| 5.6 MB/s から動かない | host 側にさらに別の律速がある |
+
+**どちらに転んでも、2 年ぶんくらいの「device 役は遅い」という思い込みに決着が付く。**
 
 計測環境: ESP32-P4 rev 1.3 × 2 枚(`esp32-p4-30eda0e31478` = device / `...f5` = host)、OTG HS port 同士を直結、Arduino-ESP32 3.3.11、`EspUsbHost` 2.8.0、device 側は `EspUsbDevice` 2.2.0。
 
