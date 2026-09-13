@@ -99,6 +99,7 @@
 | **E081** | MS OS 2.0 descriptor set を flat にすると Windows 11 は vendor bulk device に WinUSB を当てるか。subset のままなら当たらないままか | **一時・配線なし**(`esp32-p4-30eda0e31478`、**HS portはWindows側に置く**) | [Windows が WinUSB を当てない](../references/windows-winusb-binding.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-1 | **完了 — flatは`Status=OK`/`Service=WinUSB`、subsetsは`CM_PROB_FAILED_INSTALL`。汚れた台でも新しいserialなら当たる。nativeは21.2 MB/sでusbip経由と差なし**([e081_p4_winusb_bind/](e081_p4_winusb_bind/README.ja.md)) |
 | **E082** | capture中はpackedのまま一時ファイルへ落とし、終わってから`.sr`へ変換すると、どのrate・どの深さまで通るか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E080](e080_p4_pulseview_gapless/README.ja.md)の未決「受け側が律速」 | **完了 — E080が落ちた条件(86 MHz × 256 M sample)が`fifo_overflow=0`・占有57 KBで通る。変換は無圧縮0.51秒 / deflate 9.5秒で94分の1**([e082_p4_spool_then_convert/](e082_p4_spool_then_convert/README.ja.md)) |
 | **E083** | [E075](e075_p4_width_sample_accuracy/README.ja.md)が観測した「`overflow=0`のまま1 channelだけduty 0.00%」は`create_receiver()`と`configure_pwm()`の順序で説明できるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [E075](e075_p4_width_sample_accuracy/README.ja.md)の未決 | **完了 — 順序が原因。receiver先はcold bootの29%(24回中7回)で1 channel死亡、LEDC先は30回で0件。再現はhard reset直後の1回だけ**([e083_p4_attach_order/](e083_p4_attach_order/README.ja.md)) |
+| **E084** | capture と同時に降ろすとき、TX FIFO / 1転送長 / host の URB をどう選ぶと排出が最大になるか。釣り合い点はどこまで上がるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E078](e078_p4_continuous_stream/README.ja.md)の釣り合い点、[E071](e071_p4_hs_vendor_fifo_depth/README.ja.md) | **完了 — FIFO 32768 / 転送 8192 で21.97 → 23.69 MB/s(+7.8%)、釣り合い点86 → 90 Msps。host側のURBは大きさもdepthも効かない**([e084_p4_transfer_tuning/](e084_p4_transfer_tuning/README.ja.md)) |
 | **E079** | host 側(PC)が bulk IN の URB を複数同時に投げると、device を変えずに帯域は伸びるか | **一時・配線なし**(同上) | [改修の着手順](../references/usb-library-change-plan.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-7 | **中止 — 同じ測定がライブラリ側で先に行われた。depth 2 で飽和(1=18.64 / 2=22.68 / 8=22.87 MB/s)、約23 MB/sはdevice側の天井**([e079_p4_host_urb_depth/](e079_p4_host_urb_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
@@ -253,6 +254,23 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E084 ESP32-P4: 転送の形を詰める — 完了 2026-09-13
+
+全文: [e084_p4_transfer_tuning/README.ja.md](e084_p4_transfer_tuning/README.ja.md)。[E078](e078_p4_continuous_stream/README.ja.md)の streaming 経路で、device 側の TX FIFO / 1 転送長と host 側の URB を振った。96 MHz(釣り合い点より上)で飽和させて排出を測る。
+
+**事実**
+
+1. **TX FIFO と 1 転送長で +7.8%。** 4096/4096(既定)の **21.97** に対し、8192/8192 で 23.33(ばらつく)、16384/8192 で 23.48、**32768/8192 で 23.69 MB/s**。ライブラリ側の単体測定(21.12 → 23.34)と同じ方向・同程度で、**capture と同居していても効きは失われない**。
+2. **32768/8192 がいちばん安定。** 8192/8192 は平均こそ近いが **run 間で 22.39〜23.88 とばらつく**。代償は internal RAM 32 KB。
+3. **host 側の URB は何をしても変わらない。** 64 KiB〜1 MiB、depth 2〜4 のどれでも 23.5〜23.8 MB/s。**律速は device 側。**
+4. **釣り合い点は 86 → 90 Msps。** 90 MHz は届いた MB/s(22.40/22.53)が生成(22.50)に一致し占有も小さい。92 MHz から下回る。
+5. **占有の大きさだけでは判定できない。** 釣り合い点より下では FIFO が枯れて ZLP が出るぶん効率が落ちるので、**占有は rate に対して単調にならない**(92/94 より 96 のほうが小さい)。**「届いた MB/s 対 生成 MB/s」を主の判定にする。**
+6. **`write()` に渡す塊は `writeCapacity()` から取る。** 固定 4096 のままだと FIFO を広げても使われない。
+
+**候補**: **`CFG_TUD_VENDOR_TX_BUFSIZE=32768` / `CFG_TUD_VENDOR_TX_EPSIZE=8192` を既定に** / **連続 streaming は 90 Msps を上限に**(余裕を見るなら 88)/ **host 側は好きな形でよい**。
+
+**未決**: 8192 のばらつきの原因 `—` / internal RAM に余裕がない場合の折り合い `—` / 4・8 channel `—` / 96 Msps で短い URB が増える理由 `—`。
 
 ### E083 ESP32-P4: 間欠的に 1 channel が死ぬ現象 — 完了 2026-09-13
 

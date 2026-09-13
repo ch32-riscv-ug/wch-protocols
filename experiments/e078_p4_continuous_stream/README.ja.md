@@ -235,3 +235,13 @@ if (0 == tu_edpt_stream_write_xfer(&p_vendor->tx_stream)) {
 [E083](../e083_p4_attach_order/README.ja.md) を受けて、**`configure_pwm()` を `create_receiver()` より先に**呼ぶよう firmware を直した。逆順は **cold boot の 29% で 1 channel が無音になる**(`overflow` は 0 のまま)。
 
 **上の測定値は影響を受けていない** — 全条件で立ち上がり周期を head / tail で見ており、死んだ channel があれば必ず MISMATCH になる。**[E080](../e080_p4_pulseview_gapless/README.ja.md) / [E082](../e082_p4_spool_then_convert/README.ja.md) がこの firmware を使う**ので、今後の取得のために直した。
+
+## 追記 — 転送の形を詰めた(2026-09-13、[E084](../e084_p4_transfer_tuning/README.ja.md))
+
+`build_opt.h` を **TX FIFO 32768 / 1 転送 8192** に変え、`write()` に渡す塊を `writeCapacity()` から取るようにした(固定 4096 のままだと FIFO を広げても使われない)。
+
+- **排出 21.97 → 23.69 MB/s(+7.8%)**
+- **釣り合い点 86 → 90 Msps**
+- host 側の URB は**大きさも depth も効かない**(64 KiB〜1 MiB、depth 2〜4 で 23.5〜23.8)
+
+**上の測定値は既定の形(4096 / 4096)のものとして残す。** [E082](../e082_p4_spool_then_convert/README.ja.md) がこの firmware を使うので、実運用のために形だけ差し替えた。
