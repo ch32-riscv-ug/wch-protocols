@@ -66,7 +66,7 @@ Bの代表値は depth 1 / 8 KiB = 24.2〜24.4、depth 4 / 32 KiB = 30.615、dep
 1. **device OUTの受信arm長が主因。** host側のZLP有無だけを変えた512 B arm対照は10.365 → 10.131 MB/sで、上昇を説明しない。512 → 8192 B armにより中央値は **2.98倍**になった。
 2. **ZLP契約は必須。** 8192 B armのままhost ZLPを無効にした失敗ログでは、5 Bの開始commandがpayloadと連結され `device_received=4194309` / `device_bad=2` / FAIL。速度フラグとして透過的に既定化はできない。
 3. 同一peerで比べると、tuned host → device 30.840 / device → host 25.575 = **1.21倍**。当初の1.5倍のうち大部分は比較相手の不一致とOUT側512 B armだった。
-4. 38.2 MB/sにはまだ約24%届かないが、その数値の相手deviceが確定していないため、同一peer内の残差とは扱わない。
+4. 38.2 MB/sにはまだ約24%届かない。**後続調査で相手はDisplayLink DL-165 (`17e9:0360`)と特定した。** 同一peerの残差はE093〜E103で再検証した。
 
 ### 候補
 

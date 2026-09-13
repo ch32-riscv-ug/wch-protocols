@@ -1,0 +1,15 @@
+diff --git a/src/class/vendor/vendor_device.c b/src/class/vendor/vendor_device.c
+--- a/src/class/vendor/vendor_device.c
++++ b/src/class/vendor/vendor_device.c
+@@ -212,7 +212,11 @@ TU_ATTR_UNUSED static inline uint32_t vendord_ep_write(vendord_interface_t *p_it
+   TU_VERIFY(ep > 0, 0); // must be opened
+   TU_VERIFY(usbd_edpt_claim(p_itf->rhport, ep), 0);
+   const uint32_t xact_len = tu_min32(len, bufsize);
++#if defined(ESP_USB_DEVICE_EXPERIMENTAL_VENDOR_TX_ZERO_COPY)
++  TU_ASSERT(usbd_edpt_xfer(p_itf->rhport, ep, (uint8_t *) buffer, (uint16_t) xact_len, false), 0);
++#else
+   memcpy(epbuf, buffer, xact_len);
+   TU_ASSERT(usbd_edpt_xfer(p_itf->rhport, ep, epbuf, (uint16_t) xact_len, false), 0);
++#endif
+   return xact_len;
+ }

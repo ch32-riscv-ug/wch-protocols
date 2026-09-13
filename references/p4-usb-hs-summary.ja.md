@@ -1,6 +1,6 @@
 # ESP32-P4 の USB 2.0 HS と 2 channel capture — 到達点まとめ
 
-状態: **まとめ**(2026-09-13。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E092](../experiments/e092_p4_vendor_out_arm_size/README.ja.md) の結論を 1 枚にした索引)
+状態: **まとめ**(2026-09-14。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E104](../experiments/e104_p4_windows_continuous_bulk/README.ja.md) の結論を 1 枚にした索引)
 
 **§0 が現在の値。§1 以降は 2.2.0 時点の記録**で、数字はそのまま残してある(どこから何が変わったかが追えるように)。
 
@@ -25,7 +25,11 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | USB-Serial-JTAG(FS CDC) | 0.72〜0.80 MB/s | 不要 | [E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md) |
 | **P4 host → P4 EspUsbDevice**(既定RX 512 B arm) | **10.365 MB/s** | — | [E091](../experiments/e091_p4_bulk_direction_same_peer/README.ja.md) |
 | **P4 host → P4 EspUsbDevice**(RX 8192 B arm + ZLP) | **30.840 MB/s** | — | [E092](../experiments/e092_p4_vendor_out_arm_size/README.ja.md) |
-| (参考)P4 host送信、**相手device不明** | 38.2 MB/s | — | EspUsbHost `docs/usb-host-advanced.md`(生ログ/銘板なし) |
+| **P4 host → P4 EspUsbDevice**(16 KiB direct RX) | **39.737 MB/s** | — | [E097](../experiments/e097_p4_vendor_out_direct_rx/README.ja.md) |
+| **P4 EspUsbDevice → P4 host**(事前生成zero-copy TX) | **36.159 MB/s** | — | [E102](../experiments/e102_p4_vendor_in_zero_copy_precomputed/README.ja.md) |
+| **Windows PC → P4**(WinUSB、direct RX全byte照合) | **29.721 MB/s** | WinUSB | [E104](../experiments/e104_p4_windows_continuous_bulk/README.ja.md) |
+| **P4 → Windows PC**(WinUSB、事前生成zero-copy TX) | **24.200 MB/s** | WinUSB | 同上 |
+| P4 host → **DisplayLink DL-165** (`17e9:0360`) | 38.2 MB/s | — | EspUsbHost `tests/manual/vendor_bulk_throughput` / `docs/usb-display-spec.md` |
 | (参考)HS bulk の理論上限 | 53.2 MB/s | — | 13 transaction × 512 B × 8,000/s |
 
 **連続 streaming の上限は channel 数ではなく byte rate(23〜24 MB/s)で決まる** — **8ch 23 / 4ch 46 / 2ch 96 Msps**([E086](../experiments/e086_p4_8ch_stream/README.ja.md))。**2 channel は 96 Msps**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md) 追測、64 MiB × 4 回 clean)。既定(4 KiB)で 86、32 KiB で 90 なので、**FIFO は大きいほど良いわけではない**。**batch なら 160 Msps**([E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md))。
@@ -43,9 +47,11 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 **効いたのは in-flight 数ではなく 1 転送あたりの packet 数**(`CFG_TUD_VENDOR_TX_EPSIZE`、旧既定は bulk 1 packet)。512 byte ごとに「完了割り込み → event queue → usbd task → 再 arm」の往復が入っていた。
 
-### 天井の内訳 — host 役の 38.2 MB/s との差
+### 天井の内訳 — buffered benchmarkとdirect経路の差
 
 転送長 2 点から `period(S) = S/R + T` を解くと、**こちらの測定とライブラリ側の独立した測定が同じ答え**を出す。
+
+以下の`R/T`は、byte-by-byte ramp生成を含む**従来buffered benchmark経路の模型**であり、DWC2物理上限ではない。E102の事前生成zero-copyでは36.159 MB/sまで出るため、その意味は後続実験で更新された。
 
 | | **R**(線上の漸近 rate) | **T**(1 転送の死に時間) | 出典 |
 |---|---:|---:|---|
@@ -60,9 +66,12 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 - **比較が対称ではない** — 38.2 は **P4 が host として *送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**
 - **2026-09-13、[E089](../experiments/e089_p4_host_in_queue/README.ja.md) で決着した** — [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) に転送長(HR-2)と queue depth(HR-1)が入り、**P4 を host にすると 24.45 MB/s**。**PC の 23.88 MB/s と同水準**で、**別々の host controller 2 つが同じ天井で止まる**。→ **約 24 MB/s は device 側の限界。PC の controller 説は否定された**
 - **[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md) でDWC2のhardware TX FIFOをbulk INだけ1 packet→2 packetにしても、同一リグA/Bの最大はともに中央値25.575 MB/s。** depth 1 / 2 KiBだけ+6.5%だが8 KiB以上では差が消え、`per_transfer`も不変。**hardware FIFOの段数は天井原因ではない**
-- **[E091](../experiments/e091_p4_bulk_direction_same_peer/README.ja.md) で比較相手を同一P4 EspUsbDeviceに固定すると、host→deviceは10.365 MB/sで、38.2対25.6の方向比較は成立しない。** 38.2は相手銘板が無く、P4 HCDの参考値に限定する。
+- **38.2 MB/sの相手はDisplayLink DL-165 (`17e9:0360`)。** E091時点の「銘板不明」は後続調査で訂正した。
 - **[E092](../experiments/e092_p4_vendor_out_arm_size/README.ja.md) でdevice OUTのarmを512→8192 Bにすると30.840 MB/s(2.98倍)。** ZLP有無だけの対照は10.131 MB/sなので、主因はTinyUSB vendor RXの512 Bごとの完了・再arm。ただしmulti-packet RXはhostがZLPで短転送を閉じる契約が必須。
-- **同一peerの調整後方向差は host→device 30.840 / device→host 25.575 = 1.21倍。** IN側の残る未決は「なぜmicroframeあたり約6 transactionで止まるか」で、DMA供給、IN tokenへの応答間隔、またはDWC2/TinyUSBの別経路に絞られた。
+- **E092時点の中間値**はhost→device 30.840 / device→host 25.575 = 1.21倍。その後E097〜E103で双方のbuffered application経路を外して再比較したため、最終値は下記の1.10倍を使う。
+- **E093〜E097でOUTを分解**: 16 KiB arm 33.288、payload ZLPなし34.953、測定長は無関係、direct RXで**39.737 MB/s**。E098/E099より、buffered完了時のendpoint buffer→RX FIFO copyが主損失。
+- **E100〜E103でINを分解**: 単純direct TX 18.090、callback chain 18.396、事前生成＋copy 34.275、事前生成zero-copy **36.159 MB/s**。同一条件の差分は8 KiBごとにpattern生成約203 us、internal memcpy約16 us。元の約1.5倍差の大半はbenchmark producerを完了後に直列実行した費用で、zero-copy単独は+5.5%。調整後方向比は **1.10倍**。
+- **E104でWindows nativeを3 GiB連続実測**: 全byte照合ありでPC→P4 **29.721** / P4→PC **24.200 MB/s**、不一致0。OUT照合なしのhigh側列挙では34.960 / 24.029 = **1.455倍**となり約1.5倍差を再現した。host queueはdepth 2で飽和する。さらに同一binaryでもhard reset後にINだけ16.8/24.0 MB/sを遷移するため、残る差はuser-modeより下かつUSB reset/enumeration依存。DWC2 TX初期状態とWindows xHCI bulk IN token発行の切り分けが次。
 
 ## 1. USB 2.0 HS で何が出るか(**2.2.0 時点の記録**。現在の値は §0)
 
@@ -75,7 +84,7 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | **HID(512 B endpoint)** | **4.14 MB/s** | **不要** | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) |
 | HID(64 B = ライブラリ既定) | 0.52 MB/s | 不要 | 同上 |
 | USB-Serial-JTAG(FS CDC) | 0.72〜0.80 MB/s | 不要 | [E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md) |
-| (参考)**P4 が host 役**、async queue depth 2 | **38.2 MB/s** | — | EspUsbHost `docs/usb-host-advanced.md` |
+| (参考)**P4 host → DisplayLink DL-165**、async queue depth 2 | **38.2 MB/s** | — | EspUsbHost `tests/manual/vendor_bulk_throughput` |
 | (参考)HS bulk の理論上限 | 53 MB/s | — | 13 transaction × 512 B × 8,000/s |
 
 ### 効くもの / 効かないもの
@@ -98,6 +107,8 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 **同じ chip が host 役では 38.2 MB/s 出る**のに、device 役は 10.74 MB/s。FIFO の深さで説明できるのは 17% だけで、**残りは「endpoint ごとに転送を 1 つしか投げていない」構造**と見ている(host 側は async queue depth 2 で張り付く)。→ [CR-7](espusbdevice-change-requests.ja.md) / [HR-1](espusbhost-change-requests.ja.md)
 
 > **2026-09-13: この見立ては半分外れた。** 転送長を変えると device 役は **23.97 MB/s** まで伸びたが([E084](../experiments/e084_p4_transfer_tuning/README.ja.md))、内訳を取ると **線上の漸近 rate が 26.3 MB/s**(= microframe あたり 6.4 transaction、HS は 13)で、**1 転送あたりの死に時間 30.8 us を完全に消しても 38.2 には届かない**。しかも **38.2 は P4 が *host として送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**という非対称がある。**device 役の天井が device 側にあるのか PC の host controller 側なのかは、[HR-1](espusbhost-change-requests.ja.md) が入るまで言えない。**
+
+> **2026-09-14: さらに更新。** 同じP4 peerでdirect RX 39.737 / 事前生成zero-copy TX 36.159 MB/sを確認し、物理方向差は少なくともこの試験では1.10倍まで縮んだ。従来の約25.6 MB/s天井はDWC2単体ではなく、producer生成・buffer copy・pipelineを含む経路の値だった。
 
 ## 2. 落ちる経路 — CDC は転送途中で packet を捨てる
 
