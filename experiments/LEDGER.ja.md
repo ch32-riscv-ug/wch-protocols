@@ -98,6 +98,7 @@
 | **E080** | sigrok / PulseView が要求する sample 数を、1 回の capture として継ぎ目なく渡せるか。上限は E078 の 86 Msps と一致するか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E077](e077_p4_pulseview_over_ip/README.ja.md)の未決「継ぎ目」、[PulseView / sigrok 連携](../references/pulseview-integration.ja.md) 経路B | **完了 — 継ぎ目は消えた。86 Msps・64 M sampleまで一本で通る。それ以上の律速はdeviceでもserverでもなく`srzip`の書き出し**([e080_p4_pulseview_gapless/](e080_p4_pulseview_gapless/README.ja.md)) |
 | **E081** | MS OS 2.0 descriptor set を flat にすると Windows 11 は vendor bulk device に WinUSB を当てるか。subset のままなら当たらないままか | **一時・配線なし**(`esp32-p4-30eda0e31478`、**HS portはWindows側に置く**) | [Windows が WinUSB を当てない](../references/windows-winusb-binding.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-1 | **完了 — flatは`Status=OK`/`Service=WinUSB`、subsetsは`CM_PROB_FAILED_INSTALL`。汚れた台でも新しいserialなら当たる。nativeは21.2 MB/sでusbip経由と差なし**([e081_p4_winusb_bind/](e081_p4_winusb_bind/README.ja.md)) |
 | **E082** | capture中はpackedのまま一時ファイルへ落とし、終わってから`.sr`へ変換すると、どのrate・どの深さまで通るか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E080](e080_p4_pulseview_gapless/README.ja.md)の未決「受け側が律速」 | **完了 — E080が落ちた条件(86 MHz × 256 M sample)が`fifo_overflow=0`・占有57 KBで通る。変換は無圧縮0.51秒 / deflate 9.5秒で94分の1**([e082_p4_spool_then_convert/](e082_p4_spool_then_convert/README.ja.md)) |
+| **E083** | [E075](e075_p4_width_sample_accuracy/README.ja.md)が観測した「`overflow=0`のまま1 channelだけduty 0.00%」は`create_receiver()`と`configure_pwm()`の順序で説明できるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [E075](e075_p4_width_sample_accuracy/README.ja.md)の未決 | **完了 — 順序が原因。receiver先はcold bootの29%(24回中7回)で1 channel死亡、LEDC先は30回で0件。再現はhard reset直後の1回だけ**([e083_p4_attach_order/](e083_p4_attach_order/README.ja.md)) |
 | **E079** | host 側(PC)が bulk IN の URB を複数同時に投げると、device を変えずに帯域は伸びるか | **一時・配線なし**(同上) | [改修の着手順](../references/usb-library-change-plan.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-7 | **中止 — 同じ測定がライブラリ側で先に行われた。depth 2 で飽和(1=18.64 / 2=22.68 / 8=22.87 MB/s)、約23 MB/sはdevice側の天井**([e079_p4_host_urb_depth/](e079_p4_host_urb_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
@@ -252,6 +253,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E083 ESP32-P4: 間欠的に 1 channel が死ぬ現象 — 完了 2026-09-13
+
+全文: [e083_p4_attach_order/README.ja.md](e083_p4_attach_order/README.ja.md)。[E075](e075_p4_width_sample_accuracy/README.ja.md)が observation として残した現象を、**準備順序を引数にして cold boot ごとに 1 標本**取る形で詰めた。
+
+**事実**
+
+1. **原因は準備順序だった。** `create_receiver()` → `configure_pwm()`(E075 と同じ)は **cold boot 24 回中 7 回(29%)**で 1 channel が死ぬ。**逆順は 30 回で 0 件。**
+2. **`overflow` は常に 0**、`status` も 0、死んだ lane 以外の edge 数は正常。**capture 経路の drop ではない**という [E075](e075_p4_width_sample_accuracy/README.ja.md) の見立ては正しかった。
+3. **再現するのは hard reset 直後の 1 回だけ。** 同一 boot 内 200 trial で 0 件、`esp_restart()` 10 回でも 0 件。**「掃引の初回にだけ出る」「再実行すると再現しない」がこれで説明できる。**
+4. **死ぬ lane は条件ごとに一定**(ここでは常に D2、E075 では別の幅・rate で D3 / D5)。特定の GPIO の問題ではない。
+5. **既存の測定は影響を受けていない。** 立ち上がり周期で判定しているので、死んだ channel があれば必ず落ちる。
+
+**候補**: **信号源を先に attach してから receiver を作る** / **cold boot の 1 回目を疑う**(同一 boot 内の再実行で「直った」ように見えても直っていない)/ **lane ごとの edge 数を board 上で数えるのは安い**(65,536 byte で数 ms)。
+
+**未決**: なぜ順序で決まるのか `—`(レジスタ未確認)/ なぜ cold boot 限定か `—` / 2・8 channel での頻度 `—` / 外部信号での挙動 `—`。
 
 ### E082 ESP32-P4: 一時ファイルへ受けてから `.sr` へ変換する — 完了 2026-09-13
 

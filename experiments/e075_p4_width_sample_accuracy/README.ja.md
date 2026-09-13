@@ -82,6 +82,8 @@ packing後のbyte rateは `rate × channel ÷ 8`。160 MHzなら 1ch = 20、2ch 
 
 **capture経路そのものの問題ではない**と見ているが、**未特定**である。
 
+> **2026-09-13 追記: [E083](../e083_p4_attach_order/README.ja.md) で特定した。** **疑っていた準備順序が原因だった** — `create_receiver()` を先に走らせると **cold boot の 29%(24 回中 7 回)**で 1 channel が死に、`configure_pwm()` を先にすると **30 回で 0 件**。`overflow` は常に 0 で、capture 経路の drop ではないという見立ても正しかった。**再現するのは hard reset 直後の 1 回だけ**(同一 boot 内 200 trial で 0 件、`esp_restart()` 10 回でも 0 件)で、「掃引の初回にだけ出る」「再実行すると再現しない」はこれで説明が付く。
+
 ## 限界matrixへの反映
 
 | channel | 従来 | **本実験後** |
@@ -99,7 +101,7 @@ packing後のbyte rateは `rate × channel ÷ 8`。160 MHzなら 1ch = 20、2ch 
 
 ## 未決
 
-- **間欠的に1 channelが定数0になる現象** `—`。準備順序を入れ替えて再現するか(`p4-ledc-parlio-attach-order`)
+- ~~**間欠的に1 channelが定数0になる現象**~~ → **[E083](../e083_p4_attach_order/README.ja.md) で解決**(準備順序が原因)
 - **16 channel** `—`。`PARLIO_PINS`が8本しかない
 - 8 channelのburst窓の正確な境界 `—`。131 KiBは通り1 MiBは落ちたが、その間は未測定
 - 外部信号での同じ検証 `—`
