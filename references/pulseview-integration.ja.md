@@ -70,6 +70,8 @@ sigrok-cli --driver "beaglelogic:conn=tcp-raw/127.0.0.1/5556" \
   --channels P8_45,P8_46 --config samplerate=80m --samples 4000000 -o out.sr -O srzip
 ```
 
+**選べるrateの一覧は[sample rateの選び方](p4-sample-rate-selection.ja.md)にまとめた**(clockは1 MHz刻みでも10 MHz刻みでも全部出る。上限はchannel数で決まり、8ch 23 / 4ch 46 / 2ch 96 Msps。driver側のlistは100 MHzまで)。
+
 **rateは80 MHzを既定にする** — **driverのsamplerate listが100 MHzまで**なので、その内側で切りのよい値を採る。
 
 > **訂正(2026-09-13)**: ここに「PARLIOは160 MHz ÷ 整数」と書いていたが**誤り**。PARLIO RXの分周器は **integer(1〜256)+ numerator / denominatorの分数分周**で(`parlio_ll_rx_set_clock_div()`)、**160 MHz ÷ 整数に限られない**。[E078](../experiments/e078_p4_continuous_stream/README.ja.md) / [E084](../experiments/e084_p4_transfer_tuning/README.ja.md)が86 / 90 / 94 MHzで周期860 / 900 / 940をちょうど出しているのが実証で、整数分周なら80 MHzへ丸められて800になっていたはず。**driverのlist上限(100 MHz)が効く制約であって、PARLIO側ではない。**

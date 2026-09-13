@@ -101,6 +101,7 @@
 | **E083** | [E075](e075_p4_width_sample_accuracy/README.ja.md)が観測した「`overflow=0`のまま1 channelだけduty 0.00%」は`create_receiver()`と`configure_pwm()`の順序で説明できるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [E075](e075_p4_width_sample_accuracy/README.ja.md)の未決 | **完了 — 順序が原因。receiver先はcold bootの29%(24回中7回)で1 channel死亡、LEDC先は30回で0件。再現はhard reset直後の1回だけ**([e083_p4_attach_order/](e083_p4_attach_order/README.ja.md)) |
 | **E084** | capture と同時に降ろすとき、TX FIFO / 1転送長 / host の URB をどう選ぶと排出が最大になるか。釣り合い点はどこまで上がるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E078](e078_p4_continuous_stream/README.ja.md)の釣り合い点、[E071](e071_p4_hs_vendor_fifo_depth/README.ja.md) | **完了 — FIFO 8192 / 転送 8192が最良。連続streamingは86 → 96 Msps。host側のURBは大きさもdepthも効かない。n=3での「32768が最良」と「飽和させて排出を測る」はどちらも訂正済み**([e084_p4_transfer_tuning/](e084_p4_transfer_tuning/README.ja.md)) |
 | **E085** | 1転送の長さを変えたときの所要は`S / R + T`で表せるか。`R`(線上の漸近rate)と`T`(1転送あたりの死に時間)はいくらか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [E084](e084_p4_transfer_tuning/README.ja.md)の2点外挿、[CR-7](../references/espusbdevice-change-requests.ja.md) / [HR-1](../references/espusbhost-change-requests.ja.md) | **完了 — `S/R + T`で表せる(残差1.0%)。`R`=24.64 MB/s、`T`=21.7 us。転送長を無限に伸ばしても24.4 MB/sで36.4には届かない**([e085_p4_transfer_size_model/](e085_p4_transfer_size_model/README.ja.md)) |
+| **E086** | 8 channelで継ぎ目なく流せるsample rateの上限はいくらか。FX2(fx2lafw、8ch公称24 Msps)の置き換えになるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E084](e084_p4_transfer_tuning/README.ja.md)は2chのみ、[sample rateの選び方](../references/p4-sample-rate-selection.ja.md) | **完了 — 8chは23 Mspsまで、20 Mspsなら余裕。24 Msps(FX2の公称)は積む。上限はchannel数ではなくbyte rate(23〜24 MB/s)で決まる。pinは飛び飛び・順不同で自由**([e086_p4_8ch_stream/](e086_p4_8ch_stream/README.ja.md)) |
 | **E079** | host 側(PC)が bulk IN の URB を複数同時に投げると、device を変えずに帯域は伸びるか | **一時・配線なし**(同上) | [改修の着手順](../references/usb-library-change-plan.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-7 | **中止 — 同じ測定がライブラリ側で先に行われた。depth 2 で飽和(1=18.64 / 2=22.68 / 8=22.87 MB/s)、約23 MB/sはdevice側の天井**([e079_p4_host_urb_depth/](e079_p4_host_urb_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
@@ -255,6 +256,25 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E086 ESP32-P4: 8 channel の連続 streaming — 完了 2026-09-13
+
+全文: [e086_p4_8ch_stream/README.ja.md](e086_p4_8ch_stream/README.ja.md)。[E084](e084_p4_transfer_tuning/README.ja.md)の firmware を `LANE_COUNT` で幅を選べる形にし、8 / 4 channel を測った。TX FIFO / 1 転送は 8192。
+
+**事実**
+
+1. **8ch は 23 Msps まで継ぎ目なく流せる**(64 MiB で占有 36〜43 KB、全 lane の周期一致)。**20 Msps なら余裕**(占有 46〜189 KB)。**24 Msps は積む**(占有 1.67〜1.95 MB)。
+2. **4ch は 46 Msps まで**(48 は際どい、50 は積む)。
+3. **上限は byte rate で決まり channel 数に依らない** — 8ch 23 / 4ch 46 / 2ch 96 Msps はすべて **23〜24 MB/s**。見積もりは `rate × channel ÷ 8 ≤ 23 MB/s`。
+4. **8ch では host 側の展開が要らない。** PARLIO の packed(1 sample = 1 byte、bit n = lane n)が **sigrok の `unitsize=1` そのもの**。**2ch より host が軽い。**
+5. **pin は自由。** `9,2,7,4,12,6,20,8`(飛び飛び・順不同・元の block 外を含む)で 8 lane すべて正しく取れ、duty も lane 順どおり。**連番である必要も昇順である必要もない。**
+6. **FX2 との比較**: 公称 24 Msps には 1 Msps 届かないが、**実用域(16〜20 Msps)では置き換えになる**。少ない channel なら遥かに上(2ch で 96 Msps)。
+
+**方法の誤り(観測)**: 4ch の初回で周期が `0/501` と壊れたのは **host 側 `unpack()` が 8ch と 2ch しか扱えず、4ch を 2 bit/sample として展開していた**ため。`lanes` から導く形に直して 400/400 になった。**幅を変えたら host 側の展開も変わる。**
+
+**候補**: **FX2 置き換えは 8ch 20 Msps 常用・23 上限** / **8ch を既定の形に**(host が素通し)/ **pin は空いているところへ自由に**。
+
+**未決**: 24 Msps を通す方法 `—`([HR-1](../references/espusbhost-change-requests.ja.md) 待ち)/ 16 channel `—` / 外部信号 `—`。
 
 ### E085 ESP32-P4: 1 転送あたりの死に時間と線上の漸近 rate — 完了 2026-09-13
 
