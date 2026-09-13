@@ -37,7 +37,7 @@ pwm-1: 10.0 μs
 
 | やること | 待っているもの | 備考 |
 |---|---|---|
-| **[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md)** DWC2 の TX FIFO を 2 packet に | **リグの空き** | [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 側が host 役を使用中(board 消失で挿し直し待ち)。**ビルド済み、焼いて回すだけ** |
+| **[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md)** DWC2 の TX FIFO を 2 packet に | **完了** | 最大は1 packet / 2 packetとも25.575 MB/s。**hardware FIFO段数は天井原因ではなかった** |
 | **RVSWD** | **CH32 の配線** | 挿す先は確定済み([ピンの当たりを付ける](pin-discovery.ja.md))。**電源と GND だけ人が合わせれば、あとは探索で当てられる**設計まで書いてある |
 | **RVSWD / SWIO の decoder** | **CH32 の配線**(検証用の実信号) | libsigrokdecode(Python)で書く。**目標 1 と同じ材料** |
 | **[HR-3](espusbhost-change-requests.ja.md)**(HID 1,024 B) | **持ち主の判断** | keyboard / mouse / CCID と共有の経路なので、帯域のためだけに触る話ではない。**先方から提示済み** |
@@ -50,13 +50,12 @@ pwm-1: 10.0 μs
 
 | | 実験 | 何が分かるか | 所要 |
 |---|---|---|---|
-| 1 | **[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md)** | **24 MB/s の天井が TinyUSB の FIFO 割り当て既定か、DMA の詰め直しか。** 動けば [CR-10](espusbdevice-change-requests.ja.md) を実測付きで出せる | 10 分 |
-| 2 | **depth 8 以上**([E089](../experiments/e089_p4_host_in_queue/README.ja.md) の未決) | depth 4 で頭打ちに見えるのが本当か | 5 分 |
-| 3 | **16 KiB で遅くなる理由**([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md)) | FIFO 32 KiB 側の問題か転送長そのものか。**FIFO と転送長を独立に振る** | 20 分 |
-| 4 | **97 / 99 MHz だけ滞る現象**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md)) | 未特定の観測。実用上は 96 以下で避けられる | 30 分 |
-| 5 | **CDC / HID でも同じ天井か**([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md)) | 24 MB/s が bulk 固有か、device 側全体の性質か | 30 分 |
+| 1 | **depth 8 以上**([E089](../experiments/e089_p4_host_in_queue/README.ja.md) の未決) | depth 4 で頭打ちに見えるのが本当か | 5 分 |
+| 2 | **16 KiB で遅くなる理由**([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md)) | FIFO 32 KiB 側の問題か転送長そのものか。**FIFO と転送長を独立に振る** | 20 分 |
+| 3 | **97 / 99 MHz だけ滞る現象**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md)) | 未特定の観測。実用上は 96 以下で避けられる | 30 分 |
+| 4 | **CDC / HID でも同じ天井か**([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md)) | 24 MB/s が bulk 固有か、device 側全体の性質か | 30 分 |
 
-**1 と 2 は E090 の firmware でそのまま回せる。** 3 以降は build_opt.h を振るだけ。
+**1 は E090 の firmware でそのまま回せる。** 2 以降は build_opt.h を振るだけ。
 
 ## 4. 配線が要るもの
 
