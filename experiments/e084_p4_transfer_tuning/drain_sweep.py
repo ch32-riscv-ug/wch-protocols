@@ -14,6 +14,7 @@ being measured. So the host must not be the slow end here.
 import argparse
 import time
 
+import numpy
 import serial
 import usb1
 
@@ -33,31 +34,28 @@ def expect(port: serial.Serial, prefix: bytes, timeout: float = 60.0) -> str:
     raise TimeoutError(f"no line starting with {prefix!r}")
 
 
-def unpack(packed: bytes, lanes: int) -> bytes:
-    per_byte = 8 // lanes
-    mask = (1 << lanes) - 1
-    table = bytes(
-        bytearray((value >> (lanes * index)) & mask for value in range(256) for index in range(per_byte))
-    )
-    out = bytearray(len(packed) * per_byte)
-    for index, value in enumerate(packed):
-        base = value * per_byte
-        out[index * per_byte : (index + 1) * per_byte] = table[base : base + per_byte]
-    return bytes(out)
+def unpack(packed: bytes, lanes: int) -> numpy.ndarray:
+    """Two bits per sample, four samples per byte, LSB first.
+
+    numpy rather than a per-byte table lookup: the verify slices are megabytes
+    and a Python loop over them costs more than the capture it is checking.
+    """
+    data = numpy.frombuffer(packed, dtype=numpy.uint8)
+    out = numpy.empty(data.size * 4, dtype=numpy.uint8)
+    out[0::4] = data & 3
+    out[1::4] = (data >> 2) & 3
+    out[2::4] = (data >> 4) & 3
+    out[3::4] = (data >> 6) & 3
+    return out
 
 
-def rising_period(samples: bytes, bit: int) -> tuple[int, float, int, int]:
-    edges = []
-    previous = (samples[0] >> bit) & 1
-    for index in range(1, len(samples)):
-        current = (samples[index] >> bit) & 1
-        if current and not previous:
-            edges.append(index)
-        previous = current
-    gaps = [b - a for a, b in zip(edges, edges[1:])]
-    if not gaps:
-        return (0, 0.0, 0, len(edges))
-    return (min(gaps), sum(gaps) / len(gaps), max(gaps), len(edges))
+def rising_period(samples: numpy.ndarray, bit: int) -> tuple[int, float, int, int]:
+    lane = (samples >> bit) & 1
+    edges = numpy.flatnonzero((lane[1:] == 1) & (lane[:-1] == 0)) + 1
+    if edges.size < 3:
+        return (0, 0.0, 0, int(edges.size))
+    gaps = numpy.diff(edges)
+    return (int(gaps.min()), float(gaps.mean()), int(gaps.max()), int(edges.size))
 
 
 class StreamReader:
