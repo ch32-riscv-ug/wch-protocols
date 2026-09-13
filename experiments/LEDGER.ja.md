@@ -102,6 +102,7 @@
 | **E084** | capture と同時に降ろすとき、TX FIFO / 1転送長 / host の URB をどう選ぶと排出が最大になるか。釣り合い点はどこまで上がるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E078](e078_p4_continuous_stream/README.ja.md)の釣り合い点、[E071](e071_p4_hs_vendor_fifo_depth/README.ja.md) | **完了 — FIFO 8192 / 転送 8192が最良。連続streamingは86 → 96 Msps。host側のURBは大きさもdepthも効かない。n=3での「32768が最良」と「飽和させて排出を測る」はどちらも訂正済み**([e084_p4_transfer_tuning/](e084_p4_transfer_tuning/README.ja.md)) |
 | **E085** | 1転送の長さを変えたときの所要は`S / R + T`で表せるか。`R`(線上の漸近rate)と`T`(1転送あたりの死に時間)はいくらか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [E084](e084_p4_transfer_tuning/README.ja.md)の2点外挿、[CR-7](../references/espusbdevice-change-requests.ja.md) / [HR-1](../references/espusbhost-change-requests.ja.md) | **完了 — `S/R + T`で表せる(残差1.0%)。`R`=24.64 MB/s、`T`=21.7 us。転送長を無限に伸ばしても24.4 MB/sで36.4には届かない**([e085_p4_transfer_size_model/](e085_p4_transfer_size_model/README.ja.md)) |
 | **E086** | 8 channelで継ぎ目なく流せるsample rateの上限はいくらか。FX2(fx2lafw、8ch公称24 Msps)の置き換えになるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E084](e084_p4_transfer_tuning/README.ja.md)は2chのみ、[sample rateの選び方](../references/p4-sample-rate-selection.ja.md) | **完了 — 8chは23 Mspsまで、20 Mspsなら余裕。24 Msps(FX2の公称)は積む。上限はchannel数ではなくbyte rate(23〜24 MB/s)で決まる。pinは飛び飛び・順不同で自由**([e086_p4_8ch_stream/](e086_p4_8ch_stream/README.ja.md)) |
+| **E087** | WT9932P4-TINYでターゲットへ適当に挿してよいピンはどれか。pull-upとpull-downを同時に掛けると中間電圧になるか | **一時・配線なし**(`esp32-p4-30eda0e31478` = WT9932P4-TINY) | [ピンの当たりを付ける](../references/pin-discovery.ja.md) | **完了 — ヘッダ上34本がfree、推奨16本(IO16-23/IO26-33)は駆動も健全。両pullで1.46〜1.49 V。IO24/IO25(J3のUSB)に触るとconsoleが落ちる**([e087_p4_pin_survey/](e087_p4_pin_survey/README.ja.md)) |
 | **E079** | host 側(PC)が bulk IN の URB を複数同時に投げると、device を変えずに帯域は伸びるか | **一時・配線なし**(同上) | [改修の着手順](../references/usb-library-change-plan.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-7 | **中止 — 同じ測定がライブラリ側で先に行われた。depth 2 で飽和(1=18.64 / 2=22.68 / 8=22.87 MB/s)、約23 MB/sはdevice側の天井**([e079_p4_host_urb_depth/](e079_p4_host_urb_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
@@ -256,6 +257,25 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E087 ESP32-P4: 使えるピンと pull 二重掛け — 完了 2026-09-13
+
+全文: [e087_p4_pin_survey/README.ja.md](e087_p4_pin_survey/README.ja.md)。**駆動せず内部 pull だけで**空きを調べ、中間電圧は**同じパッドを P4 自身の ADC で**測った(ADC1 = GPIO 16〜23 なので配線不要)。
+
+**事実**
+
+1. **ヘッダ上の 34 本が free**(pull に追従)。握られていたのは **IO51 だけ**。
+2. **チップは GPIO を 1 本も予約しない** — `MSPI_IOMUX_PIN_NUM_* = INVALID`(flash / PSRAM)、`USBPHY_*_NUM = -1`(USB)。**使用中は基板の都合だけ。**
+3. **推奨 16 本(IO16〜23 / IO26〜33)は駆動しても健全**(high=1 / low=0、競合なし)。**IO16〜23 は ADC1 ch0〜7 でもある。**
+4. **`pull-up + pull-down` は 1460〜1487 mV。** 3.3/2 = 1.65 V ではない(pull-down がやや強い)。ピン間のばらつきは 27 mV で、**0 / 1.47 / 3.28 V の 3 値は十分離れている**。
+5. **floating の読みは 1354〜2424 mV と不定。** 「未接続」を floating で判定してはいけない。
+6. **USB が取るのは IO24 / IO25 の 2 本だけ**(J3 = full-speed)。**J4(high-speed)は専用パッドで GPIO を取らない。**
+
+**事故(観測)**: 最初の版は GPIO 0〜54 を無差別に舐める作りで、**IO24 / IO25(J3 の USB)を引いて console を落とし、物理的な挿し直しが必要になった**。範囲指定を必須にし、1 ピンごとに flush し、駆動も pull も触らない `L`(レベルのみ)を足した。**データシートを読む前に全ピンを舐めない。**
+
+**候補**: **IO16〜23 + IO26〜33 の 16 本を既定の作業領域に** / **IO24 / IO25 は禁止** / **IO39〜48 は LDO_VO4(1.8 V ありうる)なので避ける**。
+
+**未決**: 中間電圧が 1.65 V でない理由 `—` / CH32 を繋いだときの分圧 `—` / IO39〜48 を 3.3 V で使えるか `—` / strapping ピンを起動後に使えるか `—`。
 
 ### E086 ESP32-P4: 8 channel の連続 streaming — 完了 2026-09-13
 
