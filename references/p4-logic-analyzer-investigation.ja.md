@@ -255,6 +255,8 @@ trigger能力は対応条件だけでなく、tier・消費channel・channel幅�
 
 圧縮は常に有効にしない。各blockにencoding、raw sample数、encoded byte数を持たせ、圧縮後がraw以上ならraw blockを保存する方式を基準候補とする。これなら最悪入力でも容量を大きく失わない。
 
+**PARLIO RXのsample clockは160 MHz(`PLL_F160M`)の分数分周**である — integer 1〜256 に numerator / denominator が付くので、**160 ÷ 整数に限られない**(86 / 90 / 94 MHzが周期860 / 900 / 940でちょうど取れることで実証済み。[E084](../experiments/e084_p4_transfer_tuning/README.ja.md))。source は他に XTAL 40 MHz / RC_FAST / 外部clock入力も選べる。**上限は源の160 MHz。**
+
 **内部信号源を使うときは、信号源を先にattachしてからPARLIO receiverを作ること**([E083](../experiments/e083_p4_attach_order/README.ja.md))。逆順にすると**cold bootの29%で1 channelが無音になる**(`overflow`は0のまま)。**同一boot内では再現しない**ので、「再実行したら直った」は直っていない。
 
 hardware capture qualificationはこの表の中で唯一**CPUを使わない**手段である。[E040](../experiments/e040_p4_parlio_level_open_frame/README.ja.md)で、level delimiterのgateがactiveな区間のsampleだけがDMAへ渡ることを実測した(gate duty 12.5%に対して回収byte rateはraw byte rateの12%)。入力の性質に依存せず最悪時膨張も無い代わりに、qualifier線を1本消費し、gate外の情報は残らない。同じPSRAM容量でduty分だけ長い時間を覆え、spool帯域([E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)の約98 MB/s)も同じ比率で緩む。現ベンチのdownloadがUART上限に縛られている(下の「後段」)ことを考えると、深度を伸ばすより効く手段である。

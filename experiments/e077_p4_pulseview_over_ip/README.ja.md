@@ -152,7 +152,7 @@ sent 4000000 bytes
 ## 候補
 
 - **PulseView から使うときは `--samples` を server の batch 以下にする。** 超えると継ぎ目が入る
-- **rate は 80 MHz を既定にする。** PARLIO は 160 MHz ÷ 整数、driver の list は 100 MHz までで、**両方が正確に表せる最大が 80 MHz**
+- **rate は 80 MHz を既定にする。** driver の samplerate list が 100 MHz までなので、その内側で切りのよい値を採る(**「PARLIO は 160 MHz ÷ 整数」と書いていたのは誤り。下記訂正**)
 - **BeagleLogic を演じる server は `close` で socket を閉じない**
 
 ## 未決
@@ -167,3 +167,11 @@ sent 4000000 bytes
 
 - [PulseView / sigrok 連携](../../references/pulseview-integration.ja.md) — **経路Bの「未確認」が埋まった**。protocol の実体と2つの落とし穴を反映する
 - [P4 logic analyzer 予備調査](../../references/p4-logic-analyzer-investigation.ja.md) — host 側の出口が `.sr` に加えて **PulseView 直結**になった
+
+## 訂正 — 「PARLIO は 160 MHz ÷ 整数」は誤り(2026-09-13)
+
+候補に「PARLIO は 160 MHz ÷ 整数なので 80 MHz が上限」と書いたが、**PARLIO RX の分周器は integer(1〜256)+ numerator / denominator の分数分周**である(`parlio_ll_rx_set_clock_div()` が `hal_utils_clk_div_t` の 3 フィールドを書く。source の既定は `PLL_F160M` = 160 MHz)。
+
+**実証**: [E078](../e078_p4_continuous_stream/README.ja.md) / [E084](../e084_p4_transfer_tuning/README.ja.md) が **86 / 90 / 94 MHz で周期 860 / 900 / 940 をちょうど**出している。整数分周なら 80 MHz へ丸められて周期 800 になっていたはずで、そうなっていない。
+
+**80 MHz を選ぶ理由は driver 側の list 上限(100 MHz)だけ**であり、PARLIO 側の制約ではない。
