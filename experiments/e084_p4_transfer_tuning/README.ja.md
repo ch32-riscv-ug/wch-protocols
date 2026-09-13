@@ -184,3 +184,48 @@ board(単体、内部 PWM を信号源とする。外部配線なし)
 **2 は firmware の作りが悪い。** 送出 task が **10 回連続で timeout したら諦める**よう直した(`kMaxIdleTimeouts`)。これで host が消えても firmware は console へ戻る。
 
 **3 は手順の誤り。** [E078](../e078_p4_continuous_stream/README.ja.md) の教訓は「**書き込み(= chip reset)の前に HS device を detach する**」だったが、**firmware が固まったときの reset も同じ**である。しかも**失敗した reset を繰り返し叩くと console 自体が落ちる**。**1 回失敗したら手を止めること。**
+
+## host 役の 36.4 MB/s との差はどこか(既存データからの分析)
+
+**同じ P4 が host 役では 36.4 MB/s 出る**のに、device 役は 24 MB/s 前後で止まる。**転送長を 2 点測ってあるので、そこから内訳を出せる。**
+
+1 転送 S byte の所要を「線上の時間 + 固定の死に時間」と置く。
+
+```
+period(S) = S / R + T          R = 線上の実効 rate、T = 1 転送あたりの死に時間
+```
+
+**2 つの独立した測定が同じ答えを出す。**
+
+| 出典 | S=4096 の period | S=8192 の period | **R** | **T** |
+|---|---:|---:|---:|---:|
+| 本実験(n=9、capture 同時) | 186.3 us | 341.8 us | **26.34 MB/s** | **30.8 us** |
+| ライブラリ側(n=9、単体) | 193.9 us | 359.1 us | **24.79 MB/s** | **28.7 us** |
+
+### 分かること
+
+1. **死に時間は 1 転送あたり約 30 us。** これが 4096 → 8192 の伸び(+9%)の正体で、**転送を長くするほど薄まる**。
+2. **しかし死に時間を完全に消しても 26 MB/s にしかならない。** `R` が漸近線である。**36.4 には届かない。** → **「完了割り込み → task → 再 arm」の往復([CR-7](../../references/espusbdevice-change-requests.ja.md))を潰しても、残りは説明できない。**
+3. **`R` を microframe あたりの transaction 数に直すと 6.0〜6.4**(HS が許すのは 13)。**host 役の 36.4 MB/s は 8.9。** device 役は**バスの半分しか使えていない**。
+
+### なぜ半分なのか — 比較が対称ではない
+
+**36.4 MB/s は P4 が *host* として *送信* した値**である([EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) の `vendorWriteQueueBegin`、8 KB × depth 2)。
+
+- **host は自分でバスを組む。** 送りたいときに OUT transaction を並べられる。待つ相手がいない
+- **device は訊かれるまで送れない。** IN token が来て初めて 1 packet 返す。**microframe あたり何回訊かれるかは PC の host controller が決める**
+
+**こちらで確かめたのは「host 側の *software* は律速ではない」ところまで**である([E084](README.ja.md): URB を 64 KiB〜1 MiB、depth 2〜4 のどれにしても 23.5〜23.8)。**URB の中には何百もの transaction が入っているので、software を変えても token の出方は変わらない。** つまり残る候補は 2 つ。
+
+| 候補 | 内容 | 切り分け方 |
+|---|---|---|
+| **(A) device 側の供給限界** | DWC2 の device 側 DMA / FIFO が 1 microframe に 6 packet ぶんしか出せない | host を替えて同じ値なら (A) |
+| **(B) PC 側 host controller の token 発行** | xHCI が bulk IN に振る transaction 数 | host を替えて伸びれば (B) |
+
+**usbip と native で同じ**([E081](../e081_p4_winusb_bind/README.ja.md): 21.2 対 21.97)なので、**PC 側の software 経路の違いでは動かない**ことは分かっている。**(A) と (B) を分けるには「訊く側」をこちらで作るしかない** — **P4 を host にして IN を async queue で回す**、つまり [HR-1](../../references/espusbhost-change-requests.ja.md) である。
+
+**[E072](../e072_p4_hs_device_to_host_native/README.ja.md) が 5.6 MB/s で止まったのは、その host 側が 512 B × depth 1 でしか読めなかったから**で、あれでは (A)/(B) を分けられない。**HR-1 が入って初めて、device 役の天井が本当に device 側にあるのかが言える。**
+
+### 次に測ること
+
+**転送長をもう 2 点(2048 / 16384)取って、上の模型を確かめる。** 2 点からの外挿なので、**`R` と `T` が本当に定数なのかは未検証**である。→ [E085](../e085_p4_transfer_size_model/README.ja.md)

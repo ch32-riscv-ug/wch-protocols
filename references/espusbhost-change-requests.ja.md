@@ -84,11 +84,28 @@ bool vendorReadQueueBegin(size_t depth, size_t bufferBytes, uint8_t address = ..
 
 となっていて、**「P4 同士で HS の実力を測る」ことがまだできない**。HR-1 が入れば、PC を一切介さずに device 側の天井を出せる。
 
+### 動機が戻ってきた(2026-09-13 追記その 2)
+
+**[E084](../experiments/e084_p4_transfer_tuning/README.ja.md) の分析で、HR-1 にしか答えられない問いが立った。**
+
+転送長 2 点から内訳を出すと、**線上の漸近 rate は 26.3 MB/s、1 転送あたりの死に時間は 30.8 us**。つまり
+
+- **死に時間を完全に消しても 26 MB/s** で、**host 役の 36.4 MB/s には届かない**([CR-7](espusbdevice-change-requests.ja.md) を入れても説明できない)
+- **26.3 MB/s は microframe あたり 6.4 transaction**(HS が許すのは 13、host 役は 8.9)。**device 役はバスの半分しか使えていない**
+
+残る候補は **(A) device 側の供給限界** と **(B) PC の host controller が bulk IN に振る token 数**の 2 つ。**host 側 software は既に無関係と分かっている**(URB を 64 KiB〜1 MiB、depth 2〜4 のどれにしても動かない。usbip と native でも同じ)。
+
+**(A) と (B) を分けるには「訊く側」をこちらで作るしかない** — **P4 を host にして bulk IN を async queue で回す**、まさに HR-1 である。[E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) が 5.6 MB/s で止まったのは host 側が 512 B × depth 1 でしか読めなかったためで、**あの構成では切り分けにならない**。
+
+**「P4 を host として使うときに要る」から「device 役の天井が device 側にあるのかを言うために要る」へ、優先度が戻った。**
+
 ### 測定の動機は消えた(2026-09-13 追記)
 
 HR-1 を立てた当初の動機は **「device 側の天井を測りたい」**だったが、**PC 側で測れてしまった**。`libusb` の async API で URB depth を振った結果は **1 = 18.64 / 2 = 22.68 / 4 = 22.69 / 8 = 22.87 MB/s**([device 側の回答](espusbdevice-change-requests.ja.md))。**depth 2 で飽和するので、約 23 MB/s は device 側の天井**である。
 
 したがって HR-1 は **「測定のために要る」から「P4 を host として使うときに要る」**へ性格が変わった。**実需が立つまで依頼しない。**
+
+> **この判断は上の「追記その 2」で覆った。** depth を振って分かったのは「host 側 *software* は律速ではない」ことであり、**「device 側が天井」までは言えていなかった**。バス上の token の出方は software では動かせない。
 
 なお **P4 host 相手の 5.6 MB/s**([E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md))は、device 側が 1 転送 512 byte だった頃の値である。**device 側が 1 転送 4 KiB を送るようになったいま、同じ測定をやり直す価値がある** — host 側の 512 B × depth 1 が本当に律速なのかは、**再測定するまで分からない**。
 
