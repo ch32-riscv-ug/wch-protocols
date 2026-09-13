@@ -1,6 +1,8 @@
 # PulseView / sigrok から P4 の capture を取る経路
 
-状態: **reference**(2026-09-12。**経路Bは[E077](../experiments/e077_p4_pulseview_over_ip/README.ja.md)で実機まで通した**。手元のlibsigrok 0.5.2で実地確認した部分と、未確認の部分を分けて書く)
+状態: **reference**(2026-09-13。**経路Bは[E077](../experiments/e077_p4_pulseview_over_ip/README.ja.md)で実機まで通し、[E080](../experiments/e080_p4_pulseview_gapless/README.ja.md)で継ぎ目を消した。保存用の経路Dは[E082](../experiments/e082_p4_spool_then_convert/README.ja.md)**。手元のlibsigrok 0.5.2で実地確認した部分と、未確認の部分を分けて書く)
+
+**用途で使い分ける** — **PulseViewでliveに見るなら経路B**(1回のcaptureとして継ぎ目なく、86〜90 Mspsまで)、**`.sr`に残すなら経路D**(packedのまま一時ファイルへ受けて、終わってから変換)。**liveで`srzip`へ流し込むと受け側が律速になり、長いcaptureでsampleを落とす**([E080](../experiments/e080_p4_pulseview_gapless/README.ja.md))。
 
 目的は「ESP32-P4で取ったlogic captureを、**PulseViewから直接**、または`.sr`ファイル経由で見られるようにする」。経路は3つあり、**必要な実装量とhost側の前提が違う**。
 

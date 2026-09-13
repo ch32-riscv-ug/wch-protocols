@@ -2,7 +2,16 @@
 
 状態: **全件対応済み**(2026-09-13。CR-1〜CR-9 すべてライブラリ側で実装・実機確認まで完了との回答。対象は 2.2.0、回答の全文は先方の `docs/CHANGE_REQUESTS.ja.md`)
 
-> **以下の「結果」は、こちらの台(`esp32-p4-30eda0e31478`)で先方が測った値**である。**こちらの harness での追試はまだしていない**([§3.1.2](../experiments/README.ja.md))。追試するのは [E078](../experiments/e078_p4_continuous_stream/README.ja.md)(capture と同時に降ろす)だけで、それ以外は重複しないので再実行しない。
+> **以下の「結果」は、こちらの台(`esp32-p4-30eda0e31478`)で先方が測った値**である([§3.1.2](../experiments/README.ja.md))。
+>
+> **こちらで追試したもの**:
+>
+> | | こちらでの確認 |
+> |---|---|
+> | **CR-1**(MS OS 2.0 の flat) | **[E081](../experiments/e081_p4_winusb_bind/README.ja.md) で対照実験。flat = `Status OK` / `Service WinUSB`、subsets = Code 28。** 汚れた台でも新しい serial なら当たる |
+> | **CR-4 / CR-7**(FIFO と転送長) | **[E084](../experiments/e084_p4_transfer_tuning/README.ja.md) で capture 同居のまま 21.99 → 23.97 MB/s(n=9)。** 8192/8192 が最良で、32768 は劣る |
+> | **CR-9**(`waitWritable()`) | **[E078](../experiments/e078_p4_continuous_stream/README.ja.md) で `stalls` 全条件 0、1 転送 1 block。** 効果は単体の MB/s ではなく **capture との同居**に出た |
+> | CR-2 / CR-3 / CR-5 / CR-6 / CR-8 | **未追試**(先方の測定と重複するため)
 
 このファイルは、[E069](../experiments/e069_p4_hs_vendor_bulk_rate/README.ja.md)〜[E077](../experiments/e077_p4_pulseview_over_ip/README.ja.md) で ESP32-P4 の USB 2.0 HS を実測する過程で見つかった、`EspUsbDevice` 側の改修候補をまとめたもの。**すぐの対応を前提にしない**。優先度と、こちらで代替できるかを併記する。
 

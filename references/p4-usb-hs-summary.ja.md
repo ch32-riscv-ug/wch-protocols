@@ -1,6 +1,8 @@
 # ESP32-P4 の USB 2.0 HS と 2 channel capture — 到達点まとめ
 
-状態: **まとめ**(2026-09-12。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E076](../experiments/e076_p4_capture_hs_download/README.ja.md) の 14 実験の結論を 1 枚にした索引)
+状態: **まとめ**(2026-09-13。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E085](../experiments/e085_p4_transfer_size_model/README.ja.md) の結論を 1 枚にした索引)
+
+**§0 が現在の値。§1 以降は 2.2.0 時点の記録**で、数字はそのまま残してある(どこから何が変わったかが追えるように)。
 
 各実験の全文は `experiments/e0xx_*/README.ja.md`、番号順の索引は [LEDGER](../experiments/LEDGER.ja.md)。
 
@@ -10,32 +12,50 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 **過去の P4 実験(E014〜E061)は別個体 `esp32-p4-e8f60ae0aa24`**(flash 32 MiB)で、値をそのまま引き継がない。
 
-## 0. 2026-09-13 の更新 — 天井は約 23 MB/s だった
+**ライブラリは [EspUsbDevice](https://github.com/tanakamasayuki/EspUsbDevice) の working tree(commit `7a6d9dc`、`library.properties` は 2.2.0 のまま)。** [CR-1〜CR-9](espusbdevice-change-requests.ja.md) が入っているが**まだ release されていない**ので、`sketch.yaml` は実パスで木を指している。
 
-**以下の §1 の数字は 2.2.0(旧既定)のもの**である。[改修依頼](espusbdevice-change-requests.ja.md) CR-1〜CR-9 が全件対応され、**vendor bulk の天井は約 23 MB/s、実用既定で約 21 MB/s** になった(**ライブラリ側の実測。こちらの追試は未了**)。
+> **2026-09-13 現在、両 board の console(USB-Serial-JTAG)が usbip 越しに応答せず、物理的な挿し直し待ち。** OTG HS 側と board 2 の個体そのものは無事。
 
-**効いていたのは in-flight 数ではなく 1 転送あたりの packet 数**(`CFG_TUD_VENDOR_TX_EPSIZE`、旧既定は bulk 1 packet)。512 byte ごとに完了割り込み → event queue → usbd task → 再 arm の往復が入り、**線上 46 us に対し往復 52 us**。§1 の「1 microframe あたり 2.4 transaction」の正体である。
+## 0. いま出る値(2026-09-13)
 
-| | 旧既定(§1 の値) | **新既定** |
+| 経路 | **実測** | driver | 出典 |
+|---|---:|---|---|
+| **vendor bulk**(TX FIFO 8 KiB / 1 転送 8 KiB、n=9) | **23.97 MB/s** | **WinUSB(当たる)** | [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) |
+| vendor bulk(FIFO 4 KiB / 転送 4 KiB = P4 の既定) | 21.99 MB/s | 同上 | 同上 |
+| vendor bulk(**usbip なし、Windows 直**) | **21.2 MB/s**(旧既定での測定) | WinUSB | [E081](../experiments/e081_p4_winusb_bind/README.ja.md) |
+| **HID(512 B endpoint)** | **4.03 MB/s** | **不要** | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) / CR-8 |
+| USB-Serial-JTAG(FS CDC) | 0.72〜0.80 MB/s | 不要 | [E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md) |
+| (参考)**P4 が host 役で送信**、async queue depth 2 | **36.4 MB/s** | — | EspUsbHost `docs/usb-host-advanced.md` |
+| (参考)HS bulk の理論上限 | 53.2 MB/s | — | 13 transaction × 512 B × 8,000/s |
+
+**2 channel の連続 streaming は 90 Msps**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md)。FIFO 32 KiB で測った値で、**8 KiB での再測は未了**)。**batch なら 160 Msps**([E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md))。
+
+### 何が変わったか(2.2.0 の既定 → 現在)
+
+| | 2.2.0 の既定 | **現在** | 出典 |
+|---|---:|---:|---|
+| vendor bulk | 8.80〜10.74 MB/s | **23.97 MB/s** | [CR-4 / CR-7](espusbdevice-change-requests.ja.md) |
+| **Windows で WinUSB** | **当たらない**(Code 28) | **当たる** | [CR-1](espusbdevice-change-requests.ja.md) / [E081](../experiments/e081_p4_winusb_bind/README.ja.md) |
+| 送出の CPU | 4 MiB あたり 2.5〜7 万回の spin | **`stalls` 0、1 転送 1 block** | [CR-9](espusbdevice-change-requests.ja.md) / [E078](../experiments/e078_p4_continuous_stream/README.ja.md) |
+| 4 MiB の download | 5.8 秒(console)→ 0.48 秒 | **約 0.18 秒** | [E076](../experiments/e076_p4_capture_hs_download/README.ja.md) → [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) |
+
+**効いたのは in-flight 数ではなく 1 転送あたりの packet 数**(`CFG_TUD_VENDOR_TX_EPSIZE`、旧既定は bulk 1 packet)。512 byte ごとに「完了割り込み → event queue → usbd task → 再 arm」の往復が入っていた。
+
+### 天井の内訳 — host 役の 36.4 MB/s との差
+
+転送長 2 点から `period(S) = S/R + T` を解くと、**こちらの測定とライブラリ側の独立した測定が同じ答え**を出す。
+
+| | **R**(線上の漸近 rate) | **T**(1 転送の死に時間) |
 |---|---:|---:|
-| vendor bulk | 8.80〜10.74 MB/s | **約 21(飽和 23)MB/s** |
-| HID(512 B) | 4.14 MB/s | 4.03 MB/s(**ただし host が URB を 8 本 in-flight にして初めて出る**) |
-| **Windows で WinUSB** | **当たらない**(§3) | **当たる**([E081](../experiments/e081_p4_winusb_bind/README.ja.md) でこちらの台でも確認) |
-| 4 MiB の download | 0.48 秒 | **約 0.20 秒**(見込み) |
-| 2 channel の連続 streaming 釣り合い点 | 約 35 Msps | **90 Msps**(実測。[E084](../experiments/e084_p4_transfer_tuning/README.ja.md)。既定の形では 86) |
-| vendor bulk(capture と同居、飽和時) | — | **23.97 MB/s**(TX FIFO 8192 / 1 転送 8192、n=9) |
-| **線上の漸近 rate / 1 転送の死に時間** | — | **26.3 MB/s / 30.8 us**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md) の分析) |
+| こちら(n=9、capture 同時) | **26.34 MB/s** | **30.8 us** |
+| ライブラリ側(n=9、単体) | 24.79 MB/s | 28.7 us |
 
-**§3(Windows で WinUSB が当たらない)は解決した** — 原因は仮説どおり **MS OS 2.0 descriptor set の subset 構造**で、単一 interface では flat に置く必要があった。**byte 列ではなく構造の問題**だった。[E081](../experiments/e081_p4_winusb_bind/README.ja.md) でこちらの台でも対照実験済み(flat = OK、subsets = Code 28)。
+- **死に時間を完全に消しても 26 MB/s** で、**36.4 には届かない**([CR-7](espusbdevice-change-requests.ja.md) を入れても説明できない)
+- **`R` は microframe あたり 6.0〜6.4 transaction**(HS は 13、host 役は 8.9)。**device 役はバスの半分しか使えていない**
+- **比較が対称ではない** — 36.4 は **P4 が host として *送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**
+- こちらが確かめたのは「**host 側の *software* は律速ではない**」まで(URB 64 KiB〜1 MiB、depth 2〜4 で不動、usbip と native も同じ)。**device 側の供給限界か PC の host controller の token 発行かは、[HR-1](espusbhost-change-requests.ja.md) が入るまで言えない**
 
-**あわせて、全測定に付けていた「usbip 込みなので下限である」という但し書きが外れた。** WinUSB が当たったので native で測れるようになり、**21.2 MB/s(host 実測)で usbip 経由と差がなかった**。
-
-**§1〜§6 は 2.2.0 時点の記録として残す。** 新しい木での追試は [E078](../experiments/e078_p4_continuous_stream/README.ja.md) で済ませた(commit `7a6d9dc`)。そこで分かったことを 2 つ足す。
-
-- **capture と同居しても USB は落ちない。** 飽和時 21.4〜22.4 MB/s で、ライブラリ側が単体で測った 21.1 MB/s と同等以上。**§4 の [E067](../experiments/e067_p4_usb_vs_capture_core/README.ja.md)「同居で 7〜16% 落ちる」は再現しない** — あれは**競合ではなく送出 task の spin** だった。`waitWritable()` で block するようにすると `stalls` は全条件 0 になる
-- **「帯域が出ている」は「追いつけている」ではない。** 96 Msps でも 16 MiB は完走し周期も一致する。**弾性 buffer の占有が duration に比例して伸びるかどうか**だけが判定になる
-
-## 1. USB 2.0 HS で何が出るか(2.2.0 時点)
+## 1. USB 2.0 HS で何が出るか(**2.2.0 時点の記録**。現在の値は §0)
 
 | 経路 | **実測** | driver | 出典 |
 |---|---:|---|---|
@@ -81,11 +101,13 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 **結論: 帯域が要る経路で CDC を使わない。** 使うなら**長さと CRC を付けて host が検証し再送要求できるようにする**。
 
-## 3. Windows で WinUSB が当たらない
+## 3. Windows で WinUSB が当たらない → **解決した**
+
+> **原因は MS OS 2.0 descriptor set の subset 構造**だった。**単一 interface の device では compatible ID を set header の直下(flat)に置く。** [E081](../experiments/e081_p4_winusb_bind/README.ja.md) が同じ board・同じ firmware で layout flag だけ変えて対照実験し、**flat = `Status OK` / `Service WinUSB`、subsets = `CM_PROB_FAILED_INSTALL`**。**この台に残っていた失敗判定は無関係**で、**新しい serial を使えば当たる**。以下は解決前の記録。
 
 **device 側は正しい**(MS OS 2.0 request に 178 byte + `WINUSB` を返す)のに、**Windows が driver を当てない**(Code 28)。詳細と残る仮説は[調査記録](windows-winusb-binding.ja.md)。
 
-**当面は usbip で WSL へ引き込み libusb で叩く**(実測はすべてこの経路)。
+**当面は usbip で WSL へ引き込み libusb で叩く**(実測はすべてこの経路)。**なお usbip の取り分は測れる大きさではなかった**([E081](../experiments/e081_p4_winusb_bind/README.ja.md): native 21.2 対 usbip 21.97)。
 
 副産物として **[E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md) に効く観測**が取れた — **`bcdDevice` を変えても Windows の device instance は変わらず、serial を変えると変わる**。しかも**失敗した driver 判定は instance に貼り付いて再判定されない**(`ConfigFlags=0x40`)。
 
@@ -139,15 +161,28 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 ## 7. 次にできること
 
+**機材待ち**(両 board の console を挿し直せば動くもの):
+
+| やること | 中身 |
+|---|---|
+| [E085](../experiments/e085_p4_transfer_size_model/README.ja.md) 転送長 4 点で `R` / `T` を回帰 | §0 の 2 点外挿の裏取り。**計画済み、走らせるだけ** |
+| **FIFO 8 KiB での釣り合い点** | 90 Msps は 32 KiB での値。8 KiB のほうが 0.3 MB/s 速いので上に出る可能性 |
+| 8 MiB の弾性 FIFO を実際に使い切るまで回す | [E078](../experiments/e078_p4_continuous_stream/README.ja.md) の外挿(88 MHz で約 11 秒)の確認 |
+| 4 / 8 channel での連続 streaming | [E078](../experiments/e078_p4_continuous_stream/README.ja.md) / [E083](../experiments/e083_p4_attach_order/README.ja.md) の未決 |
+
+**ライブラリ待ち**:
+
 | やること | 要るもの |
 |---|---|
-| 連続 streaming(釣り合い点は vendor bulk の実測 8.80 MB/s で約 35 Msps) | — **いま測れる** |
-| **帯域のばらつき(1.65 倍)の出どころ**を切り分ける | — core 内蔵 stack で [E076](../experiments/e076_p4_capture_hs_download/README.ja.md) の A/B を回す |
-| **device 側の本当の天井**を測る | — **PC 側の async URB で先に切り分ける**([着手順](usb-library-change-plan.ja.md)) |
-| **FIFO を深くした状態での再評価** | [CR-4](espusbdevice-change-requests.ja.md) |
-| **HID を 1,024 B に上げる**(8.2 MB/s 見込み) | [CR-8](espusbdevice-change-requests.ja.md) + [HR-3](espusbhost-change-requests.ja.md) |
-| **Windows で driverless**(WinUSB) | [CR-1](espusbdevice-change-requests.ja.md) / [CR-2](espusbdevice-change-requests.ja.md) |
-| PulseView から IP 経由で取る | [連携メモ](pulseview-integration.ja.md) §2(BeagleLogic の TCP を演じる) |
-| **RVSWD で CH32 に焼く** | 未着手 |
+| **device 役の天井が device 側かを確定する** | [HR-1](espusbhost-change-requests.ja.md)(host の IN async queue)。**§0 の内訳で、これにしか答えられない問いになった** |
+| **HID を 1,024 B に上げる**(8.2 MB/s 見込み) | [CR-8](espusbdevice-change-requests.ja.md)(済)+ [HR-3](espusbhost-change-requests.ja.md)(未依頼) |
+| release 版でのピン留め | `library.properties` の bump 待ち |
 
-**library の改修に入る前後の段取りは[着手順の提案](usb-library-change-plan.ja.md)にまとめた**(device 側が先)。
+**配線待ち**:
+
+| やること | 要るもの |
+|---|---|
+| **RVSWD で CH32 に焼く** | **CH32 を P4 へ配線する**(未着手の最後の目標) |
+| packet capture | 何を指すか(USB 解析 / CH32 のフレーム)の決め |
+
+**改修の着手順**は[別紙](usb-library-change-plan.ja.md)。**device 側は全件対応済み**で、残るのは host 側([HR-1](espusbhost-change-requests.ja.md) / [HR-3](espusbhost-change-requests.ja.md))。
