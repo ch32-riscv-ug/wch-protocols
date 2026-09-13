@@ -56,7 +56,8 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 - **`S/R + T` は 8 KiB までの近似。** 16 KiB は予測より 1.2〜1.6 MB/s 遅く、**idle では 8 KiB より遅い**。**`R` を漸近線として引用しない**
 - capture 負荷で排出が 3% ほど動く(96 Msps で 23.9、110 Msps で 23.1)ので、**釣り合い点は「届いた値が生成値に追いつく最大 rate」で挟む**
 - **比較が対称ではない** — 36.4 は **P4 が host として *送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**
-- こちらが確かめたのは「**host 側の *software* は律速ではない**」まで(URB 64 KiB〜1 MiB、depth 2〜4 で不動、usbip と native も同じ)。**device 側の供給限界か PC の host controller の token 発行かは、[HR-1](espusbhost-change-requests.ja.md) が入るまで言えない**
+- **2026-09-13、[E089](../experiments/e089_p4_host_in_queue/README.ja.md) で決着した** — [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) に転送長(HR-2)と queue depth(HR-1)が入り、**P4 を host にすると 24.45 MB/s**。**PC の 23.88 MB/s と同水準**で、**別々の host controller 2 つが同じ天井で止まる**。→ **約 24 MB/s は device 側の限界。PC の controller 説は否定された**
+- **残るのは「なぜ microframe あたり 6 transaction で止まるのか」**だけで、**それは device 側(DWC2 / TinyUSB)の構造**である
 
 ## 1. USB 2.0 HS で何が出るか(**2.2.0 時点の記録**。現在の値は §0)
 

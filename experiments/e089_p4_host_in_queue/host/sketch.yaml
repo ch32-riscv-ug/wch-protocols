@@ -1,6 +1,9 @@
 profiles:
   esp32p4_host:
-    fqbn: esp32:esp32:esp32p4:FlashSize=16M,PSRAM=enabled,ChipVariant=prev3,USBMode=default,CDCOnBoot=default,UploadMode=default
+    # USBMode=hwcdc + CDCOnBoot=cdc puts Serial on the USB-Serial-JTAG (J3), which
+    # is the console we read, and leaves the OTG HS peripheral free for host duty.
+    # The library's own profile leaves both at default, where Serial is UART0.
+    fqbn: esp32:esp32:esp32p4:FlashSize=16M,PSRAM=enabled,ChipVariant=prev3,USBMode=hwcdc,CDCOnBoot=cdc,UploadMode=default
     platforms:
       - platform: esp32:esp32 (3.3.11)
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json

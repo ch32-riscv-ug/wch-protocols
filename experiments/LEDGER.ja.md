@@ -104,7 +104,7 @@
 | **E086** | 8 channelで継ぎ目なく流せるsample rateの上限はいくらか。FX2(fx2lafw、8ch公称24 Msps)の置き換えになるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E084](e084_p4_transfer_tuning/README.ja.md)は2chのみ、[sample rateの選び方](../references/p4-sample-rate-selection.ja.md) | **完了 — 8chは23 Mspsまで、20 Mspsなら余裕。24 Msps(FX2の公称)は積む。上限はchannel数ではなくbyte rate(23〜24 MB/s)で決まる。pinは飛び飛び・順不同で自由**([e086_p4_8ch_stream/](e086_p4_8ch_stream/README.ja.md)) |
 | **E087** | WT9932P4-TINYでターゲットへ適当に挿してよいピンはどれか。pull-upとpull-downを同時に掛けると中間電圧になるか | **一時・配線なし**(`esp32-p4-30eda0e31478` = WT9932P4-TINY) | [ピンの当たりを付ける](../references/pin-discovery.ja.md) | **完了 — ヘッダ上34本がfree、推奨16本(IO16-23/IO26-33)は駆動も健全。両pullで1.46〜1.49 V。IO24/IO25(J3のUSB)に触るとconsoleが落ちる**([e087_p4_pin_survey/](e087_p4_pin_survey/README.ja.md)) |
 | **E088** | capture を止めると vendor bulk の天井はどこまで上がるか。[E085](e085_p4_transfer_size_model/README.ja.md)の`R`は素の値か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [E085](e085_p4_transfer_size_model/README.ja.md)の未決 | **完了 — 動かない。idle 23.88 対 capture同時 23.36 MB/s(8 KiB転送)で差はばらつきの内側。模型は8 KiBまでの近似で、idleでは16 KiBが8 KiBより遅い**([e088_p4_usb_ceiling_idle/](e088_p4_usb_ceiling_idle/README.ja.md)) |
-| **E089** | device役の約24 MB/sはdevice側の限界か、PCのhost controllerがbulk INに振るtoken数の限界か | **一時・要配線**(P4 2枚のOTG HS同士を直結。board 2 = host / board 1 = device) | [EspUsbHostへの改修依頼](../references/espusbhost-change-requests.ja.md) HR-2 / HR-1、[E072](e072_p4_hs_device_to_host_native/README.ja.md) | **準備完了 — 配線待ち**(両側ともP4でビルド確認済み。HR-2/HR-1の初回検証を兼ねる)([e089_p4_host_in_queue/](e089_p4_host_in_queue/README.ja.md)) |
+| **E089** | device役の約24 MB/sはdevice側の限界か、PCのhost controllerがbulk INに振るtoken数の限界か | **一時・要配線**(P4 2枚のOTG HS同士を直結。board 2 = host / board 1 = device) | [EspUsbHostへの改修依頼](../references/espusbhost-change-requests.ja.md) HR-2 / HR-1、[E072](e072_p4_hs_device_to_host_native/README.ja.md) | **完了 — P4 hostが24.45 MB/sでPC(23.88)と並んだ。別のhost controller 2つが同じ天井で止まるので約24 MB/sはdevice側の限界で確定。HR-2だけで2.42倍、HR-1を足して4.01倍**([e089_p4_host_in_queue/](e089_p4_host_in_queue/README.ja.md)) |
 | **E079** | host 側(PC)が bulk IN の URB を複数同時に投げると、device を変えずに帯域は伸びるか | **一時・配線なし**(同上) | [改修の着手順](../references/usb-library-change-plan.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-7 | **中止 — 同じ測定がライブラリ側で先に行われた。depth 2 で飽和(1=18.64 / 2=22.68 / 8=22.87 MB/s)、約23 MB/sはdevice側の天井**([e079_p4_host_urb_depth/](e079_p4_host_urb_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
@@ -259,6 +259,24 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E089 ESP32-P4: P4 を host にして bulk IN を読む — 完了 2026-09-13
+
+全文: [e089_p4_host_in_queue/README.ja.md](e089_p4_host_in_queue/README.ja.md)。[EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) の HR-2 / HR-1 実装(working tree)の初回実機検証を兼ねる。P4 2 枚の OTG HS 直結、1 MiB / 条件。
+
+**事実**
+
+1. **P4 host が 24.45 MB/s に到達し、PC(23.88 MB/s)と同じ水準に並んだ。** **別々の host controller 2 つが同じ天井で止まる**ので、**約 24 MB/s は device 側の限界**と確定。
+2. **HR-2(転送長)だけで 2.42 倍**(continuous 6.10 → depth 1 / 32 KiB で 14.77 MB/s)。**HR-1(depth)を足して 4.01 倍**(depth 4 / 32 KiB で 24.45)。**両方要る。**
+3. **device 側([CR-7](../references/espusbdevice-change-requests.ja.md))とは非対称だった** — あちらは転送長だけで済んだが、**host 側は depth も効く**。**device は「送る物がある限り詰める」が host は「訊かないと来ない」**ので、折り返しの隙間が直接失われる。
+4. **`starved` が判定に効いた**(depth 1 で全件、depth 2 以上で 0)。**`per_transfer` は device 側の 1 転送長(8192)で頭打ち** — device が 8 KiB 出すたび FIFO が一瞬空になり ZLP が host の転送を終端する([CR-5](../references/espusbdevice-change-requests.ja.md))。**short が毎回立つのは正常。**
+5. `bad=0` / `errors=0` が全条件(ramp の位相検証つき)。
+
+**方法の誤り(観測)**: **1 回目は depth を上げるほど遅くなった**(depth 2 以上で 8.2 MB/s、per_transfer 540、short 全件)。**原因は host ではなく参照用 device sketch** で、`CHUNK = 512` 固定 + **512 B ごとの `flush()`** により **`CFG_TUD_VENDOR_TX_BUFSIZE` が効いていなかった**。[E084](e084_p4_transfer_tuning/README.ja.md) でこちらが踏んだ罠と同じ。塊を `writeCapacity()` から取り flush を最後だけにして解決。**相手側の測定用 firmware も測定対象である。**
+
+**候補**: **P4 host で bulk IN を流すなら `vendorReadQueueBegin(4, 32768)`** / **約 24 MB/s は device 側の天井で、host を替えても越えない** / **device の 1 転送長が host の per_transfer を決める**。
+
+**未決**: device 側 24 MB/s の正体 `—`(host 要因は排除できた)/ depth 8 以上 `—` / [HR-3](../references/espusbhost-change-requests.ja.md) `—`(HR-1 が効いたので根拠ができた)。
 
 ### E088 ESP32-P4: capture を止めた素の USB 上限 — 完了 2026-09-13
 

@@ -11,13 +11,17 @@
 EspUsbDevice device;
 EspUsbDeviceVendor Vendor(device);
 
-static constexpr size_t CHUNK = 512;
+// Hand over a whole FIFO at a time, not a fixed 512. A constant here defeats
+// CFG_TUD_VENDOR_TX_BUFSIZE entirely -- write() never takes more than it is
+// offered, so the transfers stay one packet long however deep the FIFO is.
+static constexpr size_t CHUNK_MAX = 8192;
+static size_t chunkSize = 512;  // set from writeCapacity() in setup()
 
 static volatile uint32_t rxCount = 0;
 static volatile uint32_t streamRequests = 0;
 static size_t streamRemaining = 0;
 static uint8_t streamNext = 0;
-static uint8_t chunkBuffer[CHUNK];
+static uint8_t chunkBuffer[CHUNK_MAX];
 
 // 'S' + 4 bytes little-endian length. Anything else is echoed, so the same peer
 // still answers the plain loopback checks.
@@ -63,7 +67,7 @@ static void processStream()
 {
   while (streamRemaining > 0)
   {
-    const size_t want = streamRemaining < CHUNK ? streamRemaining : CHUNK;
+    const size_t want = streamRemaining < chunkSize ? streamRemaining : chunkSize;
     if (!Vendor.waitWritable(want, 100))
     {
       return;
@@ -73,7 +77,8 @@ static void processStream()
       chunkBuffer[i] = streamNext++;
     }
     const size_t written = Vendor.write(chunkBuffer, want);
-    Vendor.flush();
+    // No flush per chunk: flushing every write forces a transfer per chunk,
+    // which is the thing being measured on the host side.
     streamRemaining -= written;
     if (written < want)
     {
@@ -83,6 +88,7 @@ static void processStream()
       return;
     }
   }
+  Vendor.flush();  // once, when the requested length has been handed over
 }
 
 void setup()
@@ -100,6 +106,11 @@ void setup()
   config.product = "EspUsbDevice USB Vendor";
   config.serialNumber = "espusb-usb-vendor-read";
   Serial.printf("DEVICE_BEGIN %u\n", device.begin(config) ? 1 : 0);
+  chunkSize = EspUsbDeviceVendor::writeCapacity();
+  if (chunkSize > CHUNK_MAX) {
+    chunkSize = CHUNK_MAX;
+  }
+  Serial.printf("DEVICE_CHUNK %u\n", static_cast<unsigned>(chunkSize));
 }
 
 void loop()
