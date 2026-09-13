@@ -10,8 +10,26 @@
 |---|---|---|
 | 1 | **RVSWD で CH32 に焼く** | **未着手。** 4 つで唯一まったく進んでいない。**CH32 を P4 に配線するところから** |
 | 2 | **ロジアナ(2ch 数十 Msps、`.sr` 保存)** | **達成、かつ超過。** batch 160 Msps / 継ぎ目なし 96 Msps、8ch でも 20〜23 Msps、`.sr` を sigrok が読み戻す |
-| 3 | **packet capture** | **未定義。** 何を指すか(USB 解析か、CH32 のプロトコルフレームか)が決まっていない |
+| 3 | **packet capture** | **目標 2 に含まれる**(2026-09-13 に確認)。**ロジアナで捕って decoder で読む**、が答え。**捕る側は達成済み、読む側も stock の decoder が使える**。残るのは **RVSWD / SWIO の decoder が sigrok に無い**ことだけ |
 | 4 | **PulseView へ IP 経由** | **達成。** stock の sigrok / PulseView が driver 追加なしで、継ぎ目なく取れる |
+
+### 目標 3 = 目標 2 + decoder
+
+**「packet capture」はロジアナのこと**だった。**捕る側はできている**ので、残るのは**捕った波形をフレームとして読む**ところ。
+
+**手元の `.sr` が sigrok の decoder にそのまま食えることを確認した**:
+
+```console
+$ sigrok-cli -i e076_final.sr -P pwm:data=D0
+pwm-1: 25.000000%
+pwm-1: 10.0 μs
+```
+
+**生成時の duty(64/256 = 25%)と周波数(100 kHz)がそのまま出る。** D1 は 50%。**P4 で捕る → `.sr` → decoder、の鎖が通っている。**
+
+**手元の libsigrokdecode には decoder が 298 個**あり、`jtag` / `spi` / `uart` / `onewire` / `sdcard_spi` などが揃う。**つまり一般的なプロトコルは、いま捕れば今日から読める。**
+
+**無いのは RVSWD と SWIO** — WCH 固有なので stock には入っていない。**libsigrokdecode は Python なので自前で書ける**し、[link-to-target](../protocols/link-to-target.ja.md) と [E007](../experiments/e007_wire_rvswd_frame/README.ja.md) / [E008](../experiments/e008_wire_swio_frame/README.ja.md) に波形の仕様がある。**目標 1(RVSWD)と同じ材料で書ける**ので、**CH32 を繋いだあと同時に進むのが自然**である。
 
 **目標 2 の副産物として FX2 ロジアナの置き換えが射程に入った** — 8ch 20 Msps 常用・23 Msps 上限で、FX2 の実用域(16 Msps 程度)を覆う([E086](../experiments/e086_p4_8ch_stream/README.ja.md))。
 
@@ -21,7 +39,7 @@
 |---|---|---|
 | **[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md)** DWC2 の TX FIFO を 2 packet に | **リグの空き** | [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 側が host 役を使用中(board 消失で挿し直し待ち)。**ビルド済み、焼いて回すだけ** |
 | **RVSWD** | **CH32 の配線** | 挿す先は確定済み([ピンの当たりを付ける](pin-discovery.ja.md))。**電源と GND だけ人が合わせれば、あとは探索で当てられる**設計まで書いてある |
-| **packet capture** | **定義** | 下記 §5 |
+| **RVSWD / SWIO の decoder** | **CH32 の配線**(検証用の実信号) | libsigrokdecode(Python)で書く。**目標 1 と同じ材料** |
 | **[HR-3](espusbhost-change-requests.ja.md)**(HID 1,024 B) | **持ち主の判断** | keyboard / mouse / CCID と共有の経路なので、帯域のためだけに触る話ではない。**先方から提示済み** |
 | EspUsbHost の release | 持ち主の判断 | HR-2 / HR-1 は working tree |
 | **未 push の 61 commit** | 持ち主の判断 | 指示どおり push していない |
@@ -65,7 +83,6 @@
 
 | | 内容 |
 |---|---|
-| **packet capture の定義** | **USB バスの解析**(USBPcap 相当を P4 で)なのか、**CH32 のプロトコルフレーム**(RVSWD / SWIO の復号)なのか。**作るものが全く違う** |
 | [HR-3](espusbhost-change-requests.ja.md) をやるか | HID 1,024 B で 8.2 MB/s 見込み。**ただし WinUSB が当たるようになった**ので、「driver レス」という HID の利点は以前より薄い |
 | push するか | main に 61 commit |
 

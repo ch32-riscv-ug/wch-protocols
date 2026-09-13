@@ -85,6 +85,20 @@ batchを繋ぐと継ぎ目に空白が入る。**送出元を[E078](../experimen
 - **律速はclientの出力先である。** 256 M sampleを86 MHzで取ると`-O srzip`では欠落し、`-O binary`なら通る。**`.sr`へ落とすなら64 M sample程度まで**
 - **serverの`--samples`はclientの要求に合わせる。** 超えると待ち続ける。上限はfirmwareの268,435,456 sample
 
+### 捕った波形はそのままdecoderに食える
+
+**`.sr`にしてしまえばsigrokのprotocol decoderがそのまま使える**(2026-09-13確認)。
+
+```console
+$ sigrok-cli -i e076_final.sr -P pwm:data=D0
+pwm-1: 25.000000%
+pwm-1: 10.0 μs
+```
+
+生成時のduty 25%と100 kHzがそのまま出る。**手元のlibsigrokdecodeには298個のdecoder**があり、`jtag` / `spi` / `uart` / `onewire` / `sdcard_spi`などが含まれる。**「packet captureをP4で」は、捕ってdecoderに渡すことで満たせる。**
+
+**RVSWDとSWIOのdecoderはstockに無い**(WCH固有)。libsigrokdecodeはPythonなので自前で書ける。
+
 ### 保存が目的なら経路Dへ回す([E082](../experiments/e082_p4_spool_then_convert/README.ja.md))
 
 **`.sr`に残すのが目的なら、liveで`srzip`へ流し込まない。** capture中は**packedのまま一時ファイルへ追記**し、**終わってから展開してzipする**([`stream_to_sr.py`](../experiments/e082_p4_spool_then_convert/stream_to_sr.py))。
