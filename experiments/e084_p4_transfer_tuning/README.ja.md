@@ -170,3 +170,17 @@ board(単体、内部 PWM を信号源とする。外部配線なし)
 ### 教訓
 
 **n=3 で分散を語らない。** 帯域の中央値は 3 標本でも動かなかったが、**幅は 3 標本では決まらなかった**。[E076](../e076_p4_capture_hs_download/README.ja.md) で「同一条件が 1.65 倍ばらつく」と書いておきながら、**その実験の教訓を自分で踏み外した。**
+
+## 未了 — 8192 / 8192 での釣り合い点
+
+**この形での釣り合い点(90 / 92 / 94 Msps を 64 MiB で回して占有の伸びを見る)は測れていない。** 測定中に board 1 の console が落ちたため。**32768 / 8192 で測った 90 Msps が今の値**だが、**8192 / 8192 は排出が 0.32 MB/s 速い**ので、**90 Msps より上に出る可能性がある**。console が戻り次第測る。
+
+### 落ちた経緯(§7-6 に従い残す)
+
+1. `uv run` が environment lock で固まり(CPU 時間 0 のまま 10 分)、**それを kill した**
+2. host が読むのをやめたのに、**device 側の送出 task が `waitWritable()` の timeout を無限に繰り返していた**。`run_stream()` はその task を待っているので、**firmware が console に応答しなくなった**
+3. 復帰には chip reset が要るが、**esptool の RTS reset を usbip 越しに 4 回叩いて全部 timeout**。その過程で **console が Windows のバスから消えた**
+
+**2 は firmware の作りが悪い。** 送出 task が **10 回連続で timeout したら諦める**よう直した(`kMaxIdleTimeouts`)。これで host が消えても firmware は console へ戻る。
+
+**3 は手順の誤り。** [E078](../e078_p4_continuous_stream/README.ja.md) の教訓は「**書き込み(= chip reset)の前に HS device を detach する**」だったが、**firmware が固まったときの reset も同じ**である。しかも**失敗した reset を繰り返し叩くと console 自体が落ちる**。**1 回失敗したら手を止めること。**

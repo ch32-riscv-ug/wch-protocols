@@ -48,6 +48,8 @@ static constexpr size_t kFifoSize = 8u * 1024u * 1024u;
 // The FIFO size is a multiple of the packet size, so writing it whole never is.
 static size_t tx_chunk = 4096;  // set from EspUsbDeviceVendor::writeCapacity() in setup()
 static constexpr uint32_t kWaitTimeoutMs = 1000;
+// How many consecutive waits may time out before the sender gives up.
+static constexpr uint32_t kMaxIdleTimeouts = 10;
 static constexpr size_t kStreamBytesMax = 64u * 1024u * 1024u;
 
 static constexpr uint16_t kTestVid = 0x1209;
@@ -250,6 +252,7 @@ static void usb_task(void *) {
   uint32_t stalls = 0;
   uint32_t waits = 0;
   uint32_t timeouts = 0;
+  uint32_t idle_timeouts = 0;  // consecutive; reset by any accepted write
   const uint64_t started = esp_timer_get_time();
   while (sent < stream_target) {
     const size_t used = fifo_used();
@@ -283,11 +286,16 @@ static void usb_task(void *) {
       ++waits;
       if (!HsVendor.waitWritable(span, kWaitTimeoutMs)) {
         ++timeouts;
-        if (!HsVendor.mounted()) {
-          break;  // unplugged: do not spin here forever
+        // Give up rather than retry forever. A host that stops reading -- it was
+        // killed, it crashed, the cable went -- otherwise leaves this task
+        // looping and run_stream() waiting on it, and the console never comes
+        // back, which costs a chip reset to clear.
+        if (!HsVendor.mounted() || ++idle_timeouts > kMaxIdleTimeouts) {
+          break;
         }
         continue;
       }
+      idle_timeouts = 0;
     }
     const size_t written = HsVendor.write(fifo.buffer + offset, span);
     if (written == 0) {
