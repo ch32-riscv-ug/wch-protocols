@@ -178,6 +178,24 @@ uint16_t EspUsbDeviceVendor::configurationDescriptor(uint8_t *dst, uint8_t inter
 
 `EspUsbDevice` が DEVICE_QUALIFIER と OTHER_SPEED_CONFIGURATION に**答えること自体は core 内蔵 stack に対する明確な優位点**である(core 内蔵は両方 STALL する)。だからこそ中身も合っていてほしい。
 
+### 初の実使用(2026-09-13、[EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 側の測定)
+
+**こちらは `GET_DESCRIPTOR(OTHER_SPEED_CONFIGURATION)` を読んで 64 になっていることを確認しただけ**で、**実際に FS で列挙させて使ったことがなかった**。
+
+先方が P4 の HS 物理ポートを `HCFG.FSLSSUPP` で **full-speed 専用に強制**して同じ device を読んだところ:
+
+```
+HCFG=0x00000204 FSLSSUPP=1
+DEVICE address=1 speed=full vid=303a pid=4019
+RESULT mode=fs_only speed=full mbps=1.204 bad=0
+```
+
+**FS 理論上限 1.216 MB/s の 99%**、同じケーブルの HS 24.45 MB/s の 1/20。**256 KiB が `bad=0` で通った。**
+
+**device が FS 側 descriptor に 512 を書いていたら、FS バスが運べない packet size を宣言することになるので、ここは通らない。** → **CR-3 の修正が実際に効いている傍証**である。
+
+> **ただし `wMaxPacketSize` の数値そのものはまだ読んでいない。** 先方が `in_mps` を print する版を用意したが、その実行中に host 役の board がバスから消えて止まった。**断定はその値を見てから。**
+
 ### こちらでの代替
 
 `endpointSize` を既定の 64 のままにすれば FS は正しくなるが、**HS の帯域が出なくなる**ので選べない。
