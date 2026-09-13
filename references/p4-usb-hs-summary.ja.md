@@ -23,7 +23,8 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | **Windows で WinUSB** | **当たらない**(§3) | **当たる**([E081](../experiments/e081_p4_winusb_bind/README.ja.md) でこちらの台でも確認) |
 | 4 MiB の download | 0.48 秒 | **約 0.20 秒**(見込み) |
 | 2 channel の連続 streaming 釣り合い点 | 約 35 Msps | **90 Msps**(実測。[E084](../experiments/e084_p4_transfer_tuning/README.ja.md)。既定の形では 86) |
-| vendor bulk(capture と同居、飽和時) | — | **23.69 MB/s**(TX FIFO 32768 / 1 転送 8192) |
+| vendor bulk(capture と同居、飽和時) | — | **23.97 MB/s**(TX FIFO 8192 / 1 転送 8192、n=9) |
+| **線上の漸近 rate / 1 転送の死に時間** | — | **26.3 MB/s / 30.8 us**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md) の分析) |
 
 **§3(Windows で WinUSB が当たらない)は解決した** — 原因は仮説どおり **MS OS 2.0 descriptor set の subset 構造**で、単一 interface では flat に置く必要があった。**byte 列ではなく構造の問題**だった。[E081](../experiments/e081_p4_winusb_bind/README.ja.md) でこちらの台でも対照実験済み(flat = OK、subsets = Code 28)。
 
@@ -66,6 +67,8 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 ### まだ天井に届いていない
 
 **同じ chip が host 役では 36.4 MB/s 出る**のに、device 役は 10.74 MB/s。FIFO の深さで説明できるのは 17% だけで、**残りは「endpoint ごとに転送を 1 つしか投げていない」構造**と見ている(host 側は async queue depth 2 で張り付く)。→ [CR-7](espusbdevice-change-requests.ja.md) / [HR-1](espusbhost-change-requests.ja.md)
+
+> **2026-09-13: この見立ては半分外れた。** 転送長を変えると device 役は **23.97 MB/s** まで伸びたが([E084](../experiments/e084_p4_transfer_tuning/README.ja.md))、内訳を取ると **線上の漸近 rate が 26.3 MB/s**(= microframe あたり 6.4 transaction、HS は 13)で、**1 転送あたりの死に時間 30.8 us を完全に消しても 36.4 には届かない**。しかも **36.4 は P4 が *host として送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**という非対称がある。**device 役の天井が device 側にあるのか PC の host controller 側なのかは、[HR-1](espusbhost-change-requests.ja.md) が入るまで言えない。**
 
 ## 2. 落ちる経路 — CDC は転送途中で packet を捨てる
 
