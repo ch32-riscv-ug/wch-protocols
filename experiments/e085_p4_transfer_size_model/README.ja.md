@@ -128,7 +128,11 @@ period(S) = S / R + T      R = 24.64 MB/s      T = 21.67 us
 | 110 MHz | 27.50 | 23.04〜23.23 |
 | 128 MHz(本実験) | 32.00 | 23.13〜23.48 |
 
-**PARLIO → PSRAM の harvest が重くなるぶん、USB 側が削られる。** したがって **`R` は「この capture 負荷での漸近線」**であって、素の USB 上限ではない。**素の上限を測るには capture を止めて同じ掃引をやり直す必要がある**(未実施)。
+**PARLIO → PSRAM の harvest が重くなるぶん、USB 側が削られる。** したがって **`R` は「この capture 負荷での漸近線」**であって、素の USB 上限ではない — **と本実験時点では書いた。**
+
+> **2026-09-13 追記([E088](../e088_p4_usb_ceiling_idle/README.ja.md)): 素の上限も同じだった。** capture を止めて同じ 4 点を測ると **8 KiB 転送で 23.88 MB/s**(capture 同時は 23.36)で、**差は run 間のばらつきの内側**。**capture 負荷では天井を説明できない。**
+>
+> **さらに模型の限界も分かった** — 2048〜8192 の 3 点で当てはめると 16384 を 1.2〜1.6 MB/s 過大に予測し、**idle では 16384 が 8192 より遅い**。**`S/R + T` は 8 KiB までの近似**であって、**`R` を「無限に伸ばした値」として引用してはいけない。**
 
 ## 候補
 
@@ -138,7 +142,7 @@ period(S) = S / R + T      R = 24.64 MB/s      T = 21.67 us
 
 ## 未決
 
-- **capture を止めた状態での `R`** `—`。本実験は capture 同時のみ
+- ~~**capture を止めた状態での `R`**~~ → **[E088](../e088_p4_usb_ceiling_idle/README.ja.md) で解決。同じだった**
 - **`T` = 21.7 us の内訳** `—`。完了割り込み → event queue → usbd task → 再 arm のどこが効いているか
 - **`R` が microframe あたり 6 transaction で止まる理由** `—`。device 側の供給か PC の token 発行か([HR-1](../../references/espusbhost-change-requests.ja.md))
 

@@ -103,6 +103,7 @@
 | **E085** | 1転送の長さを変えたときの所要は`S / R + T`で表せるか。`R`(線上の漸近rate)と`T`(1転送あたりの死に時間)はいくらか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [E084](e084_p4_transfer_tuning/README.ja.md)の2点外挿、[CR-7](../references/espusbdevice-change-requests.ja.md) / [HR-1](../references/espusbhost-change-requests.ja.md) | **完了 — `S/R + T`で表せる(残差1.0%)。`R`=24.64 MB/s、`T`=21.7 us。転送長を無限に伸ばしても24.4 MB/sで36.4には届かない**([e085_p4_transfer_size_model/](e085_p4_transfer_size_model/README.ja.md)) |
 | **E086** | 8 channelで継ぎ目なく流せるsample rateの上限はいくらか。FX2(fx2lafw、8ch公称24 Msps)の置き換えになるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E084](e084_p4_transfer_tuning/README.ja.md)は2chのみ、[sample rateの選び方](../references/p4-sample-rate-selection.ja.md) | **完了 — 8chは23 Mspsまで、20 Mspsなら余裕。24 Msps(FX2の公称)は積む。上限はchannel数ではなくbyte rate(23〜24 MB/s)で決まる。pinは飛び飛び・順不同で自由**([e086_p4_8ch_stream/](e086_p4_8ch_stream/README.ja.md)) |
 | **E087** | WT9932P4-TINYでターゲットへ適当に挿してよいピンはどれか。pull-upとpull-downを同時に掛けると中間電圧になるか | **一時・配線なし**(`esp32-p4-30eda0e31478` = WT9932P4-TINY) | [ピンの当たりを付ける](../references/pin-discovery.ja.md) | **完了 — ヘッダ上34本がfree、推奨16本(IO16-23/IO26-33)は駆動も健全。両pullで1.46〜1.49 V。IO24/IO25(J3のUSB)に触るとconsoleが落ちる**([e087_p4_pin_survey/](e087_p4_pin_survey/README.ja.md)) |
+| **E088** | capture を止めると vendor bulk の天井はどこまで上がるか。[E085](e085_p4_transfer_size_model/README.ja.md)の`R`は素の値か | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [E085](e085_p4_transfer_size_model/README.ja.md)の未決 | **完了 — 動かない。idle 23.88 対 capture同時 23.36 MB/s(8 KiB転送)で差はばらつきの内側。模型は8 KiBまでの近似で、idleでは16 KiBが8 KiBより遅い**([e088_p4_usb_ceiling_idle/](e088_p4_usb_ceiling_idle/README.ja.md)) |
 | **E079** | host 側(PC)が bulk IN の URB を複数同時に投げると、device を変えずに帯域は伸びるか | **一時・配線なし**(同上) | [改修の着手順](../references/usb-library-change-plan.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-7 | **中止 — 同じ測定がライブラリ側で先に行われた。depth 2 で飽和(1=18.64 / 2=22.68 / 8=22.87 MB/s)、約23 MB/sはdevice側の天井**([e079_p4_host_urb_depth/](e079_p4_host_urb_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
@@ -257,6 +258,22 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E088 ESP32-P4: capture を止めた素の USB 上限 — 完了 2026-09-13
+
+全文: [e088_p4_usb_ceiling_idle/README.ja.md](e088_p4_usb_ceiling_idle/README.ja.md)。[E085](e085_p4_transfer_size_model/README.ja.md)と同じ 4 点を、**PARLIO も harvest も PSRAM も無い firmware**(internal RAM の pattern を送るだけ)で測り直した。各 n=9。
+
+**事実**
+
+1. **capture の有無で天井は動かない。** 8 KiB 転送で **idle 23.88 / capture 同時 23.36 MB/s**、差 ±0.52 は run 間の幅(0.38〜0.84)の内側。**仮説(止めれば 25〜27 まで伸びる)は否定された。**
+2. **[E085](e085_p4_transfer_size_model/README.ja.md) の `R` = 24.64 MB/s は素の上限でもあった。** **capture 負荷で 36.4 MB/s との差を説明することはできない。**
+3. **8192 が最適で 16384 は遅い** — **capture の有無に関わらず**(idle 23.40 対 23.88)。[E084](e084_p4_transfer_tuning/README.ja.md) の結論は負荷の産物ではない。
+4. **`S/R + T` は 8 KiB までの近似。** 3 点当てはめは 16384 を 1.2〜1.6 MB/s 過大に予測する。**`R` を漸近線として引用してはいけない。**
+5. [E084](e084_p4_transfer_tuning/README.ja.md) の「capture 負荷で排出が下がる」は**残るが 3% 程度**で、天井を決めてはいない。
+
+**候補**: **vendor bulk の実力は 8 KiB 転送で約 24 MB/s** / **転送長は 8192、それ以上は逆効果** / **36.4 との差は device 側の USB 経路そのもの** → [HR-1](../references/espusbhost-change-requests.ja.md)。
+
+**未決**: 16 KiB で遅くなる理由 `—` / microframe あたり 6 transaction で止まる理由 `—` / CDC・HID でも同じ天井か `—`。
 
 ### E087 ESP32-P4: 使えるピンと pull 二重掛け — 完了 2026-09-13
 

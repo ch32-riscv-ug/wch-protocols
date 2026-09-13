@@ -52,7 +52,9 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 - **死に時間を完全に消しても 24.6 MB/s** で、**36.4 には届かない**([CR-7](espusbdevice-change-requests.ja.md) を入れても説明できない)。転送長を倍にするたび利得は半減し、16384 → ∞ で +3.5%
 - **`R` は microframe あたり 6.02 transaction**(HS は 13、host 役は 8.89)。**device 役はバスの半分以下しか使えていない**
-- **`R` は定数ではない。** capture 負荷で動く(96 Msps で 23.9、110 Msps で 23.1 MB/s)。**「上から押して天井を測る」方法は成立しない** — harvest が重くなるぶん USB が削られるので、**釣り合い点は「届いた値が生成値に追いつく最大 rate」で挟む**
+- **capture を止めても天井は同じ**([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md): idle 23.88 対 capture 同時 23.36 MB/s、差はばらつきの内側)。**capture 負荷では 36.4 との差を説明できない**
+- **`S/R + T` は 8 KiB までの近似。** 16 KiB は予測より 1.2〜1.6 MB/s 遅く、**idle では 8 KiB より遅い**。**`R` を漸近線として引用しない**
+- capture 負荷で排出が 3% ほど動く(96 Msps で 23.9、110 Msps で 23.1)ので、**釣り合い点は「届いた値が生成値に追いつく最大 rate」で挟む**
 - **比較が対称ではない** — 36.4 は **P4 が host として *送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**
 - こちらが確かめたのは「**host 側の *software* は律速ではない**」まで(URB 64 KiB〜1 MiB、depth 2〜4 で不動、usbip と native も同じ)。**device 側の供給限界か PC の host controller の token 発行かは、[HR-1](espusbhost-change-requests.ja.md) が入るまで言えない**
 
