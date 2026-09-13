@@ -76,8 +76,17 @@ host 側が `vendorReadStats()` で出すもの:
 
 ## 必要な環境
 
-- **ESP32-P4 2 枚の OTG HS 同士を直結**(board 2 = host `...f5` / board 1 = device `...78`)。**現在 board 1 の HS は PC 側なので、ケーブルの差し替えが要る**
-- 両方の console は usbipd で WSL へ
+**配線([E072](../e072_p4_hs_device_to_host_native/README.ja.md) と同一。あちらで実証済みの構成)**
+
+| 役 | board | console(J3 / Type-C) | OTG HS(J4 / Type-A) |
+|---|---|---|---|
+| **device** | **`esp32-p4-30eda0e31478`**(board 1) | **PC へ**(現状のまま) | **`...f5` の J4 へ** ← **現在 PC に繋がっているので差し替える** |
+| **host** | **`esp32-p4-30eda0e314f5`**(board 2) | **PC へ** | **`...78` の J4 へ** |
+
+- **`...f5` は現在 board-identify に出ていない(外れている)。挿し直しが要る**
+- **J4 同士を USB ケーブルで直結**する。WT9932P4-TINY の J4 は **Type-A**(ユーザーガイド: 「ESP32-P4 acts as a USB Host and can supply up to 500mA」)なので **A-A ケーブル**になる。**[E072](../e072_p4_hs_device_to_host_native/README.ja.md) がこの構成で動いている**
+- **PC は両者の J3(console)にしか繋がらない**
+- **代替ボードは使わない**: `esp32-p4-e8f60ae0aa24` は別個体(flash 32 MiB、E014〜E061 の台)で EspUsbDevice 側のテストが使用中、`esp32-p4-80f1b2d0b261` は素性不明(ttyUSB 経由)
 - EspUsbDevice 2.3.0(Library Manager)/ EspUsbHost working tree
 
 ## ベンチ種別
@@ -101,7 +110,8 @@ peer(board 2 枚、要配線)
 
 - **両側とも P4 でビルド確認済み**(device 377,694 B / host 545,078 B)
 - **先方も実機未検証**(S3 peer ボードが外れているとのこと)。**この実験が HR-2 / HR-1 の初回検証になる**
-- **止まっているのは配線だけ**
+- **止まっているのは配線だけ** — **`...f5` を挿し、その J4 と board 1 の J4 を繋ぐ**
+- **S3 の 2 枚(`d0cf1358fd94` / `d0cf1359101c`)には触らない**。EspUsbHost 側の full test が使用中
 
 ## 影響
 
