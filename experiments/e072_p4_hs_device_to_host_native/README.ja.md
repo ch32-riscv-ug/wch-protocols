@@ -82,3 +82,9 @@ VENDOROPEN ok
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md) §後段 — **download帯域の最良は依然10.74 MB/s(usbip経由)**
 - [EspUsbHostへの改修依頼](../../references/espusbhost-change-requests.ja.md) HR-1
 - [E071](../e071_p4_hs_vendor_fifo_depth/README.ja.md)の未決「usbipのoverheadはどれだけか」に部分的な答え
+
+## 訂正 — 引用していた host 役の 36.4 MB/s は MiB/s だった(2026-09-13)
+
+本文が [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) から引用している **「P4 が host 役で 36.4 MB/s」は MiB/s の値**だった。先方が repo 全体を 10 進へ統一したので、**正しくは 38.2 MB/s**(microframe あたり 8.89 ではなく **9.33 transaction**、バスの 68% ではなく **72%**)。
+
+**こちらの測定はすべて元から 10 進 MB/s** なので、**device 側の数値は変わらない**。変わるのは比較対象だけである。

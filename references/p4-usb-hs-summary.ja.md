@@ -23,7 +23,7 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | vendor bulk(**usbip なし、Windows 直**) | **21.2 MB/s**(旧既定での測定) | WinUSB | [E081](../experiments/e081_p4_winusb_bind/README.ja.md) |
 | **HID(512 B endpoint)** | **4.03 MB/s** | **不要** | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) / CR-8 |
 | USB-Serial-JTAG(FS CDC) | 0.72〜0.80 MB/s | 不要 | [E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md) |
-| (参考)**P4 が host 役で送信**、async queue depth 2 | **36.4 MB/s** | — | EspUsbHost `docs/usb-host-advanced.md` |
+| (参考)**P4 が host 役で送信**、async queue depth 2 | **38.2 MB/s** | — | EspUsbHost `docs/usb-host-advanced.md` |
 | (参考)HS bulk の理論上限 | 53.2 MB/s | — | 13 transaction × 512 B × 8,000/s |
 
 **連続 streaming の上限は channel 数ではなく byte rate(23〜24 MB/s)で決まる** — **8ch 23 / 4ch 46 / 2ch 96 Msps**([E086](../experiments/e086_p4_8ch_stream/README.ja.md))。**2 channel は 96 Msps**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md) 追測、64 MiB × 4 回 clean)。既定(4 KiB)で 86、32 KiB で 90 なので、**FIFO は大きいほど良いわけではない**。**batch なら 160 Msps**([E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md))。
@@ -41,7 +41,7 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 **効いたのは in-flight 数ではなく 1 転送あたりの packet 数**(`CFG_TUD_VENDOR_TX_EPSIZE`、旧既定は bulk 1 packet)。512 byte ごとに「完了割り込み → event queue → usbd task → 再 arm」の往復が入っていた。
 
-### 天井の内訳 — host 役の 36.4 MB/s との差
+### 天井の内訳 — host 役の 38.2 MB/s との差
 
 転送長 2 点から `period(S) = S/R + T` を解くと、**こちらの測定とライブラリ側の独立した測定が同じ答え**を出す。
 
@@ -50,12 +50,12 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | **4 点回帰(残差 1.0%)** | **24.64 MB/s** | **21.67 us** | **[E085](../experiments/e085_p4_transfer_size_model/README.ja.md)** |
 | (旧)2 点外挿 | 26.34 MB/s | 30.8 us | [E084](../experiments/e084_p4_transfer_tuning/README.ja.md)。`R` を 7%、`T` を 42% 過大に見ていた |
 
-- **死に時間を完全に消しても 24.6 MB/s** で、**36.4 には届かない**([CR-7](espusbdevice-change-requests.ja.md) を入れても説明できない)。転送長を倍にするたび利得は半減し、16384 → ∞ で +3.5%
-- **`R` は microframe あたり 6.02 transaction**(HS は 13、host 役は 8.89)。**device 役はバスの半分以下しか使えていない**
-- **capture を止めても天井は同じ**([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md): idle 23.88 対 capture 同時 23.36 MB/s、差はばらつきの内側)。**capture 負荷では 36.4 との差を説明できない**
+- **死に時間を完全に消しても 24.6 MB/s** で、**38.2 には届かない**([CR-7](espusbdevice-change-requests.ja.md) を入れても説明できない)。転送長を倍にするたび利得は半減し、16384 → ∞ で +3.5%
+- **`R` は microframe あたり 6.02 transaction**(HS は 13、host 役は 9.33)。**device 役はバスの半分以下しか使えていない**
+- **capture を止めても天井は同じ**([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md): idle 23.88 対 capture 同時 23.36 MB/s、差はばらつきの内側)。**capture 負荷では 38.2 との差を説明できない**
 - **`S/R + T` は 8 KiB までの近似。** 16 KiB は予測より 1.2〜1.6 MB/s 遅く、**idle では 8 KiB より遅い**。**`R` を漸近線として引用しない**
 - capture 負荷で排出が 3% ほど動く(96 Msps で 23.9、110 Msps で 23.1)ので、**釣り合い点は「届いた値が生成値に追いつく最大 rate」で挟む**
-- **比較が対称ではない** — 36.4 は **P4 が host として *送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**
+- **比較が対称ではない** — 38.2 は **P4 が host として *送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**
 - **2026-09-13、[E089](../experiments/e089_p4_host_in_queue/README.ja.md) で決着した** — [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) に転送長(HR-2)と queue depth(HR-1)が入り、**P4 を host にすると 24.45 MB/s**。**PC の 23.88 MB/s と同水準**で、**別々の host controller 2 つが同じ天井で止まる**。→ **約 24 MB/s は device 側の限界。PC の controller 説は否定された**
 - **残るのは「なぜ microframe あたり 6 transaction で止まるのか」**だけで、**それは device 側(DWC2 / TinyUSB)の構造**である
 
@@ -70,7 +70,7 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | **HID(512 B endpoint)** | **4.14 MB/s** | **不要** | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) |
 | HID(64 B = ライブラリ既定) | 0.52 MB/s | 不要 | 同上 |
 | USB-Serial-JTAG(FS CDC) | 0.72〜0.80 MB/s | 不要 | [E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md) |
-| (参考)**P4 が host 役**、async queue depth 2 | **36.4 MB/s** | — | EspUsbHost `docs/usb-host-advanced.md` |
+| (参考)**P4 が host 役**、async queue depth 2 | **38.2 MB/s** | — | EspUsbHost `docs/usb-host-advanced.md` |
 | (参考)HS bulk の理論上限 | 53 MB/s | — | 13 transaction × 512 B × 8,000/s |
 
 ### 効くもの / 効かないもの
@@ -90,9 +90,9 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 ### まだ天井に届いていない
 
-**同じ chip が host 役では 36.4 MB/s 出る**のに、device 役は 10.74 MB/s。FIFO の深さで説明できるのは 17% だけで、**残りは「endpoint ごとに転送を 1 つしか投げていない」構造**と見ている(host 側は async queue depth 2 で張り付く)。→ [CR-7](espusbdevice-change-requests.ja.md) / [HR-1](espusbhost-change-requests.ja.md)
+**同じ chip が host 役では 38.2 MB/s 出る**のに、device 役は 10.74 MB/s。FIFO の深さで説明できるのは 17% だけで、**残りは「endpoint ごとに転送を 1 つしか投げていない」構造**と見ている(host 側は async queue depth 2 で張り付く)。→ [CR-7](espusbdevice-change-requests.ja.md) / [HR-1](espusbhost-change-requests.ja.md)
 
-> **2026-09-13: この見立ては半分外れた。** 転送長を変えると device 役は **23.97 MB/s** まで伸びたが([E084](../experiments/e084_p4_transfer_tuning/README.ja.md))、内訳を取ると **線上の漸近 rate が 26.3 MB/s**(= microframe あたり 6.4 transaction、HS は 13)で、**1 転送あたりの死に時間 30.8 us を完全に消しても 36.4 には届かない**。しかも **36.4 は P4 が *host として送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**という非対称がある。**device 役の天井が device 側にあるのか PC の host controller 側なのかは、[HR-1](espusbhost-change-requests.ja.md) が入るまで言えない。**
+> **2026-09-13: この見立ては半分外れた。** 転送長を変えると device 役は **23.97 MB/s** まで伸びたが([E084](../experiments/e084_p4_transfer_tuning/README.ja.md))、内訳を取ると **線上の漸近 rate が 26.3 MB/s**(= microframe あたり 6.4 transaction、HS は 13)で、**1 転送あたりの死に時間 30.8 us を完全に消しても 38.2 には届かない**。しかも **38.2 は P4 が *host として送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**という非対称がある。**device 役の天井が device 側にあるのか PC の host controller 側なのかは、[HR-1](espusbhost-change-requests.ja.md) が入るまで言えない。**
 
 ## 2. 落ちる経路 — CDC は転送途中で packet を捨てる
 

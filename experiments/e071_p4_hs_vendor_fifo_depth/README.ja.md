@@ -137,3 +137,9 @@
 - [EspUsbDeviceへの改修依頼](../../references/espusbdevice-change-requests.ja.md) CR-4に実測値が付いた。**「FIFOを可変にしてほしい」に加えて「8 KiBが良い」「64 KiBは壊れる」「+17%で頭打ち」まで言える**
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md) §後段のdownload帯域 — **最良は10.74 MB/s**(2 channelなら約43 Msps相当)
 - [harness-channels](../../references/harness-channels.ja.md) §物理IFの帯域表
+
+## 訂正 — 引用していた host 役の 36.4 MB/s は MiB/s だった(2026-09-13)
+
+本文が [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) から引用している **「P4 が host 役で 36.4 MB/s」は MiB/s の値**だった。先方が repo 全体を 10 進へ統一したので、**正しくは 38.2 MB/s**(microframe あたり 8.89 ではなく **9.33 transaction**、バスの 68% ではなく **72%**)。
+
+**こちらの測定はすべて元から 10 進 MB/s** なので、**device 側の数値は変わらない**。変わるのは比較対象だけである。
