@@ -1,6 +1,8 @@
 # EspUsbHost への改修依頼
 
-状態: **依頼の準備ができた**(2026-09-13 更新。対象 [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 2.8.0)
+状態: **依頼済み**(2026-09-13 に送付。対象 [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 2.8.0)
+
+> **送付時に併せて伝えたこと**: ① 順序は **HR-2 を先、HR-1 を後**(device 側で CR-7 を外した教訓)、② **検証に要る HS 同士の直結は次に実機を触れるときまで待ち**で、現状は board 1 の HS が PC 側、③ **比較の基準は取得済み**([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md): 8 KiB 転送・capture なしで 23.88 MB/s)、④ **書き込み前に HS device を detach する**(attach 中の chip reset は console まで巻き込む)。
 
 > **device 側([EspUsbDevice](espusbdevice-change-requests.ja.md))は CR-1〜CR-9 が全件対応され、2.3.0 として公開された。** その過程で **host 側にしか答えられない問いが 1 つ残った**ので、こちらを出す。
 
