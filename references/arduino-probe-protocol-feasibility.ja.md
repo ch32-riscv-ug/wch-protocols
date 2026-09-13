@@ -364,7 +364,7 @@ ESP32-P4等のPSRAM搭載構成では、深いcapture bufferを持つ実用的�
 
 [E030](../experiments/e030_p4_deep_batch_capture/README.ja.md)では同じinternal DMA ring→PSRAM経路を20 MHz / 8-bit、16 MiBへ拡大した。16,777,216 sampleを839,063 us、実効19.995 MB/sで取得し、queue最大0、overflow 0、全8 laneの全域dataが正常だった。これにより約20 MB/sを瞬間的に処理するだけでなく、32 MiB PSRAMの半分へ約0.839秒分保持できることを確認した。
 
-USB帯域の参考値として、[EspUsbHostのESP32-P4 host-mode実測](https://github.com/tanakamasayuki/EspUsbHost/blob/1b9e6ca3598cf9d86743381dd635a45bc9d79b60/docs/usb-host-advanced.md#L280-L284)にはHS bulk OUT 36.4 MB/s（非同期queue depth 2、8 KiB transfer）が記録されている。これは約20 MB/sのraw capture量を数値上は上回るが、**P4がUSB hostとしてdeviceへ送る向き**の測定であり、probeに必要な**P4 USB device→PC方向**を保証しない。USB device stack、転送方向、PSRAM read、captureとの同時実行を含む実測を別gateとする。
+USB帯域の参考値として、[EspUsbHostのESP32-P4 host-mode実測](https://github.com/tanakamasayuki/EspUsbHost/blob/1b9e6ca3598cf9d86743381dd635a45bc9d79b60/docs/usb-host-advanced.md#L280-L284)にはHS bulk OUT 38.2 MB/s（非同期queue depth 2、8 KiB transfer）が記録されている（**リンク先のその版の表記は「36.4 MB/s」だが、これは MiB/s の値**。先方が2026-09-13にrepo全体を10進へ統一し、38.2 MB/sになった）。これは約20 MB/sのraw capture量を数値上は上回るが、**P4がUSB hostとしてdeviceへ送る向き**の測定であり、probeに必要な**P4 USB device→PC方向**を保証しない。USB device stack、転送方向、PSRAM read、captureとの同時実行を含む実測を別gateとする。
 
 検討時には、少なくとも次を分けて評価する。
 

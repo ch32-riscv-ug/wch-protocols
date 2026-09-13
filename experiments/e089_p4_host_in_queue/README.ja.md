@@ -199,3 +199,9 @@ device : esp32:esp32:esp32p4:...,USBMode=default,CDCOnBoot=default,...
 - [E072](../e072_p4_hs_device_to_host_native/README.ja.md) の 5.6 MB/s — **4 倍になった**
 - [P4 USB HS まとめ](../../references/p4-usb-hs-summary.ja.md) §0「天井の内訳」— **(A) で確定**
 - [HR-3](../../references/espusbhost-change-requests.ja.md) — 着手の根拠ができた
+
+## 訂正 — 引用していた host 役の 36.4 MB/s は MiB/s だった(2026-09-13)
+
+本文が [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) から引用している **「P4 が host 役で 36.4 MB/s」は MiB/s の値**だった。先方が repo 全体を 10 進へ統一したので、**正しくは 38.2 MB/s**(microframe あたり 8.89 ではなく **9.33 transaction**、バスの 68% ではなく **72%**)。
+
+**こちらの測定はすべて元から 10 進 MB/s** なので、**device 側の数値は変わらない**。変わるのは比較対象だけである。

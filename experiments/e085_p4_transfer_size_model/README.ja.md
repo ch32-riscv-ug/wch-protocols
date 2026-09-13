@@ -151,3 +151,9 @@ period(S) = S / R + T      R = 24.64 MB/s      T = 21.67 us
 - [E084](../e084_p4_transfer_tuning/README.ja.md) の 2 点外挿 — **4 点で置き換え**
 - [P4 USB HS まとめ](../../references/p4-usb-hs-summary.ja.md) §0 の内訳表
 - [CR-7](../../references/espusbdevice-change-requests.ja.md) — **`T` を消して得られる上限が 24.6 MB/s と分かった**
+
+## 訂正 — 引用していた host 役の 36.4 MB/s は MiB/s だった(2026-09-13)
+
+本文が [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) から引用している **「P4 が host 役で 36.4 MB/s」は MiB/s の値**だった。先方が repo 全体を 10 進へ統一したので、**正しくは 38.2 MB/s**(microframe あたり 8.89 ではなく **9.33 transaction**、バスの 68% ではなく **72%**)。
+
+**こちらの測定はすべて元から 10 進 MB/s** なので、**device 側の数値は変わらない**。変わるのは比較対象だけである。

@@ -229,7 +229,7 @@ P4 の HS で vendor bulk の実効帯域を測ると、**1 microframe あたり
 
 [E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md)をライブラリのコピーではなく**素のライブラリ + `build_opt.h`**で再実行する。**8 KiBで10.5 MB/s前後、`write()`が0を返す回数が4 MiBあたり3万回を切れば直っている。**
 
-**ただしこれでは足りない。** 同じP4が**host役では36.4 MB/s**([EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) `docs/usb-host-advanced.md`、async **queue depth 2**、8 KB転送)出るので、device役の10.7 MB/sは**その約30%**にとどまる。→ CR-7
+**ただしこれでは足りない。** 同じP4が**host役では38.2 MB/s**([EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) `docs/usb-host-advanced.md`、async **queue depth 2**、8 KB転送)出るので、device役の10.7 MB/sは**その約30%**にとどまる。→ CR-7
 
 ### こちらでの代替
 
@@ -245,7 +245,7 @@ P4 の HS で vendor bulk の実効帯域を測ると、**1 microframe あたり
 
 `EspUsbHost` 側の実測が答えを持っている。
 
-> | HS | 13 transactions × 512 B per microframe ≈ 53 MB/s | **36.4 MB/s**(ESP32-P4, **async queue depth 2**, 8 KB transfers) |
+> | HS | 13 transactions × 512 B per microframe ≈ 53 MB/s | **38.2 MB/s**(ESP32-P4, **async queue depth 2**, 8 KB transfers) |
 
 full-speed 側でも **「depth 2 あれば転送サイズに関係なく上限(1.098 MB/s = FS 上限の 90%)に張り付く」**と書かれている。**同時に投げる転送を 1 → 2 にすることが、host 側では決定的だった。**
 

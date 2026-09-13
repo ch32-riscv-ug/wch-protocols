@@ -103,7 +103,7 @@ bool vendorWriteQueueBegin(size_t depth, size_t bufferBytes, ...);
 
 があり、ライブラリ自身の計測が **depth 2 で劇的に変わる**と記録している。
 
-> | HS | 13 transactions × 512 B per microframe ≈ 53 MB/s | **36.4 MB/s**(ESP32-P4, async queue depth 2, 8 KB transfers) |
+> | HS | 13 transactions × 512 B per microframe ≈ 53 MB/s | **38.2 MB/s**(ESP32-P4, async queue depth 2, 8 KB transfers) |
 >
 > — `docs/usb-host-advanced.md`
 
@@ -129,7 +129,7 @@ bool vendorReadQueueBegin(size_t depth, size_t bufferBytes, uint8_t address = ..
 |---|---|---:|
 | P4 device → **P4 host**(継続 IN) | **512 B × depth 1** | **5.6 MB/s** |
 | P4 device → PC(usbip + libusb) | 1 MiB URB × depth 1 | 10.74 MB/s |
-| P4 host → device(**async queue**) | 8 KB × **depth 2** | **36.4 MB/s** |
+| P4 host → device(**async queue**) | 8 KB × **depth 2** | **38.2 MB/s** |
 
 となっていて、**「P4 同士で HS の実力を測る」ことがまだできない**。HR-1 が入れば、PC を一切介さずに device 側の天井を出せる。
 
@@ -139,7 +139,7 @@ bool vendorReadQueueBegin(size_t depth, size_t bufferBytes, uint8_t address = ..
 
 転送長 2 点から内訳を出すと、**線上の漸近 rate は 26.3 MB/s、1 転送あたりの死に時間は 30.8 us**。つまり
 
-- **死に時間を完全に消しても 26 MB/s** で、**host 役の 36.4 MB/s には届かない**([CR-7](espusbdevice-change-requests.ja.md) を入れても説明できない)
+- **死に時間を完全に消しても 26 MB/s** で、**host 役の 38.2 MB/s には届かない**([CR-7](espusbdevice-change-requests.ja.md) を入れても説明できない)
 - **26.3 MB/s は microframe あたり 6.4 transaction**(HS が許すのは 13、host 役は 8.9)。**device 役はバスの半分しか使えていない**
 
 残る候補は **(A) device 側の供給限界** と **(B) PC の host controller が bulk IN に振る token 数**の 2 つ。**host 側 software は既に無関係と分かっている**(URB を 64 KiB〜1 MiB、depth 2〜4 のどれにしても動かない。usbip と native でも同じ)。
@@ -217,7 +217,7 @@ README.ja.md に OUT 側の同じ話が書かれている。
 
 ## 参考になった点(記録として)
 
-- **`docs/usb-host-advanced.md` の帯域表が、device 側を調べるうえで一番効いた。** 「同じ P4 が host 役なら 36.4 MB/s」という 1 行があったおかげで、**device 側の 9〜10 MB/s は hardware の限界ではない**と即断でき、[E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md) / [E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) の設計がそこから決まった
+- **`docs/usb-host-advanced.md` の帯域表が、device 側を調べるうえで一番効いた。** 「同じ P4 が host 役なら 38.2 MB/s」という 1 行があったおかげで、**device 側の 9〜10 MB/s は hardware の限界ではない**と即断でき、[E071](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md) / [E072](../experiments/e072_p4_hs_device_to_host_native/README.ja.md) の設計がそこから決まった
 - **「depth 2 で張り付く」という書き方**が、device 側の [CR-7](espusbdevice-change-requests.ja.md) を立てる根拠になった
 - `vendorOpen()` → `onVendorData()` は、P4 を 2 枚繋いで 10 分で streaming 測定が立ち上がるくらい素直だった
 

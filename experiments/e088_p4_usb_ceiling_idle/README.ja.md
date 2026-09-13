@@ -97,3 +97,9 @@ board(単体、外部配線なし)
 - [E085](../e085_p4_transfer_size_model/README.ja.md) の未決「capture を止めた `R`」— **解決。同じだった**
 - [P4 USB HS まとめ](../../references/p4-usb-hs-summary.ja.md) §0 の内訳
 - [HR-1](../../references/espusbhost-change-requests.ja.md) — **切り分けの必要性がさらに強まった**
+
+## 訂正 — 引用していた host 役の 36.4 MB/s は MiB/s だった(2026-09-13)
+
+本文が [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) から引用している **「P4 が host 役で 36.4 MB/s」は MiB/s の値**だった。先方が repo 全体を 10 進へ統一したので、**正しくは 38.2 MB/s**(microframe あたり 8.89 ではなく **9.33 transaction**、バスの 68% ではなく **72%**)。
+
+**こちらの測定はすべて元から 10 進 MB/s** なので、**device 側の数値は変わらない**。変わるのは比較対象だけである。
