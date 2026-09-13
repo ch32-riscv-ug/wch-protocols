@@ -259,6 +259,8 @@ trigger能力は対応条件だけでなく、tier・消費channel・channel幅�
 
 **内部信号源を使うときは、信号源を先にattachしてからPARLIO receiverを作ること**([E083](../experiments/e083_p4_attach_order/README.ja.md))。逆順にすると**cold bootの29%で1 channelが無音になる**(`overflow`は0のまま)。**同一boot内では再現しない**ので、「再実行したら直った」は直っていない。
 
+**周期的な信号をどこまで圧縮できるかの見積りは[capture の圧縮](capture-compression.ja.md)にまとめた**(要点: 効くかどうかは信号周波数ではなく **oversampling比 K** で決まり、**RLEの圧縮率 ≈ K/8**。K<8では逆に膨らむ。SPIならRLEより**CSでgateするほうが強く、CPUも使わない**)。
+
 hardware capture qualificationはこの表の中で唯一**CPUを使わない**手段である。[E040](../experiments/e040_p4_parlio_level_open_frame/README.ja.md)で、level delimiterのgateがactiveな区間のsampleだけがDMAへ渡ることを実測した(gate duty 12.5%に対して回収byte rateはraw byte rateの12%)。入力の性質に依存せず最悪時膨張も無い代わりに、qualifier線を1本消費し、gate外の情報は残らない。同じPSRAM容量でduty分だけ長い時間を覆え、spool帯域([E036](../experiments/e036_p4_parlio_rate_seq_verify/README.ja.md)の約98 MB/s)も同じ比率で緩む。現ベンチのdownloadがUART上限に縛られている(下の「後段」)ことを考えると、深度を伸ばすより効く手段である。
 
 [E043](../experiments/e043_p4_parlio_gate_window_boundary/README.ja.md)で、**間引かれたdataの中にwindow境界は残らない**ことが分かった。window長自体はgate幅から一意に決まりばらつき0だが、callbackはDMA descriptorの4,032 byte単位で切れるだけでgate境界とは無関係である。
