@@ -5,8 +5,8 @@ profiles:
       - platform: esp32:esp32 (3.3.11)
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
     libraries:
-      # Working tree, not the Library Manager copy: CR-4 / CR-7 / CR-9 are not in
-      # a release yet. Real path, because arduino-cli skips the .cpp files behind
-      # a symlink (CR-6). Pinned in the report by commit, not by version.
-      - dir: /home/mt/dev/EspUsbDevice
+      # 2.3.0 carries CR-1..CR-9. Its src is byte-identical to the working tree
+      # everything here was measured against (diff -rq: no differences), so the
+      # numbers in the reports carry over to the release unchanged.
+      - EspUsbDevice (2.3.0)
 default_profile: esp32p4_parlio
