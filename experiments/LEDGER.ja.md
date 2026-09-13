@@ -99,8 +99,8 @@
 | **E081** | MS OS 2.0 descriptor set を flat にすると Windows 11 は vendor bulk device に WinUSB を当てるか。subset のままなら当たらないままか | **一時・配線なし**(`esp32-p4-30eda0e31478`、**HS portはWindows側に置く**) | [Windows が WinUSB を当てない](../references/windows-winusb-binding.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-1 | **完了 — flatは`Status=OK`/`Service=WinUSB`、subsetsは`CM_PROB_FAILED_INSTALL`。汚れた台でも新しいserialなら当たる。nativeは21.2 MB/sでusbip経由と差なし**([e081_p4_winusb_bind/](e081_p4_winusb_bind/README.ja.md)) |
 | **E082** | capture中はpackedのまま一時ファイルへ落とし、終わってから`.sr`へ変換すると、どのrate・どの深さまで通るか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E080](e080_p4_pulseview_gapless/README.ja.md)の未決「受け側が律速」 | **完了 — E080が落ちた条件(86 MHz × 256 M sample)が`fifo_overflow=0`・占有57 KBで通る。変換は無圧縮0.51秒 / deflate 9.5秒で94分の1**([e082_p4_spool_then_convert/](e082_p4_spool_then_convert/README.ja.md)) |
 | **E083** | [E075](e075_p4_width_sample_accuracy/README.ja.md)が観測した「`overflow=0`のまま1 channelだけduty 0.00%」は`create_receiver()`と`configure_pwm()`の順序で説明できるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、信号源は内部LEDC) | [E075](e075_p4_width_sample_accuracy/README.ja.md)の未決 | **完了 — 順序が原因。receiver先はcold bootの29%(24回中7回)で1 channel死亡、LEDC先は30回で0件。再現はhard reset直後の1回だけ**([e083_p4_attach_order/](e083_p4_attach_order/README.ja.md)) |
-| **E084** | capture と同時に降ろすとき、TX FIFO / 1転送長 / host の URB をどう選ぶと排出が最大になるか。釣り合い点はどこまで上がるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E078](e078_p4_continuous_stream/README.ja.md)の釣り合い点、[E071](e071_p4_hs_vendor_fifo_depth/README.ja.md) | **完了 — FIFO 8192 / 転送 8192 で21.99 → 23.97 MB/s(+9.0%、n=9)、釣り合い点86 → 90 Msps。host側のURBは大きさもdepthも効かない。n=3での「32768が最良」は訂正済み**([e084_p4_transfer_tuning/](e084_p4_transfer_tuning/README.ja.md)) |
-| **E085** | 1転送の長さを変えたときの所要は`S / R + T`で表せるか。`R`(線上の漸近rate)と`T`(1転送あたりの死に時間)はいくらか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [E084](e084_p4_transfer_tuning/README.ja.md)の2点外挿、[CR-7](../references/espusbdevice-change-requests.ja.md) / [HR-1](../references/espusbhost-change-requests.ja.md) | **計画 — console復帰待ち**([e085_p4_transfer_size_model/](e085_p4_transfer_size_model/README.ja.md)) |
+| **E084** | capture と同時に降ろすとき、TX FIFO / 1転送長 / host の URB をどう選ぶと排出が最大になるか。釣り合い点はどこまで上がるか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ、信号源は内部LEDC) | [E078](e078_p4_continuous_stream/README.ja.md)の釣り合い点、[E071](e071_p4_hs_vendor_fifo_depth/README.ja.md) | **完了 — FIFO 8192 / 転送 8192が最良。連続streamingは86 → 96 Msps。host側のURBは大きさもdepthも効かない。n=3での「32768が最良」と「飽和させて排出を測る」はどちらも訂正済み**([e084_p4_transfer_tuning/](e084_p4_transfer_tuning/README.ja.md)) |
+| **E085** | 1転送の長さを変えたときの所要は`S / R + T`で表せるか。`R`(線上の漸近rate)と`T`(1転送あたりの死に時間)はいくらか | **一時・配線なし**(`esp32-p4-30eda0e31478`、HS portはusbipdでWSLへ) | [E084](e084_p4_transfer_tuning/README.ja.md)の2点外挿、[CR-7](../references/espusbdevice-change-requests.ja.md) / [HR-1](../references/espusbhost-change-requests.ja.md) | **完了 — `S/R + T`で表せる(残差1.0%)。`R`=24.64 MB/s、`T`=21.7 us。転送長を無限に伸ばしても24.4 MB/sで36.4には届かない**([e085_p4_transfer_size_model/](e085_p4_transfer_size_model/README.ja.md)) |
 | **E079** | host 側(PC)が bulk IN の URB を複数同時に投げると、device を変えずに帯域は伸びるか | **一時・配線なし**(同上) | [改修の着手順](../references/usb-library-change-plan.ja.md)、[EspUsbDeviceへの改修依頼](../references/espusbdevice-change-requests.ja.md) CR-7 | **中止 — 同じ測定がライブラリ側で先に行われた。depth 2 で飽和(1=18.64 / 2=22.68 / 8=22.87 MB/s)、約23 MB/sはdevice側の天井**([e079_p4_host_urb_depth/](e079_p4_host_urb_depth/README.ja.md)) |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
@@ -255,6 +255,23 @@ LA を組むベンチは設営が重いので、**組んだら一度に消化す
 **候補**: 同一PIDでの分離手段はinterface番号の固定 + 末尾追加(常にcomposite)、serial規則、別PID。`bcdDevice`は候補から外す。
 
 **未決** → [E062](e062_usb_same_identity_layout_change/README.ja.md)。
+
+### E085 ESP32-P4: 1 転送あたりの死に時間と線上の漸近 rate — 完了 2026-09-13
+
+全文: [e085_p4_transfer_size_model/README.ja.md](e085_p4_transfer_size_model/README.ja.md)。転送長 2048 / 4096 / 8192 / 16384 を 128 MHz(飽和)で各 n=9。
+
+**事実**
+
+1. **`period(S) = S/R + T` で表せる。** 4 点が残差 **±3.44 us(平均 period の 1.0%)**で直線に乗る。
+2. **`R` = 24.64 MB/s、`T` = 21.67 us。** [E084](e084_p4_transfer_tuning/README.ja.md) の 2 点外挿(26.34 / 30.8)は `R` を 7%、`T` を 42% 過大に見ていた。**結論は変わらないが数値は本実験のものを使う。**
+3. **`R` は漸近線。** 32768 で 24.25、65536 で 24.44、∞ で 24.64 MB/s。**転送長では 36.4 に届かない。**
+4. **`R` は microframe あたり 6.02 transaction**(HS は 13、host 役は 8.89)。
+5. **16384 は 8192 より +1.9% だけ。** internal RAM 32 KB に見合わない。
+6. **`R` は定数ではない** — capture 負荷で動く(96 MHz で 23.9、110 MHz で 23.1)。**素の USB 上限を測るには capture を止める必要がある**(未実施)。
+
+**候補**: **1 転送は 8192** / **`T` を消しても上限は 24.6 MB/s**([CR-7](../references/espusbdevice-change-requests.ja.md))/ **36.4 との差は [HR-1](../references/espusbhost-change-requests.ja.md) でしか切り分かない**。
+
+**未決**: capture を止めた `R` `—` / `T` の内訳 `—` / 6 transaction で止まる理由 `—`。
 
 ### E084 ESP32-P4: 転送の形を詰める — 完了 2026-09-13
 
