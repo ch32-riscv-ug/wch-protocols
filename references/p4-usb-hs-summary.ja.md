@@ -26,7 +26,7 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | (参考)**P4 が host 役で送信**、async queue depth 2 | **36.4 MB/s** | — | EspUsbHost `docs/usb-host-advanced.md` |
 | (参考)HS bulk の理論上限 | 53.2 MB/s | — | 13 transaction × 512 B × 8,000/s |
 
-**2 channel の連続 streaming は 96 Msps**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md) 追測、64 MiB × 4 回 clean)。既定(4 KiB)で 86、32 KiB で 90 なので、**FIFO は大きいほど良いわけではない**。**batch なら 160 Msps**([E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md))。
+**連続 streaming の上限は channel 数ではなく byte rate(23〜24 MB/s)で決まる** — **8ch 23 / 4ch 46 / 2ch 96 Msps**([E086](../experiments/e086_p4_8ch_stream/README.ja.md))。**2 channel は 96 Msps**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md) 追測、64 MiB × 4 回 clean)。既定(4 KiB)で 86、32 KiB で 90 なので、**FIFO は大きいほど良いわけではない**。**batch なら 160 Msps**([E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md))。
 
 > **97 / 99 MHz だけ突発的に滞る**という未特定の観測がある([E084](../experiments/e084_p4_transfer_tuning/README.ja.md))。**96 Msps 以下を使えば避けられる。**
 
