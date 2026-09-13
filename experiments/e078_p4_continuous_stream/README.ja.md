@@ -229,3 +229,9 @@ if (0 == tu_edpt_stream_write_xfer(&p_vendor->tx_stream)) {
 
 7. **半端な長さの転送は送出側の書き方で消せる。** `waitWritable(容量)` → `write(容量)` にすれば、釣り合い点より上では短い URB が 0 になる。**帯域への効きは 1% 程度**(超過分 0.68 → 0.48 MB/s)で、**host 側の URB 再投入が減るぶんが主な利得**である
 8. **短い URB の数は「追いついているか」の副次的な指標になる。** 釣り合い点より下では ZLP のぶん出続け、上では 0 になる。**占有の伸びと逆向きに効く**ので、2 つ揃えて見ると判定が早い
+
+## 追記 — 準備順序を入れ替えた(2026-09-13)
+
+[E083](../e083_p4_attach_order/README.ja.md) を受けて、**`configure_pwm()` を `create_receiver()` より先に**呼ぶよう firmware を直した。逆順は **cold boot の 29% で 1 channel が無音になる**(`overflow` は 0 のまま)。
+
+**上の測定値は影響を受けていない** — 全条件で立ち上がり周期を head / tail で見ており、死んだ channel があれば必ず MISMATCH になる。**[E080](../e080_p4_pulseview_gapless/README.ja.md) / [E082](../e082_p4_spool_then_convert/README.ja.md) がこの firmware を使う**ので、今後の取得のために直した。
