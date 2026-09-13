@@ -327,11 +327,14 @@ static void run_stream(size_t total_bytes, uint32_t rate_hz) {
   memset(ring_buffer, 0xA5, kRingSize);
   esp_cache_msync(ring_buffer, kRingSize, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
 
+  // Signal source first, receiver second (E083): the other way round kills a
+  // lane on about a third of cold boots, silently -- overflow stays 0 and only
+  // the period check notices.
   parlio_rx_unit_handle_t rx_unit = nullptr;
   parlio_rx_delimiter_handle_t delimiter = nullptr;
-  esp_err_t status = create_receiver(&rx_unit, &delimiter, rate_hz);
+  esp_err_t status = configure_pwm();
   if (status == ESP_OK) {
-    status = configure_pwm();
+    status = create_receiver(&rx_unit, &delimiter, rate_hz);
   }
   if (status == ESP_OK) {
     status = parlio_rx_unit_enable(rx_unit, true);
