@@ -1,6 +1,10 @@
 # EspUsbHost への改修依頼
 
-状態: **依頼済み**(2026-09-13 に送付。対象 [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 2.8.0)
+状態: **HR-2 / HR-1 は実装済み(未リリース・未検証)**(2026-09-13。対象 [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 2.8.0 の working tree)
+
+> **同日中に HR-2 と HR-1 が実装された。** `vendorOpen(addr, 0xff, READ_CONTINUOUS, 8192)` で 1 転送の byte 数、`vendorReadQueueBegin(depth, size, addr)` で in-flight 数。**`vendorReadStats()` が `starved`(完了時点で他に 1 本も飛んでいなかった回数)と `bytes / completed`(device が 1 転送に実際に詰めた量)を返す**ので、**「どちらが待っているか」が直接読める**。
+>
+> **双方とも実機未検証**(先方は S3 peer が外れ、こちらは HS 同士の配線待ち)。**検証は [E089](../experiments/e089_p4_host_in_queue/README.ja.md)** で、**両側とも P4 でビルド確認済み**。
 
 > **送付時に併せて伝えたこと**: ① 順序は **HR-2 を先、HR-1 を後**(device 側で CR-7 を外した教訓)、② **検証に要る HS 同士の直結は次に実機を触れるときまで待ち**で、現状は board 1 の HS が PC 側、③ **比較の基準は取得済み**([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md): 8 KiB 転送・capture なしで 23.88 MB/s)、④ **書き込み前に HS device を detach する**(attach 中の chip reset は console まで巻き込む)。
 
@@ -176,7 +180,7 @@ queue 深さまで手を入れるのが重いなら、**`vendorOpen()` に「1 �
 
 device 側の HID interrupt IN を **1,024 B** にすると、`vendorOpen` 相当の HID 経路で **stream が流れない**。device は 1 report 送って止まり、host 側の `onHIDVendorInput()` に何も届かない([E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md))。512 B までは問題なく **4.14 MB/s** 出る。
 
-### 心当たり
+### 心当たり(**この前提は誤りだった。下記の回答を参照**)
 
 README.ja.md に OUT 側の同じ話が書かれている。
 
@@ -190,6 +194,16 @@ README.ja.md に OUT 側の同じ話が書かれている。
 - 可能なら 1,024 B の periodic IN を受けられる配分オプション
 
 **1,024 B が通れば HID は 8.2 MB/s**(= 1,024 × 8,000)になり、driver レスのまま vendor bulk に迫る。
+
+### 先方の回答(2026-09-13)— FIFO 再分割は要らなかった
+
+**こちらの前提(OUT 側と同じ FIFO 配分の問題だろう)は誤り**だった。
+
+- **IN の上限は `(rxFifoLines - 2) * 4`**。HS 既定は rx = 1024 − 384 = 640 lines → **2552 B** で、**1,024 B は最初から入る**
+- `ESP_USB_HOST_FIFO_LARGE_PERIODIC_OUT` にしても 1032 B。**IN は全 endpoint が rx FIFO を共有するので、そもそも「周期 IN 専用の枠」が無い**
+- host のコード上にも 512 B の制限は無い
+- **怪しいのは submit の頻度。** `bInterval=1` の 1,024 B interrupt IN は 125 us ごとに 1 転送で、**いまの HID / interrupt 経路は vendor の continuous read と同じ「1 本だけ・client task で再 submit」**。**HR-1 と同じ改修が interrupt IN 側にも要る可能性が高い**
+- ただし keyboard / mouse と同じ経路なので、**[HR-1](#hr-1-bulk-in-にも-async-queue-がほしいout-にはある) の実測を見てから**とのこと。**異論なし**
 
 ### 直ったことの確認
 
