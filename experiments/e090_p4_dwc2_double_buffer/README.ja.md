@@ -1,6 +1,6 @@
 # E090 DWC2 のハードウェア TX FIFO を 2 packet にすると天井は動くか
 
-状態: **準備完了 — リグの空き待ち**(2026-09-13。ビルド確認済み)
+状態: **完了 — 2 packet 化しても天井は動かない**(2026-09-13。同一リグの A/B を各3回)
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E089](../e089_p4_host_in_queue/README.ja.md)(天井は device 側と確定)、[E085](../e085_p4_transfer_size_model/README.ja.md)(`R` = 24.64 MB/s、`T` = 21.7 us)
 
@@ -99,3 +99,46 @@ peer(board 2 枚、要配線)
 - **上がれば**: device 役の天井は「TinyUSB の FIFO 割り当て既定」であって DWC2 の物理限界ではない → EspUsbDevice へ **CR-10**(`bm_double_buffered` の露出、または bulk IN の既定を 2 packet に)
 - **上がらなければ**: 段数ではなく **DMA の詰め直しそのもの**が律速 → 打ち手はライブラリの外
 - どちらでも [E089](../e089_p4_host_in_queue/README.ja.md) の結論(天井は device 側)は動かない
+
+## 結果
+
+P4 2枚(`esp32-p4-30eda0e31478` = device / `...14f5` = host)の OTG HS を直結し、同じ host firmware のまま device だけを次の A/B で焼き替えた。各条件を3回ずつ実行した。
+
+- **A: 1 packet** — E089 の `build_opt.h`(double buffer 指定なし)
+- **B: 2 packet** — A に `CFG_TUD_CONFIGURE_DWC2_DEFAULT={.bm_double_buffered=0xFFFE,...}` を追加
+
+生ログ: `experiments/_runs/E090_20260913T100722Z_p4_hs_ab/`(A/B 各3本)。全run・全条件で **`bad=0` / `errors=0` / pytest PASS**。
+
+> **設定が効いていない比較ではない。** B の `dcd_dwc2.c.o` で `_tud_cfg` は `.sdata` の `fe ff 00 00`、すなわち `bm_double_buffered=0xFFFE` と確認した。A/B の sketch 差分もこの define 1行だけである。
+
+| host read | **A: 1 packet MB/s** min / med / max | **B: 2 packet MB/s** min / med / max | `per_transfer`(両者) |
+|---|---:|---:|---:|
+| continuous、512 B | 8.129 / 8.158 / 8.159 | 8.128 / 8.129 / 8.159 | — |
+| queue depth 1、2 KiB | 21.400 / 21.400 / 21.400 | **22.795 / 22.795 / 22.996** | 2,044 B |
+| queue depth 1、8 KiB | 25.101 / 25.104 / 25.166 | 25.132 / 25.132 / 25.165 | 4,096 B |
+| queue depth 1、16 KiB | 25.575 / 25.575 / 25.575 | 25.575 / 25.575 / 25.575 | 8,192 B |
+| queue depth 4、512 B | 15.693 / 15.703 / 15.720 | 15.679 / 15.691 / 15.705 | 511.8 B |
+| queue depth 4、32 KiB | **25.575 / 25.575 / 25.575** | **25.575 / 25.575 / 25.576** | 8,192 B |
+
+### 事実
+
+1. **天井は動かなかった。** 最大条件の中央値は A/B とも **25.575 MB/s**、差は測定表示の丸め以下である。したがって **bulk IN の hardware TX FIFO が1 packetだったことは、約24〜26 MB/sの天井原因ではない。** 仮説は反証条件1により外れた。
+2. **小さい単発転送には局所的に効いた。** depth 1 / 2 KiB は 21.400 → 22.795 MB/s(中央値、+6.5%)。しかし 8 KiB では +0.1%、16 KiB以上では差が消える。2 packet staging は転送が短いときの詰め直し間隔を一部埋めるが、飽和rateは変えない。
+3. **`per_transfer` は全条件で不変。** 16 KiB以上を要求しても 8,192 Bで頭打ちで、double bufferはTinyUSBのsoftware転送境界やZLP終端を広げない。
+4. E089 の過去値24.45 MB/sと今回の25.575 MB/sは直接A/Bに使えない。同じ現在のhost firmwareで焼き戻したAも25.575 MB/sだったため、今回の結論は同時点A/Bだけから取った。
+
+### 候補
+
+- **CR-10は出さない。** `bm_double_buffered` を公開設定にしても最大帯域の改善にならない。
+- depth 1かつ2 KiB程度の小さいtransferだけを使う用途では有効だが、host側のtransfer size/depthを上げる方が効果が大きい。
+
+### 未決
+
+- **約25.6 MB/sで止まるdevice側の本体は未特定。** hardware FIFOのpacket段数ではなく、DMAの供給、IN tokenへの応答間隔、またはDWC2/TinyUSBの別の経路に残る。
+- 今回の1 MiB測定は41 ms単位に揃う条件が多い。細かい差を評価するなら転送量を増やす必要があるが、天井がA/Bで完全一致という結論は動かない。
+
+## 反映
+
+- [LEDGER](../LEDGER.ja.md) を完了へ更新。
+- [P4 USB HSまとめ](../../references/p4-usb-hs-summary.ja.md) の天井候補からhardware TX FIFO 1 packet説を除外。
+- EspUsbHost の `vendor_bulk_in_throughput` P4 profileを `USBMode=hwcdc,CDCOnBoot=cdc` に修正。これが無いと `Serial` がUART0へ向き、pytestのconsoleが空になる。

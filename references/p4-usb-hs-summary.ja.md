@@ -1,6 +1,6 @@
 # ESP32-P4 の USB 2.0 HS と 2 channel capture — 到達点まとめ
 
-状態: **まとめ**(2026-09-13。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E085](../experiments/e085_p4_transfer_size_model/README.ja.md) の結論を 1 枚にした索引)
+状態: **まとめ**(2026-09-13。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md) の結論を 1 枚にした索引)
 
 **§0 が現在の値。§1 以降は 2.2.0 時点の記録**で、数字はそのまま残してある(どこから何が変わったかが追えるように)。
 
@@ -57,7 +57,8 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 - capture 負荷で排出が 3% ほど動く(96 Msps で 23.9、110 Msps で 23.1)ので、**釣り合い点は「届いた値が生成値に追いつく最大 rate」で挟む**
 - **比較が対称ではない** — 38.2 は **P4 が host として *送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**
 - **2026-09-13、[E089](../experiments/e089_p4_host_in_queue/README.ja.md) で決着した** — [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) に転送長(HR-2)と queue depth(HR-1)が入り、**P4 を host にすると 24.45 MB/s**。**PC の 23.88 MB/s と同水準**で、**別々の host controller 2 つが同じ天井で止まる**。→ **約 24 MB/s は device 側の限界。PC の controller 説は否定された**
-- **残るのは「なぜ microframe あたり 6 transaction で止まるのか」**だけで、**それは device 側(DWC2 / TinyUSB)の構造**である
+- **[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md) でDWC2のhardware TX FIFOをbulk INだけ1 packet→2 packetにしても、同一リグA/Bの最大はともに中央値25.575 MB/s。** depth 1 / 2 KiBだけ+6.5%だが8 KiB以上では差が消え、`per_transfer`も不変。**hardware FIFOの段数は天井原因ではない**
+- **残るのは「なぜ microframe あたり約6 transactionで止まるのか」**だけで、device側のDMA供給、IN tokenへの応答間隔、またはDWC2/TinyUSBの別経路に絞られた
 
 ## 1. USB 2.0 HS で何が出るか(**2.2.0 時点の記録**。現在の値は §0)
 
