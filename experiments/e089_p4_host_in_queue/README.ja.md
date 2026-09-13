@@ -167,6 +167,8 @@ device : esp32:esp32:esp32p4:...,USBMode=default,CDCOnBoot=default,...
 4. **`starved` が判定に効いた。** depth 1 では**全転送が starved**(定義上そうなる)、depth 2 以上で **0**。**depth を上げると starved が消え、そのぶん伸びる**という関係がそのまま見えた。
 5. **`per_transfer` は device 側の転送長で頭打ちになる。** 要求 16384 に対し **ちょうど 8192**、要求 32768 に対し 9620〜16132。**device の TX FIFO / 1 転送が 8192** なので、**device が 8 KiB 出すたびに FIFO が一瞬空になり ZLP が転送を終端する**([CR-5](../../references/espusbdevice-change-requests.ja.md) の機序)。**short が毎回立つのは異常ではなく、device 側の転送境界が見えているだけ**である。
 
+> **これは P4 固有でも HS 固有でもない。** [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 側が **S3 同士の full speed** で同じ掃引を回したところ、**`short` 全件・`starved=0` という同じ形**が出た。**別のチップ・別の速度・別のリグで再現する**ので、**「TinyUSB の device は送信 FIFO が空になるたび転送を終端する」という device 側の一般的な挙動**として読んでよい([CR-5](../../references/espusbdevice-change-requests.ja.md) の機序が speed をまたいで成立した)。先方はこの一般化を `docs/usb-host-advanced.md` 1.3 に収録した。
+
 ### 最初の測定は device 側の sketch が律速していた(§7-6)
 
 **1 回目の掃引では depth を上げるほど遅くなった**(depth 1/32768 で 14.25 MB/s、depth 2 以上で 8.2〜8.5 MB/s、per_transfer が 540 前後、short が全転送)。

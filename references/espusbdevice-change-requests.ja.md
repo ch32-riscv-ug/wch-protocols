@@ -294,6 +294,12 @@ vendor(できれば CDC も)の送信で、**転送を 2 つ以上 in-flight に
 
 **`stalls` と帯域はきれいに逆相関する**(25,413 回で 10.91 MB/s、70,318 回で 6.62 MB/s)。**送出元でも capture の有無でも動かない**ので、**残る候補は stack 側か usbip 経路のどちらか**である。**こちらではまだ切り分けていない。**
 
+### 機序は speed をまたいで成立する(2026-09-13 追記)
+
+**ZLP が host 側の転送を終端する**という CR-5 の機序は、**host 側から見ると「`shortTransfers` がほぼ毎回立ち、`bytes / completed` が要求サイズではなく device の FIFO サイズに張り付く」**という形で出る([E089](../experiments/e089_p4_host_in_queue/README.ja.md))。
+
+**P4 同士の high speed と、[EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) 側が回した S3 同士の full speed で、同じ形が出た。** **別のチップ・別の速度・別のリグで再現する**ので、**特定の環境の癖ではなく TinyUSB device の一般的な挙動**である。
+
 ### 直ったことの確認
 
 同一条件 25 回の **min–max の幅**が core 内蔵並み(±数%)に縮むこと。**median が上がる必要はない。**
