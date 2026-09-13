@@ -1,6 +1,6 @@
 # ESP32-P4 の USB 2.0 HS と 2 channel capture — 到達点まとめ
 
-状態: **まとめ**(2026-09-13。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md) の結論を 1 枚にした索引)
+状態: **まとめ**(2026-09-13。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E092](../experiments/e092_p4_vendor_out_arm_size/README.ja.md) の結論を 1 枚にした索引)
 
 **§0 が現在の値。§1 以降は 2.2.0 時点の記録**で、数字はそのまま残してある(どこから何が変わったかが追えるように)。
 
@@ -23,7 +23,9 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | vendor bulk(**usbip なし、Windows 直**) | **21.2 MB/s**(旧既定での測定) | WinUSB | [E081](../experiments/e081_p4_winusb_bind/README.ja.md) |
 | **HID(512 B endpoint)** | **4.03 MB/s** | **不要** | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) / CR-8 |
 | USB-Serial-JTAG(FS CDC) | 0.72〜0.80 MB/s | 不要 | [E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md) |
-| (参考)**P4 が host 役で送信**、async queue depth 2 | **38.2 MB/s** | — | EspUsbHost `docs/usb-host-advanced.md` |
+| **P4 host → P4 EspUsbDevice**(既定RX 512 B arm) | **10.365 MB/s** | — | [E091](../experiments/e091_p4_bulk_direction_same_peer/README.ja.md) |
+| **P4 host → P4 EspUsbDevice**(RX 8192 B arm + ZLP) | **30.840 MB/s** | — | [E092](../experiments/e092_p4_vendor_out_arm_size/README.ja.md) |
+| (参考)P4 host送信、**相手device不明** | 38.2 MB/s | — | EspUsbHost `docs/usb-host-advanced.md`(生ログ/銘板なし) |
 | (参考)HS bulk の理論上限 | 53.2 MB/s | — | 13 transaction × 512 B × 8,000/s |
 
 **連続 streaming の上限は channel 数ではなく byte rate(23〜24 MB/s)で決まる** — **8ch 23 / 4ch 46 / 2ch 96 Msps**([E086](../experiments/e086_p4_8ch_stream/README.ja.md))。**2 channel は 96 Msps**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md) 追測、64 MiB × 4 回 clean)。既定(4 KiB)で 86、32 KiB で 90 なので、**FIFO は大きいほど良いわけではない**。**batch なら 160 Msps**([E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md))。
@@ -58,7 +60,9 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 - **比較が対称ではない** — 38.2 は **P4 が host として *送信* した値**で、**host は自分でバスを組めるが device は IN token を待つ**
 - **2026-09-13、[E089](../experiments/e089_p4_host_in_queue/README.ja.md) で決着した** — [EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) に転送長(HR-2)と queue depth(HR-1)が入り、**P4 を host にすると 24.45 MB/s**。**PC の 23.88 MB/s と同水準**で、**別々の host controller 2 つが同じ天井で止まる**。→ **約 24 MB/s は device 側の限界。PC の controller 説は否定された**
 - **[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md) でDWC2のhardware TX FIFOをbulk INだけ1 packet→2 packetにしても、同一リグA/Bの最大はともに中央値25.575 MB/s。** depth 1 / 2 KiBだけ+6.5%だが8 KiB以上では差が消え、`per_transfer`も不変。**hardware FIFOの段数は天井原因ではない**
-- **残るのは「なぜ microframe あたり約6 transactionで止まるのか」**だけで、device側のDMA供給、IN tokenへの応答間隔、またはDWC2/TinyUSBの別経路に絞られた
+- **[E091](../experiments/e091_p4_bulk_direction_same_peer/README.ja.md) で比較相手を同一P4 EspUsbDeviceに固定すると、host→deviceは10.365 MB/sで、38.2対25.6の方向比較は成立しない。** 38.2は相手銘板が無く、P4 HCDの参考値に限定する。
+- **[E092](../experiments/e092_p4_vendor_out_arm_size/README.ja.md) でdevice OUTのarmを512→8192 Bにすると30.840 MB/s(2.98倍)。** ZLP有無だけの対照は10.131 MB/sなので、主因はTinyUSB vendor RXの512 Bごとの完了・再arm。ただしmulti-packet RXはhostがZLPで短転送を閉じる契約が必須。
+- **同一peerの調整後方向差は host→device 30.840 / device→host 25.575 = 1.21倍。** IN側の残る未決は「なぜmicroframeあたり約6 transactionで止まるか」で、DMA供給、IN tokenへの応答間隔、またはDWC2/TinyUSBの別経路に絞られた。
 
 ## 1. USB 2.0 HS で何が出るか(**2.2.0 時点の記録**。現在の値は §0)
 

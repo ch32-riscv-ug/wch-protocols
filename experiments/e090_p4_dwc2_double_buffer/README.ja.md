@@ -68,7 +68,7 @@ if (((_tud_cfg.bm_double_buffered & (1 << epnum)) != 0) && epnum > 0 && is_bulk)
 
 - `0xFFFE` = EP0 以外の全 IN endpoint。**`is_bulk` かつ `epnum > 0` のときだけ効く**ので、bulk IN だけが 2 packet になる
 - device 側の他の条件は [E089](../e089_p4_host_in_queue/README.ja.md) と同一(TX BUFSIZE / EPSIZE = 8192、`writeCapacity()` ぶんずつ、flush は最後のみ)
-- host 側は **[EspUsbHost](https://github.com/tanakamasayuki/EspUsbHost) の `vendor_bulk_in_throughput` をそのまま**。continuous → depth {1,2,4} × 転送長 {512, 2048, 8192, 16384, 32768}
+- host 側は **EspUsbHost working treeの `vendor_bulk_in_throughput` をそのまま**。実行に使ったsketch / pytest / profileのスナップショットを [host/](host/) に保存した。continuous → depth {1,2,4} × 転送長 {512, 2048, 8192, 16384, 32768}
 - **[E089](../e089_p4_host_in_queue/README.ja.md) の数字がそのまま対照**になる
 
 ### 記録する数値
@@ -142,3 +142,4 @@ P4 2枚(`esp32-p4-30eda0e31478` = device / `...14f5` = host)の OTG HS を直結
 - [LEDGER](../LEDGER.ja.md) を完了へ更新。
 - [P4 USB HSまとめ](../../references/p4-usb-hs-summary.ja.md) の天井候補からhardware TX FIFO 1 packet説を除外。
 - EspUsbHost の `vendor_bulk_in_throughput` P4 profileを `USBMode=hwcdc,CDCOnBoot=cdc` に修正。これが無いと `Serial` がUART0へ向き、pytestのconsoleが空になる。
+- 後から外部working treeの状態に依存せず再現できるよう、実行時のhost側sourceをこの実験ディレクトリに取り込んだ。ライブラリ本体は `sketch.yaml` に記載したworking treeを使う。
