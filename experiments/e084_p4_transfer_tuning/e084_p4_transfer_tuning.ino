@@ -1,5 +1,5 @@
-// E078: stream a PARLIO capture straight out of the OTG HS vendor endpoint
-// instead of filling PSRAM first, and find the rate where it stops keeping up.
+// E084: E078's streaming path with the transfer geometry opened up, to find
+// what the drain actually tops out at while a capture is running.
 //
 // Built against the EspUsbDevice working tree (CR-4/CR-7/CR-9), not a release:
 // the TX FIFO and the per-transfer size are set in build_opt.h, and the sender
@@ -41,12 +41,12 @@ static constexpr size_t kRingSize = 64 * 1024;
 static constexpr size_t kDelimiterSize = 65408;
 static constexpr size_t kQueueDepth = 128;
 static constexpr size_t kFifoSize = 8u * 1024u * 1024u;
-// Wait for the whole FIFO and then hand over exactly that much. Waiting for a
-// smaller slice means write() takes whatever odd number of bytes happens to be
-// free, and TinyUSB arms a transfer of that length -- not a multiple of the
-// packet size, so it ends in a short packet and completes the host's URB early.
-// The FIFO size is a multiple of the packet size, so writing it whole never is.
-static size_t tx_chunk = 4096;  // set from EspUsbDeviceVendor::writeCapacity() in setup()
+// Wait for the whole FIFO and then hand over exactly that much (E078): a
+// smaller slice lets write() take an odd number of bytes, and that transfer
+// ends in a short packet which completes the host's URB early. Taken from the
+// library at runtime so a different CFG_TUD_VENDOR_TX_BUFSIZE is picked up
+// without touching the sketch.
+static size_t tx_chunk = 4096;
 static constexpr uint32_t kWaitTimeoutMs = 1000;
 static constexpr size_t kStreamBytesMax = 64u * 1024u * 1024u;
 
@@ -360,8 +360,8 @@ static void run_stream(size_t total_bytes, uint32_t rate_hz) {
   Console.flush();
 
   const uint64_t started = esp_timer_get_time();
-  xTaskCreatePinnedToCore(usb_task, "e078_tx", 4096, nullptr, 5, nullptr, kUsbCore);
-  xTaskCreatePinnedToCore(harvest_task, "e078_hv", 4096, nullptr, 5, nullptr, kHarvestCore);
+  xTaskCreatePinnedToCore(usb_task, "e084_tx", 4096, nullptr, 5, nullptr, kUsbCore);
+  xTaskCreatePinnedToCore(harvest_task, "e084_hv", 4096, nullptr, 5, nullptr, kHarvestCore);
   parlio_rx_soft_delimiter_start_stop(rx_unit, delimiter, true);
 
   // Stop the capture the moment harvest has what it needs. Leaving it running
@@ -395,7 +395,7 @@ static void run_stream(size_t total_bytes, uint32_t rate_hz) {
 
 static void handle_command(void) {
   if (command[0] == '?') {
-    Console.printf("# EXP E078 v1 git=%s probe=esp32p4_parlio target=internal build=%s %s\n", BANNER_GIT, __DATE__,
+    Console.printf("# EXP E084 v1 git=%s probe=esp32p4_parlio target=internal build=%s %s\n", BANNER_GIT, __DATE__,
                    __TIME__);
     Console.printf(
       "ENV chip=%s psram_found=%u psram_size=%lu lanes=%u pins=%d,%d pwm_hz=%lu fifo=%lu ring=%lu stream_max=%lu "
@@ -438,7 +438,7 @@ void setup() {
   config.vid = kTestVid;
   config.pid = kTestPid;
   config.manufacturer = "Open Embedded Probe (TEST ONLY)";
-  config.product = "OEP P4 Continuous Stream";
+  config.product = "OEP P4 Transfer Tuning";
   // Same identity as E069/E071/E076 so usbipd's existing bind still applies.
   config.serialNumber = "E069-A";
   config.selfPowered = true;
@@ -457,7 +457,7 @@ void loop() {
     while (Console.available()) {
       Console.read();
     }
-    Console.println("READY E078");
+    Console.println("READY E084");
     Console.flush();
     host_armed = true;
     return;
