@@ -20,7 +20,7 @@ total                         = 200 bit = 25 byte
 
 低速8本を各1 byteへ切り上げる誤った形式は32 byteになる。共有bit packingなら25 byteで、60 Msps時23.4375 MB/sである。
 
-P4実機では16-bit snapshotからこの25-byte blockへの専用codecが**入力145.899 MB/s、出力28.496 MB/s**を出し、変換演算単体は60 Msps×2 byte=120 MB/sを上回った。64 MBの同じstreamをWindows nativeとusbipd/WSLの双方で全byte照合し、`bad=0 / short=0`だった。
+P4実機では固定globalの16-bit snapshotからこの25-byte blockへの専用codecが**入力145.899 MB/s、出力28.496 MB/s**を出した。ただしE106のruntime DMA pointerで生成コードを比較すると、この値は4-byte `memcpy`が直接loadへ最適化された場合に限ることが分かった。runtime pointerのままでは約37 MB/s、aligned direct load化後は約142〜149 MB/sだった。capture callbackとPSRAM copyまで含む成立点は[E106](../e106_p4_mixed_rate_capture_stream/README.ja.md)の40 Mspsである。64 MBの事前生成streamはWindows nativeとusbipd/WSLの双方で全byte照合し、`bad=0 / short=0`だった。
 
 ただし11 physical laneはPARLIO 16-bit modeになり、60 Mspsではcapture前段が120 MB/sになる。既存実測のring→PSRAM spool上限は約98 MB/sで、16-bitは48 Msps(95.884 MB/s)まで成立、52 Msps(103.878 MB/s)でdropした([E042](../e042_p4_parlio_16ch_seq_verify/README.ja.md))。**したがって11 lane/60 Msps continuousはcodec以前のcapture前段で成立しない。11 laneなら48 Msps以下が実測済みの安全側である。**
 
@@ -127,7 +127,7 @@ Windowsの15.2 MB/sはE104のIN二状態のlow側で、同じbinaryでも列挙�
 
 ## 未決
 
-- PARLIO 16-bit / 48 Mspsの実raw captureをこのcodecへ接続し、USBと同時にring占有が増えないことを確認する。
+- [E106](../e106_p4_mixed_rate_capture_stream/README.ja.md)でPARLIO 16-bit実captureへ接続済み。40 Msps持続PASS、45 Msps以上はring追越し。
 - 60 Mspsを維持する場合のCLK再構成、8-lane以内へのpin選択、または別low-speed GPIO samplerを比較する。
 - Windows/WSL列挙ごとのIN rate probeと自動fallbackをprotocolへ入れる。
 - `edge_latch`のedge metadataをPulseView annotationへ渡す。
