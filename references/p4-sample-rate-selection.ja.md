@@ -1,6 +1,6 @@
 # ESP32-P4 ロジアナの sample rate — 何を出せて、何を選ばせるか
 
-状態: **reference**(2026-09-14。[E106](../experiments/e106_p4_mixed_rate_capture_stream/README.ja.md) / [E086](../experiments/e086_p4_8ch_stream/README.ja.md) / [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) / [E075](../experiments/e075_p4_width_sample_accuracy/README.ja.md) の実測から)
+状態: **reference**(2026-09-15。[E107](../experiments/e107_p4_stream_core_placement/README.ja.md) / [E106](../experiments/e106_p4_mixed_rate_capture_stream/README.ja.md) / [E086](../experiments/e086_p4_8ch_stream/README.ja.md) / [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) / [E075](../experiments/e075_p4_width_sample_accuracy/README.ja.md) の実測から)
 
 PulseView などへ「選べる sample rate」を出すとき、**値は 3 つの事情で決まる** — clock で作れるか、線に載るか、client の driver が受け付けるか。
 
@@ -19,7 +19,7 @@ channel別rateは別々のsampling clockではない。全pinを共通base clock
 
 `decimate_hold`はbucket中の短いpulseを見落とす。active-low CS/INTには、bucket内で一度でもactiveなら残す`any_active`を選べるようにする。この場合pulseの存在は残せるが、edge位置は最大D-1 base sampleぶん量子化・拡幅される。表示時はbase sample gridへhold展開するため、低rate channelの見た目の時間精度が上がるわけではない。
 
-8-bitの3 raw＋5 slow D=64は内部持続試験で61 Mspsまで成立し、62 Mspsで破綻したため内部安全値を60 Mspsとする。16-bit wideの3 raw＋1 D8＋12 D64は内部40 Mspsを3回PASSした。hub 2段ではUSB probe 120.86 Mbps、90%予算108.77 Mbpsだったが、PC直結では212.67 Mbps、90%予算191.40 Mbpsへ改善した。一方、実captureとの結合ではcore 0上のRX / spool / USB競合により、直結でも8-bit 44 Msps、16-bit wide 32 Mspsが現firmwareの連続PASS境界だった。したがってaccept判定はUSB予算、内部sink上限、結合上限の最小を見る。60 / 40 Mspsはtask配置を調整した後に再確認する製品目標値である。
+8-bitの3 raw＋5 slow D=64は内部持続試験で61 Mspsまで成立し、62 Mspsで破綻したため内部安全値を60 Mspsとする。16-bit wideの3 raw＋1 D8＋12 D64は内部40 Mspsを3回PASSした。hub 2段ではUSB probe 120.86 Mbps、90%予算108.77 Mbpsだったが、PC直結では212.67 Mbps、90%予算191.40 Mbpsへ改善した。E106の結合で8-bit 44 / 16-bit wide 32 Mspsに留まった原因は、[E107](../experiments/e107_p4_stream_core_placement/README.ja.md)でUSB割り込みとusbd taskがcodecと同じcore 1に乗っていたことと分かった。USBをcore 0で初期化しcodec loopをprofile別に直すと、PC直結（Windows native）で8-bit 60 Msps 5回、wide 40 Msps 3回PASSした。同経路のUSB probeは193 Mbps、90%予算173 Mbpsなので8-bit 60 Msps（187.5 Mbps）は予算超えであり、accept判定はUSB予算、内部sink上限、結合上限の最小を見る。この経路での8-bitの通常値は52〜55 Msps、wideは40 Mspsになる。
 
 ## 1. clock で作れる rate — 1 MHz 刻みでも 10 MHz 刻みでも全部出る
 
