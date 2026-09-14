@@ -1,6 +1,6 @@
-# E106 実captureからmixed-rate USB連続転送
+# E106 8/16-bit実captureからmixed-rate USB連続転送
 
-状態: **詰め替え込み42 Msps / 65.536 MB長時間PASS、43 Msps不安定、44 Msps以上FAIL**
+状態: **8-bitは61 Msps成立・安全値60、16-bitは42 Msps成立・安全値40**
 
 ## 問い
 
@@ -9,8 +9,10 @@ E105で個別に確認した16-bit codecとUSB連続転送を、実際のPARLIO 
 ## 構成
 
 ```
-PARLIO RX 16-bit / 32 Msps (64 MB/s)
-  -> 64 sample単位codec (3 raw + 8 hold D=64)
+PARLIO RX 8/16-bit
+  -> 64 sample単位codec
+     8-bit: 3 raw + 5 hold D=64
+     16-bit: 3 raw + 8 hold D=64
   -> 25 byte/block (12.5 MB/s)
   -> 8 MiB PSRAM FIFO
   -> USB HS vendor IN
@@ -18,11 +20,26 @@ PARLIO RX 16-bit / 32 Msps (64 MB/s)
 
 内部PARLIO TXの8 GPIOをRX lane 0..7と8..15へ複製する。したがって16-bit取り込み、codec、USBの結合試験だが、11本の独立外部GPIOの電気試験ではない。
 
-PCは`E6 + uint32_le(rate_hz) + uint64_le(blocks)`でcaptureを開始する。firmwareを書き換えずrateを掃引できる。8192 blockでwire 204,800 byteとなり、codec blockとUSB packetの両方で端数が出ない。hostは受信内容についてGray codeの進行、4 sample周期、複製laneの一致を検査する。
+PCは16-bitを`E6`、8-bitを`E8`、USBを除いた内部sink試験を`I6` / `I8`で開始する。後ろは共通して`uint32_le(rate_hz) + uint64_le(blocks)`である。firmwareを書き換えず幅とrateを掃引できる。8192 blockでwire 204,800 byteとなり、codec blockとUSB packetの両方で端数が出ない。hostは受信内容についてGray codeの進行、4 sample周期、16-bit時の複製lane一致、8-bit時のpadding zeroを検査する。
 
 USBだけの経路予算は`EP + uint64_le(bytes)`で測る。deviceは既知patternを最大速送信し、hostは実測Mbpsとその90%を`recommended_90pct_mbps`として表示する。capture生成rateで測らないため、USB経路上限とP4内部codec上限を分離できる。
 
 ## 結論
+
+### 8-bit: 3 fast＋5 slow
+
+USBを律速から外し、codec出力をPSRAMへ循環書込みする内部持続試験を行った。167,772,160 sampleを各rateで処理した結果、60 Mspsと61 Mspsは連番違反、callback queue overflowともに0で、61 Mspsは3回連続PASSした。62 Mspsではqueue overflow 200、連番違反390が発生し、以降は処理時間が約2.726秒で頭打ちになった。したがって現実装の成立境界は61 Msps、安全設定は**60 Msps**とする。
+
+| base rate | raw入力 | wire生成 | 判定 |
+|---:|---:|---:|---|
+| 60 Msps | 60 MB/s | 23.4375 MB/s | 3回PASS |
+| **61 Msps** | **61 MB/s** | **23.828125 MB/s** | **3回PASS** |
+| 62 Msps | 62 MB/s | 24.21875 MB/s | FAIL |
+| 64〜70 Msps | 64〜70 MB/s | 25〜27.34375 MB/s | FAIL |
+
+現在のhub 2段＋usbipd/WSL経路でも、8-bit / 32 Mspsを65.536 MB連続送信し、PC復元、raw連番、padding、queue/FIFO overflowのすべて0を確認した。8-bitでも全8 channelをbase rateで送るのではなく、3 fast＋5 slowへ縮約することでwireは3.125 bit/base sampleとなる。
+
+### 16-bit: 3 fast＋8 slow
 
 3 raw＋8 hold(D=64)の実capture→codec→PSRAM→USB結合経路は、**42 Mspsで65.536 MBを長時間PASS**した。wireは16.40625 MB/s = 131.25 Mbpsである。次がすべて0だった。
 
@@ -73,6 +90,8 @@ HS hub 2段＋usbipd/WSL＋buffered送信で`EP`を64 MB実行した。
 ```sh
 arduino-cli compile --profile esp32p4_device
 arduino-cli upload --profile esp32p4_device --port /dev/ttyUSB0
+uv run --with libusb1 python host_capture.py --width 8 --internal --rate-mhz 60 --periods 320
+uv run --with libusb1 python host_capture.py --width 8 --rate-mhz 32 --periods 320 --depth 8
 uv run --with libusb1 python host_capture.py --rate-mhz 42 --periods 64 --depth 8
 uv run --with libusb1 python host_capture.py --probe-bytes 64000000 --depth 8
 ```

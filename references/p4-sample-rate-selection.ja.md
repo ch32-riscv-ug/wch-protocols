@@ -6,7 +6,7 @@ PulseView などへ「選べる sample rate」を出すとき、**値は 3 つ�
 
 ## 0. 製品としての要約
 
-P4のbase sampling clockは最大160 Msps。ただし**160 Mspsを全16 channelで持続できるという意味ではない。** 有効pin数によりPARLIOの物理幅が1 / 2 / 4 / 8 / 16 bitから決まり、内部raw帯域、channel別縮約codec、USB帯域のすべてに収まる構成だけをacceptする。
+製品説明では、通常モードの目安を**1〜8 channelは最大約60 Msps、9〜16 channelは最大約40 Msps**とする。ただし全channelをこのrateでPCへ送れるという意味ではない。内部raw帯域、channel別縮約codec、USB帯域のすべてに収まる構成だけをacceptする。少数channelにはさらに高速な技術的余地があるが、連続転送まで成立する通常仕様としては前面に出さず、検証後に必要なら高速モードとして分離する。
 
 USB帯域はcapture方向(P4→PC)をcapture開始前に短時間probeする。たとえばprobe実測が**200 Mbpsなら、その90%の180 Mbpsを推奨予算**とする。150〜300 MbpsはPCのUSB controller、hub、cable、OS経路による参考範囲であり、固定保証値にはしない。これまでの実測で約300 Mbpsが出たのは主にPC→P4方向で、LAに必要なP4→PCは約120〜200 Mbpsだった。
 
@@ -16,7 +16,7 @@ channel別rateは別々のsampling clockではない。全pinを共通base clock
 
 `decimate_hold`はbucket中の短いpulseを見落とす。active-low CS/INTには、bucket内で一度でもactiveなら残す`any_active`を選べるようにする。この場合pulseの存在は残せるが、edge位置は最大D-1 base sampleぶん量子化・拡幅される。表示時はbase sample gridへhold展開するため、低rate channelの見た目の時間精度が上がるわけではない。
 
-11 logical lane(3 raw＋8 slow D=64)の実結合試験はP4内部42 Msps / wire 131.25 Mbpsを65.536 MBでPASSした。43 Mspsは不安定、44 Msps以上は16-bit capture→codec→PSRAM経路がringを追い越した。現在のhub 2段＋usbipd/WSLではUSB probeが120.86 Mbps、90%予算108.77 Mbpsだったため42/40 Mspsをrejectし、32 Msps / wire 100 Mbpsへfallbackして65.536 MBを完全検査PASSした。直結30 MB/s以上ならUSBより内部42 Msps上限が先に効く。したがってaccept判定はUSB予算と内部raw経路の小さい方を見る。
+8-bitの3 raw＋5 slow D=64は内部持続試験で61 Mspsまで成立し、62 Mspsで破綻したため安全値を60 Mspsとする。16-bitの3 raw＋8 slow D=64は42 Msps / wire 131.25 Mbpsを65.536 MBでPASSし、43 Mspsは不安定だったため安全値を40 Mspsとする。現在のhub 2段＋usbipd/WSLではUSB probeが120.86 Mbps、90%予算108.77 Mbpsだったため、いずれも32 Msps / wire 100 Mbpsへfallbackして65.536 MBを完全検査PASSした。直結30 MB/s以上ならUSBより内部上限が先に効く。したがってaccept判定はUSB予算と内部raw経路の小さい方を見る。
 
 ## 1. clock で作れる rate — 1 MHz 刻みでも 10 MHz 刻みでも全部出る
 
