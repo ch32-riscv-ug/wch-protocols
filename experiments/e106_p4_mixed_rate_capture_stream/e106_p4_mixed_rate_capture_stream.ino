@@ -91,11 +91,13 @@ volatile uint64_t PushUs;
 volatile uint32_t HarvestChunks;
 volatile uint32_t RawSequenceBad;
 volatile uint32_t DuplicateBad;
+volatile size_t MaxInflight;
 uint64_t BenchUs;
 uint32_t BenchChecksum;
 bool UsbReady;
 volatile bool RunPending;
 char CommandMode;
+uint32_t RequestedRateHz = kSampleRateHz;
 
 static inline __attribute__((always_inline)) void packFast8(
     const uint16_t *__restrict input, uint8_t *__restrict output) {
@@ -156,11 +158,11 @@ static bool IRAM_ATTR onPartialReceive(
   return wake == pdTRUE;
 }
 
-static esp_err_t createSource(parlio_tx_unit_handle_t *unit) {
+static esp_err_t createSource(parlio_tx_unit_handle_t *unit, uint32_t sampleRateHz) {
   parlio_tx_unit_config_t c = {};
   c.clk_src = PARLIO_CLK_SRC_DEFAULT;
   c.clk_in_gpio_num = GPIO_NUM_NC;
-  c.output_clk_freq_hz = kSampleRateHz / kSourceDivider;
+  c.output_clk_freq_hz = sampleRateHz / kSourceDivider;
   c.data_width = kSourceLanes;
   for (size_t i = 0; i < PARLIO_TX_UNIT_MAX_DATA_WIDTH; ++i) {
     c.data_gpio_nums[i] = i < kSourceLanes ? gpio_num_t(kPins[i]) : GPIO_NUM_NC;
@@ -176,13 +178,14 @@ static esp_err_t createSource(parlio_tx_unit_handle_t *unit) {
 }
 
 static esp_err_t createReceiver(parlio_rx_unit_handle_t *unit,
-                                parlio_rx_delimiter_handle_t *delimiter) {
+                                parlio_rx_delimiter_handle_t *delimiter,
+                                uint32_t sampleRateHz) {
   parlio_rx_unit_config_t c = {};
   c.trans_queue_depth = 1;
   c.max_recv_size = kRingBytes;
   c.data_width = kCaptureWidth;
   c.clk_src = PARLIO_CLK_SRC_DEFAULT;
-  c.exp_clk_freq_hz = kSampleRateHz;
+  c.exp_clk_freq_hz = sampleRateHz;
   c.clk_in_gpio_num = GPIO_NUM_NC;
   c.clk_out_gpio_num = GPIO_NUM_NC;
   c.valid_gpio_num = GPIO_NUM_NC;
@@ -215,6 +218,8 @@ static void harvestTask(void *) {
   uint8_t previousBinary = 0;
   uint32_t rawSequenceBad = 0;
   uint32_t duplicateBad = 0;
+  size_t processedRaw = 0;
+  size_t maxInflight = 0;
   const auto recordRawBlock = [&](const uint16_t *samples) {
     const uint16_t sample = samples[0];
     const uint8_t low = static_cast<uint8_t>(sample);
@@ -290,6 +295,10 @@ static void harvestTask(void *) {
       }
     }
     ++HarvestChunks;
+    processedRaw = static_cast<size_t>(encoded * kRawBlockBytes + pending);
+    const size_t callback = static_cast<size_t>(CallbackBytes);
+    const size_t inflight = callback > processedRaw ? callback - processedRaw : 0;
+    if (inflight > maxInflight) maxInflight = inflight;
   }
   if (staged != 0) {
     const WireChunk ready = {stage, staged};
@@ -302,6 +311,7 @@ done:
   EncodedBlocks = encoded;
   RawSequenceBad = rawSequenceBad;
   DuplicateBad = duplicateBad;
+  MaxInflight = maxInflight;
   xSemaphoreGive(HarvestDone);
   vTaskDelete(nullptr);
 }
@@ -364,7 +374,7 @@ static void usbTask(void *) {
   vTaskDelete(nullptr);
 }
 
-static esp_err_t runCapture(uint64_t blocks) {
+static esp_err_t runCapture(uint64_t blocks, uint32_t sampleRateHz) {
   TargetBlocks = blocks;
   EncodedBlocks = SentBytes = CallbackBytes = 0;
   QueueOverflow = UsbWaits = UsbTimeouts = 0;
@@ -372,6 +382,7 @@ static esp_err_t runCapture(uint64_t blocks) {
   CopyUs = ProcessUs = PushUs = 0;
   HarvestChunks = 0;
   RawSequenceBad = DuplicateBad = 0;
+  MaxInflight = 0;
   FifoState.head = FifoState.tail = FifoState.highWater = FifoState.overflow = 0;
   xQueueReset(ChunkQueue);
   xQueueReset(FreeStageQueue);
@@ -386,14 +397,14 @@ static esp_err_t runCapture(uint64_t blocks) {
   parlio_tx_unit_handle_t txUnit = nullptr;
   parlio_rx_unit_handle_t rxUnit = nullptr;
   parlio_rx_delimiter_handle_t delimiter = nullptr;
-  esp_err_t result = createSource(&txUnit);
+  esp_err_t result = createSource(&txUnit, sampleRateHz);
   if (result == ESP_OK) result = parlio_tx_unit_enable(txUnit);
   if (result == ESP_OK) {
     parlio_transmit_config_t t = {};
     t.flags.loop_transmission = true;
     result = parlio_tx_unit_transmit(txUnit, Source, kSourceBytes * 8, &t);
   }
-  if (result == ESP_OK) result = createReceiver(&rxUnit, &delimiter);
+  if (result == ESP_OK) result = createReceiver(&rxUnit, &delimiter, sampleRateHz);
   if (result == ESP_OK) result = parlio_rx_unit_enable(rxUnit, true);
   if (result == ESP_OK) {
     parlio_receive_config_t r = {};
@@ -437,11 +448,13 @@ static void sendStatus(esp_err_t result) {
   char status[512];
   const int length = snprintf(
       status, sizeof(status),
-      "E106_STATUS result=%s blocks=%llu encoded=%llu sent=%llu callbacks=%llu "
+      "E106_STATUS result=%s rate_hz=%lu blocks=%llu encoded=%llu sent=%llu callbacks=%llu "
       "queue_overflow=%lu fifo_overflow=%lu high_water=%lu waits=%lu timeouts=%lu "
       "capture_us=%lld usb_us=%lld chunks=%lu copy_us=%llu process_us=%llu push_us=%llu "
-      "raw_sequence_bad=%lu duplicate_bad=%lu bench_us=%llu bench_checksum=%lu\n",
-      esp_err_to_name(result), static_cast<unsigned long long>(TargetBlocks),
+      "raw_sequence_bad=%lu duplicate_bad=%lu max_inflight=%lu ring_bytes=%lu "
+      "bench_us=%llu bench_checksum=%lu\n",
+      esp_err_to_name(result), static_cast<unsigned long>(RequestedRateHz),
+      static_cast<unsigned long long>(TargetBlocks),
       static_cast<unsigned long long>(EncodedBlocks), static_cast<unsigned long long>(SentBytes),
       static_cast<unsigned long long>(CallbackBytes), static_cast<unsigned long>(QueueOverflow),
       static_cast<unsigned long>(FifoState.overflow), static_cast<unsigned long>(FifoState.highWater),
@@ -450,6 +463,7 @@ static void sendStatus(esp_err_t result) {
       static_cast<unsigned long>(HarvestChunks), static_cast<unsigned long long>(CopyUs),
       static_cast<unsigned long long>(ProcessUs), static_cast<unsigned long long>(PushUs),
       static_cast<unsigned long>(RawSequenceBad), static_cast<unsigned long>(DuplicateBad),
+      static_cast<unsigned long>(MaxInflight), static_cast<unsigned long>(kRingBytes),
       static_cast<unsigned long long>(BenchUs), static_cast<unsigned long>(BenchChecksum));
   Serial.write(reinterpret_cast<const uint8_t *>(status), length);
   Serial.flush();
@@ -460,6 +474,12 @@ static void sendStatus(esp_err_t result) {
 static uint64_t readLe64(const uint8_t *p) {
   uint64_t value = 0;
   for (unsigned i = 0; i < 8; ++i) value |= uint64_t(p[i]) << (8 * i);
+  return value;
+}
+
+static uint32_t readLe32(const uint8_t *p) {
+  uint32_t value = 0;
+  for (unsigned i = 0; i < 4; ++i) value |= uint32_t(p[i]) << (8 * i);
   return value;
 }
 
@@ -504,7 +524,7 @@ static void captureControlTask(void *) {
   if (CommandMode == 'P') {
     runUsbProbe(TargetBlocks);
   } else {
-    const esp_err_t result = runCapture(TargetBlocks);
+    const esp_err_t result = runCapture(TargetBlocks, RequestedRateHz);
     sendStatus(result);
   }
   RunPending = false;
@@ -550,16 +570,19 @@ void setup() {
 }
 
 void loop() {
-  if (RunPending || Vendor.available() < 10) {
+  if (RunPending || Vendor.available() < 14) {
     delay(1);
     return;
   }
-  uint8_t command[10];
+  uint8_t command[14];
   if (Vendor.read(command, sizeof(command)) != sizeof(command) ||
       command[0] != 'E' || (command[1] != '6' && command[1] != 'P')) return;
-  const uint64_t blocks = readLe64(command + 2);
+  const uint32_t rateHz = readLe32(command + 2);
+  const uint64_t blocks = readLe64(command + 6);
   if (blocks == 0) return;
   TargetBlocks = blocks;
+  RequestedRateHz = command[1] == 'P' ? kSampleRateHz : rateHz;
+  if (command[1] != 'P' && (RequestedRateHz < 1000000 || RequestedRateHz > 160000000)) return;
   CommandMode = static_cast<char>(command[1]);
   RunPending = true;
   xTaskCreatePinnedToCore(captureControlTask, "e106_ctl", 4096, nullptr, 6, nullptr, 0);
