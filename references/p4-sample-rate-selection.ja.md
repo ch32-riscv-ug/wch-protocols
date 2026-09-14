@@ -1,8 +1,22 @@
 # ESP32-P4 ロジアナの sample rate — 何を出せて、何を選ばせるか
 
-状態: **reference**(2026-09-13。[E086](../experiments/e086_p4_8ch_stream/README.ja.md) / [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) / [E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md) / [E075](../experiments/e075_p4_width_sample_accuracy/README.ja.md) の実測から)
+状態: **reference**(2026-09-14。[E106](../experiments/e106_p4_mixed_rate_capture_stream/README.ja.md) / [E086](../experiments/e086_p4_8ch_stream/README.ja.md) / [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) / [E075](../experiments/e075_p4_width_sample_accuracy/README.ja.md) の実測から)
 
 PulseView などへ「選べる sample rate」を出すとき、**値は 3 つの事情で決まる** — clock で作れるか、線に載るか、client の driver が受け付けるか。
+
+## 0. 製品としての要約
+
+P4のbase sampling clockは最大160 Msps。ただし**160 Mspsを全16 channelで持続できるという意味ではない。** 有効pin数によりPARLIOの物理幅が1 / 2 / 4 / 8 / 16 bitから決まり、内部raw帯域、channel別縮約codec、USB帯域のすべてに収まる構成だけをacceptする。
+
+USB帯域はcapture方向(P4→PC)をcapture開始前に短時間probeする。たとえばprobe実測が**200 Mbpsなら、その90%の180 Mbpsを推奨予算**とする。150〜300 MbpsはPCのUSB controller、hub、cable、OS経路による参考範囲であり、固定保証値にはしない。これまでの実測で約300 Mbpsが出たのは主にPC→P4方向で、LAに必要なP4→PCは約120〜200 Mbpsだった。
+
+channel別rateは別々のsampling clockではない。全pinを共通base clockでcaptureした後、高速channelは全sampleを残し、CS / INT / button等だけ1/2、1/4、1/8…へ縮約してtransport/storage量を減らす。
+
+例としてprobe 200 Mbps、推奨予算180 Mbpsなら、SPIのCLK/MISO/MOSIを各50 Msps、CSを1/8の6.25 Mspsとして、合計は**156.25 Mbps**になる。4本すべてを同率にすると180 Mbpsでは45 Mspsが上限なので、高速3本の時間解像度を上げながら23.75 Mbpsの余裕も残せる。60 Msps×3＋CS 7.5 Msps = **187.5 Mbps**は理論200 Mbpsには入るが、90%予算180 Mbpsには入らない。
+
+`decimate_hold`はbucket中の短いpulseを見落とす。active-low CS/INTには、bucket内で一度でもactiveなら残す`any_active`を選べるようにする。この場合pulseの存在は残せるが、edge位置は最大D-1 base sampleぶん量子化・拡幅される。表示時はbase sample gridへhold展開するため、低rate channelの見た目の時間精度が上がるわけではない。
+
+11 logical lane(3 raw＋8 slow D=64)の実結合試験は40 Mspsで持続PASSし、wire 125 Mbpsだった。45 Msps以上はUSB予算内でもP4内部の16-bit capture→codec→PSRAM経路がringを追い越した。したがってaccept判定はUSB予算だけでなく内部raw経路も見る。
 
 ## 1. clock で作れる rate — 1 MHz 刻みでも 10 MHz 刻みでも全部出る
 
@@ -74,15 +88,15 @@ PulseView などへ「選べる sample rate」を出すとき、**値は 3 つ�
 
 **batch なら別 list**(8ch は 96 まで、それ以外は 100 まで = driver の上限)。
 
-## 5. pin は自由
+## 5. pin mappingは自由、同時幅は最大16
 
-**`data_gpio_nums[lane]` に lane ごとの任意 GPIO を渡せる**(GPIO matrix 経由)。**連番である必要も昇順である必要もない** — `9,2,7,4,12,6,20,8` で 8 lane すべて正しく取れることを[E086](../experiments/e086_p4_8ch_stream/README.ja.md)で確認した。**どの物理 pin が使えるかは board 側の事情**(flash / PSRAM / USB が占有する pin)であって PARLIO の制約ではない。
+**`data_gpio_nums[lane]` にlaneごとのGPIOを渡せ、連番や昇順である必要はない。** `9,2,7,4,12,6,20,8`で8 laneすべて正しく取れることを[E086](../experiments/e086_p4_8ch_stream/README.ja.md)で確認した。PARLIO RX APIとpackingの同時幅は最大16 lane。ただし「任意GPIO」はflash / PSRAM / USB / board配線に占有されていないGPIO matrix経由可能pinの範囲である。16本の独立した外部padによる電気試験は未完了で、E042/E106の16-bit試験は8 GPIOを上位laneへ複製している。
 
 ## FX2(fx2lafw)との比較
 
 | | fx2lafw | **ESP32-P4** |
 |---|---|---|
-| channel | 8 | **8**(最大 8。16 は pin が足りない) |
+| channel | 8 | **最大16**(利用可能なboard pin数には依存) |
 | 公称 | 24 Msps | **23 Msps**(継ぎ目なし streaming) |
 | 実用 | 16 Msps 程度 | **20 Msps を常用**([E086](../experiments/e086_p4_8ch_stream/README.ja.md)) |
 | 少ない channel で | 変わらず | **2ch なら 96 Msps** |
