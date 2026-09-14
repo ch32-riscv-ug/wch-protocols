@@ -28,7 +28,8 @@ def from_gray(value: int) -> int:
 
 
 class Validator:
-    def __init__(self) -> None:
+    def __init__(self, width: int) -> None:
+        self.width = width
         self.buffer = bytearray()
         self.bad = 0
         self.mirror_bad = 0
@@ -45,8 +46,9 @@ class Validator:
             fast = [(packed >> (3 * i)) & 7 for i in range(64)]
             slow = block[24]
             gray0 = fast[0] | ((slow & 0x1F) << 3)
-            # Mirrored RX lanes 8..10 must equal lanes 0..2.
-            if (slow >> 5) != fast[0]:
+            # 16-bit RX mirrors lanes 0..2; 8-bit RX defines these as padding.
+            expected_upper = fast[0] if self.width == 16 else 0
+            if (slow >> 5) != expected_upper:
                 self.mirror_bad += 1
             binary0 = from_gray(gray0)
             # E042 measured 3..5 RX samples per 12 MHz source symbol at this
@@ -98,11 +100,15 @@ def main() -> int:
                         help="run USB-only EP probe instead of capture")
     parser.add_argument("--rate-mhz", type=float, default=32.0,
                         help="PARLIO base rate for capture")
+    parser.add_argument("--width", type=int, choices=(8, 16), default=16,
+                        help="PARLIO input width; 8 means 3 fast + 5 D=64")
+    parser.add_argument("--internal", action="store_true",
+                        help="benchmark capture/codec/PSRAM while discarding output")
     args = parser.parse_args()
     blocks = args.periods * 8192
     total = args.probe_bytes or blocks * WIRE_BLOCK_BYTES
     probe = args.probe_bytes > 0
-    validator = Validator()
+    validator = Validator(args.width)
     captured = bytearray()
 
     with usb1.USBContext() as context:
@@ -111,10 +117,20 @@ def main() -> int:
             sys.exit(f"no device {VID:04x}:{PID:04x}")
         with handle.claimInterface(0):
             rate_hz = round(args.rate_mhz * 1_000_000)
-            command = ((b"EP" if probe else b"E6") + struct.pack(
+            prefix = b"EP" if probe else ((b"I" if args.internal else b"E") + str(args.width).encode())
+            command = (prefix + struct.pack(
                 "<IQ", 0 if probe else rate_hz, total if probe else blocks
             ))
             assert handle.bulkWrite(EP_OUT, command, timeout=2000) == len(command)
+            if args.internal:
+                started = time.perf_counter()
+                status = bytes(handle.bulkRead(EP_IN, 512, timeout=60000)).decode("ascii", "replace").strip()
+                elapsed = time.perf_counter() - started
+                print(f"internal=1 elapsed_s={elapsed:.6f} {status}")
+                clean = (f"width={args.width}" in status and "sink_only=1" in status and
+                         f"encoded={blocks}" in status and "queue_overflow=0" in status and
+                         "fifo_overflow=0" in status and "raw_sequence_bad=0" in status)
+                return 0 if clean else 2
             received = planned = short = 0
             error: str | None = None
             active: set[usb1.USBTransfer] = set()
