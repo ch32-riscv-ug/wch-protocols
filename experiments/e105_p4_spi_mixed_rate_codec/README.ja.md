@@ -28,6 +28,8 @@ P4実機では固定globalの16-bit snapshotからこの25-byte blockへの専�
 
 PCから各channelへ次を指定する。
 
+通常UIで選ばせる縮約率は **1/2、1/4、1/8、1/16、1/32、1/64** とする。reference形式は1/128、1/256、1/1024以上も表現できるが、deviceの現在の64-sample専用codecは1/64までである。1/64より下では3本のraw帯域がほぼ全体を占めて削減効果が小さい一方、複数blockをまたぐ状態と待ち時間が増えるため、初期仕様には含めない。
+
 | mode | 意味 | 向く信号 | 損失 |
 |---|---|---|---|
 | `raw` | base sampleを全部保持 | CLK、MOSI、MISO、data bus | lossless |
@@ -64,6 +66,10 @@ wire上のchannel順、bit offset、mode、D、phase、polarityはcapture metada
 
 Dを無限にしても3 rawの床22.5 MB/sは残る。INが15〜17 MB/sの低速列挙状態ではD調整だけでは成立しない。
 
+### 16 channel / 40 Mspsの推奨例
+
+3 channelをraw、1 channelをD=8、残る12 channelをD=64にすると、論理帯域は`3×40 + 40/8 + 12×40/64 = 132.5 Mbps`となる。64-sample blockでは212 bitを27 byteへ丸めるためwireは135 Mbpsになるが、128-sample blockなら424 bit = 53 byteでpaddingがなく、wireも132.5 Mbpsちょうどになる。150 Mbps実測の90%である135 Mbps予算に収まる構成としてreference round-tripを固定試験に追加した。
+
 11 laneを実測済み上限の48 Mspsへ落とすと、D=64は**18.75 MB/s**となりcapture前段95.9 MB/s・USB後段の両方へ収まる。60 Mspsを維持するならphysical laneを8本以下にする、またはSPI CLKを既知周期としてPCで再構成しraw送信から外す等、3 rawそのものを減らす必要がある。
 
 ## PC予算protocol
@@ -94,6 +100,7 @@ USB transfer境界はcodec block境界と同一である必要はない。ただ
 - random 3-fast＋1-CS reference: 高速lane完全一致、CS policy一致
 - 3 raw＋8 hold(D=64): 31 block、各block25 byte、低速8本がbyte 24を共有
 - 3 raw＋7 hold(D=64): payload 199 bit、paddingはblock末尾の1 bitだけ
+- D=2 / 4 / 8 / 16 / 32 / 64: raw lane完全一致、`decimate_hold`とactive-low `any_active`の復元規則がすべてPASS
 
 ### P4 codecの深掘り
 

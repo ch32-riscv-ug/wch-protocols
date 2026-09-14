@@ -114,3 +114,64 @@ def test_padding_occurs_once_per_whole_block() -> None:
     aligned = calculate_budget(60_000_000, channels)
     assert aligned.block_samples == 512
     assert aligned.padding_bits_per_block == 0
+
+
+def test_power_of_two_decimation_round_trip() -> None:
+    """All UI ratios through 1/64 preserve fast lanes and obey slow policy."""
+    for divisor in (2, 4, 8, 16, 32, 64):
+        channels = [Channel("raw") for _ in range(3)] + [
+            Channel("decimate_hold", divisor),
+            Channel("any_active", divisor, active_level=0),
+        ]
+        block_samples = divisor * 8
+        samples: list[int] = []
+        for index in range(block_samples * 2):
+            bucket_at = index % divisor
+            fast = (index ^ (index >> 1)) & 7
+            held = ((index // divisor) & 1) << 3
+            # Normally inactive high, with one active-low point per other
+            # bucket. any_active must retain it after coarse reconstruction.
+            active = int(not ((index // divisor) & 1 and bucket_at == divisor // 2)) << 4
+            samples.append(fast | held | active)
+
+        wire = encode_mixed(samples, channels, block_samples=block_samples)
+        restored = decode_mixed(wire, channels, block_samples=block_samples)
+        assert all((before & 7) == (after & 7) for before, after in zip(samples, restored))
+        for start in range(0, len(samples), divisor):
+            bucket = samples[start : start + divisor]
+            assert all((value & 8) == (bucket[0] & 8) for value in restored[start : start + divisor])
+            expected_active = 0 if any((value & 16) == 0 for value in bucket) else 16
+            assert all((value & 16) == expected_active for value in restored[start : start + divisor])
+
+
+def test_sixteen_channel_40m_profile() -> None:
+    """3 full + 1 D8 + 12 D64 fits a 135 Mbps safe USB budget."""
+    channels = [Channel("raw") for _ in range(3)]
+    channels += [Channel("any_active", 8, active_level=0)]
+    channels += [Channel("decimate_hold", 64) for _ in range(12)]
+
+    padded = calculate_budget(40_000_000, channels, block_samples=64)
+    assert padded.payload_bits_per_block == 212
+    assert padded.padding_bits_per_block == 4
+    assert padded.wire_bytes_per_second == 16_875_000  # 135 Mbps
+
+    aligned = calculate_budget(40_000_000, channels)
+    assert aligned.block_samples == 128
+    assert aligned.payload_bits_per_block == 424
+    assert aligned.padding_bits_per_block == 0
+    assert aligned.wire_bytes_per_block == 53
+    assert aligned.wire_bytes_per_second == 16_562_500  # 132.5 Mbps
+
+    samples = [
+        ((index ^ (index >> 1)) & 7)
+        | (int(index % 8 != 4) << 3)
+        | sum((((index // 64) + lane) & 1) << lane for lane in range(4, 16))
+        for index in range(128 * 3)
+    ]
+    wire = encode_mixed(samples, channels)
+    restored = decode_mixed(wire, channels)
+    assert len(wire) == 53 * 3
+    assert all((before & 7) == (after & 7) for before, after in zip(samples, restored))
+    # The D8 active-low pulse is preserved and expanded over its bucket.
+    for start in range(0, len(restored), 8):
+        assert all((sample & 8) == 0 for sample in restored[start : start + 8])
