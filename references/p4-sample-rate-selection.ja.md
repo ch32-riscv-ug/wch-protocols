@@ -11,8 +11,11 @@ PulseView などへ「選べる sample rate」を出すとき、**値は 3 つ�
 USB帯域はcapture方向(P4→PC)をcapture開始前に短時間probeする。たとえばprobe実測が**200 Mbpsなら、その90%の180 Mbpsを推奨予算**とする。150〜300 MbpsはPCのUSB controller、hub、cable、OS経路による参考範囲であり、固定保証値にはしない。これまでの実測で約300 Mbpsが出たのは主にPC→P4方向で、LAに必要なP4→PCは約120〜200 Mbpsだった。
 
 channel別rateは別々のsampling clockではない。全pinを共通base clockでcaptureした後、高速channelは全sampleを残し、CS / INT / button等だけ1/2、1/4、1/8…へ縮約してtransport/storage量を減らす。
+通常UIでは1/2、1/4、1/8、1/16、1/32、1/64を選択肢とする。形式上は1/128以下も可能だが、3本の高速channelが残る構成では追加の帯域削減が小さく、blockをまたぐcodec状態と待ち時間が増えるため初期仕様には含めない。
 
 例としてprobe 200 Mbps、推奨予算180 Mbpsなら、SPIのCLK/MISO/MOSIを各50 Msps、CSを1/8の6.25 Mspsとして、合計は**156.25 Mbps**になる。4本すべてを同率にすると180 Mbpsでは45 Mspsが上限なので、高速3本の時間解像度を上げながら23.75 Mbpsの余裕も残せる。60 Msps×3＋CS 7.5 Msps = **187.5 Mbps**は理論200 Mbpsには入るが、90%予算180 Mbpsには入らない。
+
+16 channel / 40 Mspsでは、3本をfull rate、1本を1/8、残る12本を1/64にすると合計**132.5 Mbps**となる。128-sample codec blockならpaddingなしの53 byteになり、150 Mbps実測の90%予算135 Mbpsにも収まる。1/64 channelの時間刻みは1.6 us（625 ksps）なのでbuttonには十分で、CS / INTには用途に応じて`any_active`を使い短pulseの存在を残す。
 
 `decimate_hold`はbucket中の短いpulseを見落とす。active-low CS/INTには、bucket内で一度でもactiveなら残す`any_active`を選べるようにする。この場合pulseの存在は残せるが、edge位置は最大D-1 base sampleぶん量子化・拡幅される。表示時はbase sample gridへhold展開するため、低rate channelの見た目の時間精度が上がるわけではない。
 
