@@ -1,6 +1,6 @@
 # E106 実captureからmixed-rate USB連続転送
 
-状態: **40 Msps長時間PASS。45 / 47 / 48 Mspsは持続時にring追越し**
+状態: **内部経路40 Msps PASS。現USB経路の90%予算に合わせた32 Msps / 65.536 MB長時間PASS**
 
 ## 問い
 
@@ -9,9 +9,9 @@ E105で個別に確認した16-bit codecとUSB連続転送を、実際のPARLIO 
 ## 構成
 
 ```
-PARLIO RX 16-bit / 40 Msps (80 MB/s)
+PARLIO RX 16-bit / 32 Msps (64 MB/s)
   -> 64 sample単位codec (3 raw + 8 hold D=64)
-  -> 25 byte/block (15.625 MB/s)
+  -> 25 byte/block (12.5 MB/s)
   -> 8 MiB PSRAM FIFO
   -> USB HS vendor IN
 ```
@@ -24,7 +24,7 @@ USBだけの経路予算は`EP + uint64_le(bytes)`で測る。deviceは既知pat
 
 ## 結論
 
-3 raw＋8 hold(D=64)の実capture→codec→PSRAM→USB結合経路は、**40 Mspsで持続PASS**した。wireは15.625 MB/s = 125 Mbpsである。13,107,200 byte / 524,288 blockを全検査し、次がすべて0だった。
+3 raw＋8 hold(D=64)の実capture→codec→PSRAM→USB結合経路は、P4内部について**40 Mspsで13.1072 MBをPASS**した。wireは15.625 MB/s = 125 Mbpsである。次がすべて0だった。
 
 - device側raw Gray連番違反
 - 複製lane不一致
@@ -41,6 +41,20 @@ captureは838.965 msで、67,108,864 raw byte / 80 MB/s = 838.861 msという理
 codecとPSRAM copyを同じcoreで直列化すると48 Mspsに届かなかった。最終構成はRX/USB/spoolをcore 0、codecをcore 1へ分け、4個の内部RAM stageを介してcodecとPSRAM copyを並列化した。
 
 USBの`short`はFIFOが空になったときにhostの大きなURBが早期完了した回数で、欠損ではない。40 Msps試験では全byteを受信できたがcallback負荷になるため、後続でdirect armまたはgateway側URB再投入を詰める。
+
+### 現在のUSB経路を含む選択
+
+HS hub 2段＋usbipd/WSL＋buffered送信で`EP`を64 MB実行した。
+
+| byte | host実測 | 90%推奨予算 | pattern |
+|---:|---:|---:|---:|
+| 64,000,000 | 120.860 Mbps | **108.774 Mbps** | bad 0 / short 0 |
+
+40 Msps構成は125 Mbpsなので、このUSB予算ではrejectする。fallbackの32 Mspsは3.125 bit/base sample×32 Msps = **100 Mbps**となり予算内である。
+
+32 Mspsで65,536,000 wire byte / 2,621,440 blockを連続captureした。raw入力335,544,320 byte、capture 5.243010 sで、理論5.242880 sと一致した。raw連番、複製lane、queue/FIFO overflow、PC側sequenceはすべて0だった。したがって現在の接続に対する実用設定は32 Mspsである。
+
+説明では分かりやすく「probe実測120 Mbpsなら90%の108 Mbpsを予算とし、100 Mbps構成を選ぶ」と丸めてよい。別のPC/直結で200 Mbps出た場合は180 Mbpsを予算とする。
 
 ## 再現
 

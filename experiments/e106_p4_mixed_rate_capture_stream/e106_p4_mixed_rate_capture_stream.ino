@@ -17,7 +17,7 @@
 
 namespace {
 
-constexpr uint32_t kSampleRateHz = 40000000;
+constexpr uint32_t kSampleRateHz = 32000000;
 constexpr size_t kSourceLanes = 8;
 constexpr size_t kCaptureWidth = 16;
 constexpr size_t kBlockSamples = 64;
@@ -543,7 +543,7 @@ void setup() {
   config.controller = EspUsbController::HighSpeed;
   config.webusbEnabled = true;
   UsbReady = Device.begin(config);
-  Serial.printf("E106_READY usb=%u buffers=%u rate=%lu raw_MB_s=80 wire_MB_s=15.625 bench_us=%llu checksum=%lu\n",
+  Serial.printf("E106_READY usb=%u buffers=%u rate=%lu raw_MB_s=64 wire_MB_s=12.5 bench_us=%llu checksum=%lu\n",
                 UsbReady, Ring && Source && FifoState.data && ChunkQueue,
                 static_cast<unsigned long>(kSampleRateHz),
                 static_cast<unsigned long long>(BenchUs), static_cast<unsigned long>(BenchChecksum));
