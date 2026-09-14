@@ -1,6 +1,6 @@
 # E106 8/16-bit実captureからmixed-rate USB連続転送
 
-状態: **8-bitは61 Msps成立・安全値60、16-bitは42 Msps成立・安全値40**
+状態: **完了 — 8-bit安全値60 Msps、16-bit wide安全値40 Msps、現USB経路は32 Mspsで連続転送PASS**
 
 ## 問い
 
@@ -92,6 +92,10 @@ HS hub 2段＋usbipd/WSL＋buffered送信で`EP`を64 MB実行した。
 32 Mspsで65,536,000 wire byte / 2,621,440 blockを連続captureした。raw入力335,544,320 byte、capture 5.243010 sで、理論5.242880 sと一致した。raw連番、複製lane、queue/FIFO overflow、PC側sequenceはすべて0だった。したがって現在の接続に対する実用設定は32 Mspsである。
 
 説明では分かりやすく「probe実測120 Mbpsなら90%の108 Mbpsを予算とし、100 Mbps構成を選ぶ」と丸めてよい。別のPC/直結で200 Mbps出た場合は180 Mbpsを予算とする。
+
+## この実験の境界
+
+E106で完了したのは、固定した8-bit / 16-bit代表profileについて、内部capture→codec→PSRAM上限とUSB経路予算を分離し、実連続転送まで成立させること。任意channel descriptor、probe後の自動ACCEPT / fallback、mixed-rate PulseView gateway、16本独立外部GPIOは後続課題とし、[P4ロードマップ](../../references/p4-probe-roadmap.ja.md)で管理する。
 
 ## 再現
 

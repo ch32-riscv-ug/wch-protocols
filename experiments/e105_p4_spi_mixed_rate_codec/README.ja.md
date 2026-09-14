@@ -134,10 +134,12 @@ Windowsの15.2 MB/sはE104のIN二状態のlow側で、同じbinaryでも列挙�
 
 ## 未決
 
-- [E106](../e106_p4_mixed_rate_capture_stream/README.ja.md)でPARLIO 16-bit実captureへ接続済み。40 Msps持続PASS、45 Msps以上はring追越し。
-- 60 Mspsを維持する場合のCLK再構成、8-lane以内へのpin選択、または別low-speed GPIO samplerを比較する。
-- Windows/WSL列挙ごとのIN rate probeと自動fallbackをprotocolへ入れる。
+- [E106](../e106_p4_mixed_rate_capture_stream/README.ja.md)で固定profileの実captureへ接続済み。8-bitは安全値60 Msps、16-bit wide (`3 full＋1 D8＋12 D64`)は40 Mspsを3回PASSした。
+- PCから任意のchannel descriptorを渡し、device側の高速codecへdispatchする形式を決める。
+- D=2〜64を実機でprofile横断検査し、D=128〜1024を通常UIへ出すか決める。
+- Windows/WSL列挙ごとのIN rate probeと90%予算による自動ACCEPT / fallbackをprotocolへ入れる。
 - `edge_latch`のedge metadataをPulseView annotationへ渡す。
+- 全体の再開順と完了条件は[P4ロードマップ](../../references/p4-probe-roadmap.ja.md)を正本とする。
 
 ## 再現
 

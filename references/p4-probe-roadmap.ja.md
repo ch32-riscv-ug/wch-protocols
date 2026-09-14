@@ -1,103 +1,137 @@
-# ESP32-P4 probe / ロジアナ — 現在地と次にやること
+# ESP32-P4 probe / ロジアナ — 現在地と今後の計画
 
-状態: **計画**(2026-09-13。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md) を踏まえた棚卸し)
+状態: **計画**（2026-09-14。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E106](../experiments/e106_p4_mixed_rate_capture_stream/README.ja.md)を踏まえた棚卸し）
 
-**何が終わっていて、何が何待ちなのか**を 1 枚にする。個々の結論は各実験と[まとめ](p4-usb-hs-summary.ja.md)にある。
+この文書は、実験ごとの細部ではなく、**いま何を通常仕様として説明でき、何が検証済みで、次に何をするか**を管理する。数値の証拠は各実験、USB単体の経緯は[P4 USB HSまとめ](p4-usb-hs-summary.ja.md)、rate選択規則は[sample rateの選び方](p4-sample-rate-selection.ja.md)を正本とする。
 
-## 1. 近い目標 4 つの現在地
+## 1. 現時点の結論
 
-| | 目標 | 状態 |
-|---|---|---|
-| 1 | **RVSWD で CH32 に焼く** | **未着手。** 4 つで唯一まったく進んでいない。**CH32 を P4 に配線するところから** |
-| 2 | **ロジアナ(2ch 数十 Msps、`.sr` 保存)** | **達成、かつ超過。** batch 160 Msps / 継ぎ目なし 96 Msps、8ch でも 20〜23 Msps、`.sr` を sigrok が読み戻す |
-| 3 | **packet capture** | **目標 2 に含まれる**(2026-09-13 に確認)。**ロジアナで捕って decoder で読む**、が答え。**捕る側は達成済み、読む側も stock の decoder が使える**。残るのは **RVSWD / SWIO の decoder が sigrok に無い**ことだけ |
-| 4 | **PulseView へ IP 経由** | **達成。** stock の sigrok / PulseView が driver 追加なしで、継ぎ目なく取れる |
+### 1.1 製品向けの説明
 
-### 目標 3 = 目標 2 + decoder
+- 通常モードのbase sampling rateは、**1〜8 channelで最大約60 Msps、9〜16 channelで最大約40 Msps**を目安にする。
+- これは全channelを同じrateでUSBへ送れるという意味ではない。各channelへ割り当てたrateの合計を、USB実測予算以下へ収める。
+- CS / INT / buttonなどはchannel単位で`1/2、1/4、1/8、1/16、1/32、1/64…`へ時間解像度を下げられる。
+- capture前にP4→PC方向をprobeし、**実測payload帯域の90%**を推奨予算にする。
+- 少数channelには通常値を超える技術的余地があるが、連続転送を含む通常仕様としては前面に出さない。必要になれば後で「少数channel高速モード」として分離して検証する。
 
-**「packet capture」はロジアナのこと**だった。**捕る側はできている**ので、残るのは**捕った波形をフレームとして読む**ところ。
+数値は今後の実装で変わり得る。中心となる特徴は最高rateではなく、**高速信号の分解能を残しながら、低速信号のrateをchannelごとに下げて転送予算を配分できること**である。
 
-**手元の `.sr` が sigrok の decoder にそのまま食えることを確認した**:
+### 1.2 実証済みの代表profile
 
-```console
-$ sigrok-cli -i e076_final.sr -P pwm:data=D0
-pwm-1: 25.000000%
-pwm-1: 10.0 μs
-```
+| physical幅 | channel構成 | 内部capture→codec→PSRAM | 現USB経路での連続転送 |
+|---:|---|---|---|
+| 8 bit | 3 full＋5 D=64 | 61 Msps成立、62 Msps破綻。**安全値60 Msps** | 32 Msps / 100 Mbps、65.536 MB完全検査PASS |
+| 16 bit | 3 full＋1 D=8＋12 D=64 | **40 Msps、167,772,160 sampleを3回PASS** | 32 Msps / 106 Mbps、69.468 MB完全検査PASS |
+| 16 bit（旧profile） | 3 full＋8 D=64 | 42 Msps成立、43 Msps不安定。**安全値40 Msps** | 32 Msps / 100 Mbps、65.536 MB完全検査PASS |
 
-**生成時の duty(64/256 = 25%)と周波数(100 kHz)がそのまま出る。** D1 は 50%。**P4 で捕る → `.sr` → decoder、の鎖が通っている。**
+16 channel / 40 Mspsの代表例は、`3×40 + 40/8 + 12×40/64 = 132.5 Mbps`である。128 sampleを53 byteにまとめることでpaddingをなくした。1/64は625 ksps、時間刻み1.6 usなのでbuttonには十分であり、短いCS / INTは`any_active`でbucket内のactiveを残せる。
 
-**手元の libsigrokdecode には decoder が 298 個**あり、`jtag` / `spi` / `uart` / `onewire` / `sdcard_spi` などが揃う。**つまり一般的なプロトコルは、いま捕れば今日から読める。**
+現在の接続はHS hub 2段＋usbipd/WSLで、USB-only probeは120.860 Mbps、90%予算は108.774 Mbpsだった。このため132.5 Mbpsの40 Msps profileはrejectし、106 Mbpsの32 Mspsへfallbackする。直結時は改めてprobeして選び直す。
 
-**無いのは RVSWD と SWIO** — WCH 固有なので stock には入っていない。**libsigrokdecode は Python なので自前で書ける**し、[link-to-target](../protocols/link-to-target.ja.md) と [E007](../experiments/e007_wire_rvswd_frame/README.ja.md) / [E008](../experiments/e008_wire_swio_frame/README.ja.md) に波形の仕様がある。**目標 1(RVSWD)と同じ材料で書ける**ので、**CH32 を繋いだあと同時に進むのが自然**である。
+### 1.3 実装上分かったこと
 
-**目標 2 の副産物として FX2 ロジアナの置き換えが射程に入った** — 8ch 20 Msps 常用・23 Msps 上限で、FX2 の実用域(16 Msps 程度)を覆う([E086](../experiments/e086_p4_8ch_stream/README.ja.md))。
+- TinyUSBのsoftware ringとDWC2 hardware TX FIFOは別物。hardware FIFOを1 packetから2 packetへ増やしても25.575 MB/sの天井は変わらず、E090の仮説は反証された。
+- P4→PCは、事前生成zero-copyなら36.159 MB/sまで出る。実captureではPARLIO callback、codec、stage queue、PSRAM copy、USBが合成された上限を見る必要がある。
+- 8→16-bitでraw入力が1 sampleあたり1→2 byteになり、詰め替え込みの安全値は60→40 Mspsになる。
+- codec block境界とUSB packet境界は一致させない。53-byte blockをそのままtransfer終端にするとshort packetが連発してusbipdがerrorになった。codecは128 sample単位で作り、PSRAM FIFOから最終回以外512 byte単位で送ると成立した。
+- genericな1-bitずつのpackingでは40 Mspsに足りない。代表profileのD=64部分を固定bit-spread演算にすると40 Mspsを回復できた。
+- 現在の16-bit試験は内部TXの8 GPIOを上位laneへ複製している。16本の独立した外部padの電気試験ではない。
 
-## 2. いま止まっているもの — 何待ちか
+## 2. 近い目標の現在地
 
-| やること | 待っているもの | 備考 |
-|---|---|---|
-| **[E090](../experiments/e090_p4_dwc2_double_buffer/README.ja.md)** DWC2 の TX FIFO を 2 packet に | **完了** | 最大は1 packet / 2 packetとも25.575 MB/s。**hardware FIFO段数は天井原因ではなかった** |
-| **[E091](../experiments/e091_p4_bulk_direction_same_peer/README.ja.md) / [E092](../experiments/e092_p4_vendor_out_arm_size/README.ja.md)** bulk方向差 | **完了** | 同一peerでhost→deviceは既定10.365、multi-packet RXで30.840 MB/s。device→host 25.575との調整後差は1.21倍 |
-| **RVSWD** | **CH32 の配線** | 挿す先は確定済み([ピンの当たりを付ける](pin-discovery.ja.md))。**電源と GND だけ人が合わせれば、あとは探索で当てられる**設計まで書いてある |
-| **RVSWD / SWIO の decoder** | **CH32 の配線**(検証用の実信号) | libsigrokdecode(Python)で書く。**目標 1 と同じ材料** |
-| **[HR-3](espusbhost-change-requests.ja.md)**(HID 1,024 B) | **持ち主の判断** | keyboard / mouse / CCID と共有の経路なので、帯域のためだけに触る話ではない。**先方から提示済み** |
-| EspUsbHost の release | 持ち主の判断 | HR-2 / HR-1 は working tree |
-| **未 push の 61 commit** | 持ち主の判断 | 指示どおり push していない |
-
-## 3. リグが空いたらすぐ回せるもの(配線変更なし)
-
-**順序は「安くて決定的」な順**。
-
-| | 実験 | 何が分かるか | 所要 |
-|---|---|---|---|
-| 1 | **depth 8 以上**([E089](../experiments/e089_p4_host_in_queue/README.ja.md) の未決) | depth 4 で頭打ちに見えるのが本当か | 5 分 |
-| 2 | **16 KiB で遅くなる理由**([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md)) | FIFO 32 KiB 側の問題か転送長そのものか。**FIFO と転送長を独立に振る** | 20 分 |
-| 3 | **97 / 99 MHz だけ滞る現象**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md)) | 未特定の観測。実用上は 96 以下で避けられる | 30 分 |
-| 4 | **CDC / HID でも同じ天井か**([E088](../experiments/e088_p4_usb_ceiling_idle/README.ja.md)) | 24 MB/s が bulk 固有か、device 側全体の性質か | 30 分 |
-
-**1 は E090 の firmware でそのまま回せる。** 2 以降は build_opt.h を振るだけ。
-
-## 4. 配線が要るもの
-
-| | やること | 要る配線 |
-|---|---|---|
-| **本命** | **RVSWD で CH32 に焼く** | **CH32 を P4 のヘッダへ。** 電源 / GND 以外は適当でよい |
-| | 外部信号での capture 検証 | 信号源を外から。いまは内部 LEDC のみ |
-| | 16 channel の連続 streaming | 16 本を信号源へ。**LEDC は 8 channel しかない**ので duty は重複する |
-| | HID 1,024 B([HR-3](espusbhost-change-requests.ja.md) 待ち) | HS 直結のまま |
-
-### RVSWD の段取り(設計済み、未実装)
-
-[ピンの当たりを付ける](pin-discovery.ja.md) にある。
-
-1. **電源と GND だけ人が合わせる**
-2. **RVSWD の 2 本を総当たりで探す** — 33 本から順序付き 2 本で 1,056 通り。**成功すると chip ID が返る**ので、当たれば 2 本と向きが同時に確定
-3. CH32 に探索 firmware を焼く
-4. **残りを符号で一括** — 33 本でも 6 slot
-5. **中間電圧(1.47 V)で裏取り** — 「P4 の、駆動していないピンに繋がっている」ことを確定させ、短絡も検出
-
-**2 が未実装。** RVSWD の波形自体は [E007](../experiments/e007_wire_rvswd_frame/README.ja.md) と [link-to-target](../protocols/link-to-target.ja.md) にある。
-
-## 5. 決めてほしいこと
-
-| | 内容 |
+| 目標 | 状態 |
 |---|---|
-| [HR-3](espusbhost-change-requests.ja.md) をやるか | HID 1,024 B で 8.2 MB/s 見込み。**ただし WinUSB が当たるようになった**ので、「driver レス」という HID の利点は以前より薄い |
-| push するか | main に 61 commit |
+| mixed-rateロジアナのdata path | **代表profileは成立**。固定profileでcapture、codec、PSRAM、USB、PC復元まで通った |
+| `.sr`保存とstock decoder | **達成**。P4でcaptureした`.sr`をsigrok decoderが読める |
+| PulseViewへIP経由 | **raw streamでは達成**。mixed-rate descriptorからbase gridへ復元するgatewayは未実装 |
+| USB経路の予算測定 | **測定コマンド成立**。90%予算による自動ACCEPT / fallbackは未実装 |
+| RVSWDでCH32へ書込 | **未着手**。CH32とP4の配線待ち |
+| RVSWD / SWIO decoder | **未着手**。実信号取得は上記配線待ち |
 
-## 6. 記録として残す方針
+「packet capture」はロジアナで捕ってdecoderで読むことを指す。SPI / UART / JTAGなどstock decoderがあるprotocolは既に処理できる。RVSWD / SWIOだけはWCH固有decoderが必要である。
 
-- **実験レポートは追記のみ。** 訂正は本文を書き換えず、訂正節を足す([§3.3](../experiments/README.ja.md))
-- **人の測定と自分の測定を混ぜない。** 引用には出典と条件を付ける([E089](../experiments/e089_p4_host_in_queue/README.ja.md) の単位と device 条件がその例)
-- **n=3 で分散を語らない**([E084](../experiments/e084_p4_transfer_tuning/README.ja.md) で踏んだ)
-- **データシートを読む前に全ピンを舐めない**([E087](../experiments/e087_p4_pin_survey/README.ja.md) で踏んだ)
-- **書き込み(chip reset)の前に HS device を detach する。** 失敗した reset を繰り返し叩かない
+## 3. 次に再開するときの順序
 
-## 参照
+### Phase A — 設定と正しさを固める
 
-- [P4 USB HS まとめ](p4-usb-hs-summary.ja.md) — 帯域の全体像
-- [sample rate の選び方](p4-sample-rate-selection.ja.md) — ロジアナとして何を出せるか
-- [ピンの当たりを付ける](pin-discovery.ja.md) — 配線と探索
-- [改修の着手順](usb-library-change-plan.ja.md) — ライブラリ 2 つとの関係
-- [LEDGER](../experiments/LEDGER.ja.md) — 実験の番号順索引
+1. PCから`base_rate_hz / sample_count / GPIO mapping / channelごとのmode・D・phase・polarity`を渡すdescriptorを決める。
+2. deviceが`physical幅 / block sample数 / payload bit数 / padding / raw入力帯域 / wire帯域`を返し、内部上限を超える設定をREJECTする。
+3. `D=2 / 4 / 8 / 16 / 32 / 64`の実機codecを確認する。reference codecはround-trip PASS済み。
+4. `D=128 / 256 / 512 / 1024`を通常UIへ出すか決める。形式上は可能だが、複数blockをまたぐ状態、待ち時間、追加の帯域削減量を測ってから決める。
+5. `decimate_hold / any_active / edge_latch`について、短pulse、bucket境界、active polarity、端数captureを固定fixtureで検査する。
+
+### Phase B — host統合を固める
+
+1. USB probe結果の90%を予算にし、要求profileを`ACCEPT / REJECT`する。
+2. 超過時はbase rate候補を下げ、必要なら32 / 30 Mspsなどを提示または自動選択する。
+3. descriptorに従ってmixed-rate streamをbase sample gridへ復元し、PulseView gatewayへ接続する。
+4. PulseView要求量よりcodec block単位で多めに受信し、出力時に分割する。`close`時は先読み分を捨ててcaptureを停止する。
+5. start / stop / restart、設定変更、端数sample、host切断、timeoutを繰り返す。Monitorや別DOS窓の入力待ちに依存しないCLIにする。
+
+### Phase C — 実機条件を広げる
+
+1. 16本の独立GPIOを外部pattern源へ配線し、lane順、任意GPIO mapping、同時変化を検査する。
+2. SPI相当のCLK / MISO / MOSI / CSと、短INT、button相当を同時生成し、`/8`と`/64`の見え方をPulseViewで確認する。
+3. 現在のhub 2段、PC直結、Windows native、WSL usbipdで同じprobeと長時間captureを行う。
+4. 長時間soak、繰り返し列挙、途中切断後の復帰を確認する。
+
+### Phase D — 最後にチューニングする
+
+1. descriptorをprofile別の固定高速codecへdispatchするか、generic codecを最適化するか比較する。
+2. PARLIO callback量、ring / queue / stageサイズ、PSRAM copyの配置を掃引する。
+3. USBのshort completion、arm単位、zero-copy化を詰める。ただしE090で反証済みのhardware TX FIFO増量は繰り返さない。
+4. 安全marginを再測定し、表向きの60 / 40 Mspsを最終確定する。
+5. 少数channel高速モードが実用上必要な場合だけ、通常仕様と分離して着手する。
+
+## 4. いったん保留するもの
+
+- 160 Mspsを主要な製品値として掲げること。誤解を招き、複数channelの連続USB転送とは両立しない。
+- RLE / deflateを通常streamへ入れること。最悪入力で膨張しない仕組みが先に必要で、現段階ではchannel別縮約を優先する。
+- 1/1024より下の単純間引き。button等はedge/event表現の方が適する可能性が高い。
+- USBの最高値だけを追うこと。経路依存性はprobe＋90%予算で吸収し、まず設定・復元・停止の正しさを固める。
+
+## 5. 配線または環境変更が必要な項目
+
+| 項目 | 必要なもの |
+|---|---|
+| 16 channel独立入力 | 16本を外部pattern源へ接続。現在の内部loopbackは8本複製 |
+| 実SPI / INT波形 | P4または別deviceの信号源とGPIO配線 |
+| USB直結比較 | 現在のhub 2段経路からPC直結へ差し替え |
+| RVSWD / SWIO | CH32とP4の電源、GND、信号線 |
+
+直結比較は最終rateを決める前に必要だが、動的descriptorやhost復元は現在の配線のまま進められる。
+
+## 6. 作業環境と他のprobe課題
+
+- E104〜E106の対象は第三P4（MAC `80:f1:b2:d0:b2:61`、UART `/dev/ttyUSB0`、HSはWindows bus `40-2`をusbipdでWSLへattach）。
+- `/home/mt/dev/EspUsbHost/tests/.env`は別のfull testが使用中であり、この検証から変更・流用しない。
+- MACの近い2台はHS同士で結線された別リグであり、今回のmixed-rate検証では触れていない。
+- firmware uploadでHS deviceは再列挙される。古いusbipd attachやendpoint待ちを残さず、再attachしてdevice nodeを取り直す。
+- `n=3`は再現確認であり、分散や保証値を決める統計ではない。最終値は長時間soakと環境差を含めて決める。
+
+ロジアナ以外ではRVSWDでCH32へ書き込む作業が未着手である。電源とGNDを合わせた後、順序付き2本の探索でchip IDが返る組を見つけ、残りの配線を符号化patternで同定する段取りは[pin discovery](pin-discovery.ja.md)にある。RVSWD / SWIO decoderは、この実配線から得た波形と同時に進める。
+
+EspUsbHostのHR-3（HID 1,024 byte）とrelease判断は、ロジアナのmixed-rate data pathとは分けて持ち主判断のまま残す。
+
+## 7. 再開時の完了条件
+
+通常仕様を確定する前に、少なくとも次を満たす。
+
+- 任意のchannel descriptorをdeviceとhostが同じbudgetとして解釈する。
+- budget超過設定をcapture開始前にrejectできる。
+- 8-bit / 16-bit代表profileを長時間・複数回、欠損0で再現できる。
+- PulseViewで高速channelと展開後の低速channelを同時表示できる。
+- start / stop / restartとhost切断から回復できる。
+- 16本独立GPIOでmappingと値を確認できる。
+- hub / 直結差はprobe結果へ反映され、固定のUSB速度を仮定しない。
+
+## 8. 参照
+
+- [E105 mixed-rate形式](../experiments/e105_p4_spi_mixed_rate_codec/README.ja.md)
+- [E106 実capture→codec→USB](../experiments/e106_p4_mixed_rate_capture_stream/README.ja.md)
+- [sample rateの選び方](p4-sample-rate-selection.ja.md)
+- [PulseView / sigrok連携](pulseview-integration.ja.md)
+- [capture圧縮](capture-compression.ja.md)
+- [P4 USB HSまとめ](p4-usb-hs-summary.ja.md)
+- [ピンの当たりを付ける](pin-discovery.ja.md)
+- [実験台帳](../experiments/LEDGER.ja.md)
