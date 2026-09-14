@@ -1,122 +1,150 @@
 # E105 channelごとに時間解像度を変えるmixed-rate形式
 
-状態: **進行中 — 一般budget計算と60 M SPI例のhost codecはPASS、P4実装待ち**
+状態: **進行中 — 3 raw＋8 slowの共有bit packing、P4 codec、Windows/WSL実転送までPASS。11 lane/60 MspsのPARLIO前段は帯域超過**
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E086](../e086_p4_8ch_stream/README.ja.md)、[E104](../e104_p4_windows_continuous_bulk/README.ja.md)
 
 ## 問い
 
-**PCがchannelごとの時間解像度と縮約policyをcapture前に指定し、高速信号はそのまま、CS / INT / button等だけ粗くしてUSB・保存予算内へ収められるか。** 60 Msps SPIでCSだけ8:1にする形は最初の具体例であり、固定仕様ではない。
+**PCがchannelごとの時間解像度と縮約policyをcapture前に指定し、高速信号はそのまま、CS / INT / button等だけ粗くしてUSB・保存予算内へ収められるか。** 特定の60 MspsやDは固定仕様ではない。
 
-## 仮説
+## 結論
 
-各channelを`raw`、`decimate_hold`、`any_active`、`edge_latch`のいずれかと倍率Dで表し、共通block内でbitplane化できる。有限長batchならPCが先に出力byte予算を渡し、P4がcapture後にin-place変換して返せる。
+形式と変換は成立した。低速channelをchannelごとにbyte alignmentしてはいけない。各channelのbit列を連結し、**block全体の末尾にだけ0〜7 bitをpaddingする。** 64 sample、3 raw＋8 slow(D=64)なら
 
-## 反証条件
+```
+fast = 64 sample * 3 bit = 192 bit = 24 byte
+slow = 1 value * 8 channels =   8 bit =  1 byte
+total                         = 200 bit = 25 byte
+```
 
-- 高速3chが全sample一致で戻らない。
-- CSが定義した8-sample bucket規則どおり戻らない。
-- P4上の変換速度がraw入力30 MB/sを下回り、continuous pipelineに使えない。
-- USBへ同時送出したときFIFOが時間に比例して増える。
+低速8本を各1 byteへ切り上げる誤った形式は32 byteになる。共有bit packingなら25 byteで、60 Msps時23.4375 MB/sである。
+
+P4実機では16-bit snapshotからこの25-byte blockへの専用codecが**入力145.899 MB/s、出力28.496 MB/s**を出し、変換演算単体は60 Msps×2 byte=120 MB/sを上回った。64 MBの同じstreamをWindows nativeとusbipd/WSLの双方で全byte照合し、`bad=0 / short=0`だった。
+
+ただし11 physical laneはPARLIO 16-bit modeになり、60 Mspsではcapture前段が120 MB/sになる。既存実測のring→PSRAM spool上限は約98 MB/sで、16-bitは48 Msps(95.884 MB/s)まで成立、52 Msps(103.878 MB/s)でdropした([E042](../e042_p4_parlio_16ch_seq_verify/README.ja.md))。**したがって11 lane/60 Msps continuousはcodec以前のcapture前段で成立しない。11 laneなら48 Msps以下が実測済みの安全側である。**
 
 ## 一般形式
 
-PARLIOの全laneは同じbase rateでcaptureする。laneごとのhardware sample clockは変えられないので、低rate化はcapture後のcodecで行う。
-
 PCから各channelへ次を指定する。
 
-| mode | 意味 | 向く信号 | 注意 |
+| mode | 意味 | 向く信号 | 損失 |
 |---|---|---|---|
 | `raw` | base sampleを全部保持 | CLK、MOSI、MISO、data bus | lossless |
 | `decimate_hold(D, phase)` | D sampleごとに1点 | button、長時間変化しないstatus | D未満のpulseを見逃す |
-| `any_active(D, polarity)` | bucket内にactiveが1点でもあればactive | CS、IRQ/INT | pulseは残るがedge位置はbucket幅へ広がる |
-| `edge_latch(D, polarity)` | edge有無とbucket末尾levelを残す | 短いINT、wake/event | format overheadが増えるが見逃しにくい |
+| `any_active(D, polarity)` | bucket内にactiveが1点でもあればactive | CS、IRQ/INT | edge位置はbucket幅へ広がる |
+| `edge_latch(D, polarity)` | bucket末尾levelとactive edge有無の2 bit | 短いINT、wake/event | 正確なedge位置は失う |
 
-PC側は低rate channelをbase sample gridへhold展開する。sigrok/PulseViewには通常の等間隔sampleとして渡せるが、粗くしたchannelのedge時刻は元に戻らない。その損失はmetadataにも残す。
-
-block sample数`B`は全Dについて`B/D`が8の倍数になる値（power-of-two Dなら通常`B = 8 * max(D)`）を選ぶ。plane-majorでchannelごとに連続格納し、channel cのpayloadは`B / D[c] / 8` byte。概算wire rateは
+block sample数`B`は全Dの倍数とする。
 
 ```
-wire_Bps = base_rate_hz / 8 * sum(1 / D[c]) + framing
+payload_bits = sum(B / D[c] * bits_per_value[c])
+wire_bytes   = ceil(payload_bits / 8)
+padding_bits = (-payload_bits) mod 8
 ```
 
-となる。modeが`edge_latch`ならlevel/edge用bitを追加する。
+paddingは各channel末尾ではなくblock末尾の1回だけ。`B`を省略した場合、referenceは全Dの最小公倍数`L`を求め、`L` blockの総bit数がbyte境界になる最小倍率だけBを伸ばす。低速channelが8本なら各1 bitが互いを埋めるので、D=64でも`B=64`でよい。
 
-## 具体例（固定仕様ではない）
+wire上のchannel順、bit offset、mode、D、phase、polarityはcapture metadataへ残す。referenceの一般codecはplane-major、P4の3-fast専用codecは計算量を減らすため高速3 bitをsample-majorにするが、いずれもdescriptorで一意に復元でき、総bit数は同じである。
 
-1 block = base 64 sample:
+## 3 fast＋8 slowの予算
 
-- byte 0..23: 各sampleのlane 0..2を3 bit/sample、LSB-firstで連結（一般形式では3本のbitplaneにしても同じ24 byte）。
-- byte 24: 8 sampleごとのCSをbit 0..7へ格納。
-- reference codecは比較用に`sample0`と`active_low_any`の両方を実装する。実用上のCS既定は`active_low_any`が安全。
+60 Mspsで8本のslowを同じDにすると`wire_MB_s = 22.5 + 60/D`となる。
 
-PCで復元するとCSは各bitを8 sampleへholdする。高速3chはlosslessだが、CS edge位置は最大7 sample量子化され、8 sample未満のpulseは`sample0`では見逃しうる。
+| slow D | 最小block | byte/block | wire MB/s |
+|---:|---:|---:|---:|
+| 1 | 8 | 11 | 82.500 |
+| 8 | 8 | 4 | 30.000 |
+| 16 | 16 | 7 | 26.250 |
+| 32 | 32 | 13 | 24.375 |
+| **64** | **64** | **25** | **23.4375** |
+| 128 | 128 | 49 | 22.96875 |
+| 256 | 256 | 97 | 22.734375 |
+| ∞ | — | — | 22.500 |
 
-## 予算protocol
+Dを無限にしても3 rawの床22.5 MB/sは残る。INが15〜17 MB/sの低速列挙状態ではD調整だけでは成立しない。
 
-PCはcapture前に少なくとも`base_rate_hz`、`sample_count`、`output_budget_bytes`、channelごとの`mode / D / polarity / phase`を送る。deviceはblock size、必要wire byte、raw capture byte、復元metadataを計算して`ACCEPT`応答し、合わなければcapture開始前にrejectする。60 M・4ch例では
+11 laneを実測済み上限の48 Mspsへ落とすと、D=64は**18.75 MB/s**となりcapture前段95.9 MB/s・USB後段の両方へ収まる。60 Mspsを維持するならphysical laneを8本以下にする、またはSPI CLKを既知周期としてPCで再構成しraw送信から外す等、3 rawそのものを減らす必要がある。
 
+## PC予算protocol
+
+PCはcapture前に`base_rate_hz`、`sample_count`、`output_budget_bytes`または最大持続rate、channelごとの`mode / D / polarity / phase`を送る。deviceは次を返してからcaptureを開始する。
+
+- `block_samples / payload_bits / padding_bits / wire_bytes`
+- PARLIOの実physical widthとraw capture byte rate
+- 必要な総raw byte、総wire byte、PSRAM量
+- 実測済みcapture上限とUSB安全rateに対する`ACCEPT / REJECT`
+
+wire予算だけ合ってもraw capture前段が合わなければrejectする。今回の11 lane/60 Mspsがその例である。
+
+有限batchは`ceil(requested_samples / B) * B` sampleを一度だけ継ぎ目なくcaptureし、最後の余剰をPCで捨てる。小さいbatchを反復して繋ぐとcapture間gapが入るので行わない。
+
+## PulseViewへの出し方
+
+stock BeagleLogic protocolは`get`時に要求sample数をserverへ伝えず、必要量を読んだclientが`close`する。gatewayはdeviceからcodec block境界で大きめに受信し、blockを復元してPulseViewへ小分け出力し、`close`で停止して先読み分を捨てる。
+
+USB transfer境界はcodec block境界と同一である必要はない。ただし余分なshort packetを避けるなら送信周期は`LCM(codec block byte, 512)`へ揃える。25-byte blockでは12,800 byteであり、実機試験はこれを8,192＋4,608 byteのUSB armに分けた。
+
+## 実装と検証
+
+### host reference
+
+`codec.py`にchannel descriptor、共有bit packing、末尾padding、encode/decode、budget計算を実装した。直接実行した3 testはすべてPASSした。
+
+- random 3-fast＋1-CS reference: 高速lane完全一致、CS policy一致
+- 3 raw＋8 hold(D=64): 31 block、各block25 byte、低速8本がbyte 24を共有
+- 3 raw＋7 hold(D=64): payload 199 bit、paddingはblock末尾の1 bitだけ
+
+### P4 codecの深掘り
+
+同じ262,144 blockをP4 rev 1.3で変換した。入力rateは16-bit raw換算、wire rateは25-byte出力換算。
+
+| 実装 | input MB/s | wire MB/s | 判定 |
+|---|---:|---:|---|
+| 1 bitごとの汎用set | 15.905 | 3.106 | 不可 |
+| lane別8-bit pack | 38.780 | 7.574 | 不可 |
+| 3 plane同時pack | 41.677 | 8.140 | 不可 |
+| 3-bit/sample、16-bit load | 119.658 | 23.371 | 120 MB/sに0.3%不足 |
+| **3-bit/sample、32-bit pair load** | **145.899** | **28.496** | **演算単体PASS** |
+
+高速laneをbitplane転置するより、8 samplesの3-bit値を24-bitへpackする方が約3.5倍速い。低速8本はblock末尾の1 byteを共有する。
+
+### PCとの実連続転送
+
+対象は第三P4 `80:f1:b2:d0:b2:61`。HSは既存のusbipd bindingを使い、Windows nativeとWSLの両方から同じfirmwareを読んだ。最終firmwareは12,800-byte patternを8,192＋4,608 byteで連続armする。
+
+| host | byte | host MB/s | P4時計 MB/s | short / bad |
+|---|---:|---:|---:|---:|
+| Windows native、現在のlow列挙 | 64,000,000 | 15.195 | 15.187 | 0 / 0 |
+| WSL usbipd、全byte照合 | 64,000,000 | **23.342** | **25.105** | 0 / 0 |
+| WSL usbipd、長時間・照合なし | 524,288,000 | 終端計時修正前のため参考外 | **24.848** | 0 / 0 |
+
+WSLのP4時計ではD=64の23.4375 MB/sを上回る。一方Python host wallは全byte照合時23.342 MB/sで0.4%不足し、実用marginは無い。D=128でも必要22.969 MB/sなので余裕は約1.6%。11 laneなら48 Mspsへ下げる方が堅い。
+
+Windowsの15.2 MB/sはE104のIN二状態のlow側で、同じbinaryでも列挙状態により約15〜25 MB/sへ変わる。capture開始前のrate probeとreject/fallbackが必要である。
+
+送信単位も「大きいほど良い」ではなかった。100 KiBは15 MB/s台、32,000 byteはshort packet条件でhost callback負荷が増えた。途中の25,600 byte試験で見えた終端stallはhostが最後も1 MiB URBを要求した計測バグで、hostは総量を先にURBへ割り当て最後のURBを正確な残量にするよう修正した。
+
+## 未決
+
+- PARLIO 16-bit / 48 Mspsの実raw captureをこのcodecへ接続し、USBと同時にring占有が増えないことを確認する。
+- 60 Mspsを維持する場合のCLK再構成、8-lane以内へのpin選択、または別low-speed GPIO samplerを比較する。
+- Windows/WSL列挙ごとのIN rate probeと自動fallbackをprotocolへ入れる。
+- `edge_latch`のedge metadataをPulseView annotationへ渡す。
+
+## 再現
+
+```sh
+PYTHONPATH=experiments/e105_p4_spi_mixed_rate_codec python3 - <<'PY'
+import e105_p4_spi_mixed_rate_codec as t
+for name in sorted(n for n in dir(t) if n.startswith("test_")):
+    getattr(t, name)()
+PY
+
+cd experiments/e105_p4_spi_mixed_rate_codec/device
+arduino-cli compile --profile esp32p4_device
+arduino-cli upload --profile esp32p4_device --port /dev/ttyUSB0
+
+cd ..
+uv run --with libusb1 python host_usb.py --chunks 5000 --depth 8
 ```
-blocks = sample_count / 64
-wire_bytes = blocks * 25
-raw_capture_bytes = sample_count / 2
-```
-
-で検算する。`wire_bytes > output_budget_bytes`またはrawがPSRAM上限を超えればcapture前にrejectする。予算だけ渡して無限に取り続ける形にはしない。
-
-raw 32 byte/blockからoutput 25 byte/blockへ前向きin-place変換できる。各blockのraw 32 byteだけlocal scratchへ退避すれば、後続blockを壊さずPSRAM追加領域を要しない。
-
-PCが伝える「予算」は特定の23.4 MB/s等ではなく、**その要求で許容する総byte数または最大持続byte rate**。deviceは設定から必要量を毎回計算する。有限batchなら総byte数、continuousなら実測済みの安全なrateも必要になる。
-
-## 方法
-
-1. 60 M・4ch例のhost reference codecでrandom/edge位置全パターンをround-tripし、高速3ch完全一致とCS bucket規則を確認する。
-2. 一般化したchannel descriptorとblock size/必要byte計算を追加する。
-3. 同じcodecをP4のharvest後段へ実装し、変換のみのMB/sを測る。
-4. finite captureを変換後にWindows WinUSBへ返し、byte数・各channel規則を照合する。
-5. continuousは別条件として、FIFO占有がdurationで増えないか測る。E104のIN低速状態では成立しない設定をcapture前にrejectする。
-
-## 完了条件
-
-host codec、P4 codec、Windows batch返送が一致し、60 Mspsでoverflow 0。continuousを主張する場合は64 MiB以上でFIFO占有が増えないこと。
-
-## 中間結果
-
-`codec.py`に一般channel descriptor（mode / decimation）とblock/byte/rate計算、60 M SPI例のreference encode/decodeを実装した。random 16,448 sampleで高速3ch完全一致、`sample0` / `active_low_any`のCS規則一致。`pytest` 1件PASS。
-
-- raw×3 + active-low-any(D=8): block 64 sample / 25 byte / **23.4375 MB/s**
-- raw×2 + any-active(D=8) + edge-latch(D=64) + button hold(D=1024)の例: block 8192 sample / 2209 byte / **16.179199 MB/s**
-
-後者のようにchannel構成を変えれば必要rateは毎回計算し直される。23.4375 MB/sは仕様値ではない。
-
-### 何分の1まで使えるか
-
-codec上はD=65536までbudget計算を通した。3 raw + 1 slow、base 60 Mspsの結果は`decimation_sweep.py` / `_runs/E105_20260914T074947JST_host_codec/decimation_sweep.txt`。
-
-| D | 独立blockに必要なbase sample | block時間 | wire MB/s | raw 30 MB/sからの削減 |
-|---:|---:|---:|---:|---:|
-| 1 | 8 | 0.133 us | 30.000 | 0% |
-| 2 | 16 | 0.267 us | 26.250 | 12.5% |
-| 4 | 32 | 0.533 us | 24.375 | 18.75% |
-| **8** | **64** | **1.067 us** | **23.438** | **21.875%** |
-| 16 | 128 | 2.133 us | 22.969 | 23.438% |
-| 64 | 512 | 8.533 us | 22.617 | 24.609% |
-| 1024 | 8192 | 136.533 us | 22.507 | 24.976% |
-| 65536 | 524288 | 8.738 ms | 22.5001 | 25.000% |
-
-slow channelをどこまで落としても3 raw channelだけで22.5 MB/s必要なので、削減上限は25%。D=8ですでに上限25%の87.5%を回収しており、それ以上はblock/latencyだけ増えて利得が小さい。E104 high側24.2 MB/sへ入る最小power-of-twoはD=8。low側16.8 MB/sへはDを無限にしても入らない。
-
-独立blockにするなら最低`8D` sampleが要る。bit accumulatorをchunk間で持てば小さいchunkでも符号化できるが、途中chunkからのrandom accessとエラー復帰が難しくなるため、USB/TCPへ渡す単位はblock境界に揃える。
-
-3 raw + 1 slowの先頭1 blockだけを見ると、圧縮後は`3D+1` byte、rawは`ceil(N/2)` byteなので、padding込みで得になる要求長は概ね`N >= 6D+2` sample。D=8なら50 sample以上、D=1024なら6146 sample以上。PulseViewの通常のk/M sample要求では無視できるが、数十sampleだけ返すcontrol用途では圧縮しない方が小さい。
-
-### PulseViewへの出し方
-
-stock BeagleLogic protocolは`get`時に要求sample数をserverへ通知しない。clientは必要数を読んだ時点で`close`する（E077で確認済み）。したがってserverが要求数を知ってから厳密にround-upすることはできない。
-
-採る形は次の二段にする。
-
-1. device→serverはcodec block境界で、継ぎ目のない大きめcapture/streamを送る。
-2. serverはblockごとに復元してPulseViewへ小分け送信し、`close`を受けた時点で停止する。最後に先行capture/転送済みの余剰があれば捨てる。
-
-finite batchならserverの`--samples`を想定するPulseView要求以上へ置き、`ceil(samples / B) * B`だけdeviceへ要求する。余剰は最大`B-1` sample。別batchを繋ぐと実時間のgapが入るので、PulseView要求より小さいbatchを反復する形には戻さない。
