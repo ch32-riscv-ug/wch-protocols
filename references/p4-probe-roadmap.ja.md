@@ -1,6 +1,6 @@
 # ESP32-P4 probe / ロジアナ — 現在地と今後の計画
 
-状態: **計画**（2026-09-14。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E106](../experiments/e106_p4_mixed_rate_capture_stream/README.ja.md)を踏まえた棚卸し）
+状態: **計画**（2026-09-15。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E107](../experiments/e107_p4_stream_core_placement/README.ja.md)を踏まえた棚卸し）
 
 この文書は、実験ごとの細部ではなく、**いま何を通常仕様として説明でき、何が検証済みで、次に何をするか**を管理する。数値の証拠は各実験、USB単体の経緯は[P4 USB HSまとめ](p4-usb-hs-summary.ja.md)、rate選択規則は[sample rateの選び方](p4-sample-rate-selection.ja.md)を正本とする。
 
@@ -18,15 +18,15 @@
 
 ### 1.2 実証済みの代表profile
 
-| physical幅 | channel構成 | 内部capture→codec→PSRAM | 現USB経路での連続転送 |
-|---:|---|---|---|
-| 8 bit | 3 full＋5 D=64 | 61 Msps成立、62 Msps破綻。**内部安全値60 Msps** | PC直結は**44 Msps / 137.5 Mbpsを3回PASS**、45で破綻 |
-| 16 bit | 3 full＋1 D=8＋12 D=64 | **内部40 Msps、167,772,160 sampleを3回PASS** | PC直結は**32 Msps / 106 Mbpsを3回PASS**、33で破綻 |
-| 16 bit（旧profile） | 3 full＋8 D=64 | 42 Msps成立、43 Msps不安定。**安全値40 Msps** | 32 Msps / 100 Mbps、65.536 MB完全検査PASS |
+| physical幅 | channel構成 | 内部capture→codec→PSRAM | USB結合（E106: USBをcore 1で初期化、usbipd/WSL直結） | USB結合（E107: USBをcore 0で初期化＋codec改修、Windows native直結） |
+|---:|---|---|---|---|
+| 8 bit | 3 full＋5 D=64 | E106: 61 Msps成立、62破綻。E107改修後は内部64 Mspsまで成立（codec 90.5%）。**内部安全値60 Msps** | **44 Msps / 137.5 Mbpsを3回PASS**、45で破綻 | **60 Msps / 187.5 Mbpsを5回PASS**。64も2回通るがUSB帰路（probe約193 Mbps）が生成に追い付かずFIFOが伸びる |
+| 16 bit | 3 full＋1 D=8＋12 D=64 | **内部40 Msps、167,772,160 sampleを3回PASS**。E107改修後は内部48まで成立（codec 99.8%） | **32 Msps / 106 Mbpsを3回PASS**、33で破綻 | **40 Msps / 132.5 Mbpsを3回PASS**、44は1回PASS（codec 97.9%）、48で破綻 |
+| 16 bit（旧profile） | 3 full＋8 D=64 | 42 Msps成立、43 Msps不安定。**安全値40 Msps** | 32 Msps / 100 Mbps、65.536 MB完全検査PASS | 未測 |
 
 16 channel / 40 Mspsの代表例は、`3×40 + 40/8 + 12×40/64 = 132.5 Mbps`である。128 sampleを53 byteにまとめることでpaddingをなくした。1/64は625 ksps、時間刻み1.6 usなのでbuttonには十分であり、短いCS / INTは`any_active`でbucket内のactiveを残せる。
 
-HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 Mbpsだった。PC直結へ変更後は256 MBで212.666 Mbps、90%予算191.400 Mbpsまで改善した。ただしcaptureとの結合では、速くなったUSB taskがcore 0上のRX callback / spoolと競合し、USB予算内の8-bit 60 Mspsと16-bit 40 Mspsでもringを追い越した。**USB予算と内部sink上限だけでなく、結合上限も別に持つ必要がある。**
+HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 Mbpsだった。PC直結へ変更後は256 MBで212.666 Mbps、90%予算191.400 Mbpsまで改善した。E106の結合試験ではUSB予算内の8-bit 60 Mspsと16-bit 40 Mspsでもringを追い越し、当初は「速くなったUSB taskがcore 0上のRX callback / spoolと競合した」と推定した。[E107](../experiments/e107_p4_stream_core_placement/README.ja.md)でFreeRTOS run-time statsを取ると、競合はcore 0ではなく**codecと同じcore 1**にあった。TinyUSBのDWC2割り込みとusbd taskは`Device.begin()`を呼んだcore（Arduinoの`setup()`＝core 1）に乗る。USBをcore 0で初期化し、codec loopをprofile別に直すと、PC直結（Windows native）で8-bit 60 Msps 5回、16-bit wide 40 Msps 3回PASSした。同経路のUSB-only probeは193 Mbps、90%予算173 Mbpsで、8-bit 60 Msps（187.5 Mbps）は予算超えである。**USB予算と内部sink上限に加えて結合上限も持つが、現在の結合上限はcodec速度とUSB帰路そのもので決まる。**
 
 ### 1.3 実装上分かったこと
 
@@ -36,7 +36,11 @@ HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 M
 - codec block境界とUSB packet境界は一致させない。53-byte blockをそのままtransfer終端にするとshort packetが連発してusbipdがerrorになった。codecは128 sample単位で作り、PSRAM FIFOから最終回以外512 byte単位で送ると成立した。
 - genericな1-bitずつのpackingでは40 Mspsに足りない。代表profileのD=64部分を固定bit-spread演算にすると40 Mspsを回復できた。
 - 現在の16-bit試験は内部TXの8 GPIOを上位laneへ複製している。16本の独立した外部padの電気試験ではない。
-- 直結はUSB-onlyを約121→213 Mbpsへ改善したが、現task配置の結合上限は8-bit 44 / 16-bit 32 Mspsだった。帯域向上がそのままcapture rate向上になるとは限らない。
+- 直結はUSB-onlyを約121→213 Mbpsへ改善したが、E106のtask配置では結合上限が8-bit 44 / 16-bit 32 Mspsだった。原因はUSB割り込みとusbd taskがcodecと同じcore 1にあったこと（E107）。`Device.begin()`を**core 0固定のtaskから呼ぶ**と解消する。
+- FreeRTOS run-time stats（`CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y`）でcapture窓のcore別idleを取ると、律速coreを推定でなく数値で決められる。E107では8-bit 60 Mspsでcore 1（codec）約90%、core 0（PARLIO ISR＋spool＋usbTask＋usbd＋DWC2 ISR）60〜70%。
+- `-Os`ではlambda化したcodec loopがE106の直書きloopより遅く、内部sinkで60 Mspsを落とした。profile別templateと短いbit gather（8-bit: `w&0x07070707`→`(w|w>>5)&0x003f003f`→`(w|w>>10)&0xfff`）で8-bit 60 Mspsのcodec率は100%→85.9%になった。
+- spool / usbd taskの優先度、PARLIO割り込みのcore、内部RAM FIFO（128 KiB）は結合上限を上げなかった。PSRAM FIFOは必要。
+- E106由来の潜在不具合2件をE107で修正した。FIFO overflowでspoolが抜けるとcodecが永久待ちになる点と、未flushの短いstatus行が残るとusbTaskがFIFO満容量待ちで10 s後に諦める点。
 
 ## 2. 近い目標の現在地
 
@@ -46,6 +50,7 @@ HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 M
 | `.sr`保存とstock decoder | **達成**。P4でcaptureした`.sr`をsigrok decoderが読める |
 | PulseViewへIP経由 | **raw streamでは達成**。mixed-rate descriptorからbase gridへ復元するgatewayは未実装 |
 | USB経路の予算測定 | **測定コマンド成立**。90%予算による自動ACCEPT / fallbackは未実装 |
+| task配置と結合上限 | **E107で確定**。USBはcore 0で初期化、codecはcore 1。8-bit 60 / wide 40 MspsがPC直結nativeでPASS。DWC2 DMA modeと長時間soak、usbipd/WSL・hub経路の再掃引は未 |
 | RVSWDでCH32へ書込 | **未着手**。CH32とP4の配線待ち |
 | RVSWD / SWIO decoder | **未着手**。実信号取得は上記配線待ち |
 
@@ -78,10 +83,10 @@ HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 M
 
 ### Phase D — 最後にチューニングする
 
-1. descriptorをprofile別の固定高速codecへdispatchするか、generic codecを最適化するか比較する。
+1. descriptorをprofile別の固定高速codecへdispatchするか、generic codecを最適化するか比較する。E107ではprofile別templateが必要だった。genericにする場合も`-Os`でのlambda / 間接呼び出しを避ける。
 2. PARLIO callback量、ring / queue / stageサイズ、PSRAM copyの配置を掃引する。
-3. RX callback / spool / USB taskがcore 0で競合する構成を見直す。task優先度、USB投入頻度、core配置を先に測り、その後short completion、arm単位、zero-copy化を詰める。E090で反証済みのhardware TX FIFO増量は繰り返さない。
-4. 安全marginを再測定し、表向きの60 / 40 Mspsを最終確定する。
+3. **E107で実施。** 競合はcore 0ではなくcore 1側で、USBをcore 0で初期化して解消した。task優先度、PARLIO割り込みのcore、内部RAM FIFOは効かなかった。残りはDWC2 DMA mode（`CFG_TUD_DWC2_DMA_ENABLE=1`）でIN帰路の実効速度とcore 0負荷が変わるかの確認。E090で反証済みのhardware TX FIFO増量は繰り返さない。
+4. 安全marginを再測定し、表向きの60 / 40 Mspsを最終確定する。E107時点では、8-bit 60はcodec約90%かつUSB予算超え（native probe 193 Mbps）なので直結の通常値はprobe→90%で52〜55 Msps、wide 40はcodec 93%で余裕が薄い。長時間soakとusbipd/WSL・hub経路での再掃引が残る。
 5. 少数channel高速モードが実用上必要な場合だけ、通常仕様と分離して着手する。
 
 ## 4. いったん保留するもの
@@ -97,14 +102,14 @@ HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 M
 |---|---|
 | 16 channel独立入力 | 16本を外部pattern源へ接続。現在の内部loopbackは8本複製 |
 | 実SPI / INT波形 | P4または別deviceの信号源とGPIO配線 |
-| USB直結比較 | **実施済み**。USB-only約213 Mbps、結合は8-bit 44 / 16-bit 32 Msps |
+| USB直結比較 | **実施済み**。USB-only約213 Mbps（usbipd/WSL）／193 Mbps（Windows native）。結合はE106配置で8-bit 44 / 16-bit 32、E107配置で8-bit 60 / wide 40 Msps |
 | RVSWD / SWIO | CH32とP4の電源、GND、信号線 |
 
-最初の直結比較は実施済みだが、task配置を変更した後に同じ条件で再測定して最終rateを決める。動的descriptorやhost復元は現在の配線のまま進められる。
+task配置変更後の再測定はE107でWindows native経路について実施した。usbipd/WSL経路とhub経路での同じ掃引、長時間soakが残る。動的descriptorやhost復元は現在の配線のまま進められる。
 
 ## 6. 作業環境と他のprobe課題
 
-- E104〜E106の対象は第三P4（MAC `80:f1:b2:d0:b2:61`、UART `/dev/ttyUSB0`、HSはWindows bus `40-2`をusbipdでWSLへattach）。
+- E104〜E107の対象は第三P4（MAC `80:f1:b2:d0:b2:61`）。UARTは`/run/board-identify/by-id/esp32-p4-80f1b2d0b261`で指定する（`/dev/ttyUSBn`の番号は再列挙で変わる。2026-09-15は`ttyUSB2`で、`ttyUSB0`は別のESP32だった）。HSは直結でWindows bus `1-7`。usbipdでWSLへattachすると`/dev/bus/usb`ノードがroot専用になることがあり、`sudo`が使えない環境ではWindows nativeのWinUSB（`uv.exe run --with libusb1`）からhostを動かす。
 - `/home/mt/dev/EspUsbHost/tests/.env`は別のfull testが使用中であり、この検証から変更・流用しない。
 - MACの近い2台はHS同士で結線された別リグであり、今回のmixed-rate検証では触れていない。
 - firmware uploadでHS deviceは再列挙される。古いusbipd attachやendpoint待ちを残さず、再attachしてdevice nodeを取り直す。
@@ -130,6 +135,7 @@ EspUsbHostのHR-3（HID 1,024 byte）とrelease判断は、ロジアナのmixed-
 
 - [E105 mixed-rate形式](../experiments/e105_p4_spi_mixed_rate_codec/README.ja.md)
 - [E106 実capture→codec→USB](../experiments/e106_p4_mixed_rate_capture_stream/README.ja.md)
+- [E107 結合上限のcore配置・codec改修](../experiments/e107_p4_stream_core_placement/README.ja.md)
 - [sample rateの選び方](p4-sample-rate-selection.ja.md)
 - [PulseView / sigrok連携](pulseview-integration.ja.md)
 - [capture圧縮](capture-compression.ja.md)

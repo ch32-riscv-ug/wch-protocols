@@ -122,3 +122,9 @@ uv run --with libusb1 python host_capture.py --width 16 --wide-profile --rate-mh
 uv run --with libusb1 python host_capture.py --rate-mhz 42 --periods 64 --depth 8
 uv run --with libusb1 python host_capture.py --probe-bytes 64000000 --depth 8
 ```
+
+## 追記（2026-09-15、E107）
+
+結合上限を「core 0でのRX callback / spoolとUSB taskの競合」と推定したのは外れだった。[E107](../e107_p4_stream_core_placement/README.ja.md)のFreeRTOS run-time statsでは、TinyUSBのDWC2割り込みとusbd taskが`Device.begin()`を呼んだcore（Arduino `setup()`＝core 1＝codec側）に乗っていた。USBをcore 0で初期化し、codec loopをprofile別に直すと、PC直結（Windows native）で8-bit 60 Msps 5回、16-bit wide 40 Msps 3回PASSした。本文の44 / 32 Mspsはusbipd/WSL経路・この配置での値として残す。
+
+この実験のfirmwareには2つの潜在不具合がある。FIFO overflowで`spoolTask`が`break`するとstageが返らず`harvestTask`が永久待ちになり、deviceが以後の命令を受けない。未flushの短いstatus行がTX FIFOに残ると`usbTask`の`waitWritable(8192)`が成立せず、10 s待って諦める。いずれもE107で修正した。
