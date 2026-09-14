@@ -19,15 +19,21 @@ namespace {
 
 constexpr uint32_t kSampleRateHz = 32000000;
 constexpr size_t kSourceLanes = 8;
-constexpr size_t kBlockSamples = 64;
-constexpr size_t kWireBlockBytes = 25;
+constexpr size_t kLegacyBlockSamples = 64;
+constexpr size_t kLegacyWireBlockBytes = 25;
+constexpr size_t kWideBlockSamples = 128;
+constexpr size_t kWideWireBlockBytes = 53;
+constexpr size_t kMaxBlockSamples = kWideBlockSamples;
+constexpr size_t kMaxWireBlockBytes = kWideWireBlockBytes;
 constexpr size_t kRingBytes = 64 * 1024;
 constexpr size_t kDelimiterBytes = 65408;
 constexpr size_t kQueueDepth = 128;
 constexpr size_t kSourceBytes = 8192;
 constexpr uint32_t kSourceDivider = 4;
 constexpr size_t kFifoBytes = 8 * 1024 * 1024;
-constexpr size_t kStageBytes = 12800;  // 512 codec blocks and one USB period
+// Keep every row in Stage[] 64-byte aligned. Wide 53-byte blocks flush before
+// crossing this boundary instead of forcing a non-cache-aligned row stride.
+constexpr size_t kStageBytes = 12800;
 constexpr size_t kStageCount = 4;
 constexpr size_t kUsbPrebufferBytes = 1024 * 1024;
 constexpr uint32_t kWaitMs = 1000;
@@ -65,8 +71,8 @@ QueueHandle_t FreeStageQueue;
 QueueHandle_t ReadyStageQueue;
 uint8_t *Ring;
 uint8_t *Source;
-uint16_t Pending[kBlockSamples] __attribute__((aligned(64)));
-uint8_t BenchWire[kWireBlockBytes] __attribute__((aligned(64)));
+uint16_t Pending[kMaxBlockSamples] __attribute__((aligned(64)));
+uint8_t BenchWire[kMaxWireBlockBytes] __attribute__((aligned(64)));
 uint8_t Stage[kStageCount][kStageBytes] __attribute__((aligned(64)));
 // PARLIO's DMA ring is accessed uncached. One linear copy makes the many
 // scattered codec loads hit cached internal RAM; E042 already established that
@@ -100,6 +106,15 @@ char CommandMode;
 uint32_t RequestedRateHz = kSampleRateHz;
 uint8_t RequestedWidth = 16;
 bool SinkOnly;
+bool WideProfile;
+
+static size_t activeBlockSamples() {
+  return WideProfile ? kWideBlockSamples : kLegacyBlockSamples;
+}
+
+static size_t activeWireBlockBytes() {
+  return WideProfile ? kWideWireBlockBytes : kLegacyWireBlockBytes;
+}
 
 static inline __attribute__((always_inline)) void packFast8(
     const uint16_t *__restrict input, uint8_t *__restrict output) {
@@ -153,6 +168,32 @@ static inline __attribute__((always_inline)) void encodeBlock8(
   }
   // Five D=64 channels occupy bits 0..4; bits 5..7 are defined padding.
   wire[24] = static_cast<uint8_t>((samples[0] >> 3) & 0x1f);
+}
+
+static inline __attribute__((always_inline)) void encodeBlockWide(
+    const uint16_t *samples, uint8_t *wire) {
+  for (size_t group = 0; group < 16; ++group) {
+    packFast8(samples + group * 8, wire + group * 3);
+  }
+  uint16_t d8 = 0;
+  for (size_t bucket = 0; bucket < 16; ++bucket) {
+    d8 |= ((samples[bucket * 8] >> 3) & 1U) << bucket;
+  }
+  wire[48] = d8;
+  wire[49] = d8 >> 8;
+  const auto spread12 = [](uint32_t value) __attribute__((always_inline)) {
+    value &= 0x00000fffU;
+    value = (value | (value << 8)) & 0x00ff00ffU;
+    value = (value | (value << 4)) & 0x0f0f0f0fU;
+    value = (value | (value << 2)) & 0x33333333U;
+    value = (value | (value << 1)) & 0x55555555U;
+    return value;
+  };
+  const uint32_t d64 = spread12(samples[0] >> 4) |
+      (spread12(samples[64] >> 4) << 1);
+  wire[50] = d64;
+  wire[51] = d64 >> 8;
+  wire[52] = d64 >> 16;
 }
 
 static size_t fifoUsed() { return FifoState.head - FifoState.tail; }
@@ -259,7 +300,9 @@ static void harvestTask(void *) {
   uint32_t duplicateBad = 0;
   size_t processedRaw = 0;
   size_t maxInflight = 0;
-  const size_t rawBlockBytes = kBlockSamples * (RequestedWidth / 8);
+  const size_t blockSamples = activeBlockSamples();
+  const size_t wireBlockBytes = activeWireBlockBytes();
+  const size_t rawBlockBytes = blockSamples * (RequestedWidth / 8);
   const auto recordRawBlock = [&](const uint8_t *bytes) {
     const uint8_t low = bytes[0];
     if (RequestedWidth == 16 && bytes[1] != low) ++duplicateBad;
@@ -269,7 +312,9 @@ static void harvestTask(void *) {
     binary ^= binary >> 4;
     if (previousValid) {
       const uint8_t delta = static_cast<uint8_t>(binary - previousBinary);
-      if (delta < 15 || delta > 17) ++rawSequenceBad;
+      const uint8_t expected = static_cast<uint8_t>(blockSamples / 4);
+      const uint8_t margin = static_cast<uint8_t>(blockSamples / 64);
+      if (delta < expected - margin || delta > expected + margin) ++rawSequenceBad;
     }
     previousBinary = binary;
     previousValid = true;
@@ -288,10 +333,17 @@ static void harvestTask(void *) {
       pending += take;
       at += take;
       if (pending == rawBlockBytes) {
+        if (staged + wireBlockBytes > kStageBytes) {
+          const WireChunk ready = {stage, staged};
+          xQueueSend(ReadyStageQueue, &ready, portMAX_DELAY);
+          xQueueReceive(FreeStageQueue, &stage, portMAX_DELAY);
+          staged = 0;
+        }
         recordRawBlock(reinterpret_cast<const uint8_t *>(Pending));
-        if (RequestedWidth == 8) encodeBlock8(reinterpret_cast<const uint8_t *>(Pending), stage + staged);
+        if (WideProfile) encodeBlockWide(Pending, stage + staged);
+        else if (RequestedWidth == 8) encodeBlock8(reinterpret_cast<const uint8_t *>(Pending), stage + staged);
         else encodeBlock(Pending, stage + staged);
-        staged += kWireBlockBytes;
+        staged += wireBlockBytes;
         pending = 0;
         ++encoded;
         if (staged == kStageBytes) {
@@ -303,11 +355,18 @@ static void harvestTask(void *) {
       }
     }
     while (at + rawBlockBytes <= chunk.length && encoded < target) {
+      if (staged + wireBlockBytes > kStageBytes) {
+        const WireChunk ready = {stage, staged};
+        xQueueSend(ReadyStageQueue, &ready, portMAX_DELAY);
+        xQueueReceive(FreeStageQueue, &stage, portMAX_DELAY);
+        staged = 0;
+      }
       const auto *bytes = chunk.data + at;
       recordRawBlock(bytes);
-      if (RequestedWidth == 8) encodeBlock8(bytes, stage + staged);
+      if (WideProfile) encodeBlockWide(reinterpret_cast<const uint16_t *>(bytes), stage + staged);
+      else if (RequestedWidth == 8) encodeBlock8(bytes, stage + staged);
       else encodeBlock(reinterpret_cast<const uint16_t *>(bytes), stage + staged);
-      staged += kWireBlockBytes;
+      staged += wireBlockBytes;
       at += rawBlockBytes;
       ++encoded;
       if (staged == kStageBytes) {
@@ -323,10 +382,17 @@ static void harvestTask(void *) {
       pending += take;
       at += take;
       if (pending != rawBlockBytes) continue;
+      if (staged + wireBlockBytes > kStageBytes) {
+        const WireChunk ready = {stage, staged};
+        xQueueSend(ReadyStageQueue, &ready, portMAX_DELAY);
+        xQueueReceive(FreeStageQueue, &stage, portMAX_DELAY);
+        staged = 0;
+      }
       recordRawBlock(reinterpret_cast<const uint8_t *>(Pending));
-      if (RequestedWidth == 8) encodeBlock8(reinterpret_cast<const uint8_t *>(Pending), stage + staged);
+      if (WideProfile) encodeBlockWide(Pending, stage + staged);
+      else if (RequestedWidth == 8) encodeBlock8(reinterpret_cast<const uint8_t *>(Pending), stage + staged);
       else encodeBlock(Pending, stage + staged);
-      staged += kWireBlockBytes;
+      staged += wireBlockBytes;
       pending = 0;
       ++encoded;
       if (staged == kStageBytes) {
@@ -359,7 +425,7 @@ done:
 }
 
 static void spoolTask(void *) {
-  const uint64_t target = TargetBlocks * kWireBlockBytes;
+  const uint64_t target = TargetBlocks * activeWireBlockBytes();
   uint64_t moved = 0;
   while (moved < target) {
     WireChunk chunk = {};
@@ -374,7 +440,7 @@ static void spoolTask(void *) {
 }
 
 static void usbTask(void *) {
-  const uint64_t target = TargetBlocks * kWireBlockBytes;
+  const uint64_t target = TargetBlocks * activeWireBlockBytes();
   uint64_t sent = 0;
   uint32_t consecutiveTimeouts = 0;
   const int64_t began = esp_timer_get_time();
@@ -393,6 +459,16 @@ static void usbTask(void *) {
     span = min(span, static_cast<size_t>(target - sent));
     const size_t offset = FifoState.tail % kFifoBytes;
     span = min(span, kFifoBytes - offset);
+    // Codec stages need not end on a USB packet boundary (the wide profile is
+    // 53 bytes/block). Avoid terminating one USB transfer per stage: hold the
+    // tail fragment until another stage arrives, except for the final bytes.
+    if (sent + span < target) {
+      span &= ~size_t(511);
+      if (span == 0) {
+        vTaskDelay(1);
+        continue;
+      }
+    }
     if (Vendor.writeAvailable() < span) {
       ++UsbWaits;
       if (!Vendor.waitWritable(span, kWaitMs)) {
@@ -492,13 +568,13 @@ static void sendStatus(esp_err_t result) {
   char status[512];
   const int length = snprintf(
       status, sizeof(status),
-      "E106_STATUS result=%s rate_hz=%lu width=%u sink_only=%u blocks=%llu encoded=%llu sent=%llu callbacks=%llu "
+      "E106_STATUS result=%s rate_hz=%lu width=%u profile=%s sink_only=%u blocks=%llu encoded=%llu sent=%llu callbacks=%llu "
       "queue_overflow=%lu fifo_overflow=%lu high_water=%lu waits=%lu timeouts=%lu "
       "capture_us=%lld usb_us=%lld chunks=%lu copy_us=%llu process_us=%llu push_us=%llu "
       "raw_sequence_bad=%lu duplicate_bad=%lu max_inflight=%lu ring_bytes=%lu sink_bytes=%llu sink_checksum=%lu "
       "bench_us=%llu bench_checksum=%lu\n",
       esp_err_to_name(result), static_cast<unsigned long>(RequestedRateHz),
-      RequestedWidth, SinkOnly,
+      RequestedWidth, WideProfile ? "wide" : "legacy", SinkOnly,
       static_cast<unsigned long long>(TargetBlocks),
       static_cast<unsigned long long>(EncodedBlocks), static_cast<unsigned long long>(SentBytes),
       static_cast<unsigned long long>(CallbackBytes), static_cast<unsigned long>(QueueOverflow),
@@ -555,13 +631,13 @@ static void runUsbProbe(uint64_t target) {
 }
 
 static void benchmarkCodec() {
-  for (size_t i = 0; i < kBlockSamples; ++i) Pending[i] = static_cast<uint16_t>(i * 257U);
+  for (size_t i = 0; i < kLegacyBlockSamples; ++i) Pending[i] = static_cast<uint16_t>(i * 257U);
   uint32_t checksum = 0;
   const int64_t began = esp_timer_get_time();
   for (size_t block = 0; block < 65536; ++block) {
     Pending[0] = static_cast<uint16_t>(block);
     encodeBlock(Pending, BenchWire);
-    checksum += BenchWire[block % kWireBlockBytes];
+    checksum += BenchWire[block % kLegacyWireBlockBytes];
   }
   BenchUs = esp_timer_get_time() - began;
   BenchChecksum = checksum;
@@ -624,13 +700,14 @@ void loop() {
   uint8_t command[14];
   if (Vendor.read(command, sizeof(command)) != sizeof(command) ||
       (command[0] != 'E' && command[0] != 'I') ||
-      (command[1] != '6' && command[1] != '8' && command[1] != 'P')) return;
+      (command[1] != '6' && command[1] != '8' && command[1] != 'W' && command[1] != 'P')) return;
   const uint32_t rateHz = readLe32(command + 2);
   const uint64_t blocks = readLe64(command + 6);
   if (blocks == 0) return;
   TargetBlocks = blocks;
   RequestedRateHz = command[1] == 'P' ? kSampleRateHz : rateHz;
   RequestedWidth = command[1] == '8' ? 8 : 16;
+  WideProfile = command[1] == 'W';
   SinkOnly = command[0] == 'I';
   if (command[1] != 'P' && (RequestedRateHz < 1000000 || RequestedRateHz > 160000000)) return;
   CommandMode = command[1] == 'P' ? 'P' : static_cast<char>(command[0]);

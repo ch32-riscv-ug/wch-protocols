@@ -17,9 +17,6 @@ VID = 0x303A
 PID = 0x4021
 EP_OUT = 0x01
 EP_IN = 0x81
-WIRE_BLOCK_BYTES = 25
-
-
 def from_gray(value: int) -> int:
     value ^= value >> 1
     value ^= value >> 2
@@ -28,8 +25,11 @@ def from_gray(value: int) -> int:
 
 
 class Validator:
-    def __init__(self, width: int) -> None:
+    def __init__(self, width: int, wide_profile: bool = False) -> None:
         self.width = width
+        self.wide_profile = wide_profile
+        self.block_samples = 128 if wide_profile else 64
+        self.wire_block_bytes = 53 if wide_profile else 25
         self.buffer = bytearray()
         self.bad = 0
         self.mirror_bad = 0
@@ -39,17 +39,31 @@ class Validator:
 
     def feed(self, data: bytes) -> None:
         self.buffer.extend(data)
-        while len(self.buffer) >= WIRE_BLOCK_BYTES:
-            block = self.buffer[:WIRE_BLOCK_BYTES]
-            del self.buffer[:WIRE_BLOCK_BYTES]
-            packed = int.from_bytes(block[:24], "little")
-            fast = [(packed >> (3 * i)) & 7 for i in range(64)]
-            slow = block[24]
-            gray0 = fast[0] | ((slow & 0x1F) << 3)
-            # 16-bit RX mirrors lanes 0..2; 8-bit RX defines these as padding.
-            expected_upper = fast[0] if self.width == 16 else 0
-            if (slow >> 5) != expected_upper:
-                self.mirror_bad += 1
+        while len(self.buffer) >= self.wire_block_bytes:
+            block = self.buffer[:self.wire_block_bytes]
+            del self.buffer[:self.wire_block_bytes]
+            fast_bytes = 48 if self.wide_profile else 24
+            packed = int.from_bytes(block[:fast_bytes], "little")
+            fast = [(packed >> (3 * i)) & 7 for i in range(self.block_samples)]
+            if self.wide_profile:
+                d8 = int.from_bytes(block[48:50], "little")
+                d64 = int.from_bytes(block[50:53], "little")
+                gray0 = fast[0] | ((d8 & 1) << 3)
+                gray0 |= sum(((d64 >> ((lane - 4) * 2)) & 1) << lane for lane in range(4, 8))
+                gray64 = fast[64] | (((d8 >> 8) & 1) << 3)
+                gray64 |= sum(((d64 >> ((lane - 4) * 2 + 1)) & 1) << lane for lane in range(4, 8))
+                for half, gray in enumerate((gray0, gray64)):
+                    for lane in range(8, 16):
+                        actual = (d64 >> ((lane - 4) * 2 + half)) & 1
+                        if actual != ((gray >> (lane - 8)) & 1):
+                            self.mirror_bad += 1
+            else:
+                slow = block[24]
+                gray0 = fast[0] | ((slow & 0x1F) << 3)
+                # 16-bit RX mirrors lanes 0..2; 8-bit RX defines these as padding.
+                expected_upper = fast[0] if self.width == 16 else 0
+                if (slow >> 5) != expected_upper:
+                    self.mirror_bad += 1
             binary0 = from_gray(gray0)
             # E042 measured 3..5 RX samples per 12 MHz source symbol at this
             # asynchronous edge. Follow Gray order rather than requiring four
@@ -70,16 +84,17 @@ class Validator:
                     failed_at = sample_index
                     break
             progress = (symbol - binary0) & 0xFF
-            if not 14 <= progress <= 17:
+            progress_min, progress_max = ((30, 34) if self.wide_profile else (14, 17))
+            if not progress_min <= progress <= progress_max:
                 self.bad += 1
-            if (failed_at is not None or not 14 <= progress <= 17) and len(self.examples) < 3:
+            if (failed_at is not None or not progress_min <= progress <= progress_max) and len(self.examples) < 3:
                 self.examples.append(
                     f"block={self.blocks} binary0={binary0} failed_at={failed_at} "
                     f"progress={progress} fast={''.join(format(v, 'x') for v in fast)}"
                 )
             if self.previous_binary is not None:
                 delta = (binary0 - self.previous_binary) & 0xFF
-                if delta not in range(15, 18):
+                if not progress_min <= delta <= progress_max:
                     self.bad += 1
                     if len(self.examples) < 3:
                         self.examples.append(
@@ -104,11 +119,16 @@ def main() -> int:
                         help="PARLIO input width; 8 means 3 fast + 5 D=64")
     parser.add_argument("--internal", action="store_true",
                         help="benchmark capture/codec/PSRAM while discarding output")
+    parser.add_argument("--wide-profile", action="store_true",
+                        help="16ch profile: 3 full + 1 D8 + 12 D64, 128 samples/53 bytes")
     args = parser.parse_args()
     blocks = args.periods * 8192
-    total = args.probe_bytes or blocks * WIRE_BLOCK_BYTES
+    if args.wide_profile and args.width != 16:
+        parser.error("--wide-profile requires --width 16")
+    wire_block_bytes = 53 if args.wide_profile else 25
+    total = args.probe_bytes or blocks * wire_block_bytes
     probe = args.probe_bytes > 0
-    validator = Validator(args.width)
+    validator = Validator(args.width, args.wide_profile)
     captured = bytearray()
 
     with usb1.USBContext() as context:
@@ -119,7 +139,7 @@ def main() -> int:
             rate_hz = round(args.rate_mhz * 1_000_000)
             # The original 16-bit command remains E6/I6; E8/I8 selects the
             # new 8-bit path. Both commands are exactly 14 bytes.
-            width_code = b"8" if args.width == 8 else b"6"
+            width_code = b"W" if args.wide_profile else (b"8" if args.width == 8 else b"6")
             prefix = b"EP" if probe else ((b"I" if args.internal else b"E") + width_code)
             command = (prefix + struct.pack(
                 "<IQ", 0 if probe else rate_hz, total if probe else blocks
@@ -130,7 +150,9 @@ def main() -> int:
                 status = bytes(handle.bulkRead(EP_IN, 512, timeout=60000)).decode("ascii", "replace").strip()
                 elapsed = time.perf_counter() - started
                 print(f"internal=1 elapsed_s={elapsed:.6f} {status}")
-                clean = (f"width={args.width}" in status and "sink_only=1" in status and
+                expected_profile = "wide" if args.wide_profile else "legacy"
+                clean = (f"width={args.width}" in status and f"profile={expected_profile}" in status and
+                         "sink_only=1" in status and
                          f"encoded={blocks}" in status and "queue_overflow=0" in status and
                          "fifo_overflow=0" in status and "raw_sequence_bad=0" in status)
                 return 0 if clean else 2

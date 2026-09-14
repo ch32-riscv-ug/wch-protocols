@@ -10,17 +10,17 @@ E105で個別に確認した16-bit codecとUSB連続転送を、実際のPARLIO 
 
 ```
 PARLIO RX 8/16-bit
-  -> 64 sample単位codec
+  -> mixed-rate codec
      8-bit: 3 raw + 5 hold D=64
-     16-bit: 3 raw + 8 hold D=64
-  -> 25 byte/block (12.5 MB/s)
+     16-bit legacy: 3 raw + 8 hold D=64 (64 sample -> 25 byte)
+     16-bit wide: 3 raw + 1 D=8 + 12 D=64 (128 sample -> 53 byte)
   -> 8 MiB PSRAM FIFO
   -> USB HS vendor IN
 ```
 
 内部PARLIO TXの8 GPIOをRX lane 0..7と8..15へ複製する。したがって16-bit取り込み、codec、USBの結合試験だが、11本の独立外部GPIOの電気試験ではない。
 
-PCは16-bitを`E6`、8-bitを`E8`、USBを除いた内部sink試験を`I6` / `I8`で開始する。後ろは共通して`uint32_le(rate_hz) + uint64_le(blocks)`である。firmwareを書き換えず幅とrateを掃引できる。8192 blockでwire 204,800 byteとなり、codec blockとUSB packetの両方で端数が出ない。hostは受信内容についてGray codeの進行、4 sample周期、16-bit時の複製lane一致、8-bit時のpadding zeroを検査する。
+PCは16-bit legacyを`E6`、8-bitを`E8`、16-bit wideを`EW`で開始する。USBを除いた内部sink試験は先頭を`I`へ変えた`I6` / `I8` / `IW`である。後ろは共通して`uint32_le(rate_hz) + uint64_le(blocks)`である。firmwareを書き換えずprofileとrateを掃引できる。hostは受信内容についてGray codeの進行、4 sample周期、16-bit時の複製lane一致、8-bit時のpadding zeroを検査する。
 
 USBだけの経路予算は`EP + uint64_le(bytes)`で測る。deviceは既知patternを最大速送信し、hostは実測Mbpsとその90%を`recommended_90pct_mbps`として表示する。capture生成rateで測らないため、USB経路上限とP4内部codec上限を分離できる。
 
@@ -39,7 +39,15 @@ USBを律速から外し、codec出力をPSRAMへ循環書込みする内部持�
 
 現在のhub 2段＋usbipd/WSL経路でも、8-bit / 32 Mspsを65.536 MB連続送信し、PC復元、raw連番、padding、queue/FIFO overflowのすべて0を確認した。8-bitでも全8 channelをbase rateで送るのではなく、3 fast＋5 slowへ縮約することでwireは3.125 bit/base sampleとなる。
 
-### 16-bit: 3 fast＋8 slow
+### 16-bit wide: 3 fast＋1 D=8＋12 D=64
+
+製品説明の16 channel代表構成を128 sample→53 byteで実装した。40 Msps時の論理・wire帯域はいずれも`3×40 + 40/8 + 12×40/64 = 132.5 Mbps`で、block末尾paddingはない。
+
+最初の1-bitずつ配置する実装は39.5 Mspsまで成立し、40 Mspsでringを追い越した。D=64の2個の12-bit snapshotを固定bit-spread演算で交互配置すると、40 Msps / 167,772,160 sampleを3回連続PASSした。各回ともraw連番、複製lane、callback queue、PSRAM sink overflowは0だった。これにより**16 channel通常上限40 Msps**は代表profileでも維持できる。
+
+現在のhub 2段＋usbipd/WSLでは、32 Msps / wire 106 Mbpsを69,468,160 byte連続転送し、PC復元、device raw連番、複製lane、queue/FIFO overflowのすべて0を確認した。codecの53-byte境界をそのままUSB transfer終端にするとshort packetが連発しusbipdがtransfer errorになったため、PSRAM FIFO上で境界を分離し、最終回以外は512 byte単位でUSBへ渡すようにした。codecは大きな論理blockでpackingし、USBは独立して分割する構成が必要である。
+
+### 16-bit legacy: 3 fast＋8 slow
 
 3 raw＋8 hold(D=64)の実capture→codec→PSRAM→USB結合経路は、**42 Mspsで65.536 MBを長時間PASS**した。wireは16.40625 MB/s = 131.25 Mbpsである。次がすべて0だった。
 
@@ -92,6 +100,8 @@ arduino-cli compile --profile esp32p4_device
 arduino-cli upload --profile esp32p4_device --port /dev/ttyUSB0
 uv run --with libusb1 python host_capture.py --width 8 --internal --rate-mhz 60 --periods 320
 uv run --with libusb1 python host_capture.py --width 8 --rate-mhz 32 --periods 320 --depth 8
+uv run --with libusb1 python host_capture.py --width 16 --wide-profile --internal --rate-mhz 40 --periods 160
+uv run --with libusb1 python host_capture.py --width 16 --wide-profile --rate-mhz 32 --periods 160 --depth 8
 uv run --with libusb1 python host_capture.py --rate-mhz 42 --periods 64 --depth 8
 uv run --with libusb1 python host_capture.py --probe-bytes 64000000 --depth 8
 ```

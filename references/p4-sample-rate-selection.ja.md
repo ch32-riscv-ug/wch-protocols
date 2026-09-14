@@ -15,7 +15,7 @@ channel別rateは別々のsampling clockではない。全pinを共通base clock
 
 例としてprobe 200 Mbps、推奨予算180 Mbpsなら、SPIのCLK/MISO/MOSIを各50 Msps、CSを1/8の6.25 Mspsとして、合計は**156.25 Mbps**になる。4本すべてを同率にすると180 Mbpsでは45 Mspsが上限なので、高速3本の時間解像度を上げながら23.75 Mbpsの余裕も残せる。60 Msps×3＋CS 7.5 Msps = **187.5 Mbps**は理論200 Mbpsには入るが、90%予算180 Mbpsには入らない。
 
-16 channel / 40 Mspsでは、3本をfull rate、1本を1/8、残る12本を1/64にすると合計**132.5 Mbps**となる。128-sample codec blockならpaddingなしの53 byteになり、150 Mbps実測の90%予算135 Mbpsにも収まる。1/64 channelの時間刻みは1.6 us（625 ksps）なのでbuttonには十分で、CS / INTには用途に応じて`any_active`を使い短pulseの存在を残す。
+16 channel / 40 Mspsでは、3本をfull rate、1本を1/8、残る12本を1/64にすると合計**132.5 Mbps**となる。128-sample codec blockならpaddingなしの53 byteになり、150 Mbps実測の90%予算135 Mbpsにも収まる。P4内部sinkで40 Mspsを3回連続PASSし、現在のUSB経路では32 Msps / 106 Mbpsを69.5 MB完全検査PASSした。1/64 channelの時間刻みは1.6 us（625 ksps）なのでbuttonには十分で、CS / INTには用途に応じて`any_active`を使い短pulseの存在を残す。
 
 `decimate_hold`はbucket中の短いpulseを見落とす。active-low CS/INTには、bucket内で一度でもactiveなら残す`any_active`を選べるようにする。この場合pulseの存在は残せるが、edge位置は最大D-1 base sampleぶん量子化・拡幅される。表示時はbase sample gridへhold展開するため、低rate channelの見た目の時間精度が上がるわけではない。
 
