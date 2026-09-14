@@ -117,7 +117,10 @@ def main() -> int:
             sys.exit(f"no device {VID:04x}:{PID:04x}")
         with handle.claimInterface(0):
             rate_hz = round(args.rate_mhz * 1_000_000)
-            prefix = b"EP" if probe else ((b"I" if args.internal else b"E") + str(args.width).encode())
+            # The original 16-bit command remains E6/I6; E8/I8 selects the
+            # new 8-bit path. Both commands are exactly 14 bytes.
+            width_code = b"8" if args.width == 8 else b"6"
+            prefix = b"EP" if probe else ((b"I" if args.internal else b"E") + width_code)
             command = (prefix + struct.pack(
                 "<IQ", 0 if probe else rate_hz, total if probe else blocks
             ))
