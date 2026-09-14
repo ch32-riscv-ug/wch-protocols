@@ -96,6 +96,8 @@ def main() -> int:
     parser.add_argument("--no-validate", action="store_true")
     parser.add_argument("--probe-bytes", type=int, default=0,
                         help="run USB-only EP probe instead of capture")
+    parser.add_argument("--rate-mhz", type=float, default=32.0,
+                        help="PARLIO base rate for capture")
     args = parser.parse_args()
     blocks = args.periods * 8192
     total = args.probe_bytes or blocks * WIRE_BLOCK_BYTES
@@ -108,7 +110,10 @@ def main() -> int:
         if handle is None:
             sys.exit(f"no device {VID:04x}:{PID:04x}")
         with handle.claimInterface(0):
-            command = (b"EP" if probe else b"E6") + struct.pack("<Q", total if probe else blocks)
+            rate_hz = round(args.rate_mhz * 1_000_000)
+            command = ((b"EP" if probe else b"E6") + struct.pack(
+                "<IQ", 0 if probe else rate_hz, total if probe else blocks
+            ))
             assert handle.bulkWrite(EP_OUT, command, timeout=2000) == len(command)
             received = planned = short = 0
             error: str | None = None

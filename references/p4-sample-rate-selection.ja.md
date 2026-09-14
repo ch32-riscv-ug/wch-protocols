@@ -16,7 +16,7 @@ channel別rateは別々のsampling clockではない。全pinを共通base clock
 
 `decimate_hold`はbucket中の短いpulseを見落とす。active-low CS/INTには、bucket内で一度でもactiveなら残す`any_active`を選べるようにする。この場合pulseの存在は残せるが、edge位置は最大D-1 base sampleぶん量子化・拡幅される。表示時はbase sample gridへhold展開するため、低rate channelの見た目の時間精度が上がるわけではない。
 
-11 logical lane(3 raw＋8 slow D=64)の実結合試験はP4内部40 Msps / wire 125 MbpsまでPASSし、45 Msps以上は16-bit capture→codec→PSRAM経路がringを追い越した。現在のhub 2段＋usbipd/WSLではUSB probeが120.86 Mbps、90%予算108.77 Mbpsだったため40 Mspsをrejectし、32 Msps / wire 100 Mbpsへfallbackして65.536 MBを完全検査PASSした。したがってaccept判定はUSB予算と内部raw経路の小さい方を見る。
+11 logical lane(3 raw＋8 slow D=64)の実結合試験はP4内部42 Msps / wire 131.25 Mbpsを65.536 MBでPASSした。43 Mspsは不安定、44 Msps以上は16-bit capture→codec→PSRAM経路がringを追い越した。現在のhub 2段＋usbipd/WSLではUSB probeが120.86 Mbps、90%予算108.77 Mbpsだったため42/40 Mspsをrejectし、32 Msps / wire 100 Mbpsへfallbackして65.536 MBを完全検査PASSした。直結30 MB/s以上ならUSBより内部42 Msps上限が先に効く。したがってaccept判定はUSB予算と内部raw経路の小さい方を見る。
 
 ## 1. clock で作れる rate — 1 MHz 刻みでも 10 MHz 刻みでも全部出る
 

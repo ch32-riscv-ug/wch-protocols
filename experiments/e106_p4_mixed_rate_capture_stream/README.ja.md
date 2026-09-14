@@ -1,6 +1,6 @@
 # E106 実captureからmixed-rate USB連続転送
 
-状態: **内部経路40 Msps PASS。現USB経路の90%予算に合わせた32 Msps / 65.536 MB長時間PASS**
+状態: **詰め替え込み42 Msps / 65.536 MB長時間PASS、43 Msps不安定、44 Msps以上FAIL**
 
 ## 問い
 
@@ -18,13 +18,13 @@ PARLIO RX 16-bit / 32 Msps (64 MB/s)
 
 内部PARLIO TXの8 GPIOをRX lane 0..7と8..15へ複製する。したがって16-bit取り込み、codec、USBの結合試験だが、11本の独立外部GPIOの電気試験ではない。
 
-PCは`E6 + uint64_le(blocks)`でcaptureを開始する。8192 blockでwire 204,800 byteとなり、codec blockとUSB packetの両方で端数が出ない。hostは受信内容についてGray codeの進行、4 sample周期、複製laneの一致を検査する。
+PCは`E6 + uint32_le(rate_hz) + uint64_le(blocks)`でcaptureを開始する。firmwareを書き換えずrateを掃引できる。8192 blockでwire 204,800 byteとなり、codec blockとUSB packetの両方で端数が出ない。hostは受信内容についてGray codeの進行、4 sample周期、複製laneの一致を検査する。
 
 USBだけの経路予算は`EP + uint64_le(bytes)`で測る。deviceは既知patternを最大速送信し、hostは実測Mbpsとその90%を`recommended_90pct_mbps`として表示する。capture生成rateで測らないため、USB経路上限とP4内部codec上限を分離できる。
 
 ## 結論
 
-3 raw＋8 hold(D=64)の実capture→codec→PSRAM→USB結合経路は、P4内部について**40 Mspsで13.1072 MBをPASS**した。wireは15.625 MB/s = 125 Mbpsである。次がすべて0だった。
+3 raw＋8 hold(D=64)の実capture→codec→PSRAM→USB結合経路は、**42 Mspsで65.536 MBを長時間PASS**した。wireは16.40625 MB/s = 131.25 Mbpsである。次がすべて0だった。
 
 - device側raw Gray連番違反
 - 複製lane不一致
@@ -32,9 +32,21 @@ USBだけの経路予算は`EP + uint64_le(bytes)`で測る。deviceは既知pat
 - PSRAM FIFO overflow
 - PC側mixed-rate sequence不一致
 
-captureは838.965 msで、67,108,864 raw byte / 80 MB/s = 838.861 msという理論時間と一致した。
+raw入力335,544,320 byteのcaptureは3.994659 sで、84 MB/sから求める理論3.994575 sと一致した。最大ring未読は37,184 / 65,536 byteだった。
 
-45 Mspsは平均処理時間には追いついたが、長時間中の瞬間的なring遅れでraw連番284件、47 Mspsは974件となった。48 Mspsも短時間からringを追い越した。**現実装の11 logical lane構成は40 Mspsを安全点とし、45 Msps以上を持続対応とはしない。**
+同じ13.1072 MBを掃引すると、40 Mspsは最大ring未読12,992 byte、42 Mspsは21,056 byteでPASSした。43 Mspsは3回中1回だけPASSし、他は65,408 / 163,968 byteまで遅れてFAILした。44 Mspsは486,976 byte、46 / 48 / 49 Mspsはさらに大きくringを追い越した。**現実装の11 logical lane構成は42 Mspsを持続上限、40 Mspsを余裕を持つ設定とする。**
+
+| base rate | raw入力 | wire | 最大ring未読 | 判定 |
+|---:|---:|---:|---:|---|
+| 40 Msps | 80 MB/s | 15.625 MB/s | 12,992 B | PASS |
+| **42 Msps** | **84 MB/s** | **16.40625 MB/s** | 21,056 B、65.536 MB時37,184 B | **PASS** |
+| 43 Msps | 86 MB/s | 16.796875 MB/s | 28,224〜163,968 B | 不安定 |
+| 44 Msps | 88 MB/s | 17.1875 MB/s | 486,976 B | FAIL |
+| 46 Msps | 92 MB/s | 17.96875 MB/s | 1,151,040 B | FAIL |
+| 48 Msps | 96 MB/s | 18.75 MB/s | 2,258,368 B | FAIL |
+| 49 Msps | 98 MB/s | 19.140625 MB/s | 4,717,184 B | FAIL |
+
+16-bit rawをPSRAMへ移すだけのE042は48 Msps / 約96 MB/sまで成立したため、mixed-rateの詰め替えpipeline追加による低下は48→42 Msps、約12.5%である。停止中codec演算単体は約142〜149 MB/s相当なので、律速はbit演算だけではなくPARLIO callback、64-sample block境界、stage queue、PSRAM spoolの合成である。USB直結が30 MB/s以上なら今回のwire上限16.40625 MB/sを上回るため、P4内部pipelineが先に律速する。
 
 最初のE105 codec値145.899 MB/sは固定global入力だったため、コンパイラが4-byte `memcpy`を直接loadへ畳んだ値だった。runtime DMA pointerでは実関数呼び出しがblockあたり32回残り37 MB/sまで落ちた。aligned 32-bit direct loadへ修正すると停止中codecは約142〜149 MB/sへ戻ったが、実captureではPARLIO callbackとPSRAM spoolのjitterも含めて判定する必要がある。
 
@@ -50,7 +62,7 @@ HS hub 2段＋usbipd/WSL＋buffered送信で`EP`を64 MB実行した。
 |---:|---:|---:|---:|
 | 64,000,000 | 120.860 Mbps | **108.774 Mbps** | bad 0 / short 0 |
 
-40 Msps構成は125 Mbpsなので、このUSB予算ではrejectする。fallbackの32 Mspsは3.125 bit/base sample×32 Msps = **100 Mbps**となり予算内である。
+40 Msps構成は125 Mbpsなので、このUSB予算ではrejectする。fallbackの32 Mspsは3.125 bit/base sample×32 Msps = **100 Mbps**となり予算内である。直結で30 MB/s以上出る経路ならUSBより内部42 Msps上限が先に効く。
 
 32 Mspsで65,536,000 wire byte / 2,621,440 blockを連続captureした。raw入力335,544,320 byte、capture 5.243010 sで、理論5.242880 sと一致した。raw連番、複製lane、queue/FIFO overflow、PC側sequenceはすべて0だった。したがって現在の接続に対する実用設定は32 Mspsである。
 
@@ -61,6 +73,6 @@ HS hub 2段＋usbipd/WSL＋buffered送信で`EP`を64 MB実行した。
 ```sh
 arduino-cli compile --profile esp32p4_device
 arduino-cli upload --profile esp32p4_device --port /dev/ttyUSB0
-uv run --with libusb1 python host_capture.py --periods 64 --depth 8
+uv run --with libusb1 python host_capture.py --rate-mhz 42 --periods 64 --depth 8
 uv run --with libusb1 python host_capture.py --probe-bytes 64000000 --depth 8
 ```
