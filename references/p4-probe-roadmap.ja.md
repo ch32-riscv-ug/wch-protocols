@@ -20,13 +20,13 @@
 
 | physical幅 | channel構成 | 内部capture→codec→PSRAM | 現USB経路での連続転送 |
 |---:|---|---|---|
-| 8 bit | 3 full＋5 D=64 | 61 Msps成立、62 Msps破綻。**安全値60 Msps** | 32 Msps / 100 Mbps、65.536 MB完全検査PASS |
-| 16 bit | 3 full＋1 D=8＋12 D=64 | **40 Msps、167,772,160 sampleを3回PASS** | 32 Msps / 106 Mbps、69.468 MB完全検査PASS |
+| 8 bit | 3 full＋5 D=64 | 61 Msps成立、62 Msps破綻。**内部安全値60 Msps** | PC直結は**44 Msps / 137.5 Mbpsを3回PASS**、45で破綻 |
+| 16 bit | 3 full＋1 D=8＋12 D=64 | **内部40 Msps、167,772,160 sampleを3回PASS** | PC直結は**32 Msps / 106 Mbpsを3回PASS**、33で破綻 |
 | 16 bit（旧profile） | 3 full＋8 D=64 | 42 Msps成立、43 Msps不安定。**安全値40 Msps** | 32 Msps / 100 Mbps、65.536 MB完全検査PASS |
 
 16 channel / 40 Mspsの代表例は、`3×40 + 40/8 + 12×40/64 = 132.5 Mbps`である。128 sampleを53 byteにまとめることでpaddingをなくした。1/64は625 ksps、時間刻み1.6 usなのでbuttonには十分であり、短いCS / INTは`any_active`でbucket内のactiveを残せる。
 
-現在の接続はHS hub 2段＋usbipd/WSLで、USB-only probeは120.860 Mbps、90%予算は108.774 Mbpsだった。このため132.5 Mbpsの40 Msps profileはrejectし、106 Mbpsの32 Mspsへfallbackする。直結時は改めてprobeして選び直す。
+HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 Mbpsだった。PC直結へ変更後は256 MBで212.666 Mbps、90%予算191.400 Mbpsまで改善した。ただしcaptureとの結合では、速くなったUSB taskがcore 0上のRX callback / spoolと競合し、USB予算内の8-bit 60 Mspsと16-bit 40 Mspsでもringを追い越した。**USB予算と内部sink上限だけでなく、結合上限も別に持つ必要がある。**
 
 ### 1.3 実装上分かったこと
 
@@ -36,6 +36,7 @@
 - codec block境界とUSB packet境界は一致させない。53-byte blockをそのままtransfer終端にするとshort packetが連発してusbipdがerrorになった。codecは128 sample単位で作り、PSRAM FIFOから最終回以外512 byte単位で送ると成立した。
 - genericな1-bitずつのpackingでは40 Mspsに足りない。代表profileのD=64部分を固定bit-spread演算にすると40 Mspsを回復できた。
 - 現在の16-bit試験は内部TXの8 GPIOを上位laneへ複製している。16本の独立した外部padの電気試験ではない。
+- 直結はUSB-onlyを約121→213 Mbpsへ改善したが、現task配置の結合上限は8-bit 44 / 16-bit 32 Mspsだった。帯域向上がそのままcapture rate向上になるとは限らない。
 
 ## 2. 近い目標の現在地
 
@@ -79,7 +80,7 @@
 
 1. descriptorをprofile別の固定高速codecへdispatchするか、generic codecを最適化するか比較する。
 2. PARLIO callback量、ring / queue / stageサイズ、PSRAM copyの配置を掃引する。
-3. USBのshort completion、arm単位、zero-copy化を詰める。ただしE090で反証済みのhardware TX FIFO増量は繰り返さない。
+3. RX callback / spool / USB taskがcore 0で競合する構成を見直す。task優先度、USB投入頻度、core配置を先に測り、その後short completion、arm単位、zero-copy化を詰める。E090で反証済みのhardware TX FIFO増量は繰り返さない。
 4. 安全marginを再測定し、表向きの60 / 40 Mspsを最終確定する。
 5. 少数channel高速モードが実用上必要な場合だけ、通常仕様と分離して着手する。
 
@@ -96,10 +97,10 @@
 |---|---|
 | 16 channel独立入力 | 16本を外部pattern源へ接続。現在の内部loopbackは8本複製 |
 | 実SPI / INT波形 | P4または別deviceの信号源とGPIO配線 |
-| USB直結比較 | 現在のhub 2段経路からPC直結へ差し替え |
+| USB直結比較 | **実施済み**。USB-only約213 Mbps、結合は8-bit 44 / 16-bit 32 Msps |
 | RVSWD / SWIO | CH32とP4の電源、GND、信号線 |
 
-直結比較は最終rateを決める前に必要だが、動的descriptorやhost復元は現在の配線のまま進められる。
+最初の直結比較は実施済みだが、task配置を変更した後に同じ条件で再測定して最終rateを決める。動的descriptorやhost復元は現在の配線のまま進められる。
 
 ## 6. 作業環境と他のprobe課題
 

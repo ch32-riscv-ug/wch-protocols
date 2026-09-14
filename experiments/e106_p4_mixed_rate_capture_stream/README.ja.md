@@ -1,6 +1,6 @@
 # E106 8/16-bit実captureからmixed-rate USB連続転送
 
-状態: **完了 — 8-bit安全値60 Msps、16-bit wide安全値40 Msps、現USB経路は32 Mspsで連続転送PASS**
+状態: **完了 — 内部sinkは8-bit 60 / 16-bit wide 40 Msps、直結USBとの結合は8-bit 44 / 16-bit wide 32 Mspsが現実装の安全値**
 
 ## 問い
 
@@ -79,7 +79,7 @@ codecとPSRAM copyを同じcoreで直列化すると48 Mspsに届かなかった
 
 USBの`short`はFIFOが空になったときにhostの大きなURBが早期完了した回数で、欠損ではない。40 Msps試験では全byteを受信できたがcallback負荷になるため、後続でdirect armまたはgateway側URB再投入を詰める。
 
-### 現在のUSB経路を含む選択
+### hub 2段時点のUSB経路を含む選択
 
 HS hub 2段＋usbipd/WSL＋buffered送信で`EP`を64 MB実行した。
 
@@ -87,15 +87,28 @@ HS hub 2段＋usbipd/WSL＋buffered送信で`EP`を64 MB実行した。
 |---:|---:|---:|---:|
 | 64,000,000 | 120.860 Mbps | **108.774 Mbps** | bad 0 / short 0 |
 
-40 Msps構成は125 Mbpsなので、このUSB予算ではrejectする。fallbackの32 Mspsは3.125 bit/base sample×32 Msps = **100 Mbps**となり予算内である。直結で30 MB/s以上出る経路ならUSBより内部42 Msps上限が先に効く。
+40 Msps構成は125 Mbpsなので、このUSB予算ではrejectする。fallbackの32 Mspsは3.125 bit/base sample×32 Msps = **100 Mbps**となり予算内である。この時点では「直結で30 MB/s以上出ればUSBより内部上限が先に効く」と予測したが、後述の直結結合試験でcore 0競合が見つかり、この単純な予測は反証された。
 
 32 Mspsで65,536,000 wire byte / 2,621,440 blockを連続captureした。raw入力335,544,320 byte、capture 5.243010 sで、理論5.242880 sと一致した。raw連番、複製lane、queue/FIFO overflow、PC側sequenceはすべて0だった。したがって現在の接続に対する実用設定は32 Mspsである。
 
 説明では分かりやすく「probe実測120 Mbpsなら90%の108 Mbpsを予算とし、100 Mbps構成を選ぶ」と丸めてよい。別のPC/直結で200 Mbps出た場合は180 Mbpsを予算とする。
 
+### PC直結への変更後
+
+HSをhub 2段からPC直結へ変更すると、USB-only probeは64 MB×3回で213.057〜228.833 Mbps、256 MBで212.666 Mbpsとなった。長時間値の90%予算は191.400 Mbpsで、hub経路の120.860 Mbps / 108.774 Mbps予算から大きく改善した。
+
+ただし実captureとの結合上限はUSB帯域だけでは決まらなかった。USBが速く動くほどcore 0のUSB task実行量が増え、同じcoreにあるRX callback / spoolと競合した。
+
+| profile | PASS境界 | 最初のFAIL | PASS時wire | 試験量 |
+|---|---:|---:|---:|---:|
+| 8-bit、3 full＋5 D64 | **44 Msps（3回）** | 45 Msps | 137.5 Mbps | 各65.536 MB |
+| 16-bit wide、3 full＋1 D8＋12 D64 | **32 Msps（3回）** | 33 Msps | 106 Mbps | 各69.468 MB |
+
+8-bit 60 Msps / 187.5 Mbpsと16-bit wide 40 Msps / 132.5 MbpsはUSB-onlyの191.4 Mbps予算内だが、結合試験ではPARLIO ringを追い越した。したがって60 / 40 Mspsは内部codec上限かつ製品目標値であり、**現firmwareの直結連続streaming保証値ではない**。次の最適化対象はUSB最高帯域ではなく、core配置、task優先度、callback量、spoolとUSB処理の分離である。
+
 ## この実験の境界
 
-E106で完了したのは、固定した8-bit / 16-bit代表profileについて、内部capture→codec→PSRAM上限とUSB経路予算を分離し、実連続転送まで成立させること。任意channel descriptor、probe後の自動ACCEPT / fallback、mixed-rate PulseView gateway、16本独立外部GPIOは後続課題とし、[P4ロードマップ](../../references/p4-probe-roadmap.ja.md)で管理する。
+E106で完了したのは、固定した8-bit / 16-bit代表profileについて、内部capture→codec→PSRAM、USB-only、両者の結合上限を分離し、実連続転送まで成立させること。任意channel descriptor、probe後の自動ACCEPT / fallback、mixed-rate PulseView gateway、16本独立外部GPIO、60 / 40 Msps目標へ戻すtask配置最適化は後続課題とし、[P4ロードマップ](../../references/p4-probe-roadmap.ja.md)で管理する。
 
 ## 再現
 

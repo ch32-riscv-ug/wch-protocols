@@ -19,7 +19,7 @@ channel別rateは別々のsampling clockではない。全pinを共通base clock
 
 `decimate_hold`はbucket中の短いpulseを見落とす。active-low CS/INTには、bucket内で一度でもactiveなら残す`any_active`を選べるようにする。この場合pulseの存在は残せるが、edge位置は最大D-1 base sampleぶん量子化・拡幅される。表示時はbase sample gridへhold展開するため、低rate channelの見た目の時間精度が上がるわけではない。
 
-8-bitの3 raw＋5 slow D=64は内部持続試験で61 Mspsまで成立し、62 Mspsで破綻したため安全値を60 Mspsとする。16-bitの3 raw＋8 slow D=64は42 Msps / wire 131.25 Mbpsを65.536 MBでPASSし、43 Mspsは不安定だったため安全値を40 Mspsとする。現在のhub 2段＋usbipd/WSLではUSB probeが120.86 Mbps、90%予算108.77 Mbpsだったため、いずれも32 Msps / wire 100 Mbpsへfallbackして65.536 MBを完全検査PASSした。直結30 MB/s以上ならUSBより内部上限が先に効く。したがってaccept判定はUSB予算と内部raw経路の小さい方を見る。
+8-bitの3 raw＋5 slow D=64は内部持続試験で61 Mspsまで成立し、62 Mspsで破綻したため内部安全値を60 Mspsとする。16-bit wideの3 raw＋1 D8＋12 D64は内部40 Mspsを3回PASSした。hub 2段ではUSB probe 120.86 Mbps、90%予算108.77 Mbpsだったが、PC直結では212.67 Mbps、90%予算191.40 Mbpsへ改善した。一方、実captureとの結合ではcore 0上のRX / spool / USB競合により、直結でも8-bit 44 Msps、16-bit wide 32 Mspsが現firmwareの連続PASS境界だった。したがってaccept判定はUSB予算、内部sink上限、結合上限の最小を見る。60 / 40 Mspsはtask配置を調整した後に再確認する製品目標値である。
 
 ## 1. clock で作れる rate — 1 MHz 刻みでも 10 MHz 刻みでも全部出る
 
