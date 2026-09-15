@@ -6,7 +6,7 @@
 
 ## 1. 現時点の結論
 
-> **数値の扱い（2026-09-15、持ち主の方針）**: E108以降（E108〜E115）の数値は、出荷版EspUsbDevice 2.3.0に一時patch（E097 direct RX / E101 TX完了callback / E102 zero-copy / E110 TX FIFO 2 packet）を当てた**独自patch版libraryでの参考値**であり、製品の目安・仕様には使えない。使えるのは**正規libraryに取り込まれた機能で取った数値**だけである。patch版の数値はlibraryへの修正依頼（[EspUsbDevice宛](espusbdevice-change-requests.ja.md) CR-10〜13、[EspUsbHost宛](espusbhost-change-requests.ja.md)）の根拠にのみ使う。正規版（2.3.0、buffered経路、TX FIFO 1 packet）で成立している数値は[E106](../experiments/e106_p4_mixed_rate_capture_stream/README.ja.md) / [E107](../experiments/e107_p4_stream_core_placement/README.ja.md): **8-bit 60 Msps×5回、16-bit wide 40 Msps×3回PASS（Windows native）、USB-only probe 193 Mbps（native）/ 213 Mbps（usbipd/WSL）**。CR-13（TX FIFO 2 packet）は先方のworking treeで採用済みだが未release。以下の表と文中の「実測済み」のうちE108以降を根拠とするものは、releaseに取り込まれた時点で正規版で再測して置き換える。
+> **数値の扱い（2026-09-15、持ち主の方針）**: E108以降（E108〜E115）の数値は、出荷版EspUsbDevice 2.3.0に一時patch（E097 direct RX / E101 TX完了callback / E102 zero-copy / E110 TX FIFO 2 packet）を当てた**独自patch版libraryでの参考値**であり、製品の目安・仕様には使えない。使えるのは**正規libraryに取り込まれた機能で取った数値**だけである。patch版の数値はlibraryへの修正依頼（[EspUsbDevice宛](espusbdevice-change-requests.ja.md) CR-10〜13、[EspUsbHost宛](espusbhost-change-requests.ja.md)）の根拠にのみ使う。正規版（2.3.0、buffered経路、TX FIFO 1 packet）で成立している数値は[E106](../experiments/e106_p4_mixed_rate_capture_stream/README.ja.md) / [E107](../experiments/e107_p4_stream_core_placement/README.ja.md): **8-bit 60 Msps×5回、16-bit wide 40 Msps×3回PASS（Windows native）、USB-only probe 193 Mbps（native）/ 213 Mbps（usbipd/WSL）**。CR-13（TX FIFO 2 packet）とCR-10〜12（zero-copy TX / TX完了callback / direct RX）は先方のworking treeに入っているが未release。working treeで取る数値は**予備測定**で、正式な数値は**正式リリース後の版をsketch.yamlでpinして**取り直したものだけを使う。以下の表と文中の「実測済み」のうちE108以降を根拠とするものは、その時点で置き換える。
 
 ### 1.1 製品向けの説明
 
