@@ -160,6 +160,9 @@
 | `p4-rmt-capture` | 同じPWM/RMT信号をRMT RXのpulse-duration列で取得すると、PARLIO raw sampleより少ないdata量で何channel・何edge/sまで保持できるか | **一時・配線なし** | ESP32-P4 1枚 | 有 | 同上 |
 | `p4-adc-batch` | ADC continuous DMAの1〜14 channel pattern順、aggregate rate上限、pool overflow、PSRAM batch退避は無配線入力でも成立するか | **一時・配線なし** | ESP32-P4 1枚 | 有 | [P4 logic analyzer予備調査](../references/p4-logic-analyzer-investigation.ja.md) analog |
 | `p4-adc-signal-quality` | ADC continuousのattenuation別範囲、noise、ENOB、channel間skew、digital captureとの同期精度はどの程度か | **一時・要配線** | ESP32-P4 1枚、SDM/PWM、RC、jumper、基準電圧 | 現在不可 | 同上。analog実信号 |
+| `p4-2ch-160m-passthrough` | PARLIO 2-bit幅×160 MHzの素通し（2 bit/sample＝320 Mbps）をE111のzero-copy経路で連続転送し、欠損0を保てるか。2-bit RXの160 MHz成立点とstage直書きの費用 | **一時・第三P4** | 第三P4、PC直結 | 有 | [ロードマップ](../references/p4-probe-roadmap.ja.md) §1.1「2 ch以下で160 Msps」 |
+| `p4-16ch-4full-12d32` | 4 full＋12 D32（128 sample→70 byte）profileを60 Mspsで連続転送し、262.5 Mbpsが2 worker codecとUSB予算に収まるか | **一時・第三P4** | 同上 | 有 | 同 §1.1「60 M×4＋1.875 M×12」 |
+| `p4-16ch-5full-60m` | 5 full＋11縮約を60 Mspsで連続転送し、300 Mbps級の環境で成立するか。5 lane bit gatherの費用 | **一時・第三P4** | 同上 | 有 | 同 §1.1「300 Mbps環境で60 M×5」 |
 | `linke-error-frame` | WCH-Link の異常系 error 応答 frame の形式(target 無し等) | **常設**(capture) | LinkE + usbmon | 有 | [pc-to-link](../protocols/pc-to-link.ja.md) §3、P1-1 |
 | `isp-usb-verify` | factory ISP の USB 実 frame を capture し、minichlink 転記の byte(XOR key = ΣUID・Erase sector 数・Program 56 B chunk・config 12 B の補数位置)と一致するか | **一時**(capture) | WCHISPTool(Windows)+ USBPcap、または minichlink `-c` ISP + usbmon | 不明 | [pc-to-device-isp](../protocols/pc-to-device-isp.ja.md) §3–§4、P2-3(**算法は転記で埋まった。確認待ち**) |
 | `wch-iap-capture` | WCHMcuIAP_WinAPP.exe の UART(460800)/ USB(`1A86:55E0`)実 frame は [wch-iap](../protocols/wch-iap.ja.md) §3–§4 の転記(sync・checksum・VERIFY の addr・END 無応答・順序)と一致するか | **一時**(capture) | Windows + WCHMcuIAP + IAP を焼いた V003 または X035 + USBPcap / UART capture | 不明 | [wch-iap](../protocols/wch-iap.ja.md) §7、P2-4 |
