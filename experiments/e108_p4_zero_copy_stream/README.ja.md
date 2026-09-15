@@ -1,6 +1,6 @@
 # E108 USB帰路のzero-copy化とDWC2 DMA — 結合上限をUSB予算まで押し上げる
 
-状態: **完了 — stageからのzero-copy送信でUSB-only 247 Mbps（＋18%）、core 0のtask負荷60〜70%→7%。結合上限はcodecだけで決まり、PC直結で8-bit 72 Msps / 16-bit wide 52〜56 MspsまでPASS。DWC2 DMA flagは効果なし**（2026-09-15）
+状態: **完了 — stageからのzero-copy送信でUSB-only 247 Mbps（＋18%）、core 0のtask負荷60〜70%→7%。結合上限はcodecだけで決まり、PC直結で8-bit 72 Msps / 16-bit wide 52〜56 MspsまでPASS。DWC2 DMA flagは効果なし**（2026-09-15） — **参考値（独自patch版library）**（EspUsbDevice 2.3.0＋E097/E101/E102/E110の一時patch。正規libraryに取り込まれるまで製品の目安には使わず、修正依頼の根拠にのみ使う）
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E107](../e107_p4_stream_core_placement/README.ja.md)、[E102](../e102_p4_vendor_in_zero_copy_precomputed/README.ja.md)、[E101](../e101_p4_vendor_in_callback_chain/README.ja.md)、[E097](../e097_p4_vendor_out_direct_rx/README.ja.md)
 

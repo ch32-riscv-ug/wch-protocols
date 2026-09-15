@@ -1,6 +1,6 @@
 # E113 2 channelを160 Mspsで — PARLIO 2-bit幅の素通し
 
-状態: **完了 — PARLIO 2-bit幅×160 Mspsの素通し（320 Mbps）は10回＋30 s soak（1.2 GB）すべて欠損0。USB予算の87%、core 0 30% / core 1 20%で余裕あり。最初の1回のhost不一致はhost decoderの初期anchorのbugで、修正後は全phaseで自己試験PASS**（2026-09-15）
+状態: **完了 — PARLIO 2-bit幅×160 Mspsの素通し（320 Mbps）は10回＋30 s soak（1.2 GB）すべて欠損0。USB予算の87%、core 0 30% / core 1 20%で余裕あり。最初の1回のhost不一致はhost decoderの初期anchorのbugで、修正後は全phaseで自己試験PASS**（2026-09-15） — **参考値（独自patch版library）**（EspUsbDevice 2.3.0＋E097/E101/E102/E110の一時patch。正規libraryに取り込まれるまで製品の目安には使わず、修正依頼の根拠にのみ使う）
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E112](../e112_p4_16ch_allocation_profiles/README.ja.md)、[E111](../e111_p4_dual_core_codec/README.ja.md)、[E061](../e061_p4_drain_core_split/README.ja.md)
 

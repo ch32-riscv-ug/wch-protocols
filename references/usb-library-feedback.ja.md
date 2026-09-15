@@ -2,6 +2,8 @@
 
 状態: **送付済み**（2026-09-15にEspUsbDevice側sessionへ要点を送付。P4 mixed-rate stream最適化の過程で分かったことを、library側へ渡す形に整理。個々の依頼の正式化は[EspUsbDevice宛](espusbdevice-change-requests.ja.md) / [EspUsbHost宛](espusbhost-change-requests.ja.md)で持ち主が判断する）
 
+**位置づけ（持ち主の方針、2026-09-15）**: 本文書は他sessionへの知見の受け渡し（非公式）で、正式な修正依頼は[EspUsbDevice宛](espusbdevice-change-requests.ja.md) / [EspUsbHost宛](espusbhost-change-requests.ja.md)の台帳で行う。本文書とE108以降の数値は**独自patch版libraryでの参考値**であり、修正依頼の根拠にのみ使う。正規libraryに取り込まれた機能で取り直した数値だけが製品の目安に使える。
+
 数値の証拠は各実験にある。特記なければESP32-P4 rev v1.3、EspUsbDevice 2.3.0、TinyUSB 0.21.0、PC直結（Windows 11、usbipd-win→WSL2、またはWindows native WinUSB）。
 
 ## 1. EspUsbDevice — 既定値を変えた方がよい項目
@@ -37,7 +39,7 @@
 ## 4. EspUsbHost へ
 
 - [E089](../experiments/e089_p4_host_in_queue/README.ja.md)の「約24 MB/sはdevice側の限界」は、**device側TX FIFOが1 packetだったこと**で説明がつく（E110）。P4 host自身のIN上限はまだ見えていない。D1適用後のdeviceを相手にE089 / [E102](../experiments/e102_p4_vendor_in_zero_copy_precomputed/README.ja.md)を再測すると、P4 hostが36.2 MB/sを超えるか、host側で止まるかが分かる。止まるならhost側のRX FIFO割当・NAK再試行の間隔が次の候補。
-- HR-1（in-flight数）/ HR-2（転送長）はそのまま有効。深さ2以上、転送長は27 KiB以上が目安。
+- HR-1（in-flight数）/ HR-2（転送長）はそのまま有効。深さ2以上は host側でも明確（depth 1は全条件でstarved）。転送長の目安「27 KiB以上」はdevice側（zero-copy＋2 packet）で出た数字で、**host側の再測では2 KiBと32 KiBに差がなかった**（頭打ちがdeviceの約29 MB/sで決まっていたため。速いdevice相手に要るかは未検証）。
 - USB-only probe（`EP` command、既知patternの最大速送信＋90%）は両libraryのexampleとして持たせる価値がある。経路差が大きく、固定値の仕様説明ができない。
 
 ## 5. 送付記録
@@ -50,3 +52,5 @@
 | 2026-09-15 | EspUsbDevice側session → 当方 | **D3を修正**（`tu_edpt_stream_write()`は1 packet分たまるまでarmしないので、`waitWritable()`の前にflushする形。`write()`側の自動flushは短packetでhost URBが早期完了して速度が落ちるため入れず、「短いmessageは`flush()`必須」は応用ガイドに明記）、**D4を明記**（応用ガイド2.3冒頭に「全targetでDMA mode、slaveは選択肢でない」）。**D2は実測へ**（`config.taskCoreId`を追加、pinなし対core 0固定をbulk IN harnessで比較） |
 | 2026-09-15 | EspUsbDevice側session → 当方 | **D2を実測、既定は変えず`config.taskCoreId`（既定-1＝pinしない）として公開**。usbip経由bulk IN 32 MiB×3（double buffering有効、producerは`loop()`からのmemcpy）でpinなし28.61、core 0固定28.02 / 28.90 MB/s、差なし。解釈は当方と同じで「producerが重い（PARLIO capture＋codecが反対coreにいる）ときに効く条件付きの話」。E107の44→52 Mspsを「効く条件の実例」として先方docから参照する。1回だけ出た16.38 MB/sは同期read（callbackなし）でも出るusbip経路の穴として記録しない。D1〜D4はこれで完了、F1〜F3は設計から |
 | 2026-09-15 | EspUsbHost側session（`espusbhost-c7`） | §4の4点（E089「約24 MB/sはdevice天井」の正体＝TX FIFO 1 packetとCR-13採用済みの案内、2 packet化deviceでのE089 / E102再測依頼、HR-1 / HR-2の目安、USB-only probe example、host tool側の「完了callback内で処理しない」規約）。P4同士の再測はそちらのrig（ttyACM10/11）で、device側firmwareはEspUsbDevice側のCR-13入り版で、と併記 |
+| 2026-09-15 | EspUsbHost側session → 当方 | **E089を2 packet FIFOのdevice相手に再測**: 24.45→25.575 MB/s（+4.6%）、device chunk 32 KiBで28.5 MB/s。depth 2以上で`starved=0`、depth 1/2/4で差なし、32 KiB要求でper_transfer 16 KiB（全転送short）→ **止めているのはhostでなくdeviceのbuffered `write()`経路（約29 MB/sで頭打ち、EspUsbDevice側CR-13実測28.93と一致）**。P4 host自身のIN上限を見るにはzero-copy device（E102＋E108 patch＋E110 FIFO patch）が要る。手順を渡した。**§4項目2の訂正**: host側は「depth 2以上かつ転送長2 KiB以上で頭打ち」で、2 KBと32 KBに差なし（この頭打ちはdeviceが決めているので、速いdevice相手に27 KiBが要るかは未検証）。HR-1（depth 2以上）はhost側でも明確（depth 1は全条件でstarved）。項目4（完了callbackに重い処理を置かない）はEspUsbHostのdocsに取り込まれた（`onVendorData()`は再submitの前に呼ばれる） |
+| 2026-09-15 | 当方 ⇄ EspUsbDevice側session | EspUsbDeviceのworking treeとreleaseが同じ2.3.0を名乗り、`EspUsbDevice (2.3.0)`のversion指定ではrelease版（1 packet）が黙って使われる件をEspUsbHost側の指摘として転送。先方回答: suffix付きversionはrelease toolkit（`tools/bump_version.py`）が弾くので入れない、working treeが最後のrelease番号を名乗るのは設計（release.ymlがbumpする）。当面は`dir:`指定で運用。E102 patchが本当にepbuf memcpyを外しているかの確認質問には、patchの該当行（`usbd_edpt_xfer(..., (uint8_t *) buffer, ...)`、E108 patchで`tu_min32(len, 0xffff)`）で回答 |

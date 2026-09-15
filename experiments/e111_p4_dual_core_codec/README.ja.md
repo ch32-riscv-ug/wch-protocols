@@ -1,6 +1,6 @@
 # E111 codecを2 coreへ分ける — chunk連番で順序を保つ並列codec
 
-状態: **完了 — 2 worker化で結合上限は8-bit 76→108 Msps（112も1回PASS）、wide 56→72 Msps。8-bitは次にUSB予算（350 Mbps≒112 Msps）、wideはcore 1のcodecが律速。8-bit 100 / wide 64の30 s soakも欠損0**（2026-09-15）
+状態: **完了 — 2 worker化で結合上限は8-bit 76→108 Msps（112も1回PASS）、wide 56→72 Msps。8-bitは次にUSB予算（350 Mbps≒112 Msps）、wideはcore 1のcodecが律速。8-bit 100 / wide 64の30 s soakも欠損0**（2026-09-15） — **参考値（独自patch版library）**（EspUsbDevice 2.3.0＋E097/E101/E102/E110の一時patch。正規libraryに取り込まれるまで製品の目安には使わず、修正依頼の根拠にのみ使う）
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E110](../e110_p4_usb_in_ceiling/README.ja.md)、[E108](../e108_p4_zero_copy_stream/README.ja.md)、[E106](../e106_p4_mixed_rate_capture_stream/README.ja.md)
 
