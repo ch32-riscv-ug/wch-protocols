@@ -267,6 +267,7 @@ def main() -> int:
                 transfer.submit()
 
             sample_every = max(1, args.validate_every)
+            last_data = [b""]
             samples: "queue.Queue[tuple[int, bytes] | None]" = queue.Queue()
             sampled = skipped = completed_transfers = 0
             worker_blocks = 0
@@ -301,6 +302,7 @@ def main() -> int:
                 if actual < requested[transfer]:
                     short += 1
                 data = bytes(transfer.getBuffer()[:actual])
+                last_data[0] = data
                 if not args.no_validate:
                     if sample_every == 1:
                         captured.extend(data)
@@ -352,7 +354,7 @@ def main() -> int:
                 status = ""
                 # The device's status line may already have arrived inside the
                 # data stream (it is what ended the stream early).
-                for blob in (bytes(captured[-8192:]), bytes(drained)):
+                for blob in (bytes(captured[-8192:]), last_data[0][-8192:], bytes(drained)):
                     marker = blob.rfind(b"E111_STATUS")
                     if marker >= 0:
                         status = blob[marker:].split(b"\n", 1)[0].decode("ascii", "replace").strip()

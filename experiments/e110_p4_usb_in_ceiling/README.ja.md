@@ -142,3 +142,7 @@ USB帰路は8-bit 76 Msps（237.5 Mbps）でも予算の68%で、退避FIFOが�
 - 残り7〜12%（transfer境界の1 packet分と、native側の差）。65,535 byteの16-bit上限を外す（TinyUSBの`usbd_edpt_xfer`はuint16）か、複数endpointの交互送出で埋まるかは未測。
 - hub経路、P4 host（E102の36.2 MB/sはFIFO 1 packetの値。2 packetでの再測は別リグ）。
 - 8-bit 76 MspsのPASSが安定するかは3回以上の再測が要る。
+
+### 追記（2026-09-15、EspUsbDevice側sessionの独立実測）
+
+ライブラリ側がCR-13（bulk IN TX FIFO 2 packet、DFIFO収支が収まるときだけ自動有効）を実装し、同じP4（esp32-p4-80f1b2d0b261、usbipd/WSL）で**buffered経路**（`waitWritable(writeCapacity())`＋`write()`、FIFO 4096/4096、pyusb 32 MB×3）を測った結果: 1 packet 22.98 / 22.61 / 21.63 MB/s → 2 packet **28.74 / 28.86 / 28.93 MB/s（+26%）**。本実験のzero-copy経路（29.7→49.3 MB/s）と伸び幅が違うのはcopy律速のぶんで、「FIFOだけで取れる分」がライブラリ既定構成での値。先方は採用を決めた（増えるのはDFIFOという固定資源だけで、収まらない構成では従来どおり1 packetに倒れる）。

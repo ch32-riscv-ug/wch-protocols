@@ -186,3 +186,7 @@ probe中はcore 0が32.3%（usbd 18.3%、残りはDWC2 ISRのFIFO pushと`usbTas
 ## 訂正（2026-09-15、E109）
 
 仮説1の「EspUsbDevice 2.3.0のDWC2はslave mode（`CFG_TUD_DWC2_DMA_ENABLE=0`）で、bulk INのpayloadはISRがCPU storeでTX FIFOへ押し込む」は誤りだった。`tusb_option.h`の既定値0だけを見て、ライブラリ側`src/internal/EspUsbTinyUsbConfig.h`がP4で`CFG_TUD_DWC2_DMA_ENABLE 1`を定義していることを見落とした。[E109](../e109_p4_stream_soak/README.ja.md)で`GAHBCFG.DMAEn=1`・`GINTMSK.RXFLVL=0`を読んで確認した。本文の測定と結論（USB割り込みとusbd taskがcore 1に乗っていたこと、core 0初期化で解消すること）は変わらないが、core 1を奪っていたのはDWC2完了割り込みの処理とusbd taskの8 KiBごとのmemcpy・再armであり、FIFO pushではない。§4の「残りはDWC2 ISRのFIFO push」も同様に読み替える。
+
+### 追記（2026-09-15、EspUsbDevice側sessionの独立実測）
+
+ライブラリ側が`config.taskCoreId`（usbd taskのcore、既定-1＝pinしない）を追加し、同じP4でUSB側から見た値を測った: usbip経由bulk IN 32 MiB×3、producerは`loop()`（core 1）からの静的patternのmemcpyのみ、TX FIFO 2 packet。pinなし28.61 MB/s、core 0固定28.02 / 28.90 MB/s（2回）で**差なし**。当方の解釈と一致する: 本実験の44→52 Mspsは、PARLIO capture＋codecという重いproducerがusbd taskと同じcore 1で競合していたのを分けた効果で、USB側の性能そのものではない。ライブラリ既定はpinしないままで、producerがusbd taskと競合する構成でだけ`taskCoreId`を使う、という整理になった。
