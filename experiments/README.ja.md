@@ -122,6 +122,10 @@ ID は起票時に確定し、**再利用も再採番もしない**。だから�
 
 **実験が通ったことを仕様の承認とはみなさない。** 仕様([../protocols/](../protocols/))の status を動かすのは §6 の証拠水準を満たしたときだけ。
 
+### library の版: 正式な数値は正式リリースを pin して取る（2026-09-15、持ち主）
+
+独自 patch 版（`dir: /tmp/...`）や library の working tree（`dir: /home/mt/dev/...`）で取った数値は **予備測定**で、修正依頼の根拠と設計判断にだけ使う。**製品の目安・roadmap・sample rate の案内に載せる正式な数値は、正式リリース後の版を sketch.yaml で pin（`- EspUsbDevice (x.y.z)`）して取り直したものだけ**。README の結果表には、どの pin（または dir）で取ったかを必ず書く。EspUsbHost も同じ。
+
 ### build の罠: `build_opt.h` を変えたら `--clean`（2026-09-15）
 
 `arduino-cli compile` は `build_opt.h` の変更を依存関係として見ないので、`--clean` なしだと **sketch だけ再コンパイルされ、library の object は前回の flag のまま** 使われる。`CFG_TUD_*` や `-DE110_IN_FIFO_PACKETS` のように library 側に効く flag を変えて比較するときは必ず `--clean` を付けるか、sketch を別ディレクトリに分ける。sizeが変わらないことでしか気づけない（EspUsbDevice側sessionが踏み、E110の「4 packet＝2 packet」の行が要再測になった）。sketch 側だけに効く flag（codec の `-DE108_CODEC_*` など）はこの罠に当たらない。
