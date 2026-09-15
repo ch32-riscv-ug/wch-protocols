@@ -8,13 +8,25 @@
 
 ### 1.1 製品向けの説明
 
-- 通常モードのbase sampling rateは、**1〜8 channelで最大約60 Msps、9〜16 channelで最大約40 Msps**を目安にする。
-- これは全channelを同じrateでUSBへ送れるという意味ではない。各channelへ割り当てたrateの合計を、USB実測予算以下へ収める。
-- CS / INT / buttonなどはchannel単位で`1/2、1/4、1/8、1/16、1/32、1/64…`へ時間解像度を下げられる。
-- capture前にP4→PC方向をprobeし、**実測payload帯域の90%**を推奨予算にする。
-- 少数channelには通常値を超える技術的余地があるが、連続転送を含む通常仕様としては前面に出さない。必要になれば後で「少数channel高速モード」として分離して検証する。
+方針（2026-09-15、持ち主）: **16 channel時の仕様を前面に出す。** 数値の目安は最終的に持ち主が書き換える。以下は方針と、現時点の実測に基づく例である。
 
-数値は今後の実装で変わり得る。中心となる特徴は最高rateではなく、**高速信号の分解能を残しながら、低速信号のrateをchannelごとに下げて転送予算を配分できること**である。
+- **最大60 Mspsの高速取得を複数channelで行い、時間解像度を落としたchannelを多数足して、合計16 channelまで取得できる。**
+- USBの通信速度は環境（PC、cable、hub、OS経路）で変わるため、**高速取得できるchannel数は環境で異なる。** 例: 300 Mbpsの環境では60 Mspsを5 channelまで。60 Mspsを4 channelにして、解像度1/32の1.875 Mspsを12 channelにすると合計262.5 Mbpsとなり、転送速度にも余裕が生まれる。
+- 遅いchannelの刻みは組み合わせられる（base 60 Mで1/2 = 30 M、1/4 = 15 M、1/8 = 7.5 M、1/16 = 3.75 M、1/32 = 1.875 M、1/64 = 0.94 M）。同じ300 Mbps環境でも、60 M×3＋30 M×2＋7.5 M×2＋0.94 M×9 = 263 Mbps、60 M×2＋30 M×2＋15 M×4＋1.875 M×8 = 255 Mbps、全16 chを同率15 Mで240 Mbps、のように配分を変えられる。389 Mbpsの直結なら60 M×5＋0.94 M×11 = 310 Mbps、全16 ch 20 Mで320 Mbps。一覧は[sample rateの選び方](p4-sample-rate-selection.ja.md) §0。
+- 速度は接続ごとに実測し、**その約9割で使う**ことを推奨する。
+- 8 channel以下なら100 Msps、2 channel以下なら160 Mspsで取得できる場合もある（環境と構成次第）。
+- CS / INT / buttonなどはchannel単位で`1/2、1/4、1/8、1/16、1/32、1/64…`へ時間解像度を下げられる。中心となる特徴は最高rateではなく、**高速信号の分解能を残しながら、低速信号のrateをchannelごとに下げて転送予算を配分できること**である。
+
+説明の各項目と実測の対応は次のとおり。未実装・未測の項目は台帳の候補（`p4-16ch-5full-60m` / `p4-16ch-4full-12d32` / `p4-2ch-160m-passthrough`）にある。
+
+| 説明 | 裏付け | 状態 |
+|---|---|---|
+| 60 Msps×複数＋縮約channelで合計16 ch | 16-bit wide profile（3 full＋1 D8＋12 D64）を72 MspsまでPASS（E111）、40 Mspsは60 s soak欠損0（E109） | 3 fullは実測済み。4〜5 fullや1/32はcodec未実装（Phase Aの任意descriptorで） |
+| 300 Mbps環境で60 Msps×5 ch | USB-only 389 Mbps・90%予算350 Mbps（E110）。5×60 = 300 Mbpsは実測300の環境では上限いっぱいで、9割規則では4 ch＋縮約が現実的 | 5 full profile未実装・未測 |
+| 60 Msps×4＋1.875 Msps×12＝262.5 Mbps | codecは2 workerでwide 72 Msps（238.5 Mbps）まで処理でき、USBは389 Mbps（E110 / E111） | 4 full＋12 D32（128 sample→70 byte）のprofile未実装・未測 |
+| 8 ch以下で100 Msps | 8-bit 3 full＋5 D64を100 Mspsで30 s soak欠損0、108 Mspsまで3回PASS（E111） | 「3 full＋5縮約」として実測済み。8本すべて100 Mspsは800 Mbpsで線に載らない |
+| 2 ch以下で160 Msps | PARLIO 2-bit幅×160 MHzの素通し（2 bit/sample＝320 Mbps）は予算350 Mbps内。PARLIO 160 MHzはE061等で使用実績 | 未測 |
+| 実測の9割で使う | probe→90%規則。E106〜E111の全経路で適用 | 測定は実装済み。自動ACCEPT / fallbackはPhase B |
 
 ### 1.2 実証済みの代表profile
 
