@@ -471,3 +471,20 @@ if (written == 0) { ++stalls; HsVendor.flush(); taskYIELD(); continue; }
 - [E063 OTG HS の列挙](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)
 - [E071 送信 FIFO の深さ](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md) / [E073 HID の帯域](../experiments/e073_p4_hs_hid_throughput/README.ja.md) / [E076 capture を降ろす通し](../experiments/e076_p4_capture_hs_download/README.ja.md)
 - [着手順の提案](usb-library-change-plan.ja.md) — EspUsbHost 側との兼ね合い
+
+
+## 追加候補（2026-09-15、未依頼）
+
+[E108](../experiments/e108_p4_zero_copy_stream/README.ja.md)で、vendor bulk INのcopyを全部外すと同じusbipd/WSL直結でUSB-onlyが209→247 Mbps、送出側coreのtask負荷が8-bit 60 Msps streamで57〜66%→7%になった。使ったのは出荷版2.3.0への一時patch（[espusbdevice-e108.patch](../experiments/e108_p4_zero_copy_stream/espusbdevice-e108.patch)、E097 / E101 / E102の合成＋bufsize上限撤廃）で、公開APIにするなら次の3点になる。
+
+| | 内容 | 直ったことの確認 |
+|---|---|---|
+| CR-10 | **zero-copy TX**: `CFG_TUD_VENDOR_TXRX_BUFFERED=0`のとき、呼び出し側のbuffer（cache line整列、長さ≤65,535）を`usbd_edpt_xfer()`へ直接渡すwrite。完了までbufferの所有権は呼び出し側にあることをAPIで明示する | E108の`EP` probeで64 MBが247 Mbps前後、`arm_failures=0` |
+| CR-11 | **TX完了callback**: 完了byte数を渡すhook（usbd task context）。callback内から次のbufferを投入できること | E108のarm ring chainが1 transfer分の隙間なく続く（完了2,359回で欠損0） |
+| CR-12 | **direct RX callback**: non-buffered時に受信bufferと長さを渡すhook。現在の`onRx(size)`はbuffered専用 | 16 byte commandがmailbox経由で受かる |
+
+いずれもE104までの改修（CR-1〜9）と独立で、buffered既定の挙動は変えない。
+
+| **CR-13** | **bulk IN endpointのDWC2 TX FIFOを2 packet分にする。** TinyUSBの`dfifo_alloc()`は既定で`packet_size/4` words（1 packet）しか割り当てず、`tud_configure()`の`bm_double_buffered`にそのendpoint bitを立てると2倍になる。P4 HSのDFIFO（1,024 words）はRX 304＋EP0 16＋EPInfo 32を除いて672 words空いており、bulk IN 1本なら5 packetまで入る | [E110](../experiments/e110_p4_usb_in_ceiling/README.ja.md): 同じhost・firmwareで29.7→**49.3 MB/s（理論の93%）**、Windows native 27.7→47.1 MB/s。4 packetは2と同値。buffered送信のままでも効くかは未測（E090は当時25.6 MB/sのcopy律速で差が出なかった） |
+
+CR-13は他より効果が大きく、既存APIの設定だけで済む。zero-copy（CR-10）と合わせるとvendor bulk INは約49 MB/sになる。

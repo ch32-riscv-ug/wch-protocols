@@ -178,3 +178,11 @@ probe中はcore 0が32.3%（usbd 18.3%、残りはDWC2 ISRのFIFO pushと`usbTas
 - wide 44 Msps PASSは1回で、codec 97.9%。40 Mspsの余裕はcodec 93%で薄い。wideのcodecをさらに詰めるか、40を通常上限に据えたまま少数channel高速モードを分けるかは製品判断。
 - 長時間soak（分単位）、hub経路、usbipd/WSL経路での同じ掃引は未実施。usbipd経路は今回`/dev/bus/usb`の権限で試せなかった（udev ruleで`303a:4021`を`plugdev`にすれば戻せる）。
 - run-time statsのISR時間は中断されたtaskに計上されるため、codec 89.9%のうちPARLIO以外のISR分は分離していない（`usb_core=0`ではcore 1の割り込みはtickとIPIのみ）。
+
+## 追記（2026-09-15、E108）
+
+未決に挙げたDWC2 DMA modeは[E108](../e108_p4_zero_copy_stream/README.ja.md)で試し、帯域・負荷に差はなかった。代わりにcodec stageをそのままDWC2へ渡すzero-copy送信でUSB-onlyは同じusbipd/WSL直結で209→247 Mbps、core 0のtask負荷は8-bit 60 Mspsで57〜66%→7%になり、結合上限はcodecだけで決まるようになった（8-bit 72 / wide 52 MspsまでPASS）。本実験の`spin`なしrun-time statsはISR時間をidleに含めるため、core 0の負荷は過少に見えている点もE108のspin法で分かった。
+
+## 訂正（2026-09-15、E109）
+
+仮説1の「EspUsbDevice 2.3.0のDWC2はslave mode（`CFG_TUD_DWC2_DMA_ENABLE=0`）で、bulk INのpayloadはISRがCPU storeでTX FIFOへ押し込む」は誤りだった。`tusb_option.h`の既定値0だけを見て、ライブラリ側`src/internal/EspUsbTinyUsbConfig.h`がP4で`CFG_TUD_DWC2_DMA_ENABLE 1`を定義していることを見落とした。[E109](../e109_p4_stream_soak/README.ja.md)で`GAHBCFG.DMAEn=1`・`GINTMSK.RXFLVL=0`を読んで確認した。本文の測定と結論（USB割り込みとusbd taskがcore 1に乗っていたこと、core 0初期化で解消すること）は変わらないが、core 1を奪っていたのはDWC2完了割り込みの処理とusbd taskの8 KiBごとのmemcpy・再armであり、FIFO pushではない。§4の「残りはDWC2 ISRのFIFO push」も同様に読み替える。

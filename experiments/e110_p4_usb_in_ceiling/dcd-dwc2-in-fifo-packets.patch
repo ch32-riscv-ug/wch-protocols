@@ -1,0 +1,19 @@
+diff -ruN -x '*.orig' a/src/portable/synopsys/dwc2/dcd_dwc2.c b/src/portable/synopsys/dwc2/dcd_dwc2.c
+--- a/src/portable/synopsys/dwc2/dcd_dwc2.c	2026-09-15 07:51:03.059670226 +0900
++++ b/src/portable/synopsys/dwc2/dcd_dwc2.c	2026-09-15 09:11:25.348840333 +0900
+@@ -213,6 +213,15 @@
+     if (((_tud_cfg.bm_double_buffered & (1 << epnum)) != 0) && epnum > 0 && is_bulk) {
+       fifo_size *= 2;
+     }
++#if defined(E110_IN_FIFO_PACKETS) && (E110_IN_FIFO_PACKETS > 1)
++    // E110: give every non-control bulk IN endpoint N packets of dedicated TX
++    // FIFO so the DMA engine can stay ahead of the IN tokens. The P4 HS core has
++    // 1024 words: RX 304 + EP0 16 + EPInfo 32 leaves 672 words, i.e. up to 5
++    // 512-byte packets for one bulk IN endpoint.
++    else if (epnum > 0 && is_bulk) {
++      fifo_size *= E110_IN_FIFO_PACKETS;
++    }
++#endif
+ 
+     // Check if free space is available
+     TU_ASSERT(_dcd_data.dfifo_top >= fifo_size + dwc2->grxfsiz);
