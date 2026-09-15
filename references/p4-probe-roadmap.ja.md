@@ -59,6 +59,11 @@ HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 M
 - **codecは2 coreで回せる**（[E111](../experiments/e111_p4_dual_core_codec/README.ja.md)）。PARLIO chunkにraw stream offsetを持たせ、blockの出力位置をoffsetから決めれば、2 workerが同時に別stageへ書いても順序は崩れない。chunk長は2,368〜4,032 byteで可変なので、chunk先頭の跨ぎblockはringに残る直前chunkの末尾と組み合わせて符号化する。結合上限は8-bit 108 / wide 72 Msps、両coreの合計codec率は約180〜190%。core 0側のworkerはISR・USBと同居するので取り分は約41%。
 - P4のDWC2はEspUsbDeviceの既定（`src/internal/EspUsbTinyUsbConfig.h`）で**DMA mode**で動いている（E109で`GAHBCFG.DMAEn=1`・`GINTMSK.RXFLVL=0`を確認）。E107 / E108で書いた「slave modeのISRがFIFOへ押す」は誤りで、buffered経路のcopyは3回、`CFG_TUD_DWC2_DMA_ENABLE`の明示は何も変えない。run-time statsはISR時間を中断されたtaskに計上するので、core 0の真の負荷はpriority 1のspin taskで測る。8-bit 60 Mspsで約23%（task計上は7%）。
 - codecは`-O2`で8-bit約1 point、wideで約4 point軽くなる。cache line先読みは約1 point。device側Gray checkは7〜8 pointで、製品firmwareには載らない。
+- **任意descriptorは成立、generic codecの費用は固定profileの1.4〜1.8倍**（[E114](../experiments/e114_p4_dynamic_descriptor/README.ja.md)）。deviceがraw channelを下位lane・縮約channelを上位laneに並べ替えるので、fast部はF=1〜8共通の4回のmasked shiftで済み、縮約のOR / AND / 立上り / 立下りはwordに詰まったsample（8-bit幅は4本、16-bit幅は2本）を折って2分木で作れる。費用を決めるのは縮約channelごとのbucket値の取り出し（hold 1値あたり6〜8 cycle）で、16 ch hold構成は34〜40 Msps、8-bit F=3は58〜70 Msps、any / edge構成は固定の0.2〜0.4倍。（mode, D, phase）の群ごとにbit行列を転置すれば固定profileと同じ費用構造になる（E115候補）。
+- **codec上限は表でなくdevice上のbenchで決める。** descriptorを受けるたびに同じencoderを8,192 block走らせ`bench_msps`を返し、`bench × 1.2 × 0.9`を超えるrateをREJECTする。2 workerのstreamingは単core benchの1.25〜1.56倍まで通るが、core idle約10%が残るのは約1.1倍まで。線形補間表はmode構成で10倍ずれるので使わない。
+- **host toolはURB完了callbackの中で仕事をしない。** libusbのevent loopがPythonの処理（開始位相探索など）で数百ms塞がるとURBが再投入されず、usbipd/WSL経路は「約200 msの穴が繰り返す」状態に落ちて回復しない（Windows nativeでも出る）。device側ではarm済みtransferの完了が130〜600 ms止まって見える。E109〜E113のhostは検証が軽くて偶然通っていた。検証・探索はcapture後に行う。
+- stage bufferは`index % N`固定でなくfree listから割り当てる。USBが止まっても直接arm済みの2 slot以外は退避に回して即返せるので、codecは退避（8 MiB）が満ちるまで止まらない（E114）。
+- loopback源（PARLIO TXのGray counter）は8-bit幅58〜60 Mspsでbyte一致検証の開始位相が取れない（1 bitずれ）。Gray進行checkなら通る。上限付近のbyte一致には別の源が要る。
 
 ## 2. 近い目標の現在地
 
@@ -68,6 +73,7 @@ HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 M
 | `.sr`保存とstock decoder | **達成**。P4でcaptureした`.sr`をsigrok decoderが読める |
 | PulseViewへIP経由 | **raw streamでは達成**。mixed-rate descriptorからbase gridへ復元するgatewayは未実装 |
 | USB経路の予算測定 | **測定コマンド成立**。TX FIFO 2 packetでprobeは389 Mbps（usbipd/WSL）／377 Mbps（native）、90%予算350 / 339 Mbps。90%予算による自動ACCEPT / fallbackは未実装 |
+| 任意descriptorとACCEPT / REJECT | **成立**（E114）。16 byte header＋channelごと4 byteのdescriptorをdeviceが受け、幅・block・payload・padding・raw / wire帯域・bench由来のcodec上限を返し、形式・PARLIO・raw帯域・codec上限・USB予算・stage整列でREJECTする。generic codecの出力はE105 referenceとbyte一致（配線順不同、any_active、edge_latch、phase、polarity）。通常値はgenericで16 ch hold 34 Msps、8-bit 58 Msps。固定profile並みに戻すのはE115候補 |
 | task配置と結合上限 | **E107〜E111で確定**。USBはcore 0で初期化、stageをzero-copyでDWC2へ（TX FIFO 2 packet）、codecは2 worker。8-bit 108 / wide 72 MspsまでPASS、8-bit 100 / wide 64は30 s soak欠損0。60 / 40は大きな余裕を持つ通常値。残りはhub経路と分単位超のsoak |
 | RVSWDでCH32へ書込 | **未着手**。CH32とP4の配線待ち |
 | RVSWD / SWIO decoder | **未着手**。実信号取得は上記配線待ち |
@@ -78,9 +84,9 @@ HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 M
 
 ### Phase A — 設定と正しさを固める
 
-1. PCから`base_rate_hz / sample_count / GPIO mapping / channelごとのmode・D・phase・polarity`を渡すdescriptorを決める。
-2. deviceが`physical幅 / block sample数 / payload bit数 / padding / raw入力帯域 / wire帯域`を返し、内部上限を超える設定をREJECTする。
-3. `D=2 / 4 / 8 / 16 / 32 / 64`の実機codecを確認する。reference codecはround-trip PASS済み。
+1. ~~PCから`base_rate_hz / sample_count / GPIO mapping / channelごとのmode・D・phase・polarity`を渡すdescriptorを決める。~~ **済（E114）**。
+2. ~~deviceが`physical幅 / block sample数 / payload bit数 / padding / raw入力帯域 / wire帯域`を返し、内部上限を超える設定をREJECTする。~~ **済（E114）**。codec上限は表でなくdevice上のbench。
+3. `D=2 / 4 / 8 / 16 / 32 / 64`の実機codecを確認する。reference codecはround-trip PASS済み。**E114でhold D=4/8/16/32/64/128、any D=8/32、edge D=16/32がloopback源とのbyte一致で通った**。D=2はbenchのみ。
 4. `D=128 / 256 / 512 / 1024`を通常UIへ出すか決める。形式上は可能だが、複数blockをまたぐ状態、待ち時間、追加の帯域削減量を測ってから決める。
 5. `decimate_hold / any_active / edge_latch`について、短pulse、bucket境界、active polarity、端数captureを固定fixtureで検査する。
 
@@ -101,7 +107,7 @@ HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 M
 
 ### Phase D — 最後にチューニングする
 
-1. descriptorをprofile別の固定高速codecへdispatchするか、generic codecを最適化するか比較する。E107ではprofile別templateが必要だった。genericにする場合も`-Os`でのlambda / 間接呼び出しを避ける。E111の2 worker構成ならgeneric codecの重さを吸収する余地がある（8-bit 60 Mspsでcodec合計約90%相当の予算）。
+1. descriptorをprofile別の固定高速codecへdispatchするか、generic codecを最適化するか比較する。**E114で測った: genericは固定の1.4〜1.8倍の費用。次はgenericの縮約取り出しを群ごとのbit行列転置にする（E115候補）**。E107ではprofile別templateが必要だった。genericにする場合も`-Os`でのlambda / 間接呼び出しを避ける。E111の2 worker構成ならgeneric codecの重さを吸収する余地がある（8-bit 60 Mspsでcodec合計約90%相当の予算）。
 2. PARLIO callback量、ring / queue / stageサイズ、PSRAM copyの配置を掃引する。
 3. **E107 / E108で実施。** 競合はcore 0ではなくcore 1側で、USBをcore 0で初期化して解消した（E107）。zero-copy送信でcore 0のUSB負荷はほぼ消え、USB-onlyも247 Mbpsへ上がった（E108）。DWC2 DMA flagは効果なし。task優先度、PARLIO割り込みのcore、内部RAM FIFOは効かない。E090で反証済みのhardware TX FIFO増量は繰り返さない。
 4. 安全marginを再測定し、表向きの60 / 40 Mspsを最終確定する。**E109で直結については確定**。E110 / E111後は8-bit 100（codec 84 / 87%、USB予算の89%）、wide 64（codec 89 / 90%、USB 61%）が「余裕を持つ点」で、通常値を引き上げるかは持ち主判断。残りはhub経路、分単位超のsoak。

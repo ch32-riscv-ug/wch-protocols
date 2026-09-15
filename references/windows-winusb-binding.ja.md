@@ -78,6 +78,23 @@ DEVPKEY_Device_ConfigFlags  = 64  = CONFIGFLAG_FAILEDINSTALL
 
 **`setupapi.dev.log` には、これらの再列挙に対する install の節が 1 つも書かれない。** 削除(`Delete Device`)は記録されるので、ログ自体は生きている。つまり **Windows は driver 検索を走らせずに Code 28 を付けている**。
 
+### composite での実測(EspUsbDevice 側 session、2026-09-15、参考観測)
+
+E081 で対象外にしていた「composite device での MS OS 2.0」を、EspUsbDevice のライブラリ改修に伴って向こうの session が同じ P4(esp32-p4-80f1b2d0b261、VID:PID `303a:4090`、serial `os20-m1`〜`m4`、Windows native、Zadig なし)で測った。同じ composite・同じ interface 構成で、変えたのは MS OS 2.0 の中身だけ。
+
+| 構成 | MS OS 2.0 | 親(usbccgp) | `MI_00`(DFU) | `MI_01`(vendor) |
+|---|---|---|---|---|
+| M1: DFU 1 本のみ、set なし(旧ライブラリ) | なし | — | **Error**、compatible ID は class 由来のみ | — |
+| M2: DFU + vendor、function subset 1 つ(vendor だけ指す) | 178 byte subsets | OK / `usbccgp` | **Error / problem=28** | OK / `WINUSB` |
+| M3: DFU 1 本のみ、flat | 30 byte flat、BOS 33 byte、`bcdUSB=0x0201` | — | OK / `WINUSB` | — |
+| M4: DFU + vendor、function subset 2 つ(interface 0 → 1 の昇順) | 206 byte subsets | OK / `usbccgp` | **OK / `WINUSB`** | OK / `WINUSB` |
+
+分かったこと。
+- composite で `usbccgp` が載る構成では、**function subset が指した interface にだけ WinUSB が当たり、指されなかった interface は Code 28** になる。上の「composite 化しても変わらず、usbccgp すら載らない」は単一 interface 向け subsets のまま試したときの別現象。
+- function subset は複数出せて、それぞれ独立に効く。
+- **`DeviceInterfaceGUIDs` は binding に不要**。DFU 側は compatible ID(function subset 28 byte)だけで当たった。GUID は SetupDi 列挙用の付加情報で、function ごとに変えるかは binding とは別の問題。
+- `bcdUSB=0x0201` のままで BOS は読まれる(0x0210 は不要)。Microsoft capability 単独の 33 byte BOS でも読まれる。
+
 ## 残っている仮説
 
 ### H1: MS OS 2.0 descriptor set の入れ子構造(本命)

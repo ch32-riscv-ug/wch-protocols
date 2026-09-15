@@ -136,3 +136,7 @@ channel別rateは別々のsampling clockではない。全pinを共通base clock
 - [E074](../experiments/e074_p4_2ch_capture_to_sr/README.ja.md) / [E075](../experiments/e075_p4_width_sample_accuracy/README.ja.md) — batch の上限と幅ごとの sample 精度
 - [PulseView / sigrok 連携](pulseview-integration.ja.md) — 経路と protocol
 - [capture の圧縮](capture-compression.ja.md) — 帯域を減らす方向の選択肢
+
+### 追記（2026-09-15、任意descriptorのgeneric codec）
+
+[E114](../experiments/e114_p4_dynamic_descriptor/README.ja.md)で、固定profileでなく任意descriptorから組んだgeneric codecの上限を測った。deviceはdescriptorを受けるたびに同じencoderをbenchして`codec_limit = bench × 1.08`を返す（core idle約10%が残る点）。目安: 16 ch（3 raw＋hold/8＋12 hold/64）34 Msps、4 raw＋12 hold/32は32、5 raw＋11 hold/32は34、8 ch（3 raw＋5 hold/64）58、配線順不同で小さいDが混ざる8 chは45、any_active ×6は22、edge_latch ×12（16-bit）は12、any / edge / hold混在の8 chは10、素通し（1 / 2 / 4 ch all raw）は160。固定profile（72 / 68 / 64 / 108）との差は縮約channelの取り出し方で、E115候補で埋める。rateはUSB予算（probe×0.9）とこのcodec上限の小さい方で決まる。
