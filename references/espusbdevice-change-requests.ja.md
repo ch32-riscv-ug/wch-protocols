@@ -473,7 +473,9 @@ if (written == 0) { ++stalls; HsVendor.flush(); taskYIELD(); continue; }
 - [着手順の提案](usb-library-change-plan.ja.md) — EspUsbHost 側との兼ね合い
 
 
-## 追加候補（2026-09-15、未依頼）
+## 追加依頼 CR-10〜CR-13（2026-09-15）
+
+状態: **CR-13は先方が独立に実測して採用（working tree、未release。buffered経路で22.98→28.93 MB/s）。CR-10〜12はAPI追加のため設計から着手との回答。** 依頼はEspUsbDevice側sessionへ2026-09-15に送付（[usb-library-feedback.ja.md](usb-library-feedback.ja.md) 送付記録）。**取り込まれてreleaseされるまで、これらのpatchを前提にした数値（E108〜E115）は参考値で、製品の目安には使わない**（持ち主の方針）。
 
 [E108](../experiments/e108_p4_zero_copy_stream/README.ja.md)で、vendor bulk INのcopyを全部外すと同じusbipd/WSL直結でUSB-onlyが209→247 Mbps、送出側coreのtask負荷が8-bit 60 Msps streamで57〜66%→7%になった。使ったのは出荷版2.3.0への一時patch（[espusbdevice-e108.patch](../experiments/e108_p4_zero_copy_stream/espusbdevice-e108.patch)、E097 / E101 / E102の合成＋bufsize上限撤廃）で、公開APIにするなら次の3点になる。
 

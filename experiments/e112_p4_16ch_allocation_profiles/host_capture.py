@@ -251,6 +251,8 @@ def main() -> int:
     parser.add_argument("--transfer-size", type=int, default=1024 * 1024)
     parser.add_argument("--depth", type=int, default=8)
     parser.add_argument("--no-validate", action="store_true")
+    parser.add_argument("--keep-mib", type=int, default=768,
+                        help="memory budget for sampled transfers kept for post-capture validation")
     parser.add_argument("--probe-bytes", type=int, default=0,
                         help="run USB-only EP probe instead of capture")
     parser.add_argument("--rate-mhz", type=float, default=32.0,
@@ -353,27 +355,27 @@ def main() -> int:
             worker_blocks = 0
             worker_lock = threading.Lock()
 
-            def worker() -> None:
+            # Sampled transfers are validated AFTER the capture, never on a thread
+            # while URBs are in flight: Python work during the capture starves URB
+            # resubmission and the usbip path then degrades to ~200 ms holes
+            # (E114 §4). `kept` is bounded by --keep-mib; overflow counts as skipped.
+            kept: list[tuple[int, bytes]] = []
+            kept_bytes = 0
+            max_keep = args.keep_mib * 1024 * 1024
+
+            def validate_kept() -> None:
                 nonlocal worker_blocks
-                while True:
-                    item = samples.get()
-                    if item is None:
-                        return
-                    start, data = item
+                for start, data in kept:
                     phase = start % validator.wire_block_bytes
                     skip = (validator.wire_block_bytes - phase) % validator.wire_block_bytes
                     validator.reset_chain()
                     before = validator.blocks
                     validator.feed(data[skip:])
-                    with worker_lock:
-                        worker_blocks += validator.blocks - before
-
-            worker_thread = threading.Thread(target=worker, daemon=True) if sample_every > 1 else None
-            if worker_thread:
-                worker_thread.start()
+                    worker_blocks += validator.blocks - before
+                kept.clear()
 
             def complete(transfer: usb1.USBTransfer) -> None:
-                nonlocal received, short, error, sampled, skipped, completed_transfers
+                nonlocal received, short, error, sampled, skipped, completed_transfers, kept_bytes
                 active.discard(transfer)
                 if transfer.getStatus() != usb1.TRANSFER_COMPLETED:
                     error = f"transfer status={transfer.getStatus()} at {received}"
@@ -389,8 +391,9 @@ def main() -> int:
                     elif completed_transfers % sample_every == 0:
                         # Validation is slower than the bus: keep at most a few
                         # transfers queued and count the ones we had to drop.
-                        if samples.qsize() < 4:
-                            samples.put((received, data))
+                        if kept_bytes + len(data) <= max_keep:
+                            kept.append((received, data))
+                            kept_bytes += len(data)
                             sampled += 1
                         else:
                             skipped += 1
@@ -435,7 +438,9 @@ def main() -> int:
                 # The device's status line may already have arrived inside the
                 # data stream (it is what ended the stream early).
                 for blob in (bytes(captured[-8192:]), last_data[0][-8192:], bytes(drained)):
-                    marker = blob.rfind(b"E112_STATUS")
+                    # The same profiles also run on the E114 firmware (free-list stages),
+                    # whose status line is prefixed E114_STATUS.
+                    marker = max(blob.rfind(b"E112_STATUS"), blob.rfind(b"E114_STATUS"))
                     if marker >= 0:
                         status = blob[marker:].split(b"\n", 1)[0].decode("ascii", "replace").strip()
                         break
@@ -448,8 +453,7 @@ def main() -> int:
                 if sample_every == 1:
                     validator.feed(captured)
                 else:
-                    samples.put(None)
-                    worker_thread.join()
+                    validate_kept()
                     validator.buffer = bytearray()  # sampled tails are not whole blocks
             status = read_status(handle)
             rate_mbps = received * 8 / elapsed / 1e6

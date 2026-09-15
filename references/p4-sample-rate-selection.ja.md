@@ -6,6 +6,9 @@ PulseView などへ「選べる sample rate」を出すとき、**値は 3 つ�
 
 ## 0. 製品としての要約
 
+> **数値の扱い（2026-09-15、持ち主の方針）**: 本節と追記にあるUSB予算・上限値のうちE108以降（zero-copy＋TX FIFO 2 packet＋2 worker）を根拠とするものは**独自patch版libraryでの参考値**で、製品の目安には使えない。正規libraryに取り込まれた機能で取り直した数値だけを使う。正規版2.3.0で成立している数値はE106 / E107（8-bit 60 Msps、wide 40 Msps、USB-only 193〜213 Mbps）。patch版の数値はlibrary修正依頼（CR-10〜13）の根拠にのみ使う。
+
+
 方針（持ち主、2026-09-15）: **16 channel時の仕様を前面に出す。** 最大60 Mspsの高速取得を複数channelで行い、時間解像度を落としたchannelを多数足して合計16 channelまで取る。USBの通信速度は環境で変わるので、高速取得できるchannel数は環境で異なる。速度は実測してその約9割で使うことを推奨する。8 channel以下なら100 Msps、2 channel以下なら160 Mspsで取得できる場合もある（2 ch 160 Mspsは[E113](../experiments/e113_p4_2ch_160m_passthrough/README.ja.md)でUSB 380 Mbps級の環境で欠損0、320 Mbps＝予算の93%）。数値の目安は最終的に持ち主が書き換える。
 
 配分の式は`Σ(channel iのrate) ≤ 0.9 × probe実測`である。高速channelは1 bit/sampleなので60 Mspsは60 Mbps、1/32へ縮約したchannelは1.875 Mbpsになる。
@@ -140,3 +143,7 @@ channel別rateは別々のsampling clockではない。全pinを共通base clock
 ### 追記（2026-09-15、任意descriptorのgeneric codec）
 
 [E114](../experiments/e114_p4_dynamic_descriptor/README.ja.md)で、固定profileでなく任意descriptorから組んだgeneric codecの上限を測った。deviceはdescriptorを受けるたびに同じencoderをbenchして`codec_limit = bench × 1.08`を返す（core idle約10%が残る点）。目安: 16 ch（3 raw＋hold/8＋12 hold/64）34 Msps、4 raw＋12 hold/32は32、5 raw＋11 hold/32は34、8 ch（3 raw＋5 hold/64）58、配線順不同で小さいDが混ざる8 chは45、any_active ×6は22、edge_latch ×12（16-bit）は12、any / edge / hold混在の8 chは10、素通し（1 / 2 / 4 ch all raw）は160。固定profile（72 / 68 / 64 / 108）との差は縮約channelの取り出し方で、E115候補で埋める。rateはUSB予算（probe×0.9）とこのcodec上限の小さい方で決まる。
+
+### 追記（2026-09-15、E115後のgeneric目安）
+
+[E115](../experiments/e115_p4_grouped_plane_transpose/README.ja.md)で縮約channelを群ごとに転置する取り出しにした後のgeneric codec上限（`codec_limit = bench × 0.9`、core idle約10%）: 16 ch（3 raw＋hold/8＋12 hold/64）**42 Msps**（50までbyte一致）、4 raw＋12 hold/32は**44**（50まで一致）、5 raw＋11 hold/32は42、8 ch（3 raw＋5 hold/64）**67**（80まで一致）、配線順不同で小さいDが混ざる8 chは42（50まで一致）、any_active ×6は24（40まで一致）、edge_latch ×12（16-bit）は12（20まで一致）、any / edge / hold混在の8 chは8（15まで一致）。E114時点の34 / 32 / 34 / 58 / 45 / 22 / 12 / 10からの更新。固定profile（72 / 68 / 64 / 108）との残差はfast部の費用。

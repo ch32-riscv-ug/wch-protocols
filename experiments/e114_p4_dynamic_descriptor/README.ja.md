@@ -1,6 +1,6 @@
 # E114 任意channel descriptorのdevice側実装 — 配線順不同のGPIO、mode・D・phase・polarity、ACCEPT / REJECT
 
-状態: **完了**（2026-09-15。descriptor / ACCEPT-REJECT / generic codec / reference一致は実機で通った。codec費用の仮説（固定profileの1〜2割増）は反証、原因と次の手（E115候補）を記録。途中で追ったUSB停止はhost tool側が原因）
+状態: **完了**（2026-09-15。descriptor / ACCEPT-REJECT / generic codec / reference一致は実機で通った。codec費用の仮説（固定profileの1〜2割増）は反証、原因と次の手（E115候補）を記録。途中で追ったUSB停止はhost tool側が原因） — **参考値（独自patch版library）**（EspUsbDevice 2.3.0＋E097/E101/E102/E110の一時patch。正規libraryに取り込まれるまで製品の目安には使わず、修正依頼の根拠にのみ使う）
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E105](../e105_p4_spi_mixed_rate_codec/README.ja.md)（reference codec）、[E111](../e111_p4_dual_core_codec/README.ja.md)、[E112](../e112_p4_16ch_allocation_profiles/README.ja.md)、[E113](../e113_p4_2ch_160m_passthrough/README.ja.md)
 
@@ -167,3 +167,7 @@ device内部の縮約式（word pass＋2分木、`cross[]`）は`reduce_model_ch
 - **E115候補**: 縮約channelを（mode, D, phase）で群にまとめて連続laneに置き、群ごとにbucket×channelのbit行列を転置して取り出す。固定profileの「D=64をbit-spreadで一度に」と同じ費用構造になり、16 ch hold構成で固定profile並み（60〜72 Msps級）に戻る見込み。any / edgeも同じ形で取り出せる。
 - host tool共通の規約: URB callbackの中で仕事をしない（§4）。E109〜E113のhostは軽い検証で偶然通っていたので、soak系のhostも同じ形（capture後検証）へ揃える。
 - loopback源の上限（8-bit 58〜60 Mspsでbyte一致が取れない）は別件。sampling位相を固定できる源（外部clock同期）に替えるか、検証をGray進行checkに切り替える。
+
+### 追記（2026-09-15、退避16 MiBとE112 soakへの転用）
+
+E112のfour / five 60 Mspsを本firmwareの固定profile経路（`F` / `V` command、free list stage）で約4.7分ずつ測り直した際、hostの転送に209 msの穴が入ったrunで退避が6.9 MiBまで積み、その直後にslot待ちtimeoutで落ちた。`kSpillBytes`を8→16 MiBにし、slot待ちtimeout時に`abort_free_slots / abort_arm_queued / abort_spill_used / abort_ready_waiting / abort_inflight_kind`をstatusへ出すようにした。その後の2本（four 60: 269 Mbps、five 60: 330 Mbps）は穴なし・退避なしで通った（[E112 追記](../e112_p4_16ch_allocation_profiles/README.ja.md)）。33 MB/s級で退避が動くと、in（stage→PSRAM）とout（PSRAM→bounce）のcopyがcore 0のusb taskに載って上限近くになる点は残課題。

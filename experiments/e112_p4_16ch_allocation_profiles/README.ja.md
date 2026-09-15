@@ -1,6 +1,6 @@
 # E112 16 channel配分例の実測 — 60 M×4＋1/32×12 と 60 M×5＋1/32×11
 
-状態: **完了 — 60 M×4＋1/32×12（272 Mbps実測）は3回＋30 s soak 2回すべて欠損0、上限68 Msps。60 M×5＋1/32×11（334 Mbps）は3回PASS・上限64 Mspsだが、30 s soakは2回中1回に一過性の不一致があり、USB予算92%・core 0 99%の縁の構成**（2026-09-15）
+状態: **完了 — 60 M×4＋1/32×12（272 Mbps実測）は3回＋30 s soak 2回すべて欠損0、上限68 Msps。60 M×5＋1/32×11（334 Mbps）は3回PASS・上限64 Mspsだが、30 s soakは2回中1回に一過性の不一致があり、USB予算92%・core 0 99%の縁の構成**（2026-09-15） — **参考値（独自patch版library）**（EspUsbDevice 2.3.0＋E097/E101/E102/E110の一時patch。正規libraryに取り込まれるまで製品の目安には使わず、修正依頼の根拠にのみ使う）
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E111](../e111_p4_dual_core_codec/README.ja.md)、[E110](../e110_p4_usb_in_ceiling/README.ja.md)、[E106](../e106_p4_mixed_rate_capture_stream/README.ja.md)
 
@@ -87,3 +87,20 @@ soak 1回目の不一致は、USBが一時的に遅れて退避経路（core 0�
 
 - 5 full soakの一過性不一致の再現条件（host側の遅れの発生源、descriptor読み出しの影響）。分単位のsoakで頻度を測る。
 - 外部16 GPIOでの72 MHz以上のlane skew。
+
+### 追記（2026-09-15、5分soakのやり直し。ログ `_runs/_runs/E112_20260915T160841JST_p4_direct_5min_hostfix/soak.log`）
+
+E114で、host toolがURB完了callbackの中で検証していたことがusbip経路を「約200 msの穴が繰り返す」状態に落とす原因だと分かったので（[E114](../e114_p4_dynamic_descriptor/README.ja.md) §4）、`host_capture.py`の検証をcapture後に移して（`--keep-mib`で溜める上限、既定768 MiB）、60 Mspsの2 profileを約4.7分（16,000 periods、8.9 / 11 GB）ずつ測り直した。
+
+| firmware | profile | 結果 |
+|---|---|---|
+| E112（stage 4本、index固定） | four 60 | **126 sで中止**。USBの一時停止で退避が始まり（bounce 8、退避35 KB）、直接arm済み2 stage以外の余裕が2 stage（33 MB/sでは1.6 ms）しかないのでringが溢れた。host修正だけでは足りない |
+| E114（stage 6本free list、退避8 MiB） | four 60 | **101 sで中止**。hostの転送に**209 msの穴**（`gaps=…:209272:3`、arm済みで待ち）。退避は6.9 MiBまで積んで穴自体は乗り切ったが、直後の穴（39 / 16 ms）が続く間にslot待ちtimeout。33 MB/sの退避in/outはcore 0 usb taskのPSRAM copy 3回/stageで上限近い |
+| **E114（退避16 MiB）** | **four 60** | **PASS**。272.6 s、**269.2 Mbps**、host検証`bad=0`（16 transferごと）、device欠損0、退避0、USB完了間隙最大0.66 ms。core 0 97.1% / core 1 90.9% |
+| **E114（退避16 MiB）** | **five 60** | **PASS**。272.9 s、**330.5 Mbps**、`bad=0`、欠損0、退避0、間隙最大0.66 ms。core 0 99.6% / core 1 98.2% |
+
+読み方。
+- 「four 60は2.8分で落ちた」「five 60はsoakで一過性の不一致」と前に書いた原因は、**host toolの検証が転送を止めていたこと**と、**hostの転送に時々入る100〜200 msの穴に対してE112 firmwareのstage割り当てが2 stage分しか耐えないこと**の2つだった。どちらもcodecやUSB帯域の問題ではない。
+- 穴が入らなかった2本は約4.7分を欠損0で通った。穴は毎回は出ない（同じ条件で3本中2本に1回）。出たときに耐えるにはE114のfree list stage＋PSRAM退避16 MiB（33 MB/sで約480 ms分）が要る。退避のin/outはcore 0のusb taskで行うので、この経路の限界（33 MB/s級で3 copy/stage）が次の壁。
+- five 60はcore 0 / core 1とも98%以上で、前回どおり「上限いっぱい」。§1.1の推奨（四つで60、残りは1/32）は変えない。
+

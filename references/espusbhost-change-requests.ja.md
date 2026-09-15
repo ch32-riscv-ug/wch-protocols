@@ -227,3 +227,10 @@ README.ja.md に OUT 側の同じ話が書かれている。
 - [E071 device 側 vendor bulk の天井 — 送信 FIFO の深さ](../experiments/e071_p4_hs_vendor_fifo_depth/README.ja.md)
 - [EspUsbDevice への改修依頼](espusbdevice-change-requests.ja.md)(device 側。CR-7 が対になる)
 - [着手順の提案](usb-library-change-plan.ja.md) — device 側と host 側、どちらから手を入れるか
+
+## 追記（2026-09-15、EspUsbHost側sessionの再測とこちらからの依頼）
+
+- E089の「約24 MB/sはdevice側の天井」の正体は、device側TinyUSBのbulk IN TX FIFOが1 packet分だったこと（[E110](../experiments/e110_p4_usb_in_ceiling/README.ja.md)、EspUsbDevice側[CR-13](espusbdevice-change-requests.ja.md)）。先方がCR-13入りdevice相手にE089を再測: **24.45→25.575 MB/s（+4.6%）、device chunk 32 KiBで28.5 MB/s**。depth 2以上で`starved=0`、depth 1/2/4で差なし、32 KiB要求でper_transfer 16 KiB。止めているのはhostでなくdeviceのbuffered `write()`経路（約29 MB/s）。P4 host自身のIN上限を見るには、zero-copy device（[E102](../experiments/e102_p4_vendor_in_zero_copy_precomputed/README.ja.md)のdevice＋E108 patch＋E110 patch）が要る。手順は渡した。
+- **HR-2（転送長）の訂正**: host側は「depth 2以上かつ転送長2 KiB以上」で頭打ちになり、2 KiBと32 KiBで差がなかった。「27 KiB以上」はdevice側（zero-copy＋2 packet）で出た数字で、速いdevice相手にhost側でも要るかは未検証。**HR-1（depth 2以上）はhost側でも明確**（depth 1は全条件でstarved）。
+- 依頼として追加したいもの: (a) USB-only probe example（既知patternを最大速で受けて実測し、その90%を予算にする）、(b) docsに「`onVendorData()`など完了経路に重い処理を置かない」（先方docsに取り込み済み）。
+- **数値の扱い**: これらpatch版device相手の数値は参考値で、正規libraryに取り込まれるまで製品の目安には使わない（持ち主の方針）。

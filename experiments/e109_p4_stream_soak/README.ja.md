@@ -1,6 +1,6 @@
 # E109 E108 data pathの長時間・繰り返し・経路差
 
-状態: **完了 — 8-bit 60 / wide 40 Mspsは60 s連続・20回の交互繰り返し・Windows native経路のすべてで欠損0。native probeは221 Mbps。DWC2はEspUsbDeviceの既定でDMA modeだった**（2026-09-15）
+状態: **完了 — 8-bit 60 / wide 40 Mspsは60 s連続・20回の交互繰り返し・Windows native経路のすべてで欠損0。native probeは221 Mbps。DWC2はEspUsbDeviceの既定でDMA modeだった**（2026-09-15） — **参考値（独自patch版library）**（EspUsbDevice 2.3.0＋E097/E101/E102/E110の一時patch。正規libraryに取り込まれるまで製品の目安には使わず、修正依頼の根拠にのみ使う）
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E108](../e108_p4_zero_copy_stream/README.ja.md)、[E107](../e107_p4_stream_core_placement/README.ja.md)、[E104](../e104_p4_windows_continuous_bulk/README.ja.md)
 
@@ -110,3 +110,7 @@ nativeもzero-copyで**＋14%**（193→221 Mbps）。usbipd/WSL（247 Mbps）�
 
 - hub経路（配線変更）。分単位を超える（10分〜）soak、途中切断からの復帰、host timeout時の再同期はPhase Bの正しさ固めで扱う。
 - codecのさらなる高速化（PIE SIMD）は必要になった時に別実験で。
+
+### 追記（2026-09-15、host toolの検証位置）
+
+`host_capture.py`（E109 / E111 / E112 / E113共通の構造）は、sampled transferの検証をcapture中のthreadで行っていた。E114で「URB完了callback（libusbのevent loop）がPythonの仕事で塞がるとusbip経路が約200 msの穴を繰り返す状態に落ちる」ことが分かったので、4本とも検証をcapture後へ移した（`--keep-mib`、既定768 MiB）。本実験の60 s / 5分soakは検証が軽く偶然通っていた。以後のsoakはこの版で取る。

@@ -106,7 +106,7 @@ constexpr uint8_t kFlagSingleCore = 0x10; // one codec worker on core 1 (E108 la
 constexpr uint8_t kFlagNoCodecLimit = 0x20; // calibration: accept even above the bench-derived codec limit
 constexpr uint8_t kFlagNoPulldown = 0x40;   // leave undriven lane GPIOs floating (to reproduce the USB stall)
 // Bench-derived codec limit: single-core bench Msps x (workers x per-core scale), then 90% margin.
-constexpr unsigned kDualScalePercent = 120;   // two workers: streaming reached 1.25-1.56x the single-core bench, but ~10% core idle is left only at ~1.1x (E114 §3); 1.2 x 0.9 = 1.08x
+constexpr unsigned kDualScalePercent = 100;   // E115: with cheap extraction the 2-worker stream saturates at ~1.0-1.15x the single-core bench for hold layouts (W16 50 ok / 55 x at bench 48); 1.0 x 0.9 = 0.9x leaves ~10% idle
 constexpr unsigned kSingleScalePercent = 90;
 constexpr unsigned kCodecMarginPercent = 90;
 // DWC2 HS controller registers (dwc2_esp32.h: DWC2_HS_REG_BASE). GAHBCFG.DMAEn and
@@ -338,8 +338,11 @@ struct DynamicProfile {
   uint8_t fast;         // raw channels on lanes 0..fast-1
   uint8_t channels;
   uint8_t laneGpio[kMaxChannels];
-  DynLane dec[kMaxChannels];
+  DynLane dec[kMaxChannels];    // E115: sorted by (mode, log2 D, phase, active) so equal channels sit on contiguous lanes
   uint8_t decCount;
+  uint8_t order[kMaxChannels];  // descriptor index of the channel on each lane (raw lanes first, then the sorted decimated ones)
+  struct Group { uint8_t lane0, count, mode, log2d, d, phase, active; } groups[kMaxChannels];
+  uint8_t groupCount;
   uint8_t needOrAnd[8]; // per log2 D: any_active present
   uint8_t needEdge[8];  // per log2 D: edge_latch present
   uint8_t reduceMaxLog2d; // highest log2 D that needs bucket reductions (0 = none)
@@ -820,10 +823,35 @@ static bool buildDynamicProfile(const uint8_t *cmd, uint32_t length, uint32_t ra
     if (mode == kModeRaw) Dyn.laneGpio[fast++] = e[0];
   }
   Dyn.fast = fast;
-  unsigned lane = fast;
+  // Raw lanes keep descriptor order; remember their descriptor indices.
+  {
+    unsigned r = 0;
+    for (unsigned i = 0; i < n; ++i) {
+      if (cmd[kDescHeaderBytes + i * kDescEntryBytes + 1] == kModeRaw) Dyn.order[r++] = static_cast<uint8_t>(i);
+    }
+  }
+  // E115: decimated channels sorted by (mode, log2 D, phase, active) so that
+  // channels with identical bucket structure sit on contiguous lanes and can be
+  // extracted as one bit-matrix transpose per group (encodeDynamicBlock).
+  uint8_t decIndex[kMaxChannels];
+  unsigned decN = 0;
   for (unsigned i = 0; i < n; ++i) {
+    if (cmd[kDescHeaderBytes + i * kDescEntryBytes + 1] != kModeRaw) decIndex[decN++] = static_cast<uint8_t>(i);
+  }
+  const auto key = [&](uint8_t idx) -> uint32_t {
+    const uint8_t *e = cmd + kDescHeaderBytes + idx * kDescEntryBytes;
+    return (static_cast<uint32_t>(e[1]) << 24) | (static_cast<uint32_t>(e[2]) << 16) | (static_cast<uint32_t>(e[3] & 0x7f) << 8) | (e[3] >> 7);
+  };
+  for (unsigned i = 1; i < decN; ++i) {  // insertion sort, stable
+    const uint8_t v = decIndex[i];
+    unsigned j = i;
+    while (j > 0 && key(decIndex[j - 1]) > key(v)) { decIndex[j] = decIndex[j - 1]; --j; }
+    decIndex[j] = v;
+  }
+  unsigned lane = fast;
+  for (unsigned s = 0; s < decN; ++s) {
+    const unsigned i = decIndex[s];
     const uint8_t *e = cmd + kDescHeaderBytes + i * kDescEntryBytes;
-    if (e[1] == kModeRaw) continue;
     DynLane &d = Dyn.dec[Dyn.decCount++];
     d.lane = lane;
     d.mode = e[1];
@@ -840,7 +868,16 @@ static bool buildDynamicProfile(const uint8_t *cmd, uint32_t length, uint32_t ra
       if (d.mode == kModeAnyActive) (d.active ? Dyn.needOr : Dyn.needAnd) = 1;
       else (d.active ? Dyn.needRise : Dyn.needFall) = 1;
     }
+    Dyn.order[lane] = static_cast<uint8_t>(i);
     Dyn.laneGpio[lane++] = e[0];
+    // Group: extend the previous one when the bucket structure is identical.
+    DynamicProfile::Group *g = Dyn.groupCount ? &Dyn.groups[Dyn.groupCount - 1] : nullptr;
+    if (g && g->mode == d.mode && g->log2d == d.log2d && g->phase == d.phase && g->active == d.active) {
+      ++g->count;
+    } else {
+      DynamicProfile::Group &ng = Dyn.groups[Dyn.groupCount++];
+      ng = {static_cast<uint8_t>(lane - 1), 1, d.mode, d.log2d, d.d, d.phase, d.active};
+    }
   }
   // Width.
   if (Dyn.decCount == 0 && (n == 1 || n == 2 || n == 4)) {
@@ -894,24 +931,30 @@ static bool buildDynamicProfile(const uint8_t *cmd, uint32_t length, uint32_t ra
 
 static void sendDescriptorReply(uint32_t rateHz) {
   char lanes[kMaxChannels * 4 + 1];
+  char order[kMaxChannels * 4 + 1];
   int at = 0;
   for (unsigned i = 0; i < Dyn.channels && at < static_cast<int>(sizeof(lanes)) - 4; ++i) {
     at += snprintf(lanes + at, sizeof(lanes) - at, "%s%u", i ? "," : "", Dyn.laneGpio[i]);
+  }
+  at = 0;
+  for (unsigned i = 0; i < Dyn.channels && at < static_cast<int>(sizeof(order)) - 4; ++i) {
+    at += snprintf(order + at, sizeof(order) - at, "%s%u", i ? "," : "", Dyn.order[i]);
   }
   const double rawMbPerSec = static_cast<double>(rateHz) * Dyn.width / 8.0 / 1e6;
   const double wireMbps = static_cast<double>(rateHz) / kDynBlockSamples * Dyn.wireBytes * 8.0 / 1e6;
   const int length = snprintf(
       reinterpret_cast<char *>(StatusBuffer), kStatusBytes,
-      "E114_DESCRIPTOR accept=%u reason=%s rate_hz=%lu width=%u passthrough=%u fast=%u channels=%u dec=%u block=%u "
+      "E115_DESCRIPTOR accept=%u reason=%s rate_hz=%lu width=%u passthrough=%u fast=%u channels=%u dec=%u block=%u "
       "payload_bits=%lu padding_bits=%lu wire_block_bytes=%lu stage_fill=%lu raw_mb_s=%.3f wire_mbps=%.3f "
-      "budget_mbps=%u codec_limit_msps=%lu model_limit_msps=%lu gray_check=%u bench_blocks=%lu bench_us=%llu bench_msps=%.2f lanes=%s\n",
+      "budget_mbps=%u codec_limit_msps=%lu model_limit_msps=%lu gray_check=%u bench_blocks=%lu bench_us=%llu bench_msps=%.2f groups=%u order=%s lanes=%s\n",
       Dyn.valid ? 1U : 0U, Dyn.reason, static_cast<unsigned long>(rateHz), Dyn.width, Dyn.passthrough ? 1U : 0U,
       Dyn.fast, Dyn.channels, Dyn.decCount, static_cast<unsigned>(kDynBlockSamples),
       static_cast<unsigned long>(Dyn.payloadBits), static_cast<unsigned long>(Dyn.paddingBits),
       static_cast<unsigned long>(Dyn.wireBytes), static_cast<unsigned long>(Dyn.stageFill),
       rawMbPerSec, wireMbps, Dyn.budgetMbps, static_cast<unsigned long>(Dyn.codecLimitMsps),
       static_cast<unsigned long>(Dyn.modelLimitMsps), Dyn.grayCheck ? 1U : 0U, static_cast<unsigned long>(DynBenchBlocks), static_cast<unsigned long long>(DynBenchUs),
-      DynBenchUs ? static_cast<double>(DynBenchBlocks) * kDynBlockSamples / static_cast<double>(DynBenchUs) : 0.0, lanes);
+      DynBenchUs ? static_cast<double>(DynBenchBlocks) * kDynBlockSamples / static_cast<double>(DynBenchUs) : 0.0,
+      Dyn.groupCount, order, lanes);
   sendLine(length);
 }
 
@@ -922,15 +965,34 @@ static void sendDescriptorReply(uint32_t rateHz) {
 template <unsigned F>
 static inline __attribute__((always_inline)) uint32_t dynGather4Halves(uint32_t w0, uint32_t w1) {
   // Two words = four 16-bit samples -> 4F bits: s0 | s1 << F | s2 << 2F | s3 << 3F.
+  // E115: fold each word's two halves in two ops (valid for every F <= 8 since 2F <= 16).
   constexpr uint32_t lo = (1u << F) - 1;
-  return (w0 & lo) | (((w0 >> 16) & lo) << F) | ((w1 & lo) << (2 * F)) | (((w1 >> 16) & lo) << (3 * F));
+  constexpr uint32_t m = lo | (lo << 16);
+  constexpr uint32_t lo2 = (1u << (2 * F)) - 1;
+  uint32_t a = w0 & m;
+  uint32_t b = w1 & m;
+  a = (a | (a >> (16 - F))) & lo2;
+  b = (b | (b >> (16 - F))) & lo2;
+  return a | (b << (2 * F));
 }
 
 template <unsigned F>
 static inline __attribute__((always_inline)) uint32_t dynGather4Bytes(uint32_t w) {
-  // One word = four 8-bit samples -> 4F bits, one masked shift per sample.
+  // One word = four 8-bit samples -> 4F bits.
   constexpr uint32_t lo = (1u << F) - 1;
-  return (w & lo) | (((w >> 8) & lo) << F) | (((w >> 16) & lo) << (2 * F)) | (((w >> 24) & lo) << (3 * F));
+  if constexpr (F <= 4) {
+    // E115: two folds (E106's fixed-profile form); the fields never overlap for F <= 4.
+    constexpr uint32_t m1 = 0x01010101u * lo;
+    constexpr uint32_t lo2 = (1u << (2 * F)) - 1;
+    constexpr uint32_t m2 = lo2 | (lo2 << 16);
+    constexpr uint32_t lo4 = (1u << (4 * F)) - 1;
+    uint32_t x = w & m1;
+    x = (x | (x >> (8 - F))) & m2;
+    x = (x | (x >> (16 - 2 * F))) & lo4;
+    return x;
+  } else {
+    return (w & lo) | (((w >> 8) & lo) << F) | (((w >> 16) & lo) << (2 * F)) | (((w >> 24) & lo) << (3 * F));
+  }
 }
 
 // Emit 8 samples' worth (8F bits) from two 4F-bit halves using 32-bit ops only.
@@ -1076,47 +1138,156 @@ static inline __attribute__((always_inline)) void dynAppend(uint8_t *&o, uint32_
   }
 }
 
-template <unsigned F, bool kWide16>
-static void encodeDynamicBlock(const uint8_t *__restrict in, uint8_t *__restrict out, unsigned worker) {
-  const DynamicProfile &p = Dyn;
+// Append n (<= 32) bits.
+static inline __attribute__((always_inline)) void dynAppend32(uint8_t *&o, uint32_t &acc, unsigned &bits, uint32_t word, unsigned n) {
+  if (n > 16) {
+    dynAppend(o, acc, bits, word & 0xffffu, 16);
+    word >>= 16;
+    n -= 16;
+  }
+  dynAppend(o, acc, bits, word, n);
+}
+
+// E115: spread bit c of x to bit c << LOG2B (x has at most 32 >> LOG2B bits).
+// Summing dynSpread<LOG2B>(x_k) << k over the B = 1 << LOG2B buckets of a group
+// transposes the B x G bucket-by-channel bit matrix into channel-major planes:
+// output bit (c * B + k) = bit c of x_k, i.e. the wire layout of G channels.
+template <unsigned LOG2B>
+static inline __attribute__((always_inline)) uint32_t dynSpread(uint32_t x) {
+  if constexpr (LOG2B == 0) {
+    return x;
+  } else if constexpr (LOG2B == 1) {
+    x = (x | (x << 8)) & 0x00ff00ffu;
+    x = (x | (x << 4)) & 0x0f0f0f0fu;
+    x = (x | (x << 2)) & 0x33333333u;
+    x = (x | (x << 1)) & 0x55555555u;
+    return x;
+  } else if constexpr (LOG2B == 2) {
+    x = (x | (x << 12)) & 0x000f000fu;
+    x = (x | (x << 6)) & 0x03030303u;
+    x = (x | (x << 3)) & 0x11111111u;
+    return x;
+  } else if constexpr (LOG2B == 3) {
+    x = (x | (x << 14)) & 0x00030003u;
+    x = (x | (x << 7)) & 0x01010101u;
+    return x;
+  } else {
+    static_assert(LOG2B == 4, "spread stride up to 16");
+    x = (x | (x << 15)) & 0x00010001u;
+    return x;
+  }
+}
+
+static inline __attribute__((always_inline)) uint32_t dynLowMask(unsigned g) {
+  return g >= 32 ? 0xffffffffu : ((1u << g) - 1);
+}
+
+// hold (and any_active with D = 1): bucket k of every channel in the group is
+// sample k * D + phase; take G bits from lane0 and transpose.
+template <unsigned LOG2B, bool kWide16>
+static inline __attribute__((always_inline)) void dynGroupHold(const uint8_t *__restrict in, unsigned lane0, unsigned count, unsigned phase, uint8_t *&o,
+                                uint32_t &acc, unsigned &bits) {
+  constexpr unsigned B = 1u << LOG2B;
+  constexpr unsigned D = kDynBlockSamples / B;
+  constexpr unsigned kPer = 32 >> LOG2B;
   constexpr size_t kBytes = kWide16 ? 2 : 1;
-  uint8_t *o = out;
-  encodeDynamicFast<F, kWide16>(in, o);
-  if (p.needOr) dynReduceQuantity<kWide16, kQOr>(in, BucketOr[worker], p.reduceMaxLog2d, p.needLevel1);
-  if (p.needAnd) dynReduceQuantity<kWide16, kQAnd>(in, BucketAnd[worker], p.reduceMaxLog2d, p.needLevel1);
-  if (p.needRise) dynReduceQuantity<kWide16, kQRise>(in, BucketRise[worker], p.reduceMaxLog2d, p.needLevel1);
-  if (p.needFall) dynReduceQuantity<kWide16, kQFall>(in, BucketFall[worker], p.reduceMaxLog2d, p.needLevel1);
-  uint32_t acc = 0;
-  unsigned bits = 0;
-  const unsigned decCount = p.decCount;
-  for (unsigned c = 0; c < decCount; ++c) {
-    const DynLane ch = p.dec[c];  // by value: the fields stay in registers across the byte stores
-    const unsigned lane = ch.lane;
-    const size_t stride = kBytes * ch.d;
-    unsigned buckets = kDynBlockSamples / ch.d;
-    if (ch.mode == kModeHold || (ch.mode == kModeAnyActive && ch.log2d == 0)) {
-      const uint8_t *s = in + kBytes * ch.phase;
+  const uint8_t *const s0 = in + kBytes * phase;
+  while (count) {
+    const unsigned g = count < kPer ? count : kPer;
+    const uint32_t mask = dynLowMask(g);
+    uint32_t word = 0;
+    const uint8_t *s = s0;
+    for (unsigned k = 0; k < B; ++k, s += kBytes * D) {
+      const uint32_t x = ((kWide16 ? *reinterpret_cast<const uint16_t *>(s) : *s) >> lane0) & mask;
+      word |= dynSpread<LOG2B>(x) << k;
+    }
+    dynAppend32(o, acc, bits, word, g * B);
+    lane0 += g;
+    count -= g;
+  }
+}
+
+// any_active with D >= 2: bucket values come from the OR / AND level array.
+template <unsigned LOG2B>
+static inline __attribute__((always_inline)) void dynGroupVec(const uint16_t *__restrict vec, unsigned lane0, unsigned count, uint8_t *&o, uint32_t &acc,
+                               unsigned &bits) {
+  constexpr unsigned B = 1u << LOG2B;
+  constexpr unsigned kPer = 32 >> LOG2B;
+  while (count) {
+    const unsigned g = count < kPer ? count : kPer;
+    const uint32_t mask = dynLowMask(g);
+    uint32_t word = 0;
+    for (unsigned k = 0; k < B; ++k) word |= dynSpread<LOG2B>((vec[k] >> lane0) & mask) << k;
+    dynAppend32(o, acc, bits, word, g * B);
+    lane0 += g;
+    count -= g;
+  }
+}
+
+// edge_latch: per bucket 2 bits (bucket-end level | edge << 1). Level and edge
+// planes are transposed with stride 2B and interleaved.
+template <unsigned LOG2B, bool kWide16>
+static inline __attribute__((always_inline)) void dynGroupEdge(const uint8_t *__restrict in, const uint16_t *__restrict vec, unsigned lane0, unsigned count,
+                                uint8_t *&o, uint32_t &acc, unsigned &bits) {
+  constexpr unsigned B = 1u << LOG2B;
+  constexpr unsigned D = kDynBlockSamples / B;
+  constexpr unsigned kPer = 32 >> (LOG2B + 1);
+  constexpr size_t kBytes = kWide16 ? 2 : 1;
+  const uint8_t *const s0 = in + kBytes * (D - 1);
+  while (count) {
+    const unsigned g = count < kPer ? count : kPer;
+    const uint32_t mask = dynLowMask(g);
+    uint32_t word = 0;
+    const uint8_t *s = s0;
+    for (unsigned k = 0; k < B; ++k, s += kBytes * D) {
+      const uint32_t level = ((kWide16 ? *reinterpret_cast<const uint16_t *>(s) : *s) >> lane0) & mask;
+      const uint32_t edge = (vec[k] >> lane0) & mask;
+      word |= (dynSpread<LOG2B + 1>(level) << (2 * k)) | (dynSpread<LOG2B + 1>(edge) << (2 * k + 1));
+    }
+    dynAppend32(o, acc, bits, word, g * 2 * B);
+    lane0 += g;
+    count -= g;
+  }
+}
+
+// Fallback (D <= 4 for hold / any, D <= 8 for edge): the E114 per-channel path.
+template <bool kWide16>
+static inline __attribute__((always_inline)) void dynGroupSlow(const uint8_t *__restrict in, unsigned worker, const DynamicProfile::Group &gref, uint8_t *&o, uint32_t &acc,
+                         unsigned &bits) {
+  const DynamicProfile::Group g = gref;  // by value: byte stores below would otherwise force reloads of every field
+  constexpr size_t kBytes = kWide16 ? 2 : 1;
+  const unsigned d = g.d;
+  const size_t stride = kBytes * d;
+  const unsigned mode = g.mode, log2d = g.log2d, phase = g.phase, active = g.active, count = g.count, lane0 = g.lane0;
+  uint32_t lacc = acc;
+  unsigned lbits = bits;
+  uint8_t *lo = o;
+  for (unsigned c = 0; c < count; ++c) {
+    const unsigned lane = lane0 + c;
+    unsigned buckets = kDynBlockSamples / d;
+    if (mode == kModeHold || (mode == kModeAnyActive && log2d == 0)) {
+      const uint8_t *s = in + kBytes * phase;
       while (buckets) {
         const unsigned n = buckets > 16 ? 16 : buckets;
         uint32_t word = 0;
         for (unsigned j = 0; j < n; ++j, s += stride) {
           word |= ((kWide16 ? *reinterpret_cast<const uint16_t *>(s) : *s) >> lane & 1u) << j;
         }
-        dynAppend(o, acc, bits, word, n);
+        dynAppend(lo, lacc, lbits, word, n);
         buckets -= n;
       }
-    } else if (ch.mode == kModeAnyActive) {
-      const uint16_t *vec = ch.active ? BucketOr[worker][ch.log2d] : BucketAnd[worker][ch.log2d];
+    } else if (mode == kModeAnyActive) {
+      const uint16_t *vec = active ? BucketOr[worker][log2d] : BucketAnd[worker][log2d];
       while (buckets) {
         const unsigned n = buckets > 16 ? 16 : buckets;
         uint32_t word = 0;
         for (unsigned j = 0; j < n; ++j) word |= ((*vec++ >> lane) & 1u) << j;
-        dynAppend(o, acc, bits, word, n);
+        dynAppend(lo, lacc, lbits, word, n);
         buckets -= n;
       }
-    } else {  // edge_latch: bucket-end level, plus whether an active edge occurred inside the bucket
-      const uint16_t *vec = ch.log2d == 0 ? kZeroBuckets : ch.active ? BucketRise[worker][ch.log2d] : BucketFall[worker][ch.log2d];
-      const uint8_t *s = in + kBytes * (ch.d - 1);
+    } else {
+      const uint16_t *vec = log2d == 0 ? kZeroBuckets : active ? BucketRise[worker][log2d] : BucketFall[worker][log2d];
+      const uint8_t *s = in + kBytes * (d - 1);
       while (buckets) {
         const unsigned n = buckets > 8 ? 8 : buckets;
         uint32_t word = 0;
@@ -1125,8 +1296,61 @@ static void encodeDynamicBlock(const uint8_t *__restrict in, uint8_t *__restrict
           const uint32_t edge = (*vec++ >> lane) & 1u;
           word |= (level | (edge << 1)) << (2 * j);
         }
-        dynAppend(o, acc, bits, word, 2 * n);
+        dynAppend(lo, lacc, lbits, word, 2 * n);
         buckets -= n;
+      }
+    }
+  }
+  o = lo;
+  acc = lacc;
+  bits = lbits;
+}
+
+template <unsigned F, bool kWide16>
+static void encodeDynamicBlock(const uint8_t *__restrict in, uint8_t *__restrict out, unsigned worker) {
+  const DynamicProfile &p = Dyn;
+  uint8_t *o = out;
+  encodeDynamicFast<F, kWide16>(in, o);
+  if (p.needOr) dynReduceQuantity<kWide16, kQOr>(in, BucketOr[worker], p.reduceMaxLog2d, p.needLevel1);
+  if (p.needAnd) dynReduceQuantity<kWide16, kQAnd>(in, BucketAnd[worker], p.reduceMaxLog2d, p.needLevel1);
+  if (p.needRise) dynReduceQuantity<kWide16, kQRise>(in, BucketRise[worker], p.reduceMaxLog2d, p.needLevel1);
+  if (p.needFall) dynReduceQuantity<kWide16, kQFall>(in, BucketFall[worker], p.reduceMaxLog2d, p.needLevel1);
+  uint32_t acc = 0;
+  unsigned bits = 0;
+  const unsigned groupCount = p.groupCount;
+  for (unsigned gi = 0; gi < groupCount; ++gi) {
+    const DynamicProfile::Group g = p.groups[gi];
+    if (g.count == 1) {  // a B x 1 transpose costs more than the per-channel gather
+      dynGroupSlow<kWide16>(in, worker, g, o, acc, bits);
+      continue;
+    }
+    if (g.mode == kModeHold || (g.mode == kModeAnyActive && g.log2d == 0)) {
+      switch (g.log2d) {
+        case 7: dynGroupHold<0, kWide16>(in, g.lane0, g.count, g.phase, o, acc, bits); break;
+        case 6: dynGroupHold<1, kWide16>(in, g.lane0, g.count, g.phase, o, acc, bits); break;
+        case 5: dynGroupHold<2, kWide16>(in, g.lane0, g.count, g.phase, o, acc, bits); break;
+        case 4: dynGroupHold<3, kWide16>(in, g.lane0, g.count, g.phase, o, acc, bits); break;
+        case 3: dynGroupHold<4, kWide16>(in, g.lane0, g.count, g.phase, o, acc, bits); break;
+        default: dynGroupSlow<kWide16>(in, worker, g, o, acc, bits); break;
+      }
+    } else if (g.mode == kModeAnyActive) {
+      const uint16_t *vec = g.active ? BucketOr[worker][g.log2d] : BucketAnd[worker][g.log2d];
+      switch (g.log2d) {
+        case 7: dynGroupVec<0>(vec, g.lane0, g.count, o, acc, bits); break;
+        case 6: dynGroupVec<1>(vec, g.lane0, g.count, o, acc, bits); break;
+        case 5: dynGroupVec<2>(vec, g.lane0, g.count, o, acc, bits); break;
+        case 4: dynGroupVec<3>(vec, g.lane0, g.count, o, acc, bits); break;
+        case 3: dynGroupVec<4>(vec, g.lane0, g.count, o, acc, bits); break;
+        default: dynGroupSlow<kWide16>(in, worker, g, o, acc, bits); break;
+      }
+    } else {
+      const uint16_t *vec = g.log2d == 0 ? kZeroBuckets : g.active ? BucketRise[worker][g.log2d] : BucketFall[worker][g.log2d];
+      switch (g.log2d) {
+        case 7: dynGroupEdge<0, kWide16>(in, vec, g.lane0, g.count, o, acc, bits); break;
+        case 6: dynGroupEdge<1, kWide16>(in, vec, g.lane0, g.count, o, acc, bits); break;
+        case 5: dynGroupEdge<2, kWide16>(in, vec, g.lane0, g.count, o, acc, bits); break;
+        case 4: dynGroupEdge<3, kWide16>(in, vec, g.lane0, g.count, o, acc, bits); break;
+        default: dynGroupSlow<kWide16>(in, worker, g, o, acc, bits); break;
       }
     }
   }
@@ -1727,7 +1951,7 @@ static void sendLine(int length) {
 static void sendStatus(esp_err_t result) {
   int length = snprintf(
       reinterpret_cast<char *>(StatusBuffer), kStatusBytes,
-      "E114_STATUS result=%s rate_hz=%lu width=%u profile=%s sink_only=%u flags=0x%02x usb_core=%d rx_isr_core=%d "
+      "E115_STATUS result=%s rate_hz=%lu width=%u profile=%s sink_only=%u flags=0x%02x usb_core=%d rx_isr_core=%d "
       "stage_bytes=%lu blocks=%llu encoded=%llu sent=%llu completions=%llu direct_segments=%llu bounce_segments=%llu "
       "spill_bytes=%llu spill_high_water=%lu spill_overflow=%lu first_spill_us=%lld first_overflow_us=%lld "
       "spill_mode_us=%lld spill_push_us_max=%lu bounce_pop_us_max=%lu completion_gap_us_max=%lu completion_gap_at_us=%lld arm_failures=%lu callbacks=%llu "
@@ -1939,7 +2163,7 @@ void setup() {
     Stage[i] = static_cast<uint8_t *>(heap_caps_aligned_alloc(64, kStageBytes, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
   }
   if (!Ring || !Source || !Stage[kStageCount - 1]) {
-    Serial.printf("E114_FATAL internal allocation failed ring=%p source=%p stage_last=%p free_internal=%u\n", Ring, Source,
+    Serial.printf("E115_FATAL internal allocation failed ring=%p source=%p stage_last=%p free_internal=%u\n", Ring, Source,
                   Stage[kStageCount - 1], static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)));
     abort();
   }
@@ -1963,7 +2187,7 @@ void setup() {
   UsbConfig.vid = kVid;
   UsbConfig.pid = kPid;
   UsbConfig.manufacturer = "wch-protocols";
-  UsbConfig.product = "E114 P4 dynamic descriptor";
+  UsbConfig.product = "E115 P4 grouped plane transpose";
   // Same serial as E104..E107 so the Windows devnode / WinUSB binding persists.
   UsbConfig.serialNumber = "e104-p4-windows-v1";
   UsbConfig.controller = EspUsbController::HighSpeed;
@@ -1976,7 +2200,7 @@ void setup() {
   spinStart();
   delay(300);
   SpinCalibPerSec = static_cast<uint32_t>(static_cast<uint64_t>(spinStop()) * 1000U / 300U);
-  Serial.printf("E114_READY usb=%u usb_core=%d usbd_priority=%u dma=%u dma_active=%u dwc2_arch=%u gahbcfg=0x%08lx gintmsk_rxflvl=%u codec_o2=%u "
+  Serial.printf("E115_READY usb=%u usb_core=%d usbd_priority=%u dma=%u dma_active=%u dwc2_arch=%u gahbcfg=0x%08lx gintmsk_rxflvl=%u codec_o2=%u "
                 "spin_calib_per_s=%lu stage_bytes=%u stages=%u "
                 "free_internal=%u free_spiram=%u buffers=%u bench_us=%llu checksum=%lu\n",
                 UsbReady, UsbInitCore, static_cast<unsigned>(UsbdPriority),

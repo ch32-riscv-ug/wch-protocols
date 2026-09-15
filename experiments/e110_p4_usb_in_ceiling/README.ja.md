@@ -1,6 +1,6 @@
 # E110 USB HS bulk INの転送速度をゼロベースで再測する
 
-状態: **完了 — 天井はDWC2のbulk IN TX FIFOが1 packet分だったこと。2 packetにすると29.7→49.3 MB/s（395 Mbps、理論の93%）、Windows nativeでも47.1 MB/s。transfer長・arm深さ・URB・再arm経路は主因ではなかった**（2026-09-15）
+状態: **完了 — 天井はDWC2のbulk IN TX FIFOが1 packet分だったこと。2 packetにすると29.7→49.3 MB/s（395 Mbps、理論の93%）、Windows nativeでも47.1 MB/s。transfer長・arm深さ・URB・再arm経路は主因ではなかった**（2026-09-15） — **参考値（独自patch版library）**（EspUsbDevice 2.3.0＋E097/E101/E102/E110の一時patch。正規libraryに取り込まれるまで製品の目安には使わず、修正依頼の根拠にのみ使う）
 
 規則: [実測の規則](../README.ja.md) / 台帳: [LEDGER](../LEDGER.ja.md) / 先行: [E108](../e108_p4_zero_copy_stream/README.ja.md)、[E102](../e102_p4_vendor_in_zero_copy_precomputed/README.ja.md)、[E104](../e104_p4_windows_continuous_bulk/README.ja.md)、[E090](../e090_p4_dwc2_double_buffer/README.ja.md)
 

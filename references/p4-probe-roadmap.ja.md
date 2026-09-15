@@ -6,6 +6,8 @@
 
 ## 1. 現時点の結論
 
+> **数値の扱い（2026-09-15、持ち主の方針）**: E108以降（E108〜E115）の数値は、出荷版EspUsbDevice 2.3.0に一時patch（E097 direct RX / E101 TX完了callback / E102 zero-copy / E110 TX FIFO 2 packet）を当てた**独自patch版libraryでの参考値**であり、製品の目安・仕様には使えない。使えるのは**正規libraryに取り込まれた機能で取った数値**だけである。patch版の数値はlibraryへの修正依頼（[EspUsbDevice宛](espusbdevice-change-requests.ja.md) CR-10〜13、[EspUsbHost宛](espusbhost-change-requests.ja.md)）の根拠にのみ使う。正規版（2.3.0、buffered経路、TX FIFO 1 packet）で成立している数値は[E106](../experiments/e106_p4_mixed_rate_capture_stream/README.ja.md) / [E107](../experiments/e107_p4_stream_core_placement/README.ja.md): **8-bit 60 Msps×5回、16-bit wide 40 Msps×3回PASS（Windows native）、USB-only probe 193 Mbps（native）/ 213 Mbps（usbipd/WSL）**。CR-13（TX FIFO 2 packet）は先方のworking treeで採用済みだが未release。以下の表と文中の「実測済み」のうちE108以降を根拠とするものは、releaseに取り込まれた時点で正規版で再測して置き換える。
+
 ### 1.1 製品向けの説明
 
 方針（2026-09-15、持ち主）: **16 channel時の仕様を前面に出す。** 数値の目安は最終的に持ち主が書き換える。以下は方針と、現時点の実測に基づく例である。
@@ -21,14 +23,16 @@
 
 | 説明 | 裏付け | 状態 |
 |---|---|---|
-| 60 Msps×複数＋縮約channelで合計16 ch | 16-bit wide profile（3 full＋1 D8＋12 D64）を72 MspsまでPASS（E111）、40 Mspsは60 s soak欠損0（E109） | 3 fullは実測済み。4〜5 fullや1/32はcodec未実装（Phase Aの任意descriptorで） |
-| 300 Mbps環境で60 Msps×5 ch | 5 full＋1/32×11（322.5 Mbps）を60 Mspsで3回PASS、64まで通る（[E112](../experiments/e112_p4_16ch_allocation_profiles/README.ja.md)）。ただしcore 0 99%・USB予算92%で、30 s soak 2回中1回に一過性の不一致 | **実測済み（上限いっぱいの構成）**。9割規則では4 ch＋縮約 |
-| 60 Msps×4＋1.875 Msps×12＝262.5 Mbps | 4 full＋12 D32 profileを60 Mspsで3回＋30 s soak 2回欠損0、上限68 Msps（[E112](../experiments/e112_p4_16ch_allocation_profiles/README.ja.md)）。codec 81 / 86%、USB予算の77% | **実測済み** |
-| 8 ch以下で100 Msps | 8-bit 3 full＋5 D64を100 Mspsで30 s soak欠損0、108 Mspsまで3回PASS（E111） | 「3 full＋5縮約」として実測済み。8本すべて100 Mspsは800 Mbpsで線に載らない |
-| 2 ch以下で160 Msps | PARLIO 2-bit幅×160 MHzの素通し（320 Mbps）を10回＋30 s soak欠損0（[E113](../experiments/e113_p4_2ch_160m_passthrough/README.ja.md)）。USB予算の93%、core 0 30% | **実測済み（USBが350 Mbps級の環境で）**。300 Mbpsの環境では2 ch 120〜140 Msps |
-| 実測の9割で使う | probe→90%規則。E106〜E111の全経路で適用 | 測定は実装済み。自動ACCEPT / fallbackはPhase B |
+| 60 Msps×複数＋縮約channelで合計16 ch | 16-bit wide profile（3 full＋1 D8＋12 D64）を72 MspsまでPASS（E111）、40 Mspsは60 s soak欠損0（E109） | 3 fullは実測済み。4〜5 fullや1/32はcodec未実装（Phase Aの任意descriptorで） **参考値（独自patch版library）** |
+| 300 Mbps環境で60 Msps×5 ch | 5 full＋1/32×11（322.5 Mbps）を60 Mspsで3回PASS、64まで通る（[E112](../experiments/e112_p4_16ch_allocation_profiles/README.ja.md)）。**約4.7分soak欠損0（330 Mbps、E112追記）**。ただしcore 0 99.6% / core 1 98%で余裕なし。以前の「30 s soakで一過性の不一致」はhost tool側の原因 | **実測済み（上限いっぱいの構成）**。9割規則では4 ch＋縮約 **参考値（独自patch版library）** |
+| 60 Msps×4＋1.875 Msps×12＝262.5 Mbps | 4 full＋12 D32 profileを60 Mspsで3回＋30 s soak 2回欠損0、**約4.7分soak欠損0（269 Mbps、E112追記。E114のfree list stage＋退避16 MiB、検証をcapture後に回したhost）**、上限68 Msps（[E112](../experiments/e112_p4_16ch_allocation_profiles/README.ja.md)）。USB予算の77%、core 0 97% / core 1 91% | **実測済み** **参考値（独自patch版library）** |
+| 8 ch以下で100 Msps | 8-bit 3 full＋5 D64を100 Mspsで30 s soak欠損0、108 Mspsまで3回PASS（E111） | 「3 full＋5縮約」として実測済み。8本すべて100 Mspsは800 Mbpsで線に載らない **参考値（独自patch版library）** |
+| 2 ch以下で160 Msps | PARLIO 2-bit幅×160 MHzの素通し（320 Mbps）を10回＋30 s soak欠損0（[E113](../experiments/e113_p4_2ch_160m_passthrough/README.ja.md)）。USB予算の93%、core 0 30% | **実測済み（USBが350 Mbps級の環境で）**。300 Mbpsの環境では2 ch 120〜140 Msps **参考値（独自patch版library）** |
+| 実測の9割で使う | probe→90%規則。E106〜E111の全経路で適用 | 測定は実装済み。自動ACCEPT / fallbackはPhase B **参考値（独自patch版library）** |
 
 ### 1.2 実証済みの代表profile
+
+E108以降の列（zero-copy、TX FIFO 2 packet、2 worker）は独自patch版libraryでの参考値。正規版の列はE106 / E107。
 
 | physical幅 | channel構成 | 内部capture→codec（E108、`-O2`） | USB結合（E106: buffered、USBをcore 1で初期化） | USB結合（E107: USBをcore 0＋codec改修、Windows native） | USB結合（E108: zero-copy、usbipd/WSL直結） | USB結合（E110/E111: TX FIFO 2 packet＋codec 2 core） |
 |---:|---|---|---|---|---|---|
@@ -41,6 +45,8 @@
 HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 Mbpsだった。PC直結へ変更後は256 MBで212.666 Mbps、90%予算191.400 Mbpsまで改善した。E106の結合試験ではUSB予算内の8-bit 60 Mspsと16-bit 40 Mspsでもringを追い越し、当初は「速くなったUSB taskがcore 0上のRX callback / spoolと競合した」と推定した。[E107](../experiments/e107_p4_stream_core_placement/README.ja.md)でFreeRTOS run-time statsを取ると、競合はcore 0ではなく**codecと同じcore 1**にあった。TinyUSBのDWC2割り込みとusbd taskは`Device.begin()`を呼んだcore（Arduinoの`setup()`＝core 1）に乗る。USBをcore 0で初期化し、codec loopをprofile別に直すと、PC直結（Windows native）で8-bit 60 Msps 5回、16-bit wide 40 Msps 3回PASSした。同経路のUSB-only probeは193 Mbps、90%予算173 Mbpsで、8-bit 60 Msps（187.5 Mbps）は予算超えである。**USB予算と内部sink上限に加えて結合上限も持つが、現在の結合上限はcodec速度とUSB帰路そのもので決まる。** さらに[E108](../experiments/e108_p4_zero_copy_stream/README.ja.md)でcodec stage（27,136 byte）をDWC2へ直接渡すzero-copy送信にすると、USB-onlyは同じusbipd/WSL直結で209→**247 Mbps**（90%予算222 Mbps）、core 0のtask負荷は8-bit 60 Mspsで57〜66%→**7%**になり、結合上限はcodecだけで決まる（8-bit 72 / wide 52〜56 MspsまでPASS）。8-bit 60 Mspsは予算の84%、wide 40は60%で、どちらも通常値として余裕がある。
 
 ### 1.3 実装上分かったこと
+
+USB帰路に関する項目（zero-copy、TX FIFO、完了callback）はpatch版での知見で、正規libraryへの修正依頼の根拠として使う。codecやPARLIO側の知見はlibraryに依らない。
 
 - TinyUSBのsoftware ringとDWC2 hardware TX FIFOは別物。hardware FIFOを1 packetから2 packetへ増やしても25.575 MB/sの天井は変わらず、E090の仮説は反証された。
 - P4→PCは、事前生成zero-copyなら36.159 MB/sまで出る。実captureではPARLIO callback、codec、stage queue、PSRAM copy、USBが合成された上限を見る必要がある。
@@ -60,9 +66,11 @@ HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 M
 - P4のDWC2はEspUsbDeviceの既定（`src/internal/EspUsbTinyUsbConfig.h`）で**DMA mode**で動いている（E109で`GAHBCFG.DMAEn=1`・`GINTMSK.RXFLVL=0`を確認）。E107 / E108で書いた「slave modeのISRがFIFOへ押す」は誤りで、buffered経路のcopyは3回、`CFG_TUD_DWC2_DMA_ENABLE`の明示は何も変えない。run-time statsはISR時間を中断されたtaskに計上するので、core 0の真の負荷はpriority 1のspin taskで測る。8-bit 60 Mspsで約23%（task計上は7%）。
 - codecは`-O2`で8-bit約1 point、wideで約4 point軽くなる。cache line先読みは約1 point。device側Gray checkは7〜8 pointで、製品firmwareには載らない。
 - **任意descriptorは成立、generic codecの費用は固定profileの1.4〜1.8倍**（[E114](../experiments/e114_p4_dynamic_descriptor/README.ja.md)）。deviceがraw channelを下位lane・縮約channelを上位laneに並べ替えるので、fast部はF=1〜8共通の4回のmasked shiftで済み、縮約のOR / AND / 立上り / 立下りはwordに詰まったsample（8-bit幅は4本、16-bit幅は2本）を折って2分木で作れる。費用を決めるのは縮約channelごとのbucket値の取り出し（hold 1値あたり6〜8 cycle）で、16 ch hold構成は34〜40 Msps、8-bit F=3は58〜70 Msps、any / edge構成は固定の0.2〜0.4倍。（mode, D, phase）の群ごとにbit行列を転置すれば固定profileと同じ費用構造になる（E115候補）。
+- **縮約channelの取り出しは群ごとのbit行列転置で費用がほぼ消える**（[E115](../experiments/e115_p4_grouped_plane_transpose/README.ja.md)）。deviceが（mode, D, phase, polarity）の同じchannelを連続laneに置き、bucket kのG bitを`spread`で広げてORすればplaneが直接出る（1群5本で費用≈0）。generic codecは16 ch hold構成で47.9 Msps/core（E114の1.5倍）、8-bit F=3で75、streamingは16 chで50 Msps byte一致（55で落ちる）、8-bitで80。固定wide 72に対して0.7倍で、残りはfast部（F bit gather、約5 cycle/sample）とper-block overhead。1 channelだけの群はE114経路のまま（B×1の転置は損）。群関数はalways_inlineでないと呼び出し1回約100 cycleを失う。
 - **codec上限は表でなくdevice上のbenchで決める。** descriptorを受けるたびに同じencoderを8,192 block走らせ`bench_msps`を返し、`bench × 1.2 × 0.9`を超えるrateをREJECTする。2 workerのstreamingは単core benchの1.25〜1.56倍まで通るが、core idle約10%が残るのは約1.1倍まで。線形補間表はmode構成で10倍ずれるので使わない。
 - **host toolはURB完了callbackの中で仕事をしない。** libusbのevent loopがPythonの処理（開始位相探索など）で数百ms塞がるとURBが再投入されず、usbipd/WSL経路は「約200 msの穴が繰り返す」状態に落ちて回復しない（Windows nativeでも出る）。device側ではarm済みtransferの完了が130〜600 ms止まって見える。E109〜E113のhostは検証が軽くて偶然通っていた。検証・探索はcapture後に行う。
 - stage bufferは`index % N`固定でなくfree listから割り当てる。USBが止まっても直接arm済みの2 slot以外は退避に回して即返せるので、codecは退避（8 MiB）が満ちるまで止まらない（E114）。
+- **16 chの60 M×4＋1/32×12（269 Mbps）と60 M×5＋1/32×11（330 Mbps）は約4.7分のsoakを欠損0で通った**（E112追記、E114 firmware＋検証をcapture後に回したhost）。以前の「four 60が2.8分で落ちた」はhost toolの検証がUSBを止めていたのと、hostの転送に時々入る100〜200 msの穴に対してE112 firmwareのstage割り当てが2 stage分しか耐えなかったため。穴に耐えるにはfree list stage＋PSRAM退避16 MiB（33 MB/sで約480 ms）が要る。退避のin/out copyがcore 0のusb taskに載る点（33 MB/s級で上限近い）が次の壁。
 - loopback源（PARLIO TXのGray counter）は8-bit幅58〜60 Mspsでbyte一致検証の開始位相が取れない（1 bitずれ）。Gray進行checkなら通る。上限付近のbyte一致には別の源が要る。
 
 ## 2. 近い目標の現在地
@@ -73,8 +81,8 @@ HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 M
 | `.sr`保存とstock decoder | **達成**。P4でcaptureした`.sr`をsigrok decoderが読める |
 | PulseViewへIP経由 | **raw streamでは達成**。mixed-rate descriptorからbase gridへ復元するgatewayは未実装 |
 | USB経路の予算測定 | **測定コマンド成立**。TX FIFO 2 packetでprobeは389 Mbps（usbipd/WSL）／377 Mbps（native）、90%予算350 / 339 Mbps。90%予算による自動ACCEPT / fallbackは未実装 |
-| 任意descriptorとACCEPT / REJECT | **成立**（E114）。16 byte header＋channelごと4 byteのdescriptorをdeviceが受け、幅・block・payload・padding・raw / wire帯域・bench由来のcodec上限を返し、形式・PARLIO・raw帯域・codec上限・USB予算・stage整列でREJECTする。generic codecの出力はE105 referenceとbyte一致（配線順不同、any_active、edge_latch、phase、polarity）。通常値はgenericで16 ch hold 34 Msps、8-bit 58 Msps。固定profile並みに戻すのはE115候補 |
-| task配置と結合上限 | **E107〜E111で確定**。USBはcore 0で初期化、stageをzero-copyでDWC2へ（TX FIFO 2 packet）、codecは2 worker。8-bit 108 / wide 72 MspsまでPASS、8-bit 100 / wide 64は30 s soak欠損0。60 / 40は大きな余裕を持つ通常値。残りはhub経路と分単位超のsoak |
+| 任意descriptorとACCEPT / REJECT | **成立**（E114）。16 byte header＋channelごと4 byteのdescriptorをdeviceが受け、幅・block・payload・padding・raw / wire帯域・bench由来のcodec上限を返し、形式・PARLIO・raw帯域・codec上限・USB予算・stage整列でREJECTする。generic codecの出力はE105 referenceとbyte一致（配線順不同、any_active、edge_latch、phase、polarity）。通常値はgenericで16 ch hold 42 Msps（E115後。50までbyte一致）、8-bit 67（80まで通る）。固定profile並み（60〜72）にはfast部の見直しが残る（E115 §4） **参考値（独自patch版library）** |
+| task配置と結合上限 | **E107〜E111で確定**。USBはcore 0で初期化、stageをzero-copyでDWC2へ（TX FIFO 2 packet）、codecは2 worker。8-bit 108 / wide 72 MspsまでPASS、8-bit 100 / wide 64は30 s soak欠損0。60 / 40は大きな余裕を持つ通常値。残りはhub経路と分単位超のsoak **参考値（独自patch版library）** |
 | RVSWDでCH32へ書込 | **未着手**。CH32とP4の配線待ち |
 | RVSWD / SWIO decoder | **未着手**。実信号取得は上記配線待ち |
 
@@ -107,7 +115,7 @@ HS hub 2段＋usbipd/WSLでのUSB-only probeは120.860 Mbps、90%予算108.774 M
 
 ### Phase D — 最後にチューニングする
 
-1. descriptorをprofile別の固定高速codecへdispatchするか、generic codecを最適化するか比較する。**E114で測った: genericは固定の1.4〜1.8倍の費用。次はgenericの縮約取り出しを群ごとのbit行列転置にする（E115候補）**。E107ではprofile別templateが必要だった。genericにする場合も`-Os`でのlambda / 間接呼び出しを避ける。E111の2 worker構成ならgeneric codecの重さを吸収する余地がある（8-bit 60 Mspsでcodec合計約90%相当の予算）。
+1. descriptorをprofile別の固定高速codecへdispatchするか、generic codecを最適化するか比較する。**E114で測った: genericは固定の1.4〜1.8倍の費用。E115で縮約取り出しを群ごとのbit行列転置にして16 ch holdは32→48 Msps/core、streaming 50まで（固定wide 72の0.7倍）。残りはfast部の費用（E115 §4）**。E107ではprofile別templateが必要だった。genericにする場合も`-Os`でのlambda / 間接呼び出しを避ける。E111の2 worker構成ならgeneric codecの重さを吸収する余地がある（8-bit 60 Mspsでcodec合計約90%相当の予算）。
 2. PARLIO callback量、ring / queue / stageサイズ、PSRAM copyの配置を掃引する。
 3. **E107 / E108で実施。** 競合はcore 0ではなくcore 1側で、USBをcore 0で初期化して解消した（E107）。zero-copy送信でcore 0のUSB負荷はほぼ消え、USB-onlyも247 Mbpsへ上がった（E108）。DWC2 DMA flagは効果なし。task優先度、PARLIO割り込みのcore、内部RAM FIFOは効かない。E090で反証済みのhardware TX FIFO増量は繰り返さない。
 4. 安全marginを再測定し、表向きの60 / 40 Mspsを最終確定する。**E109で直結については確定**。E110 / E111後は8-bit 100（codec 84 / 87%、USB予算の89%）、wide 64（codec 89 / 90%、USB 61%）が「余裕を持つ点」で、通常値を引き上げるかは持ち主判断。残りはhub経路、分単位超のsoak。
