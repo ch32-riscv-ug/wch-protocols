@@ -6,7 +6,7 @@ PulseView などへ「選べる sample rate」を出すとき、**値は 3 つ�
 
 ## 0. 製品としての要約
 
-方針（持ち主、2026-09-15）: **16 channel時の仕様を前面に出す。** 最大60 Mspsの高速取得を複数channelで行い、時間解像度を落としたchannelを多数足して合計16 channelまで取る。USBの通信速度は環境で変わるので、高速取得できるchannel数は環境で異なる。速度は実測してその約9割で使うことを推奨する。8 channel以下なら100 Msps、2 channel以下なら160 Mspsで取得できる場合もある。数値の目安は最終的に持ち主が書き換える。
+方針（持ち主、2026-09-15）: **16 channel時の仕様を前面に出す。** 最大60 Mspsの高速取得を複数channelで行い、時間解像度を落としたchannelを多数足して合計16 channelまで取る。USBの通信速度は環境で変わるので、高速取得できるchannel数は環境で異なる。速度は実測してその約9割で使うことを推奨する。8 channel以下なら100 Msps、2 channel以下なら160 Mspsで取得できる場合もある（2 ch 160 Mspsは[E113](../experiments/e113_p4_2ch_160m_passthrough/README.ja.md)でUSB 380 Mbps級の環境で欠損0、320 Mbps＝予算の93%）。数値の目安は最終的に持ち主が書き換える。
 
 配分の式は`Σ(channel iのrate) ≤ 0.9 × probe実測`である。高速channelは1 bit/sampleなので60 Mspsは60 Mbps、1/32へ縮約したchannelは1.875 Mbpsになる。
 
@@ -17,8 +17,8 @@ base 60 Mspsのとき、縮約したchannelの時間刻みは 1/2 = 30 M（33 ns
 | 389 Mbps（E110、PC直結 usbipd/WSL） | 60 M × 5 ＋ 1/64（0.94 M）× 11 | 310.3 Mbps | 80% |
 | 389 Mbps | 60 M × 4 ＋ 1/2（30 M）× 2 ＋ 1/8（7.5 M）× 4 ＋ 1/32（1.875 M）× 6 | 341.25 Mbps | 88% |
 | 389 Mbps | 全16 chを同率20 M | 320 Mbps | 82% |
-| 300 Mbps | 60 M × 5 | 300 Mbps | 100%（上限いっぱい。9割規則では入らない） |
-| 300 Mbps | 60 M × 4 ＋ 1/32（1.875 M）× 12 | 262.5 Mbps | 87.5% |
+| 300 Mbps | 60 M × 5 | 300 Mbps | 100%（上限いっぱい。9割規則では入らない。5 full＋1/32×11は[E112](../experiments/e112_p4_16ch_allocation_profiles/README.ja.md)で3回PASSしたがcore 0 99%） |
+| 300 Mbps | 60 M × 4 ＋ 1/32（1.875 M）× 12 | 262.5 Mbps | 87.5%（[E112](../experiments/e112_p4_16ch_allocation_profiles/README.ja.md)で3回＋30 s soak 2回欠損0） |
 | 300 Mbps | 60 M × 3 ＋ 1/2（30 M）× 2 ＋ 1/8（7.5 M）× 2 ＋ 1/64（0.94 M）× 9 | 263.4 Mbps | 88% |
 | 300 Mbps | 60 M × 2 ＋ 1/2（30 M）× 2 ＋ 1/4（15 M）× 4 ＋ 1/32（1.875 M）× 8 | 255 Mbps | 85% |
 | 300 Mbps | 全16 chを同率15 M | 240 Mbps | 80% |
