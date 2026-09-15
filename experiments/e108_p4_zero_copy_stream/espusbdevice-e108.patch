@@ -1,0 +1,120 @@
+diff -ruN -x '*.orig' a/src/EspUsbDevice.cpp b/src/EspUsbDevice.cpp
+--- a/src/EspUsbDevice.cpp	2026-09-15 07:54:01.710923252 +0900
++++ b/src/EspUsbDevice.cpp	2026-09-15 07:54:01.680492755 +0900
+@@ -651,29 +651,45 @@
+ // "works" — but the callback is dead). In buffered mode (CFG_TUD_VENDOR_TXRX_BUFFERED,
+ // the default) buffer/bufsize are NULL/0 and the payload is in the RX FIFO, which
+ // handleRx() drains via available()/read().
++#if defined(ESP_USB_DEVICE_EXPERIMENTAL_DIRECT_VENDOR_RX)
++extern "C" void esp_usb_device_direct_vendor_rx(const uint8_t *buffer, uint32_t bufsize);
++#endif
++
+ void tud_vendor_rx_cb(uint8_t idx, const uint8_t *buffer, uint32_t bufsize)
+ {
+   (void)idx;
++#if defined(ESP_USB_DEVICE_EXPERIMENTAL_DIRECT_VENDOR_RX)
++  esp_usb_device_direct_vendor_rx(buffer, bufsize);
++#else
+   (void)buffer;
+   (void)bufsize;
+   if (g_activeVendor)
+   {
+     g_activeVendor->handleRx();
+   }
++#endif
+ }
+ 
+ // Room has just come back in the transmit FIFO. Same signature rule as
+ // tud_vendor_rx_cb above - this must match class/vendor/vendor_device.h exactly
+ // or it silently stops overriding TinyUSB's weak default and
+ // EspUsbDeviceVendor::waitWritable() waits out its full timeout every call.
++#if defined(ESP_USB_DEVICE_EXPERIMENTAL_DIRECT_VENDOR_TX)
++extern "C" void esp_usb_device_direct_vendor_tx_complete(uint32_t sent_bytes);
++#endif
++
+ void tud_vendor_tx_cb(uint8_t idx, uint32_t sent_bytes)
+ {
+   (void)idx;
++#if defined(ESP_USB_DEVICE_EXPERIMENTAL_DIRECT_VENDOR_TX)
++  esp_usb_device_direct_vendor_tx_complete(sent_bytes);
++#else
+   (void)sent_bytes;
+   if (g_activeVendor)
+   {
+     g_activeVendor->handleTxComplete();
+   }
++#endif
+ }
+ 
+ // The vendor-request handling itself. `observation`, when not null, collects
+@@ -2479,7 +2495,7 @@
+ 
+ int EspUsbDeviceVendor::available()
+ {
+-#if ESP_USB_DEVICE_HAS_TINYUSB
++#if ESP_USB_DEVICE_HAS_TINYUSB && CFG_TUD_VENDOR_TXRX_BUFFERED
+   return static_cast<int>(tud_vendor_n_available(0));
+ #else
+   return 0;
+@@ -2498,7 +2514,7 @@
+   {
+     return 0;
+   }
+-#if ESP_USB_DEVICE_HAS_TINYUSB
++#if ESP_USB_DEVICE_HAS_TINYUSB && CFG_TUD_VENDOR_TXRX_BUFFERED
+   return tud_vendor_n_read(0, buffer, static_cast<uint32_t>(size));
+ #else
+   return 0;
+@@ -2619,7 +2635,7 @@
+ 
+ void EspUsbDeviceVendor::flush()
+ {
+-#if ESP_USB_DEVICE_HAS_TINYUSB
++#if ESP_USB_DEVICE_HAS_TINYUSB && CFG_TUD_VENDOR_TXRX_BUFFERED
+   tud_vendor_n_write_flush(0);
+ #endif
+ }
+@@ -2689,7 +2705,9 @@
+   //
+   // Draining here makes the room real before the wake-up. TinyUSB's refill, one
+   // line later, then finds the FIFO empty and does nothing.
++#if CFG_TUD_VENDOR_TXRX_BUFFERED
+   tud_vendor_n_write_flush(0);
++#endif
+   xSemaphoreGive(static_cast<SemaphoreHandle_t>(writableSignal_));
+ #endif
+ }
+diff -ruN -x '*.orig' a/src/class/vendor/vendor_device.c b/src/class/vendor/vendor_device.c
+--- a/src/class/vendor/vendor_device.c	2026-09-15 07:54:01.714750182 +0900
++++ b/src/class/vendor/vendor_device.c	2026-09-15 07:54:01.692759273 +0900
+@@ -211,15 +211,30 @@
+                                                        uint32_t bufsize, const void *buffer, uint32_t len) {
+   TU_VERIFY(ep > 0, 0); // must be opened
+   TU_VERIFY(usbd_edpt_claim(p_itf->rhport, ep), 0);
++#if defined(ESP_USB_DEVICE_EXPERIMENTAL_VENDOR_TX_ZERO_COPY)
++  // E108: hand the caller's buffer straight to the DCD. The caller owns it until
++  // tud_vendor_tx_cb() reports completion, and is not limited to the epbuf size
++  // (only by the 16-bit transfer length of usbd_edpt_xfer).
++  (void) epbuf;
++  (void) bufsize;
++  const uint32_t xact_len = tu_min32(len, 0xffffu);
++  TU_ASSERT(usbd_edpt_xfer(p_itf->rhport, ep, (uint8_t *) buffer, (uint16_t) xact_len, false), 0);
++#else
+   const uint32_t xact_len = tu_min32(len, bufsize);
+   memcpy(epbuf, buffer, xact_len);
+   TU_ASSERT(usbd_edpt_xfer(p_itf->rhport, ep, epbuf, (uint16_t) xact_len, false), 0);
++#endif
+   return xact_len;
+ }
+ 
+ TU_ATTR_UNUSED static inline uint32_t vendord_ep_write_available(vendord_interface_t *p_itf, uint8_t ep, uint32_t bufsize) {
+   TU_VERIFY(ep > 0, 0); // must be opened
++#if defined(ESP_USB_DEVICE_EXPERIMENTAL_VENDOR_TX_ZERO_COPY)
++  (void) bufsize;
++  return usbd_edpt_busy(p_itf->rhport, ep) ? 0 : 0xffffu;
++#else
+   return usbd_edpt_busy(p_itf->rhport, ep) ? 0 : bufsize;
++#endif
+ }
+ 
+ TU_ATTR_UNUSED static inline bool vendord_ep_read_xfer(vendord_interface_t *p_itf, uint8_t ep, uint8_t *epbuf, uint16_t xfer_len) {

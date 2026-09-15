@@ -1,6 +1,6 @@
 # ESP32-P4 の USB 2.0 HS と 2 channel capture — 到達点まとめ
 
-状態: **まとめ**(2026-09-14。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E104](../experiments/e104_p4_windows_continuous_bulk/README.ja.md) の結論を 1 枚にした索引)
+状態: **まとめ**(2026-09-15 に E108 / E110 の行を §0 へ追加。元は 2026-09-14。[E063](../experiments/e063_p4_usb_hs_enumerate/README.ja.md)〜[E104](../experiments/e104_p4_windows_continuous_bulk/README.ja.md) の結論を 1 枚にした索引)
 
 **§0 が現在の値。§1 以降は 2.2.0 時点の記録**で、数字はそのまま残してある(どこから何が変わったかが追えるように)。
 
@@ -19,6 +19,7 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | 経路 | **実測** | driver | 出典 |
 |---|---:|---|---|
 | **vendor bulk**(TX FIFO 8 KiB / 1 転送 8 KiB) | **約 24 MB/s** | **WinUSB(当たる)** | [E084](../experiments/e084_p4_transfer_tuning/README.ja.md) |
+| **vendor bulk、zero-copy＋DWC2 TX FIFO 2 packet**(1 転送 65,024 B) | **約 49 MB/s＝理論 53.2 MB/s の 93%**(usbipd/WSL 395 Mbps、Windows native 377 Mbps) | WinUSB | [E108](../experiments/e108_p4_zero_copy_stream/README.ja.md) / [E110](../experiments/e110_p4_usb_in_ceiling/README.ja.md)。天井は TinyUSB が bulk IN に割り当てる TX FIFO が 1 packet だったこと |
 | vendor bulk(FIFO 4 KiB / 転送 4 KiB = P4 の既定) | 21.99 MB/s | 同上 | 同上 |
 | vendor bulk(**usbip なし、Windows 直**) | **21.2 MB/s**(旧既定での測定) | WinUSB | [E081](../experiments/e081_p4_winusb_bind/README.ja.md) |
 | **HID(512 B endpoint)** | **4.03 MB/s** | **不要** | [E073](../experiments/e073_p4_hs_hid_throughput/README.ja.md) / CR-8 |
