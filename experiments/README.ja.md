@@ -122,6 +122,10 @@ ID は起票時に確定し、**再利用も再採番もしない**。だから�
 
 **実験が通ったことを仕様の承認とはみなさない。** 仕様([../protocols/](../protocols/))の status を動かすのは §6 の証拠水準を満たしたときだけ。
 
+### build の罠: `build_opt.h` を変えたら `--clean`（2026-09-15）
+
+`arduino-cli compile` は `build_opt.h` の変更を依存関係として見ないので、`--clean` なしだと **sketch だけ再コンパイルされ、library の object は前回の flag のまま** 使われる。`CFG_TUD_*` や `-DE110_IN_FIFO_PACKETS` のように library 側に効く flag を変えて比較するときは必ず `--clean` を付けるか、sketch を別ディレクトリに分ける。sizeが変わらないことでしか気づけない（EspUsbDevice側sessionが踏み、E110の「4 packet＝2 packet」の行が要再測になった）。sketch 側だけに効く flag（codec の `-DE108_CODEC_*` など）はこの罠に当たらない。
+
 ## 3. 確認 → 採番 → 計画 → 実行 → レポート
 
 ### 3.1 採番の前に、機材が用意できるかを確認する
