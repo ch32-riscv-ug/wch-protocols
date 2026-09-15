@@ -17,15 +17,15 @@
 - 8 channel以下なら100 Msps、2 channel以下なら160 Mspsで取得できる場合もある（環境と構成次第）。
 - CS / INT / buttonなどはchannel単位で`1/2、1/4、1/8、1/16、1/32、1/64…`へ時間解像度を下げられる。中心となる特徴は最高rateではなく、**高速信号の分解能を残しながら、低速信号のrateをchannelごとに下げて転送予算を配分できること**である。
 
-説明の各項目と実測の対応は次のとおり。未実装・未測の項目は台帳の候補（`p4-16ch-5full-60m` / `p4-16ch-4full-12d32` / `p4-2ch-160m-passthrough`）にある。
+説明の各項目と実測の対応は次のとおり。§1.1の例はすべて実測済みになった（E109〜E113）。
 
 | 説明 | 裏付け | 状態 |
 |---|---|---|
 | 60 Msps×複数＋縮約channelで合計16 ch | 16-bit wide profile（3 full＋1 D8＋12 D64）を72 MspsまでPASS（E111）、40 Mspsは60 s soak欠損0（E109） | 3 fullは実測済み。4〜5 fullや1/32はcodec未実装（Phase Aの任意descriptorで） |
-| 300 Mbps環境で60 Msps×5 ch | USB-only 389 Mbps・90%予算350 Mbps（E110）。5×60 = 300 Mbpsは実測300の環境では上限いっぱいで、9割規則では4 ch＋縮約が現実的 | 5 full profile未実装・未測 |
-| 60 Msps×4＋1.875 Msps×12＝262.5 Mbps | codecは2 workerでwide 72 Msps（238.5 Mbps）まで処理でき、USBは389 Mbps（E110 / E111） | 4 full＋12 D32（128 sample→70 byte）のprofile未実装・未測 |
+| 300 Mbps環境で60 Msps×5 ch | 5 full＋1/32×11（322.5 Mbps）を60 Mspsで3回PASS、64まで通る（[E112](../experiments/e112_p4_16ch_allocation_profiles/README.ja.md)）。ただしcore 0 99%・USB予算92%で、30 s soak 2回中1回に一過性の不一致 | **実測済み（上限いっぱいの構成）**。9割規則では4 ch＋縮約 |
+| 60 Msps×4＋1.875 Msps×12＝262.5 Mbps | 4 full＋12 D32 profileを60 Mspsで3回＋30 s soak 2回欠損0、上限68 Msps（[E112](../experiments/e112_p4_16ch_allocation_profiles/README.ja.md)）。codec 81 / 86%、USB予算の77% | **実測済み** |
 | 8 ch以下で100 Msps | 8-bit 3 full＋5 D64を100 Mspsで30 s soak欠損0、108 Mspsまで3回PASS（E111） | 「3 full＋5縮約」として実測済み。8本すべて100 Mspsは800 Mbpsで線に載らない |
-| 2 ch以下で160 Msps | PARLIO 2-bit幅×160 MHzの素通し（2 bit/sample＝320 Mbps）は予算350 Mbps内。PARLIO 160 MHzはE061等で使用実績 | 未測 |
+| 2 ch以下で160 Msps | PARLIO 2-bit幅×160 MHzの素通し（320 Mbps）を10回＋30 s soak欠損0（[E113](../experiments/e113_p4_2ch_160m_passthrough/README.ja.md)）。USB予算の93%、core 0 30% | **実測済み（USBが350 Mbps級の環境で）**。300 Mbpsの環境では2 ch 120〜140 Msps |
 | 実測の9割で使う | probe→90%規則。E106〜E111の全経路で適用 | 測定は実装済み。自動ACCEPT / fallbackはPhase B |
 
 ### 1.2 実証済みの代表profile
@@ -158,6 +158,8 @@ EspUsbHostのHR-3（HID 1,024 byte）とrelease判断は、ロジアナのmixed-
 - [E109 soak・繰り返し・経路差](../experiments/e109_p4_stream_soak/README.ja.md)
 - [E110 USB bulk IN天井の再測定（TX FIFO 2 packet）](../experiments/e110_p4_usb_in_ceiling/README.ja.md)
 - [E111 codecの2 core化](../experiments/e111_p4_dual_core_codec/README.ja.md)
+- [E112 16 ch配分例の実測](../experiments/e112_p4_16ch_allocation_profiles/README.ja.md)
+- [E113 2 ch 160 Msps素通し](../experiments/e113_p4_2ch_160m_passthrough/README.ja.md)
 - [sample rateの選び方](p4-sample-rate-selection.ja.md)
 - [PulseView / sigrok連携](pulseview-integration.ja.md)
 - [capture圧縮](capture-compression.ja.md)

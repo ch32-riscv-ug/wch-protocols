@@ -125,3 +125,7 @@ E013の[RUNBOOK.ja.md](../e013_usb_descriptor_profiles/RUNBOOK.ja.md)を基に�
 ## 結果
 
 未実行。
+
+## 参考観測（2026-09-15、実験としては未実行）
+
+EspUsbDevice側のDFU end-to-end試験で、第三P4（`303a:4021`、serial `e104-p4-windows-v1`）を同一identityのまま「vendor interface 1本（E112）→ DFU interface 1本・endpoint 0本 → vendor（E112）」と2往復layoutを入れ替えた。usbipd-winのbindは維持され、Windows側で「Not shared」に落ちることも、古い構成のcacheも観測されず、WSL側の`lsusb` / descriptorは毎回新しい構成を返した。ただし毎回attachをやり直し、観測はWSL側（usbip stub driver経由）なので、Windowsネイティブのdevnode / driver bindingの挙動を示すものではない。**usbip経由・同一identity・layout変更2往復では異常なし**という限定的な1データ点として残す。E062本体（Windowsネイティブでの列挙・driver binding）は未実行のまま。
