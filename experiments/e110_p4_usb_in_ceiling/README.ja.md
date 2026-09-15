@@ -146,3 +146,7 @@ USB帰路は8-bit 76 Msps（237.5 Mbps）でも予算の68%で、退避FIFOが�
 ### 追記（2026-09-15、EspUsbDevice側sessionの独立実測）
 
 ライブラリ側がCR-13（bulk IN TX FIFO 2 packet、DFIFO収支が収まるときだけ自動有効）を実装し、同じP4（esp32-p4-80f1b2d0b261、usbipd/WSL）で**buffered経路**（`waitWritable(writeCapacity())`＋`write()`、FIFO 4096/4096、pyusb 32 MB×3）を測った結果: 1 packet 22.98 / 22.61 / 21.63 MB/s → 2 packet **28.74 / 28.86 / 28.93 MB/s（+26%）**。本実験のzero-copy経路（29.7→49.3 MB/s）と伸び幅が違うのはcopy律速のぶんで、「FIFOだけで取れる分」がライブラリ既定構成での値。先方は採用を決めた（増えるのはDFIFOという固定資源だけで、収まらない構成では従来どおり1 packetに倒れる）。
+
+### 追記（2026-09-15、build手順の罠と「4 packet＝2 packet」の再測要）
+
+EspUsbDevice側sessionが踏んだ罠: **`build_opt.h`を変えても`arduino-cli compile`は`--clean`なしだとライブラリのobjectを再コンパイルしない**（sketch側だけ再コンパイルされ、libraryは前回のflagのまま。sizeが変わらないことでしか気づけない）。本実験の§4の`-DE110_IN_FIFO_PACKETS=N`はlibrary側（`dcd_dwc2.c`）に効くflagで、同じsketchでNを1→2→4と変えて測っているので、**「4 packetは2と同値」の行は4が実際にbuildに反映されていなかった可能性がある**（2 packetの効果そのものは29.7→49.3 MB/sという結果と先方の独立実測＋26%で実在）。4 packetの値は`--clean`付きで再測するまで未確定とする。以後、library側のflagを変える比較は`--clean`を付ける（[実測の規則](../README.ja.md)に追記）。

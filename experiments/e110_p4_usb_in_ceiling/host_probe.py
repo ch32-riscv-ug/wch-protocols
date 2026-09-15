@@ -40,8 +40,9 @@ def read_status(handle, attempts: int = 4, timeout_ms: int = 5000) -> str:
 
 def one_run(handle, args, flags: int) -> tuple[bool, str]:
     total = args.bytes
-    command = b"EP" + struct.pack("<IQBB", args.xfer, total, flags, 0)
-    assert handle.bulkWrite(EP_OUT, command, timeout=2000) == len(command)
+    if not args.no_command:
+        command = b"EP" + struct.pack("<IQBB", args.xfer, total, flags, 0)
+        assert handle.bulkWrite(EP_OUT, command, timeout=2000) == len(command)
     received = planned = short = 0
     error: str | None = None
     active: set[usb1.USBTransfer] = set()
@@ -104,7 +105,9 @@ def one_run(handle, args, flags: int) -> tuple[bool, str]:
             except usb1.USBErrorTimeout:
                 break
         return False, error
-    status = read_status(handle)
+    # --no-command: the device streams on its own (e.g. the EspUsbDevice writeDirect()
+    # prototype) and prints no status line; only the host-side numbers are reported.
+    status = "" if args.no_command else read_status(handle)
     mb_s = received / elapsed / 1e6
     fields = dict(token.split("=", 1) for token in status.split() if "=" in token)
     device_us = int(fields.get("active_us", "0") or 0)
@@ -112,7 +115,7 @@ def one_run(handle, args, flags: int) -> tuple[bool, str]:
     completions = int(fields.get("completions", "0") or 0)
     dur_sum = int(fields.get("dur_sum_us", "0") or 0)
     idle_us = device_us - dur_sum if device_us else 0
-    ok = received == total and bad == 0 and f"bytes={total}" in status and "arm_failures=0" in status
+    ok = received == total and bad == 0 and (args.no_command or (f"bytes={total}" in status and "arm_failures=0" in status))
     line = (f"ok={int(ok)} xfer={args.xfer} arm_depth={args.arm_depth} chain={int(not args.task_rearm)} "
             f"urb={args.transfer_size} depth={args.depth} bytes={received} elapsed_s={elapsed:.6f} "
             f"host_mb_s={mb_s:.3f} host_mbps={mb_s * 8:.1f} pct_theory={100 * mb_s / THEORY_MB_S:.1f} "
@@ -145,6 +148,8 @@ def main() -> int:
     parser.add_argument("--depth", type=int, default=8, help="host URBs in flight")
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--no-validate", action="store_true")
+    parser.add_argument("--no-command", action="store_true",
+                        help="device streams by itself (no EP command, no status line): report host-side short/pattern counts only")
     args = parser.parse_args()
     if args.xfer % 512 or not 512 <= args.xfer <= 65024:
         parser.error("--xfer must be a multiple of 512 in [512, 65024]")
