@@ -145,7 +145,7 @@ task配置変更後の再測定はE107（Windows native）、E108（usbipd/WSL�
 
 ## 6. 作業環境と他のprobe課題
 
-- E104〜E107の対象は第三P4（MAC `80:f1:b2:d0:b2:61`）。UARTは`/run/board-identify/by-id/esp32-p4-80f1b2d0b261`で指定する（`/dev/ttyUSBn`の番号は再列挙で変わる。2026-09-15は`ttyUSB2`で、`ttyUSB0`は別のESP32だった）。HSは直結でWindows bus `1-7`。usbipdでWSLへattachすると`/dev/bus/usb`ノードがroot専用になることがあり、`sudo`が使えない環境ではWindows nativeのWinUSB（`uv.exe run --with libusb1`）からhostを動かす。
+- E104〜E107の対象は第三P4（MAC `80:f1:b2:d0:b2:61`）。UARTは`/run/board-identify/by-id/esp32-p4-80f1b2d0b261`で指定する（**2026-09-16: board-identifyがEspressifのNative USBを開かなくなった（開くとリセットがかかりusbipdが落ちるため）。Native USB接続の板は種別を特定できず`esp32-series-<MAC>`になる。この板はCH340/CH343 bridge経由なので`esp32-p4-`のまま。MAC部分は不変**）（`/dev/ttyUSBn`の番号は再列挙で変わる。2026-09-15は`ttyUSB2`で、`ttyUSB0`は別のESP32だった）。HSは直結でWindows bus `1-7`。usbipdでWSLへattachすると`/dev/bus/usb`ノードがroot専用になることがあり、`sudo`が使えない環境ではWindows nativeのWinUSB（`uv.exe run --with libusb1`）からhostを動かす。
 - `/home/mt/dev/EspUsbHost/tests/.env`は別のfull testが使用中であり、この検証から変更・流用しない。
 - MACの近い2台はHS同士で結線された別リグであり、今回のmixed-rate検証では触れていない。
 - firmware uploadでHS deviceは再列挙される。古いusbipd attachやendpoint待ちを残さず、再attachしてdevice nodeを取り直す。

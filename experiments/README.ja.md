@@ -315,6 +315,12 @@ host Arduino core は sketch を PC 上で走らせ、`socket://localhost` で `
 
 シリアルポート番号は挿し直しで変わるので、`.env` には**安定した別名**(`/run/board-identify/by-id/<board>` のような固定パス)を書いてよい。プラグインは device lock のキーを作るときに **symlink を解決してから**ハッシュするので、別名でも実体の board に対して正しく排他が効く。`.env.example`(commit する側)は環境非依存にするため `/dev/ttyACM0` 等の一般的な表記で書く。
 
+**Native USB でつながっている板の別名は `esp32-series-<MAC>` になる。** 2026-09-16 の board-identify の変更（持ち主）。**Espressif の Native USB（PID が Espressif のもの）は開かなくなった**——開くとリセットがかかり、**usbipd の接続が落ちる**ため。開けないので MCU の種別が特定できず、`esp32-p4-<MAC>` ではなく `esp32-series-<MAC>` で固定される。
+
+**USB-serial bridge（CH343 / CH340 など）経由の板は従来どおり**で、種別込みの名前（`esp32-p4-<MAC>` / `esp32-s3-<MAC>`）のままである。**`ttyACM` か `ttyUSB` かは関係ない**——CH343 は CDC なので `ttyACM` に見えるが、Native USB ではないので影響を受けない。
+
+この時点で `esp32-series-` になったのは HS 直結リグの 2 枚（`esp32-series-30eda0e31478` → `ttyACM10`、`...314f5` → `ttyACM11`、どちらも Native USB）だけで、当方の P4 2 枚（`esp32-p4-80f1b2d0b261` → `ttyUSB2`、`esp32-p4-e8f60ae0aa24` → `ttyACM2`、どちらも bridge 経由）は種別込みの名前のままである。**MAC 部分は変わらないので、別名が見つからないときは MAC で探す。**
+
 ## 5. 記録
 
 **銘板** — sketch は起動時(または最初の応答)に 1 行出し、テストはそれを前提条件として `expect` する:
