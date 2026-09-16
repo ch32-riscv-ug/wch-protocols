@@ -87,7 +87,7 @@ Openmokoは、一つのsoftwareが対応するhardwareごとにPIDを要求せ�
 
 | 手段 | Windowsでの効き方 | 代償 |
 |---|---|---|
-| **interface番号と機能の対応を固定し、末尾追加だけ許す** | 既存childのdevnodeが同じ機能を保つので、再利用されても害にならない見込み。親は常にcomposite(usbccgp)にする | 単機能profile(low-speed HIDなど)を同じPIDの同一個体で切り替えられない。削除したfunctionはghost devnodeとCOM番号予約を残す |
+| **interface番号と機能の対応を固定し、末尾追加だけ許す** | 既存childのdevnodeが同じ機能を保つので、再利用されても害にならない。**2026-09-16に実測で裏付いた**——composite childのinstanceと、それにぶら下がる設定（CDCのCOM番号、vendorのdevice interface path）は**interface番号に紐づく**ので、既存の番号を動かさず末尾に足す限りpathもregistry propertyも不変。番号を動かすとpathが変わる（GUID列挙なら追随、path保存なら壊れる）。親は常にcomposite(usbccgp)にする | 単機能profile(low-speed HIDなど)を同じPIDの同一個体で切り替えられない。削除したfunctionはghost devnodeとCOM番号予約を残す |
 | **profileごとにPIDを分ける** | 別device IDなので完全に分離する。developerの通例 | PIDを複数申請する。割当団体への説明が増える |
 | **serialにprofile識別を含める** | 別instanceになりdriver選択をやり直す | 同じ個体が別deviceに見える。COM番号やper-device設定が引き継がれない |
 | `bcdDevice`を分ける | **効かない**。MS OS 1.0 descriptorを使う場合の`osvc` cache分離のみ | — |

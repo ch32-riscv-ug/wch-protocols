@@ -118,7 +118,7 @@ WinUSB が当たったので、**初めて usbip を経由しない測定がで�
 2. **subsets のままだと当たらない。** `CM_PROB_FAILED_INSTALL`(Code 28)で、[E069](../e069_p4_hs_vendor_bulk_rate/README.ja.md) の症状と同一。**反証条件 2 は否定された。**
 3. **原因は構造だけだった。** 同じ board・同じ firmware・同じ byte 列生成器で、**分岐は layout flag 1 つ**。[調査記録](../../references/windows-winusb-binding.ja.md)の仮説 1 が正しく、仮説 2(Windows が vendor request を投げていない)は不要になった。
 4. **汚れた台でも直る。** この Windows には [E069](../e069_p4_hs_vendor_bulk_rate/README.ja.md)〜[E070](../e070_p4_hs_vendor_stack_compare/README.ja.md) の失敗した driver 判定が残っているが、**新しい serial を使えば関係ない**。**反証条件 3 も否定。**
-5. **serial を変えるのは必須である。** Windows は instance を VID + PID + serial で識別し、**失敗した判定はその instance に貼り付く**([E062](../e062_usb_same_identity_layout_change/README.ja.md))。`E069-A` のまま試していたら、直った firmware でも Code 28 が返っていたはずである。
+5. **serial を変えるのは必須である。** Windows は instance を VID + PID + serial で識別し、**失敗した判定はその instance に貼り付く**([E062](../e062_usb_same_identity_layout_change/README.ja.md))。`E069-A` のまま試していたら、直った firmware でも Code 28 が返っていたはずである。 **（2026-09-16 取り下げ。この実験は A / B とも新しい serial で焼いており、この条件を測っていない。末尾の追記を参照）**
 6. **native は 21.2 MB/s で、usbip 経由と差がない。** これまでの全測定の「usbip 込みなので下限」という但し書きは外せる。
 
 ### 方法の誤り(2 件。[§7-6](../README.ja.md) に従い残す)
@@ -148,3 +148,11 @@ WinUSB が当たったので、**初めて usbip を経由しない測定がで�
 - [Windows が WinUSB を当てない](../../references/windows-winusb-binding.ja.md) — **解決。閉じる**
 - [P4 USB HS まとめ](../../references/p4-usb-hs-summary.ja.md) §3 と、全測定の「usbip 込みなので下限」の但し書き
 - [EspUsbDevice への改修依頼](../../references/espusbdevice-change-requests.ja.md) CR-1 — **こちらの台でも確認**
+
+## 追記（2026-09-16）: 結論 5「serial を変えるのは必須」は測っていない推論だった
+
+この実験は A / B とも**新しい serial で焼いており、汚れた既存 instance に有効な descriptor を送る条件は通していない。** 結論 5「失敗した判定はその instance に貼り付く」と、実験の教訓「WinUSB の検証は毎回新しい serial で行う」は、[E069](../e069_p4_hs_vendor_bulk_rate/README.ja.md) からの**推論をそのまま書いたもの**である。
+
+EspUsbDevice 側 session が 2026-09-16 に反例を実測した。単一 interface に subsets を強制して意図的に Code 28 にした instance へ、**次の接続で有効な set を送ると、同じ instance・同じ PID / serial のまま回復した**（`Device Updated: false` で 400/410、WinUSB 再バインド、GUID 再記録）。
+
+したがって「失敗は貼り付いて二度と再評価されない」は一般則ではない。**この実験が実際に示したのは flat と subsets の差だけで、serial を分けたのは条件を独立させるための設計上の判断だった**（結果として汚れた instance での回復可否を測り損ねている）。検証を毎回新しい serial で行うのは手順として安全側だが、**必須という根拠はない。**

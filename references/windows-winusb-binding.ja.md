@@ -67,7 +67,13 @@ usbccgp が載る条件も一次資料にある([Enumeration of USB composite de
 | PID 変更 / serial 変更 | **新規** | 全部読み直し |
 | serial なし | `…\8&2EBC545B&0&4` | serial ではなく**ポート由来のパス**で keying |
 
-**これで「serial を使い回すと古い判定が残る」という一般則は否定された。** 成功している instance は毎回 descriptor に追随する。E069 の 2 観測（`bcdDevice` 変更も composite 化も再評価を起こさなかった）は**失敗が貼り付いた instance に限った話**として有効で、先方の結果と矛盾しない。**成功した instance と失敗した instance で挙動が違う**、が全体像である。
+**これで「serial を使い回すと古い判定が残る」という一般則は否定された。** 成功している instance は毎回 descriptor に追随する。
+
+**失敗した instance についても、当初の断定は取り下げる（2026-09-16）。** 先方が単一 interface に subsets を強制して意図的に Code 28（compatible ID から `MS_COMP_WINUSB` が消える）にした instance は、**次の接続で有効な set を送るとそのまま回復した**（`Device Updated: false` で 400/410、WinUSB 再バインド、GUID 再記録。同じ instance、同じ PID / serial）。
+
+こちらの E069 の 2 観測（`bcdDevice` 変更も composite 化も再評価を起こさなかった）は、**「失敗が貼り付いて再評価されない」ことの証明にはなっていない。** どの試行でも descriptor は単一 interface 向けの subsets のままで、**Windows が bind できる compatible ID を一度も受け取っていない**。「貼り付き」を持ち出さなくても説明がつく。
+
+現時点で書ける範囲はここまでである。**失敗した instance は回復しないことがある（条件は未特定。hardware ID を変えた後の 1 例を観測）。** 断定はしない。
 
 **interface 番号の機能入替も測った（2026-09-16、先方）。** ライブラリが HID function を先頭に固定するため、`MI_00` の中身を HID から MSC に差し替える形で行った。interface の数は 2 のまま、子の instance ID も両方とも不変、revision も固定。
 
@@ -106,6 +112,15 @@ device scope の残骸は実在する（未使用 PID `0x4084`、GUID の値を�
 
 **残るのは値だけで、列挙には出てこない。** 子側の残骸（function を替えた `MI_nn` に前の GUID が残る）も同じ機構なので不活性である（こちらは列挙まで確認していないが、interface を作るのは driver だという機構は同じ）。
 
+### 子の path と設定は interface 番号に紐づく（2026-09-16、先方実測）
+
+composite child の instance と、それにぶら下がる設定（CDC なら COM 番号、vendor なら device interface の path）は **interface 番号**に紐づく。
+
+- **既存 function の番号を動かさず末尾に足す** → host から見た path も registry property も**そのまま**
+- **既存 function を後ろへずらす** → path が変わる。**GUID で列挙する host アプリは追随し、path を保存している host アプリは壊れる**
+
+こちらの host tool は libusb の VID/PID 直指定なので後者は踏まないが、**製品の profile 規則としては「vendor を interface 0 に固定し、DFU は末尾に足す」**が正しい。[Gate 3](probe-feasibility-gates.ja.md) の「番号と機能の対応を変えない」はこの意味でも効く。
+
 ### 本当の危険は生きている側の interface
 
 **`DeviceInterfaceGUIDs` を変えたのに vendor revision が動かない場合**、列挙される側が古い GUID に応答し続け、新しい GUID を探す host アプリは何も見つけない。これが実害のある唯一の経路である。[CR-14](espusbdevice-change-requests.ja.md) の revision 自動導出が防いでいて、**revision を手で固定したときだけ落ちる**。
@@ -115,6 +130,26 @@ device scope の残骸は実在する（未使用 PID `0x4084`、GUID の値を�
 単一 vendor interface ＋ `config.msOs20CcgpDevice`（既定オフ、先方が実装）で、親に usbccgp が載り、子 `&MI_00` に WINUSB が当たり、**GUID は子だけに付いて親に付かない**。
 
 用途は「幽霊デバイスを防ぐ」ではなく（防ぐべき幽霊はいなかった）、**トポロジを最初から固定して、後から function を足しても GUID の登録先が動かないようにする**ことである。既に device scope の値が入った PID に後から CCGP を足しても、親の残骸は消えない（消せないが実害もない）。採用するなら **usbccgp を挟んだ bulk 帯域の再測**が要る（現在の 366 Mbps は非 composite での値）。優先度は「トポロジを安定させたいか」で決める。
+
+### 観測のしかた（2026-09-16、先方が対照つきで確認）
+
+**`setupapi.dev.log` に install の節が無いことは症状ではない。** この Windows 11（25H2 build 26200.9457）では、**MS OS 2.0 の compatible ID 経由の WinUSB バインドは成功でも失敗でも節を作らない。**
+
+先方が今日の全試験デバイス（`PID_408x`、`PID_4090`、`VID_1209&PID_0001`）について、ローテート済みログと現行ログの両方を grep した結果。
+
+| 試行 | `setupapi.dev.log` の節 |
+|---|---|
+| WinUSB がバインドした（数十回、新規 PID 5 つ、VID 変更 1 回を含む） | **なし** |
+| 意図的に FAILED_INSTALL にした（subset layout 強制） | **なし** |
+| その instance が回復した（WinUSB 再バインド） | **なし** |
+| usbser（Ports クラス）の install | **あり**（3 回。Kernel-PnP の id=430「追加インストール要」に対応、Exit status SUCCESS） |
+
+**節が出るのはクラスドライバ（usbser / HidUsb / USBSTOR など）の install が走ったときだけ**である。WinUSB の成否と経過は次で読む。
+
+- **Kernel-PnP / Configuration** の 400 / 410 / 411 / 430 と `Device Updated`
+- `DEVPKEY_Device_InstallState` と `ProblemCode`（`pnputil /enum-devices … /ids`、`Get-PnpDevice`）
+
+これで [E069](../experiments/e069_p4_hs_vendor_bulk_rate/README.ja.md) の「install の節が出ない」という観測は**意味を失った**。descriptor が無効だったこととも無関係で、WinUSB 経路の通常の見え方だった。
 
 ## どこまで自由に変えてよいか
 
@@ -198,7 +233,7 @@ DEVPKEY_Device_ConfigFlags  = 64  = CONFIGFLAG_FAILEDINSTALL
 | **composite 化**(vendor + CDC、vendor が interface 0) | **変わらず**。`usbccgp` すら載らない |
 | USB stack を `EspUsbDevice` に替える | 変わらず |
 
-**`setupapi.dev.log` には、これらの再列挙に対する install の節が 1 つも書かれない。** 削除(`Delete Device`)は記録されるので、ログ自体は生きている。つまり **Windows は driver 検索を走らせずに Code 28 を付けている**。
+**`setupapi.dev.log` には、これらの再列挙に対する install の節が 1 つも書かれない。** 削除(`Delete Device`)は記録されるので、ログ自体は生きている。つまり **Windows は driver 検索を走らせずに Code 28 を付けている**。 **（2026-09-16 訂正: この推論は誤り。MS OS 2.0 の compatible ID 経由の WinUSB バインドは、成功でも失敗でも `setupapi.dev.log` に節を作らない。下の「観測のしかた」を参照）**
 
 ### composite での実測(EspUsbDevice 側 session、2026-09-15、参考観測)
 
