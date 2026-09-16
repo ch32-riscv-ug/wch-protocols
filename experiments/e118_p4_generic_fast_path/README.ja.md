@@ -98,3 +98,13 @@ byte一致検証の`find_start`は、rateが60 / 50 / 40 / 80 / 100では通り�
 - 仮説「fast部が主因」は**半分外れ**: fast部は690 cycle/blockで見積どおりだったが、60 Mspsに届かなかった本当の原因はworker周辺の520 cycle/block（queue受信とcache書き戻し）で、codecには触らずに完了条件を満たした。fast部の見直し（word emit、hold/8単独channelの200 cycle）は次の余地として残す（上限65→70以上へ）。
 - 仮説「製品モードなら55が通る」は成立（55 / 60とも通った）。
 - **完了条件（製品モードでW16 60 Msps byte一致＋25 s soak）を満たした。** 固定profileの余裕も増えた（five 60が「上限いっぱい」から84%へ）。
+
+## 追記（2026-09-16）: 板の貸し出しは取り下げになった（書き込みなし）
+
+第三 P4（`esp32-p4-80f1b2d0b261` / `/dev/ttyUSB2`、HS は Windows busid `1-7`）を、EspUsbHost の `end()` 回帰修正のリリース前テスト（全スイートを `--clean`）のために貸し出した（持ち主の指示、先方 session 経由）。**この実験の firmware は上書きされる。** 貸出時の状態は `303a:4021` / serial `e104-p4-windows-v1` で E118 firmware、usbipd は detach 済み（`1-7` は `Shared`）。
+
+**再測するときは E118 を焼き直す。** `build_opt.h` を含むので `arduino-cli compile --clean` が要る。usbipd の再 attach は `usbipd attach --wsl --busid 1-7`（管理者権限不要）。先方の firmware が別の VID:PID で列挙して bind が外れていた場合、再 bind は管理者権限が要るので持ち主へ依頼する。
+
+**取り下げ（同日）**: 先方が `pytest --collect-only` で確認したところ、`--clean` の全テストが収集するのは 42 件（`peer/` 23、`unit/` 12、`harness/` 6、`loopback/` 1）で、**`probe/` と `manual/` は収集対象外**だった。`TEST_SERIAL_PORT_ESP32P4` を使うテストは 1 件も走らない。**この板には一度も書き込まれていない。E118 firmware はそのまま載っている。** usbipd も再 attach して貸出前の状態（`1-7` が WSL へ Attached）に戻した。**焼き直しは不要。**
+
+副産物として、`probe/p4_hs_host` / `p4_hs_device` / `p4_hs_fs_hub` は P4 の HS ポートを相手板へ繋ぐ前提なので、**HS が PC 直結のこの板では配線変更なしに走らない**ことが先方と共有できた（先方から持ち主へ連絡する）。

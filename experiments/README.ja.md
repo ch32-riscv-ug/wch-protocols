@@ -267,6 +267,23 @@ TEST_LINKE_PORT=/dev/ttyACM2
 
 **線引きは「線を含むか」で引く。** 線を含まない層は loopback phy で 1 台のまま徹底的に測り、線を含む層だけ実チップ + LA を用意する。この分業なら、回帰([dmi-bridge](../protocols/dmi-bridge.ja.md) §8.1 の Core / Bulk 相当)を**ボード 1 台で CI に載せられる**。
 
+#### 板は他 session とも共有している。焼く前に何が載っているか確かめる
+
+板は EspUsbDevice / EspUsbHost 各 session とも共有していて、**こちらが焼いていない firmware が載っていることがある**。焼く前に相手 session へ宣言し、`lsusb` の product string や UART の起動行で載っているものを確かめる。
+
+2026-09-16 時点で分かっている外部の firmware:
+
+| 板 | 載っているもの | 影響 |
+|---|---|---|
+| `esp32-p4-e8f60ae0aa24`（PARLIO 板、`/dev/ttyACM2`） | EspUsbHost の `tests/loopback/p4_role_reversal`（EspUsbHost `end()` 修正版＋`EspUsbDevice (2.4.0)` pin）。起動すると 1 台で USB Host と Device を**両ロールとも掴み**、HID を往復させて `LOOPBACK_DONE` で停止する | **PARLIO 系の実験で使う前に焼き直す。** GPIO は使っていないのでループバック治具の配線は無事 |
+| `esp32-p4-80f1b2d0b261`（第三 P4、`/dev/ttyUSB2`） | 当方の [E118](e118_p4_generic_fast_path/README.ja.md)。`303a:4021` / serial `e104-p4-windows-v1` | そのまま |
+
+#### `build_opt.h` は sketch 全体に効く。profile ごとには効かない
+
+**1 つの profile のために置いた `build_opt.h` は、同じ sketch の全 profile に効く。** EspUsbHost 側 session が 2026-09-16 に踏んだ: P4 のスループット測定用に共有 sketch へ `CFG_TUD_VENDOR_TX_BUFSIZE=32768` を置いたところ、full-speed の S3 ペアにも適用されて `peer/usb_vendor_read` が落ちた。
+
+**§1.2 の「実験ごとに別ディレクトリ」を守っていればこの形では踏まない**が、1 つの sketch を複数 profile で使い回すときは効く。測定用の設定は共有 sketch に置かない。[`--clean` が要る話](#41-env-がベンチ固有値の唯一の入口)とは別の注意である。
+
 ### 4.5 常設ベンチ — 置くか、何を置くか
 
 **置く。** 回帰の基準が無いと、実験の失敗が「実験のせい」か「環境のせい」か切り分けられない。常設が緑であることが他の全実験の前提になる(§3.1.2)。
