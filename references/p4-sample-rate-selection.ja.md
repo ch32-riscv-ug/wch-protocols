@@ -6,29 +6,32 @@ PulseView などへ「選べる sample rate」を出すとき、**値は 3 つ�
 
 ## 0. 製品としての要約
 
-> **数値の扱い（2026-09-15、持ち主の方針）**: 本節と追記にあるUSB予算・上限値のうちE108以降（zero-copy＋TX FIFO 2 packet＋2 worker）を根拠とするものは**独自patch版libraryでの参考値**で、製品の目安には使えない。正規libraryに取り込まれた機能で取り直した数値だけを使う。正規版2.3.0で成立している数値はE106 / E107（8-bit 60 Msps、wide 40 Msps、USB-only 193〜213 Mbps）。patch版の数値はlibrary修正依頼（CR-10〜13）の根拠にのみ使う。
+> **数値の扱い（2026-09-15〜16、持ち主の方針）**: 製品の目安に使えるのは正規リリースをpinして取った数値だけ。E108以降の値は独自patch版で取ったが、EspUsbDevice 2.4.0（CR-10〜13収録）をpinしたE116 / E117で同じ値が再現したので、正式な数値として読める。正規版2.3.0で成立している数値はE106 / E107（8-bit 60 Msps、wide 40 Msps、USB-only 193〜213 Mbps）。patch版の数値はlibrary修正依頼（CR-10〜13）の根拠にのみ使う。 **2026-09-16追記: EspUsbDevice 2.4.0（pin）でのUSB-only probeの正式値は366 Mbps（[E116](../experiments/e116_p4_usb_in_ceiling_release/README.ja.md)、PC直結usbipd/WSL、27,136 byte transfer）。配分の式に入れる`probe実測`はこの値（90%で329 Mbps）。stream込みの上限は[E117](../experiments/e117_p4_stream_release_api/README.ja.md)（2.4.0 pin）で取り直し、E109〜E115の値が再現した: four 60（264 Mbps）/ five 60の約4.7分soak欠損0、16 ch hold generic 40〜50 Msps、8-bit 60〜100、2 ch 160 M（319 Mbps、予算の97%）。本節と追記の数値は正式な数値として読める（predicate: EspUsbDevice 2.4.0以上、`-DCFG_TUD_VENDOR_TXRX_BUFFERED=0`）。**
 
 
-方針（持ち主、2026-09-15）: **16 channel時の仕様を前面に出す。** 最大60 Mspsの高速取得を複数channelで行い、時間解像度を落としたchannelを多数足して合計16 channelまで取る。USBの通信速度は環境で変わるので、高速取得できるchannel数は環境で異なる。速度は実測してその約9割で使うことを推奨する。8 channel以下なら100 Msps、2 channel以下なら160 Mspsで取得できる場合もある（2 ch 160 Mspsは[E113](../experiments/e113_p4_2ch_160m_passthrough/README.ja.md)でUSB 380 Mbps級の環境で欠損0、320 Mbps＝予算の93%）。数値の目安は最終的に持ち主が書き換える。
+方針（持ち主、2026-09-15）: **16 channel時の仕様を前面に出す。** 最大60 Mspsの高速取得を複数channelで行い、時間解像度を落としたchannelを多数足して合計16 channelまで取る。USBの通信速度は環境で変わるので、高速取得できるchannel数は環境で異なる。速度は実測してその約9割で使うことを推奨する（当方PC直結は実測366 Mbps→予算330）。推奨構成は60 Msps×4本＋1/32×12本（262.5 Mbps）。8 channel以下なら80 Msps推奨・90 Mspsは取れる場合もある（100は予算超え）、2 channel以下なら150 Msps推奨・160 Mspsは取れる場合もある（2 ch 160 Mspsは[E113](../experiments/e113_p4_2ch_160m_passthrough/README.ja.md)でUSB 380 Mbps級の環境で欠損0、320 Mbps＝予算の93%）。数値の目安は最終的に持ち主が書き換える。
 
 配分の式は`Σ(channel iのrate) ≤ 0.9 × probe実測`である。高速channelは1 bit/sampleなので60 Mspsは60 Mbps、1/32へ縮約したchannelは1.875 Mbpsになる。
 
 base 60 Mspsのとき、縮約したchannelの時間刻みは 1/2 = 30 M（33 ns）、1/4 = 15 M（67 ns）、1/8 = 7.5 M（133 ns）、1/16 = 3.75 M（267 ns）、1/32 = 1.875 M（533 ns）、1/64 = 0.94 M（1.07 µs）。高速channelを何本残すか、残りをどの刻みで取るかの組み合わせで、同じ環境でも配分は何通りも作れる。いずれも合計16 channel。
 
-| 環境（probe実測） | 構成（channel数 × rate） | 合計 | 実測比 |
-|---|---|---:|---:|
-| 389 Mbps（E110、PC直結 usbipd/WSL） | 60 M × 5 ＋ 1/64（0.94 M）× 11 | 310.3 Mbps | 80% |
-| 389 Mbps | 60 M × 4 ＋ 1/2（30 M）× 2 ＋ 1/8（7.5 M）× 4 ＋ 1/32（1.875 M）× 6 | 341.25 Mbps | 88% |
-| 389 Mbps | 全16 chを同率20 M | 320 Mbps | 82% |
-| 300 Mbps | 60 M × 5 | 300 Mbps | 100%（上限いっぱい。9割規則では入らない。5 full＋1/32×11は[E112](../experiments/e112_p4_16ch_allocation_profiles/README.ja.md)で3回PASSしたがcore 0 99%） |
-| 300 Mbps | 60 M × 4 ＋ 1/32（1.875 M）× 12 | 262.5 Mbps | 87.5%（[E112](../experiments/e112_p4_16ch_allocation_profiles/README.ja.md)で3回＋30 s soak 2回欠損0） |
-| 300 Mbps | 60 M × 3 ＋ 1/2（30 M）× 2 ＋ 1/8（7.5 M）× 2 ＋ 1/64（0.94 M）× 9 | 263.4 Mbps | 88% |
-| 300 Mbps | 60 M × 2 ＋ 1/2（30 M）× 2 ＋ 1/4（15 M）× 4 ＋ 1/32（1.875 M）× 8 | 255 Mbps | 85% |
-| 300 Mbps | 全16 chを同率15 M | 240 Mbps | 80% |
-| 200 Mbps | 60 M × 2 ＋ 1/4（15 M）× 2 ＋ 1/16（3.75 M）× 4 ＋ 1/64（0.94 M）× 8 | 172.5 Mbps | 86% |
-| 200 Mbps | 60 M × 3（SPI CLK / MISO / MOSI）＋ 1/8（7.5 M）× 1（CS）＋ 1/64 × 12（GPIO） | 198.75 Mbps | 99%（入らない。base 50 Mにすると165.6 Mbps＝83%） |
-| 150 Mbps（hub 2段の実測120〜150） | 40 M × 3 ＋ 1/8（5 M）× 1 ＋ 1/64（0.625 M）× 12（E106のwide profile） | 132.5 Mbps | 88% |
-| 150 Mbps | 60 M × 1 ＋ 1/2（30 M）× 1 ＋ 1/4（15 M）× 2 ＋ 1/64（0.94 M）× 12 | 131.25 Mbps | 87.5% |
+| 環境（probe実測） | 構成（channel数 × rate） | 合計 | 実測比 | codec |
+|---|---|---:|---:|---|
+| **366 Mbps（E116、2.4.0 pin、PC直結 usbipd/WSL）→ 予算330** | **60 M × 4 ＋ 1/32（1.875 M）× 12**（推奨） | 262.5 Mbps | 72% | `codec_limit` 60（E118） |
+| 366 → 330 | 60 M × 5 ＋ 1/32 × 11 | 322.5（実測324〜352）Mbps | 89〜96%（予算の99〜107%。**予算超え、製品説明に載せない**） | generic `codec_limit` 57、fixed five 60は約4.7分soak欠損0 |
+| 366 → 330 | 60 M × 4 ＋ 1/2（30 M）× 1 ＋ 1/8（7.5 M）× 1 ＋ 1/32 × 10 | 296 Mbps | 81%（予算の90%、計算値） | |
+| 366 → 330 | 60 M × 3 ＋ 1/8（7.5 M）× 1 ＋ 1/64（0.94 M）× 12 | 198.75（実測214）Mbps | 58% | `codec_limit` 57（60はbyte一致＋25 s soak、上限65） |
+| 366 → 330 | 全16 chを同率18 M | 288 Mbps | 79% | |
+| 366 → 330 | 8 ch: 80 M × 3 ＋ 1/64 × 5（推奨）／ 90（取れる場合もある） | 実測249 / 314 Mbps | 68% / 86%（予算の76 / 95%）。100は実測349 Mbps＝予算超え、載せない | generic 8-bit F3 `codec_limit` 90 |
+| 366 → 330 | 2 ch素通し 150 M（推奨）／ 160 M | 300 / 320 Mbps | 82% / 87% | PARLIO上限160 |
+| 300 Mbps | 60 M × 4 ＋ 1/32（1.875 M）× 12 | 262.5 Mbps | 87.5% | |
+| 300 Mbps | 60 M × 3 ＋ 1/2（30 M）× 2 ＋ 1/8（7.5 M）× 2 ＋ 1/64（0.94 M）× 9 | 263.4 Mbps | 88% | |
+| 300 Mbps | 60 M × 2 ＋ 1/2（30 M）× 2 ＋ 1/4（15 M）× 4 ＋ 1/32（1.875 M）× 8 | 255 Mbps | 85% | |
+| 300 Mbps | 全16 chを同率15 M | 240 Mbps | 80% | |
+| 200 Mbps | 60 M × 2 ＋ 1/4（15 M）× 2 ＋ 1/16（3.75 M）× 4 ＋ 1/64（0.94 M）× 8 | 172.5 Mbps | 86% | |
+| 200 Mbps | 60 M × 3（SPI CLK / MISO / MOSI）＋ 1/8（7.5 M）× 1（CS）＋ 1/64 × 12（GPIO） | 198.75 Mbps | 99%（入らない。base 50 Mにすると165.6 Mbps＝83%） | |
+| 150 Mbps（hub 2段の実測120〜150） | 40 M × 3 ＋ 1/8（5 M）× 1 ＋ 1/64（0.625 M）× 12 | 132.5 Mbps | 88% | |
+| 150 Mbps | 60 M × 1 ＋ 1/2（30 M）× 1 ＋ 1/4（15 M）× 2 ＋ 1/64（0.94 M）× 12 | 131.25 Mbps | 87.5% | |
 
 以下は従来の説明で、数値の裏付けは各実験にある。全channelを高速rateでPCへ送れるという意味ではない。内部raw帯域、channel別縮約codec、USB帯域のすべてに収まる構成だけをacceptする。少数channelにはさらに高速な技術的余地があるが、連続転送まで成立する通常仕様としては前面に出さず、検証後に必要なら高速モードとして分離する。
 
@@ -147,3 +150,7 @@ channel別rateは別々のsampling clockではない。全pinを共通base clock
 ### 追記（2026-09-15、E115後のgeneric目安）
 
 [E115](../experiments/e115_p4_grouped_plane_transpose/README.ja.md)で縮約channelを群ごとに転置する取り出しにした後のgeneric codec上限（`codec_limit = bench × 0.9`、core idle約10%）: 16 ch（3 raw＋hold/8＋12 hold/64）**42 Msps**（50までbyte一致）、4 raw＋12 hold/32は**44**（50まで一致）、5 raw＋11 hold/32は42、8 ch（3 raw＋5 hold/64）**67**（80まで一致）、配線順不同で小さいDが混ざる8 chは42（50まで一致）、any_active ×6は24（40まで一致）、edge_latch ×12（16-bit）は12（20まで一致）、any / edge / hold混在の8 chは8（15まで一致）。E114時点の34 / 32 / 34 / 58 / 45 / 22 / 12 / 10からの更新。固定profile（72 / 68 / 64 / 108）との残差はfast部の費用。
+
+### 追記（2026-09-16、E118後のgeneric目安。2.4.0 pin、製品モード）
+
+[E118](../experiments/e118_p4_generic_fast_path/README.ja.md)でworker周辺の費用（chunk結合、書き戻し撤去）を削った後の`codec_limit`（bench×1.215、core idle約5〜10%）: 16 ch（3 raw＋hold/8＋12 hold/64）**57 Msps**（60でbyte一致、上限65）、4 raw＋12 hold/32 **60**（60でbyte一致）、5 raw＋11 hold/32 57、8 ch（3 raw＋5 hold/64）**90**（100まで欠損0）、配線順不同56、any_active ×6 33、edge_latch ×12 17、any / edge / hold混在 11。E115時点の42 / 44 / 42 / 67 / 42 / 24 / 12 / 8からの更新。固定profileも余裕が増え（five 60のcore 0が99.6→83.5%）、§1.1の「60 M×4＋1/32×12」はgenericでも通る。rateはUSB予算（probe 366 Mbps × 0.9 ＝ 329 Mbps）とこのcodec上限の小さい方。

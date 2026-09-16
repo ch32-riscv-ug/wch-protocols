@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E110: measure device -> host bulk IN throughput against the HS bulk ceiling.
+"""E116: measure device -> host bulk IN throughput against the HS bulk ceiling.
 
 The device streams a 256-periodic pattern zero-copy. Sweep the device transfer
 length (--xfer), arm ring depth (--arm-depth), the host URB size
@@ -132,6 +132,7 @@ def one_run(handle, args, flags: int) -> tuple[bool, str]:
             f"host_mb_s={mb_s:.3f} host_mbps={mb_s * 8:.1f} pct_theory={100 * mb_s / THEORY_MB_S:.1f} "
             f"pkt_per_uframe={mb_s * 1e6 / 512 / 8000:.2f} device_mb_s={device_mb_s:.3f} "
             f"short={short} pattern_bad={bad} head_skip={skipped_head} completions={completions} "
+            f"direct_supported={fields.get('direct_supported', '?')} last_direct_error={fields.get('last_direct_error', '?')} arm_failures={fields.get('arm_failures', '?')} "
             f"dur_avg_us={fields.get('dur_avg_us', '?')} dur_min_us={fields.get('dur_min_us', '?')} dur_max_us={fields.get('dur_max_us', '?')} "
             f"gap_avg_us={fields.get('gap_avg_us', '?')} gap_max_us={fields.get('gap_max_us', '?')} gap_count={fields.get('gap_count', '?')} "
             f"ep_idle_pct={100 * idle_us / device_us if device_us else 0:.1f} usbd_us={fields.get('usbd_us', '?')} "

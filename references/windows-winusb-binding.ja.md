@@ -12,6 +12,128 @@
 >
 > **以下は解決前の調査記録として残す。**
 
+## 仕様で裏を取った(2026-09-16)
+
+[E081](../experiments/e081_p4_winusb_bind/README.ja.md) は実測だけで結論を出していた。**MS OS 2.0 の仕様書本文**([Microsoft OS 2.0 Descriptors Specification](https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-os-2-0-descriptors-specification) からたどる `MS_OS_2_0_desc.docx`)に同じことが明文で書いてある。実測と仕様は一致した。
+
+| 仕様の記述 | 引用 | E081 / M1〜M4 との対応 |
+|---|---|---|
+| configuration subset は composite 専用 | "Configuration subsets are only used for composite devices that load USB Generic Parent Driver (Usbccgp.sys) as the parent driver for the entire device." | subsets が届かなかった理由 |
+| function subset も composite 専用 | "Function subsets are only used for composite devices, or single-function devices that use Usbccgp.sys as their client driver." | **単一 interface に subsets を出すと結び付く先がない** |
+| compatible ID の scope | "The compatible ID can be applied to the entire device or a specific function within a composite device." | flat = device scope なので当たる |
+| function 番号の決まり方 | "Function numbers are determined by the first (lowest) bInterfaceNumber of the interface(s) assigned to the function." | M4 の `bFirstInterface` 昇順 2 本 |
+
+usbccgp が載る条件も一次資料にある([Enumeration of USB composite devices](https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/enumeration-of-the-composite-parent-device))。**3 つすべてを満たしたときだけ** `USB\COMPOSITE` が付き、`Usb.inf` 経由で usbccgp が載る。
+
+- `bDeviceClass` が 0、または `bDeviceClass`/`bDeviceSubClass`/`bDeviceProtocol` が 0xEF/0x02/0x01
+- interface が複数
+- **configuration が 1 つ**
+
+ライブラリの自動判定(`bNumInterfaces > 1` なら subsets)は、`bDeviceClass` が上の条件を満たしている限り正しい。満たさない組み合わせ(例: `bDeviceClass = 0xFF` で interface 2 本)では usbccgp が載らないので、subsets を出すと**両方の interface が Code 28** になる。
+
+### 仕様にあって、ライブラリが出していないもの
+
+`EspUsbDevice.cpp` の `buildWebUsbDescriptors()` が出すのは set header / configuration subset / function subset / compatible ID / registry property の 5 種類だけである。仕様にはあと 2 つある。
+
+| descriptor | 値 | 仕様の要求 | 現状 |
+|---|---|---|---|
+| `MS_OS_20_FEATURE_VENDOR_REVISION` | 0x08 | "If this value changes between enumerations the registry property descriptors will be updated in registry during that enumeration. **You must always change this value if you are adding/modifying any registry property or other MSOS descriptors.**" | 2.4.0 は**出していない**。→ [CR-14](espusbdevice-change-requests.ja.md) で先方が実装し、**Windows 実機で確認済み（2026-09-16）**: identity 固定のまま `DeviceInterfaceGUIDs` を変えても、**revision を据え置いた対照では registry が更新されなかった**。revision を上げた変種はすべて更新された |
+| `MS_OS_20_FEATURE_CCGP_DEVICE` | 0x07 | "the device should be treated as a composite device by Windows regardless of the number of interfaces, configuration, or class, subclass, and protocol codes" | 出していない。単一 function でも usbccgp を強制できる逃げ道 → [CR-16](espusbdevice-change-requests.ja.md) |
+
+`DeviceInterfaceGUIDs` の値 `{975F44D9-0D08-43FD-8B3E-127CA8AFFF9D}` は**ライブラリに直書きで、設定できない**(`EspUsbDevice.cpp` の registry property 生成)。EspUsbDevice で作った device はすべて同じ interface GUID を名乗る → [CR-15](espusbdevice-change-requests.ja.md)。
+
+### MS OS 1.0 の cache とは別物
+
+`HKLM\SYSTEM\CurrentControlSet\Control\usbflags\<vvvvpppprrrr>` の `osvc` は **MS OS 1.0**(string index 0xEE)の応答を憶える cache で、key は **VID + PID + bcdDevice** である([USB Device Registry Entries](https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/usb-device-specific-registry-settings))。いまの binding は BOS 経由の MS OS 2.0 だけなので `osvc` には依存しない。**`bcdDevice` を上げても 2.0 の側は何も変わらない。**
+
+
+### driver binding と registry property は別の規則で動く
+
+**2026-09-16 に決着した。** EspUsbDevice 側 session が S3 直結の板（`303a:4080`、serial `guid-test-1`、先方の working tree 版＝未リリース）で測った結果。**Windows の挙動そのものはライブラリ版に依らないが、出典は先方の環境である。**
+
+決め手になった 1 本。親に usbccgp が当たっている composite（`MI_00`=HidUsb / `MI_01`=WINUSB）を、identity 据え置き・**vendor revision 固定**のまま単一 vendor interface へ戻した。
+
+- `SERVICE` は `WINUSB` に張り替わった（**同じ instance で usbccgp から再バインドされた**）
+- `DeviceInterfaceGUIDs` は device が新しい値を送っているのに**古いまま**だった
+
+つまり **driver binding は毎回の列挙で descriptor に追随し、MS OS 2.0 の registry property だけが vendor revision でゲートされている。**
+
+| 変更（特記なき限り revision 固定） | instance | 結果 |
+|---|---|---|
+| composite → 単一 vendor interface | 同じ | **usbccgp から WINUSB へ再バインド**。GUID は古いまま |
+| vendor のみ → vendor + HID | 親は同じ、`&MI_00` / `&MI_01` が新設 | 親が usbccgp に、`MI_01` は WINUSB で GUID を新規読み込み |
+| `MI_01` の子で GUID だけ変更 | 同じ子 | GUID 据え置き。**cache は子 devnode にも効く** |
+| revision descriptor が初登場（2.4.0 → 修正版） | 同じ | 新しい GUID が入る。**初登場も「変化」として扱われる** |
+| PID 変更 / serial 変更 | **新規** | 全部読み直し |
+| serial なし | `…\8&2EBC545B&0&4` | serial ではなく**ポート由来のパス**で keying |
+
+**これで「serial を使い回すと古い判定が残る」という一般則は否定された。** 成功している instance は毎回 descriptor に追随する。E069 の 2 観測（`bcdDevice` 変更も composite 化も再評価を起こさなかった）は**失敗が貼り付いた instance に限った話**として有効で、先方の結果と矛盾しない。**成功した instance と失敗した instance で挙動が違う**、が全体像である。
+
+**interface 番号の機能入替も測った（2026-09-16、先方）。** ライブラリが HID function を先頭に固定するため、`MI_00` の中身を HID から MSC に差し替える形で行った。interface の数は 2 のまま、子の instance ID も両方とも不変、revision も固定。
+
+| 子（instance ID は不変） | 入替前 | 入替後 |
+|---|---|---|
+| `…&MI_00\9&37D27646&0&0000` | HidUsb | **WINUSB** |
+| `…&MI_01\9&37D27646&0&0001` | WINUSB | **USBSTOR** |
+
+**両方とも `CM_PROB_NONE` で、同じ子 devnode のまま正しく張り替わった。** 子であっても driver binding は毎回 descriptor に追随する。**これで binding 側の未検証はなくなった。**
+
+### registry property の規則は 3 つに分かれる（残骸が残る）
+
+同じ入替で、`DeviceInterfaceGUIDs` の側に別の問題が出た。
+
+- **無いところには書く。** revision 据え置きでも書かれる（2.4.0 → revision 対応版で新しい GUID が入るのと同じ理屈）。上の `MI_00` が該当
+- **既にあるものは revision が動いたときだけ更新する**
+- **消しはしない。** 上の `MI_01` は USBSTOR になったのに、vendor だった頃の GUID を保持したままだった。device はもうその番号向けに GUID を送っていない
+
+3 つめは一見落とし穴に見えるが、**実害はない。** 経緯を残す。
+
+**2026-09-16、一度こう書いて撤回した**: 「その GUID を列挙した host アプリが、応答できない interface を見つけてしまう。だから function を増やすときは PID を変える」。**レジストリに値があることと、device interface として列挙されることを混同していた。** 先方が実際に `SetupDiGetClassDevs`（`DIGCF_PRESENT | DIGCF_DEVICEINTERFACE`）で列挙すると、両方の値が同時にレジストリに載っている状態で、
+
+```
+{A1A1…}（親に残った残骸）  → (none present)
+{B2B2…}（子の生きた方）    → PRESENT \\?\usb#vid_303a&pid_4084&mi_00#9&649df21&0&0000#{b2b2…}
+```
+
+**残骸は何も返さない。** device interface を作るのはレジストリの値ではなく、**そのノードに bind された driver** である。usbccgp の親も USBSTOR の子も WinUSB の interface は作らない。`DeviceClasses\{GUID}` のサブキーを見る方法では生死を判別できない（`Linked` は生きている interface でも立っていない）。**列挙そのものをやるまで答えは出なかった。**
+
+device scope の残骸は実在する（未使用 PID `0x4084`、GUID の値を変えて識別。単一 vendor interface → 同 PID・同 serial で vendor + HID composite）。
+
+```
+親  USB\VID_303A&PID_4084\GUID-TEST-1        usbccgp   {A1A1…}   ← 残骸。ただし不活性
+子  USB\VID_303A&PID_4084&MI_01\9&…&0001     WINUSB    {B2B2…}   ← 有効
+```
+
+**残るのは値だけで、列挙には出てこない。** 子側の残骸（function を替えた `MI_nn` に前の GUID が残る）も同じ機構なので不活性である（こちらは列挙まで確認していないが、interface を作るのは driver だという機構は同じ）。
+
+### 本当の危険は生きている側の interface
+
+**`DeviceInterfaceGUIDs` を変えたのに vendor revision が動かない場合**、列挙される側が古い GUID に応答し続け、新しい GUID を探す host アプリは何も見つけない。これが実害のある唯一の経路である。[CR-14](espusbdevice-change-requests.ja.md) の revision 自動導出が防いでいて、**revision を手で固定したときだけ落ちる**。
+
+### CCGP descriptor（実測済み）
+
+単一 vendor interface ＋ `config.msOs20CcgpDevice`（既定オフ、先方が実装）で、親に usbccgp が載り、子 `&MI_00` に WINUSB が当たり、**GUID は子だけに付いて親に付かない**。
+
+用途は「幽霊デバイスを防ぐ」ではなく（防ぐべき幽霊はいなかった）、**トポロジを最初から固定して、後から function を足しても GUID の登録先が動かないようにする**ことである。既に device scope の値が入った PID に後から CCGP を足しても、親の残骸は消えない（消せないが実害もない）。採用するなら **usbccgp を挟んだ bulk 帯域の再測**が要る（現在の 366 Mbps は非 composite での値）。優先度は「トポロジを安定させたいか」で決める。
+
+## どこまで自由に変えてよいか
+
+| 変更するもの | Windows の認識への影響 | 手当て |
+|---|---|---|
+| endpoint 数・size、転送方式、bulk に流す中身(E108〜E119 の最適化すべて) | **なし**。binding は compatible ID だけで決まる | 不要 |
+| capture profile descriptor(E114 以降の「動的 descriptor」) | **なし**。USB descriptor ではなく vendor bulk の payload | 不要 |
+| `iProduct` / `iManufacturer` | 表示名だけ。USBDevice class は `iProduct` を Device Manager の表示に使う | 不要 |
+| `iSerialNumber` | **新しい device instance になる**。binding をやり直す | 失敗からの復旧手段として意図的に使う |
+| `bcdDevice` | instance ID は変わらない。hardware ID の `REV_` と MS OS **1.0** の cache key だけ | MS OS 2.0 には効かない |
+| `DeviceInterfaceGUIDs` / registry property | 2.4.0 では vendor revision がないので**更新されない**（先方が対照実験で確認。cache は子 devnode にも効く）。revision を上げれば identity 固定のまま更新される | CR-14 実装済み。2.4.0 のままなら serial か PID を変える |
+| interface を 1 本から 2 本へ(DFU 追加など) | **flat → subsets に切り替わる**。usbccgp の 3 条件を満たせば **driver は同じ instance で張り替わる**（先方実測） | 条件を満たすか確認する。CR-16 |
+| interface 番号の機能入替 | **driver は同じ子 devnode のまま張り替わる**（先方実測）。前の function の GUID が値として残るが不活性 | 管理上は [Gate 3](probe-feasibility-gates.ja.md) の規則どおり番号と機能の対応を固定する |
+| VID / PID | 新しい instance。usbipd は管理者権限で再 bind | 承知の上で |
+
+**いまの firmware は serial を `e104-p4-windows-v1` に固定している**(E104〜E119 共通、sketch のコメントに「Windows の devnode / WinUSB binding を保つため」と書いてある)。つまり E104 以降の全実験は**同じ Windows instance を使い回していて、「生きている instance で descriptor を変える」条件は一度も通していない**。ここが未検証なのは意図的な設計であって、測って安全と分かったからではない。
+
+## 解決前の調査記録
+
 [E069](../experiments/e069_p4_hs_vendor_bulk_rate/README.ja.md) で ESP32-P4 の vendor bulk endpoint を Windows 11 から driverless に使おうとして詰まった件の記録。**device 側は正しいと確定している**ので、Windows 側の話としてここに分ける。
 
 ## 症状

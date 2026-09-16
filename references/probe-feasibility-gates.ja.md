@@ -117,7 +117,7 @@ profileは外部に見えるUSB構成の定義であり、識別子はregistry�
 - hostは実際のUSB descriptorから利用可能なUSB経路を判断する
 - probeの機能はprotocol上のcapability discoveryで判断する
 - 外部に見えるdescriptor構成が変わる場合だけ、新しいprofileを起こす
-- 一度公開したprofileのinterface番号と機能の対応は変更しない
+- 一度公開したprofileのinterface番号と機能の対応は変更しない（根拠は当初のまま「hostはUSB descriptorの値から機能を逆引きしない」「一度公開した番号は再利用しない」という管理上の規則。**2026-09-16に一度「GUIDの残骸が残るため」という機械的な根拠を足したが、撤回した**。残骸は不活性で、列挙されないことが実測で確認された。経緯は[Windows が WinUSB を当てない](windows-winusb-binding.ja.md)）
 - 一度公開した番号は変更・再利用しない
 
 registryは「番号から機能を調べる表」ではなく、firmware作成時と適合確認時に、出力するdescriptorがどのprofileに対応するかを確認する管理表である。通常のclient動作はregistryに依存しない。

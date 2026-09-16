@@ -150,3 +150,7 @@ USB帰路は8-bit 76 Msps（237.5 Mbps）でも予算の68%で、退避FIFOが�
 ### 追記（2026-09-15、build手順の罠と「4 packet＝2 packet」の再測要）
 
 EspUsbDevice側sessionが踏んだ罠: **`build_opt.h`を変えても`arduino-cli compile`は`--clean`なしだとライブラリのobjectを再コンパイルしない**（sketch側だけ再コンパイルされ、libraryは前回のflagのまま。sizeが変わらないことでしか気づけない）。本実験の§4の`-DE110_IN_FIFO_PACKETS=N`はlibrary側（`dcd_dwc2.c`）に効くflagで、同じsketchでNを1→2→4と変えて測っているので、**「4 packetは2と同値」の行は4が実際にbuildに反映されていなかった可能性がある**（2 packetの効果そのものは29.7→49.3 MB/sという結果と先方の独立実測＋26%で実在）。4 packetの値は`--clean`付きで再測するまで未確定とする。以後、library側のflagを変える比較は`--clean`を付ける（[実測の規則](../README.ja.md)に追記）。
+
+### 追記（2026-09-16、4 packet行の扱い）
+
+EspUsbDevice 2.4.0（pin）の自動割り当てをmount後・ストリーム中に読むと、EP1 INのTX FIFOは**256 words＝2 packet**（GRXFSIZ 304、EP0 IN 16、合計576 / 992 words。EspUsbDevice側sessionの実測、[CR-13](../../references/espusbdevice-change-requests.ja.md)）。本実験の`fifo_size *= 2` patchと同じ2 packetなので、§4の「4 packet」行は再測しない（要再測から「不要」へ）。2 packetの効果は正規版でもAuto 46.4対Single 27.0 MB/s（＋72%）で再現している。
