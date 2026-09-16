@@ -475,7 +475,7 @@ if (written == 0) { ++stalls; HsVendor.flush(); taskYIELD(); continue; }
 
 ## 追加依頼 CR-10〜CR-13（2026-09-15）
 
-状態: **CR-13は先方が独立に実測して採用（working tree、未release。buffered経路で22.98→28.93 MB/s）。CR-10〜12はAPI追加のため設計から着手との回答。** 依頼はEspUsbDevice側sessionへ2026-09-15に送付（[usb-library-feedback.ja.md](usb-library-feedback.ja.md) 送付記録）。**取り込まれてreleaseされるまで、これらのpatchを前提にした数値（E108〜E115）は参考値で、製品の目安には使わない**（持ち主の方針）。
+状態: **EspUsbDevice 2.4.0（2026-09-15リリース）に全件入った**: `writeDirect()` / `onTxComplete()` / `onRxData()` / `directWriteSupported()` / `lastDirectError()`（CR-10〜12）、bulk IN TX FIFO 2 packetの自動有効（CR-13、両build既定）。有効化は`-DCFG_TUD_VENDOR_TXRX_BUFFERED=0`＋`--clean`。同梱TinyUSBは無改変。**直ったことの確認（[E116](../experiments/e116_p4_usb_in_ceiling_release/README.ja.md)、2.4.0をLibrary Managerからpin、2026-09-16）: `writeDirect()`＋`onTxComplete()`内armで27,136 byte transferが45.6〜45.8 MB/s（366 Mbps）×3、65,024で47.3、8,192で39.3、short 0・pattern_bad 0・arm_failures 0、`direct_supported=1`。独自patch版E110（49.3）より7%低いが、CR-10〜13の意図どおり動く。** **stream data path一式は[E117](../experiments/e117_p4_stream_release_api/README.ja.md)で同じpin版に移植して確認: four 60 / five 60の約4.7分soak欠損0、16 ch hold 40 / 50、8-bit 60〜100、2 ch 160 M、any / edge / 配線順不同のbyte一致、全runで`direct_supported=1 last_direct_error=None arm_failures=0`。** 先方（EspUsbDevice側session）の2.4.0での対照: `EspUsbBulkInBuffering` Auto（既定）46.42 / 46.32 MB/s（27,136 / 65,024）対 Single（1 packet）26.97 / 27.04＝**+72%**で、CR-13の自動割り当ては効いている側。`esp_cache_msync(C2M)`の所要は8,192で2.40 µs、27,136で3.25 µs、65,024で3.60 µs。−7.4%の原因はFIFOでもcacheでもなく未特定。先方が一度挙げた「GHWCFG3の896 wordsに対し割り当て合計2,048 wordsで過剰割り当て」は、列挙前（`dcd_edpt_open`前）にレジスタを読んでいた測定ミスとして撤回済み。**CR-13の割り当ての実体（2026-09-16、2.4.0 pin、mount後・ストリーム中に読んだ値。mount後とストリーム中で同一）**: GRXFSIZ **304 words**（`calc_device_grxfsiz(512,16)`＝13＋1＋2×(128＋1)＋2×16）、DIEPTXF0（EP0 IN）start 976 / depth **16**、DIEPTXF1（EP1 IN）start 720 / depth **256 words＝512 byte packet 2個分**（`fifo2=0x0002`と整合）。合計576 / 使える992 words（`dfifo_top`＝1,024−2×16）。`ghwcfg3.dfifo_depth`＝896は「DFIFO深さ−EP_LOC_CNT」で896＋128＝1,024＝TinyUSBの`otg_dfifo_depth`。前回の「DIEPTXF1は512 words＝4 packet」も割り当て前のゴミ値で、**実体は2 packet。E110 patch（`fifo_size *= 2`）と2.4.0の自動割り当ては同じ2 packet**なので、−7.4%の原因からFIFOは根拠つきで外れ、E110の「2と4に差なし」の行の再測も不要になった。それまでの経過: 依頼はEspUsbDevice側sessionへ2026-09-15に送付（[usb-library-feedback.ja.md](usb-library-feedback.ja.md) 送付記録）。**取り込まれてreleaseされるまで、これらのpatchを前提にした数値（E108〜E115）は参考値で、製品の目安には使わない**（持ち主の方針）。
 
 [E108](../experiments/e108_p4_zero_copy_stream/README.ja.md)で、vendor bulk INのcopyを全部外すと同じusbipd/WSL直結でUSB-onlyが209→247 Mbps、送出側coreのtask負荷が8-bit 60 Msps streamで57〜66%→7%になった。使ったのは出荷版2.3.0への一時patch（[espusbdevice-e108.patch](../experiments/e108_p4_zero_copy_stream/espusbdevice-e108.patch)、E097 / E101 / E102の合成＋bufsize上限撤廃）で、公開APIにするなら次の3点になる。
 
@@ -502,8 +502,94 @@ CR-13は他より効果が大きく、既存APIの設定だけで済む。zero-c
 - **再訂正（同日、P4 HSの実測）: ZLPはP4 high speedでは実在する。** buffered＋別taskからのwriteDirect＋stage 27,136 byteで、hostが`SHORT len=0`を受けたあとtimeout、deviceは`blocks=2 bytes=27136 armfail=1 zerolen=1`。完了直後にclassがZLPをarmしてclaimを握り、別taskの`writeDirect()`が`armfail`で弾かれて**ストリームが停止**する（レイテンシではなく停止）。同じ構成でarmを完了callbackの中に置くと6,081 blocks / shorts 0 / zerolen 0 / 27.5 MB/sで完走。S3 full speedで出なかったのはP4 HSと挙動が違うため。なお先方のS3の表の「non-buffered」行は、`build_opt.h`変更後に`--clean`を付けずlibraryが古いflagのままbuildされていたため無効（arm位置の軸はsketch側なので有効）。P4のnon-bufferedは`--clean`付きで取り直し中で未確定。**buffered＋directを採るなら「armは完了callbackの中でだけ」が契約になる**（別taskからのarmは停止する）。
 - **P4 HS実測（同日、`--clean`付き、先方）**: buffered＋完了callback arm＋27,136: 5,757 blocks / shorts 0 / zerolen 0 / 24.43 MB/s。buffered＋別task arm: 1 block目でshort 1・zerolen 1・**停止**。non-buffered＋完了callback: 6,161 / 0 / 0 / 27.86。non-buffered＋別task: 5,921 / 0 / 0 / 26.78。buffered＋callback＋8,192: 16.68。対照のbuffered stock `write()` 512 B: 20,200 blocks / **shorts 8,183 / zerolen 8,183**（mpsちょうどのwriteごとにZLP）。読みはpyusb同期なので絶対値はhost律速（E110の1 MiB URB×8では49 MB/s）。
 - **仕様案（先方）: Aを採る。** `static constexpr bool directWriteSupported()`（`CFG_TUD_VENDOR_TXRX_BUFFERED == 0`でtrue）、`bool writeDirect(const void*, size_t)`（≤65,535）、`onTxComplete(std::function<void(size_t)>)`、`onRxData(std::function<void(const uint8_t*, size_t)>)`（F3、non-buffered専用）。bufferedでは`writeDirect()`はfalseで何もしない（契約違反で停止する経路を公開APIに載せない）。有効化は`-DCFG_TUD_VENDOR_TXRX_BUFFERED=0`＋`--clean`必須。non-bufferedで失うもの: `available()` / `read()`は0、`flush()`はno-op、`write()`はepbuf copy経路（clamp、1本in flight）で`writeDirect()`と混ぜない。S2/S3では64 byte clampになるので既定はbufferedのまま。Bは保留（A で数字と使い勝手を見てから）。
-- **先方の実装（同日）: 4点すべて取り込み済み。** 契約は「先頭64 byte整列・DMA可能・長さ≤65,535・別coreで書いたらC2M・完了まで所有権」で長さの整列は不要（ヘッダに明記、端数長27,000 byteも測定に含む）。理由別error `EspUsbDeviceVendorDirectError {None, NotSupported, NotMounted, BadArgument, NotAligned, NotDmaCapable, Busy, TransferFailed}`、`lastDirectError()` / `lastDirectErrorName()`（`Busy`はin flight中の二重arm＝backpressure、契約違反はendpointに触る前に弾く）。arm位置は制限せずドキュメントのみ。`onTxComplete` / `onRxData`はusbd task context・非blocking、`onRxData`のbufferはcallback中のみ有効と明記。CR-13はnon-bufferedでも既定で有効（endpoint宣言から計算、起動行に`bulkInDoubleBuffered()`のbitmapを出す）。non-bufferedで失うものと`--clean`必須・「sizeが変わらなければ効いていない」もヘッダに記載。P4のRAMは136,728→131,872 byte（FIFOが消えたぶん）。`host_probe.py --no-command`用は`-DDIRECT_PURE_PATTERN=1`（`bytes(range(256))`周期・連番なし・mount後自動送出）。正規実装そのものをP4で測定中。**当方がworking tree版で取る`host_probe.py`の数値は予備測定で、正式な数値は正式リリース後の版をpinして取り直す（持ち主の指示、2026-09-15）。**
+- **先方の実装（同日）: 4点すべて取り込み済み。** 契約は「先頭64 byte整列・DMA可能・長さ≤65,535・完了まで所有権」（**2026-09-16訂正: 「別coreで書いたらC2M」は契約から外れた。P4のL1データキャッシュは共有でTinyUSBのarm時cleanが両coreの書き込みを書き戻す。先方commit `4e9330a`、E118。ただしこの訂正は先方working treeのみで、Library Managerの2.4.0のヘッダはまだ旧記述のまま。patch releaseを出すかは持ち主判断で、出れば先方から連絡**）で長さの整列は不要（ヘッダに明記、端数長27,000 byteも測定に含む）。理由別error `EspUsbDeviceVendorDirectError {None, NotSupported, NotMounted, BadArgument, NotAligned, NotDmaCapable, Busy, TransferFailed}`、`lastDirectError()` / `lastDirectErrorName()`（`Busy`はin flight中の二重arm＝backpressure、契約違反はendpointに触る前に弾く）。arm位置は制限せずドキュメントのみ。`onTxComplete` / `onRxData`はusbd task context・非blocking、`onRxData`のbufferはcallback中のみ有効と明記。CR-13はnon-bufferedでも既定で有効（endpoint宣言から計算、起動行に`bulkInDoubleBuffered()`のbitmapを出す）。non-bufferedで失うものと`--clean`必須・「sizeが変わらなければ効いていない」もヘッダに記載。P4のRAMは136,728→131,872 byte（FIFOが消えたぶん）。`host_probe.py --no-command`用は`-DDIRECT_PURE_PATTERN=1`（`bytes(range(256))`周期・連番なし・mount後自動送出）。正規実装そのものをP4で測定中。**当方がworking tree版で取る`host_probe.py`の数値は予備測定で、正式な数値は正式リリース後の版をpinして取り直す（持ち主の指示、2026-09-15）。**
+- **予備測定（当方、2026-09-15、working tree版pattern build、`host_probe.py --no-command`、1 MiB URB×depth 8、usbipd/WSL、256 MiB×2、ログ `_runs/_runs/CR10_prelim_20260915T192519JST_p4_direct_workingtree/probe.log`）**: 起動行 `P4D_STARTED buffered=0 direct=1 fifo2=0x0002 stage=27136 armfromtask=0 stock=0 pure=1`。
+
+| stage | host MB/s（2回） | short | pattern_bad | device `P4D_STAT` |
+|---|---|---|---|---|
+| 27,136 | **22.76 / 23.18** | 0 | 0 | blocks 19,784 / armfail 0 / zerolen 0 |
+| 65,024 | 23.07 / 23.65 | 0 | 0 | blocks 8,256 / armfail 0 / zerolen 0 |
+| 8,192 | 21.20 / 21.80 | 0 | 0 | blocks 65,536 / armfail 0 / zerolen 0 |
+
+  正しさは全構成で通ったが、速度は独自patch版のE110（同じhost経路・同じURB構成で27,136: 49.3、65,024: 49.0〜49.2、8,192: 41.2 MB/s）の**半分以下**で、先方のpyusb同期読み（22.78 / 23.60）とも一致する＝host側の読み方に依らずdeviceが約23 MB/sで律速している。transfer長3点から`t = a + b×bytes`を引くとa≈45 µs、漸近24 MB/s（5.6 packet/µframe）で、per-transferのoverheadでなくper-byteの上限。E110の1 packet zero-copyは29.7 MB/s（7.3 packet/µframe）だったので、それより遅い。疑うべき点: (1) DWC2がDMA modeで動いているか（E109の方法: `GAHBCFG.DMAEn`と`GINTMSK.RXFLVL`を読む。2.3.0 releaseはDMAだった）、(2) 2 packet FIFOが実際にdcdの割り当てに反映されているか（`fifo2=0x0002`はlibrary側の意図。実体は`DIEPTXF1`の上位16 bit＝FIFO深さwords。2 packetなら256）、(3) `writeDirect()`内の追加処理（27 KBのmsyncやチェック）は数十µs程度で、この差の説明にはならない。**正式な数値ではない**（リリース後のpin版で取り直す）。
+- **切り分け結果（同日）**: 先方がレジスタを読み、`gahbcfg=0x00000027 dmaen=1 rxflvl=0 ghwcfg2_arch=2`（DMA mode、E109と同一）、`dieptxf1` 上位16 bit＝**512 words＝4 packet分**で、仮説(1)(2)はいずれも否定。原因は**測定sketchがstageごとに27 KBをusbd task上で埋めていたこと**（E102はprecomputed）。事前計算に変えた先方のpyusb読みは27,136: 22.78→27.40、65,024: 23.60→30.44 MB/s。当方が同じprecomputed build（`-DDIRECT_NO_REFILL=1`）を1 MiB URB×depth 8で読み直した結果（予備測定、ログ `_runs/CR10_prelim_20260915T192519JST_p4_direct_workingtree/probe.log`）:
+
+| stage | host MB/s（2回） | short | pattern_bad | 参考: E110（独自patch版） |
+|---|---|---|---|---|
+| 27,136 | **46.64 / 46.40** | 0 | 0 | 49.3 |
+| 65,024 | **48.33 / 48.32** | 0 | 0 | 49.0〜49.2 |
+| 8,192 | **41.44 / 42.86** | 0 | 0 | 41.2〜41.3 |
+
+  **正規実装（同梱TinyUSB無改変、`writeDirect()`＋`onTxComplete()`内arm、TX FIFO自動2 packet以上）は独自patch版E110と同じ天井に届く**（差は3〜6%、run間のばらつきと同程度）。知見: usbd task上（`onTxComplete`の中）でdataを作ってからarmすると約半分に落ちる。bufferは別taskで先に用意し、callbackでは簿記とarmだけにする（E108のarm ringの形）。先方docsにも実測値つきで記載予定。**正式な数値ではない**（リリース後のpin版で取り直す）。
 - **当方の回答（利用側）**: (1) 契約違反は**チェックしてfalse**（黙ってcopyに落とさない）。ただし**長さの64 byte整列は要求しないこと**——最終stageの端数とstatus行（数百〜1,300 byte）は整列長でなく、DMAに要るのは先頭整列（4 byte、cacheの都合で64 byte推奨）と呼び出し側のC2M msyncだけ。falseの理由が分かるようcounterかenumを。(2) `writeDirect()`を**callback内からに制限しない**——E108のarm ringは最初のarmと、pipelineが空いたあとの再armをusb task（task context）から行う。non-bufferedならZLP経路がないので制限は要らず、ドキュメントで「完了callback内で次をarmすると隙間が出ない、task再armでも27 KiB以上なら差なし（E110 §3）」と書けばよい。(3) 追加で欲しいもの: in flight中の`writeDirect()`はfalse（二重armの検出）、完了callbackはusbd task context・非blocking・完了byte数、`onRxData`のbufferの寿命（callback中のみ）を明記、CR-13（TX FIFO 2 packet）はnon-buffered buildでも既定で効くこと。
 - こちら（E108〜E115）のnon-bufferedは実在する: 各実験は別sketch dir（別build dir）でflagを最初から持ち、E097 direct RX hookが動いていた（bufferedのlibraryならhookは呼ばれずcommandが届かない）ことで裏が取れる。
 - 先方の試作はライブラリ側に入って動作（S3 peer構成、EspUsbHostがhostのend-to-endで、呼び出し側bufferがそのまま届き順序も崩れず、完了callbackが連続armを維持）。buffer契約は実装コメントに転記済み。設計上の気づき: `EspUsbDevice.h`はTinyUSB configをsketchに露出していないので、sketchは自分がbuffered / non-bufferedのどちらのbuildか判定できない。Aを採るならライブラリがモードを公開する必要がある。
 
+
+
+## 追加依頼 CR-14〜CR-16（2026-09-16、MS OS 2.0 の仕様突き合わせ）
+
+状態: **CR-14 / CR-15 は先方が実装してWindows実機で検証済み（2026-09-16、先方 `303a:4080` serial `guid-test-1`、S3直結、当方のP4は不使用）。CR-16は先方の判断で保留**（前半の`bDeviceClass`条件は、このライブラリでは`bDeviceClass`が0x00か0xEF/0x02/0x01にしかならず（`EspUsbDevice.cpp` 1593〜1595行と1868〜1870行、当方で確認）、sketchから変える手段も`bNumConfigurations > 1`も無いため到達しないコードになる。`bDeviceClass`を設定可能にする要望が出たときに判定ごと入れる）。**CCGP descriptorは先方が実装済み**（`config.msOs20CcgpDevice`、既定オフ）。単一vendor interfaceで親にusbccgpが載り、子`&MI_00`にWINUSBが当たり、`DeviceInterfaceGUIDs`は**子だけに付いて親に付かない**ことを実測。**用途は当初言った「親の残骸＝幽霊デバイスを防ぐ」ではない**（残骸は列挙されず不活性であることが判明し、当方の主張は撤回した）。**トポロジを最初から固定して、後からfunctionを足してもGUIDの登録先が動かないようにする**のが実際の用途。採用の判断材料はusbccgpを挟んだbulk帯域（当方で再測。現在の366 Mbpsは非composite値）だけで、優先度は低い。 送付は2026-09-16（[usb-library-feedback.ja.md](usb-library-feedback.ja.md) 送付記録）。起票は[Windows が WinUSB を当てない](windows-winusb-binding.ja.md) §仕様で裏を取った から。
+
+**CR-14の検証結果（先方、identity固定でGUIDとrevisionだけ変えた4変種。全変種`STATUS OK` / `SERVICE WINUSB`、instanceは`USB\VID_303A&PID_4080\GUID-TEST-1`のまま）**: A（GUID `{A1A1…}`、revision 21192自動導出）→ そのGUIDを保持。B（`{B2B2…}`、563自動導出）→ 更新。**C（`{C3C3…}`、revisionを563に固定＝対照）→ `{B2B2…}`のまま更新されず。** C′（`{C3C3…}`、12898自動導出）→ 更新。**対照Cがあるので「revisionが効いた」と「毎回読み直している」を区別できている。** revisionは自動導出（descriptor setから）を採用。2.4.0にrevision descriptorが無かったのは実害のある欠落だったと確認された。
+
+いずれも実機での不具合報告ではなく、**MS OS 2.0 の仕様書本文と現在の実装の差**である。CR-1（flat / subsets の自動判定）は正しく動いており、それを前提に残る差を挙げる。
+
+根拠にした一次資料は [Microsoft OS 2.0 Descriptors Specification](https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-os-2-0-descriptors-specification)（本文は `MS_OS_2_0_desc.docx`）と [Enumeration of USB composite devices](https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/enumeration-of-the-composite-parent-device)。読んだ実装は `src/EspUsbDevice.cpp` の `buildWebUsbDescriptors()` と `microsoftOs20SubsetLayout()`。
+
+### CR-14 `MS_OS_20_FEATURE_VENDOR_REVISION`（0x08）を出してほしい
+
+**優先度: 高**（descriptor を変えた firmware を配ったときに効く）
+
+仕様の該当箇所。
+
+> The Microsoft OS 2.0 vendor revision descriptor is used to indicate the revision of registry property and other MSOS descriptors. If this value changes between enumerations the registry property descriptors will be updated in registry during that enumeration. **You must always change this value if you are adding/modifying any registry property or other MSOS descriptors.**
+>
+> The vendor revision descriptor must be applied at the device scope for a non-composite device or for MSOS descriptors that apply to the device scope of a composite device. Additionally, for a composite device, the vendor revision descriptor must be provided in every function subset and may be updated independently per-function.
+
+現在の `buildWebUsbDescriptors()` は set header / configuration subset / function subset / compatible ID / registry property の 5 種類だけを出す。vendor revision がないと、**`DeviceInterfaceGUIDs` を変えた firmware に差し替えても、Windows が registry の値を更新する契機がない**（すでに一度列挙した PC 上で）。6 byte の feature descriptor で、flat なら set header 直下、subsets なら各 function subset 内に置く。
+
+お願いしたいこと。
+
+- `MS_OS_20_FEATURE_VENDOR_REVISION`（wLength 6、wDescriptorType 0x08、`VendorRevision` ≥ 1）を出す。
+- 値は `EspUsbDeviceConfig` から指定できるようにし、既定は 1。**registry property の中身（GUID など）が変わったら利用側が上げる**、という運用をヘッダに書く。
+- ライブラリ側で descriptor set の内容から自動で導出する（例: 出力 byte 列の CRC16 の下位 15 bit ＋ 1）案もある。利用側が上げ忘れても正しく更新されるので、こちらの方が事故は少ない。どちらを採るかは実装側の判断で構わない。
+
+### CR-15 `DeviceInterfaceGUIDs` を設定できるようにしてほしい
+
+**優先度: 中**
+
+`EspUsbDevice.cpp` の registry property 生成は GUID を直書きしている。
+
+```cpp
+offset += putUtf16Le(&set[offset], "{975F44D9-0D08-43FD-8B3E-127CA8AFFF9D}", true);
+```
+
+このため **EspUsbDevice で作った vendor interface はすべて同じ device interface GUID を名乗る**。binding には影響しない（compatible ID だけで決まることは M1〜M4 で確認済み）が、host アプリが `SetupDiGetClassDevs` でこの GUID を列挙すると、自分の製品でない EspUsbDevice 製品まで拾う。製品ごとに別の GUID を名乗れるのが本来の使い方である。
+
+お願いしたいこと。
+
+- `EspUsbDeviceConfig` に GUID 文字列（`{...}` 形式、38 文字）を受ける項目を足し、未指定なら現在の値を既定として保つ（後方互換）。
+- 形式が違う文字列は列挙を壊すので、`begin()` で弾いて `lastError()` に出す。
+- CR-14 と組み合わせ、**GUID を変えたら vendor revision も変わる**ようにする。
+
+### CR-16 自動判定の穴（`bDeviceClass` が composite の条件を満たさない複数 interface）と `MS_OS_20_FEATURE_CCGP_DEVICE`（0x07）
+
+**優先度: 中**（いまの構成では踏まないが、DFU を足すときに踏む）
+
+`microsoftOs20SubsetLayout()` は `configDescriptor_[4] > 1`（`bNumInterfaces`）だけで subsets を選ぶ。しかし Windows が `USB\COMPOSITE` を付けて usbccgp を載せる条件は 3 つある。
+
+> - The device class field of the device descriptor (**bDeviceClass**) must contain a value of zero, or the class (**bDeviceClass**), subclass (**bDeviceSubClass**), and protocol (**bDeviceProtocol**) fields of the device descriptor must have the values 0xEF, 0x02 and 0x01 respectively
+> - The device must have multiple interfaces.
+> - The device must have a single configuration.
+
+つまり `bDeviceClass = 0xFF`（vendor-specific）で interface 2 本の構成では usbccgp が載らず、**subsets を出すと function subset の指す先がなくなって両方の interface が Code 28 になる**。これは E081 で単一 interface に起きたのと同じ現象である。
+
+お願いしたいこと。
+
+- 自動判定を `bNumInterfaces > 1` **かつ**（`bDeviceClass == 0` または `0xEF/0x02/0x01`）にする。条件を満たさないのに interface が複数ある構成は、そもそも Windows では各 interface に driver が当たらないので、`begin()` で警告を出すのが親切。
+- 併せて `MS_OS_20_FEATURE_CCGP_DEVICE`（wLength 4、wDescriptorType 0x07）を出せるようにしてほしい。仕様は "the device should be treated as a composite device by Windows regardless of the number of interfaces, configuration, or class, subclass, and protocol codes, the device reports" と書いており、**これを出せば interface 1 本でも usbccgp が載って function subset が効く**。E081 で見た「単一 interface に subsets は届かない」のもう一方の解でもある。既定では出さない（現在の flat が正しく動いているため）。
+
+### こちらでの確認予定
+
+CR-14 が入ったら、こちらの P4 で「**同一 VID:PID・同一 serial のまま registry property を変えて、Windows 側の `Device Parameters` が更新されるか**」を測る。これは [E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md)（未実行）の一部で、いまの firmware は serial を固定して devnode を使い回しているため、この条件は一度も通していない。
