@@ -130,7 +130,7 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 
 **当面は usbip で WSL へ引き込み libusb で叩く**(実測はすべてこの経路)。**なお usbip の取り分は測れる大きさではなかった**([E081](../experiments/e081_p4_winusb_bind/README.ja.md): native 21.2 対 usbip 21.97)。
 
-副産物として **[E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md) に効く観測**が取れた — **`bcdDevice` を変えても Windows の device instance は変わらず、serial を変えると変わる**。しかも**失敗した driver 判定は instance に貼り付いて再判定されない**(`ConfigFlags=0x40`)。
+副産物として **[E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md) に効く観測**が取れた — **`bcdDevice` を変えても Windows の device instance は変わらず、serial を変えると変わる**。**2026-09-16 訂正**: ここに続けて書いていた「失敗した driver 判定は instance に貼り付いて再評価されない」は取り下げた。どの試行でも descriptor が単一 interface 向けの subsets のままで、Windows は bind できる compatible ID を受け取っていなかった。EspUsbDevice 側 session の実測でも、意図的に Code 28 にした instance は次の接続で有効な set を送ると同じ instance のまま回復している。残るのは「回復しないことがある(条件未特定)」まで。経緯は [Windows が WinUSB を当てない](windows-winusb-binding.ja.md)。
 
 ## 4. USB stack はどちらを使うか
 

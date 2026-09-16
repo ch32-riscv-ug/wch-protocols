@@ -170,7 +170,7 @@ WinUSBに自動bindしない場合は、反証条件3を記録して完了とし
 | `bcdDevice`(0x0100 → 0x0200 → 0x0201) | **変わらない**(`USB\VID_1209&PID_0008\0`のまま) |
 | **serial**(`"0"` → `"E069-A"`) | **新しいinstanceになる**(`USB\VID_1209&PID_0008\E069-A`) |
 
-[E062](../e062_usb_same_identity_layout_change/README.ja.md)の仮説「`bcdDevice`はidentityに効かない / serialは効く」が、**実機で片側ずつ確認できた**。さらに**失敗したdriver判定は古いinstanceに貼り付いたまま再判定されない**という実害も観測した。
+[E062](../e062_usb_same_identity_layout_change/README.ja.md)の仮説「`bcdDevice`はidentityに効かない / serialは効く」が、**実機で片側ずつ確認できた**。さらに**失敗したdriver判定は古いinstanceに貼り付いたまま再判定されない**という実害も観測した。 **（2026-09-16 取り下げ。全試行で descriptor が subsets のままで、bind できる compatible ID を一度も送っていない。末尾の追記を参照）**
 
 ### ベンチの異常 — PSRAMが検出されなくなった(**原因判明・自分のビルドミス。解決済み**)
 
@@ -211,3 +211,16 @@ WinUSBに自動bindしない場合は、反証条件3を記録して完了とし
 - [harness-channels](../../references/harness-channels.ja.md) §6cの裏付け
 - [P4 logic analyzer予備調査](../../references/p4-logic-analyzer-investigation.ja.md) §後段 — download帯域の最良値をCDCの8.08からvendorの9.73以上へ
 - [E062](../e062_usb_same_identity_layout_change/README.ja.md) — `bcdDevice`とserialのidentityへの効きが片側ずつ実測で付いた
+
+## 追記（2026-09-16）: 「失敗が貼り付いて再評価されない」は成立しない
+
+この実験で「`bcdDevice` を変えても composite 化しても Code 28 のまま、`setupapi.dev.log` に install の節が出ない」→「**失敗した driver 判定が instance に貼り付いて再判定されない**」と結論したが、**取り下げる。**
+
+理由は 2 つ。
+
+1. どの試行でも descriptor は**単一 interface 向けの subsets のまま**だった。Windows は bind できる compatible ID を一度も受け取っていない（[E081](../e081_p4_winusb_bind/README.ja.md) と MS OS 2.0 の仕様で確定）。**「貼り付き」を持ち出さなくても、全部の試行が失敗したことは説明がつく。**
+2. EspUsbDevice 側 session が反例を実測した（2026-09-16）。意図的に Code 28 にした instance へ次の接続で有効な set を送ると、**同じ instance・同じ PID / serial のまま回復した。**
+
+残るのは「**失敗した instance は回復しないことがある**（条件未特定。hardware ID を変えた後の 1 例を観測）」までである。この実験の一次データ（`DEVPKEY_Device_InstallState=2`、`ConfigFlags=0x40`、`setupapi.dev.log` に install の節なし）はそのまま有効で、解釈だけを訂正する。
+
+**追記の追記（2026-09-16）**: 「`setupapi.dev.log` に install の節が出ない」という観測そのものが、症状ではなかった。先方が対照つきで確認した結果、この Windows 11（25H2 build 26200.9457）では **MS OS 2.0 の compatible ID 経由の WinUSB バインドは成功でも失敗でも節を作らない**（節が出るのは usbser / HidUsb / USBSTOR などクラスドライバの install だけ）。したがってこの観測から「Windows は driver 検索を走らせていない」とは言えない。**WinUSB の成否は Kernel-PnP / Configuration の 400 / 410 / 411 / 430 と `Device Updated`、それと `DEVPKEY_Device_InstallState` / `ProblemCode` で読む。** 詳細は[Windows が WinUSB を当てない](../../references/windows-winusb-binding.ja.md) §観測のしかた。

@@ -208,3 +208,15 @@ E013のProfile Bはこの強制変更の対象で、そのままではWindowsで
 
 - Arduino-ESP32 3.3.11 `cores/esp32/USB.cpp`、`cores/esp32/esp32-hal-tinyusb.c`、`libraries/USB/src/USBVendor.cpp`
 - TinyUSB(Arduino-ESP32 3.3.11同梱)`src/device/usbd.h`の`TUD_CDC_DESCRIPTOR`
+
+## 5. 実測による訂正（2026-09-16）
+
+§4 の 2・3・6 は、コミュニティ観測（OSR 2011 / 2017）にもとづく「Windows は既存 devnode を再利用して driver を選び直さない」という前提で書いていた。**この前提は実測で否定された。** 実測は EspUsbDevice 側 session が Windows 11 で行い（S3、`303a:4080` ほか）、経緯は [Windows が WinUSB を当てない](windows-winusb-binding.ja.md) と [E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md) にある。
+
+| §4 の記述 | 訂正 |
+|---|---|
+| 3.「HID/CDC だけの構成でも単機能↔composite や `MI_nn` の機能変更は同じ結果になる」（＝壊れる） | **壊れない。** 単機能↔composite、末尾追加、`MI_nn` の機能入替のいずれでも、**同じ instance のまま正しく再 bind される**。driver は毎回の列挙で descriptor に追随する。再 bind されないのは、一度 install に失敗して `ConfigFlags` に焼き付いた instance だけ |
+| 2.「同一 PID に留まるなら…末尾追加だけ許すが候補」 | **候補として正しいが、理由が変わった。** driver は番号を動かしても追随する。末尾追加が要るのは、**composite child の path と設定（CDC の COM 番号、vendor の device interface path）が interface 番号に紐づく**ためで、既存の番号を動かすと path を保存している host アプリが壊れる（GUID で列挙するアプリは追随する） |
+| 6.「Windows 11 の実挙動は E062 で測る」 | **測り終えた**（先方の板での参考観測）。当方の板での再現確認は不要と判断した |
+
+MS OS 2.0 の registry property（`DeviceInterfaceGUIDs`）だけは driver binding と別の規則で動く。「無ければ書く／vendor revision が動けば更新する／**消さない**」で、消えない値は不活性（列挙されない）。実害があるのは **GUID を変えて revision を動かさなかったとき**だけで、生きている側が古い GUID に応答し続ける。
