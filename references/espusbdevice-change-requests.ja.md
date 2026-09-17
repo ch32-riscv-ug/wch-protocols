@@ -529,7 +529,7 @@ CR-13は他より効果が大きく、既存APIの設定だけで済む。zero-c
 
 ## 追加依頼 CR-14〜CR-16（2026-09-16、MS OS 2.0 の仕様突き合わせ）
 
-状態: **CR-14 / CR-15 は先方が実装してWindows実機で検証済み（2026-09-16、先方 `303a:4080` serial `guid-test-1`、S3直結、当方のP4は不使用）。CR-16は先方の判断で保留**（前半の`bDeviceClass`条件は、このライブラリでは`bDeviceClass`が0x00か0xEF/0x02/0x01にしかならず（`EspUsbDevice.cpp` 1593〜1595行と1868〜1870行、当方で確認）、sketchから変える手段も`bNumConfigurations > 1`も無いため到達しないコードになる。`bDeviceClass`を設定可能にする要望が出たときに判定ごと入れる）。**CCGP descriptorは先方が実装済み**（`config.msOs20CcgpDevice`、既定オフ）。単一vendor interfaceで親にusbccgpが載り、子`&MI_00`にWINUSBが当たり、`DeviceInterfaceGUIDs`は**子だけに付いて親に付かない**ことを実測。**用途は当初言った「親の残骸＝幽霊デバイスを防ぐ」ではない**（残骸は列挙されず不活性であることが判明し、当方の主張は撤回した）。**トポロジを最初から固定して、後からfunctionを足してもGUIDの登録先が動かないようにする**のが実際の用途。採用の判断材料はusbccgpを挟んだbulk帯域（当方で再測。現在の366 Mbpsは非composite値）だけで、優先度は低い。 送付は2026-09-16（[usb-library-feedback.ja.md](usb-library-feedback.ja.md) 送付記録）。起票は[Windows が WinUSB を当てない](windows-winusb-binding.ja.md) §仕様で裏を取った から。
+状態: **CR-14 / CR-15はEspUsbDevice 2.5.0でリリース済み（2026-09-16実装・Windows実機検証、リリースは2026-09-17までに確認）。** `EspUsbDeviceConfig::deviceInterfaceGuid`（未指定なら従来のGUIDを維持＝後方互換）と`msOs20VendorRevision`（既定はdescriptor setからの自動導出、`microsoftOs20VendorRevision()`で実際の値を読める）。**CR-16は先方の判断で保留**（前半の`bDeviceClass`条件は、このライブラリでは`bDeviceClass`が0x00か0xEF/0x02/0x01にしかならず（`EspUsbDevice.cpp` 1593〜1595行と1868〜1870行、当方で確認）、sketchから変える手段も`bNumConfigurations > 1`も無いため到達しないコードになる。`bDeviceClass`を設定可能にする要望が出たときに判定ごと入れる）。**CCGP descriptorは先方が実装済み**（`config.msOs20CcgpDevice`、既定オフ）。単一vendor interfaceで親にusbccgpが載り、子`&MI_00`にWINUSBが当たり、`DeviceInterfaceGUIDs`は**子だけに付いて親に付かない**ことを実測。**用途は当初言った「親の残骸＝幽霊デバイスを防ぐ」ではない**（残骸は列挙されず不活性であることが判明し、当方の主張は撤回した）。**トポロジを最初から固定して、後からfunctionを足してもGUIDの登録先が動かないようにする**のが実際の用途。採用の判断材料はusbccgpを挟んだbulk帯域（当方で再測。現在の366 Mbpsは非composite値）だけで、優先度は低い。 送付は2026-09-16（[usb-library-feedback.ja.md](usb-library-feedback.ja.md) 送付記録）。起票は[Windows が WinUSB を当てない](windows-winusb-binding.ja.md) §仕様で裏を取った から。
 
 **CR-14の検証結果（先方、identity固定でGUIDとrevisionだけ変えた4変種。全変種`STATUS OK` / `SERVICE WINUSB`、instanceは`USB\VID_303A&PID_4080\GUID-TEST-1`のまま）**: A（GUID `{A1A1…}`、revision 21192自動導出）→ そのGUIDを保持。B（`{B2B2…}`、563自動導出）→ 更新。**C（`{C3C3…}`、revisionを563に固定＝対照）→ `{B2B2…}`のまま更新されず。** C′（`{C3C3…}`、12898自動導出）→ 更新。**対照Cがあるので「revisionが効いた」と「毎回読み直している」を区別できている。** revisionは自動導出（descriptor setから）を採用。2.4.0にrevision descriptorが無かったのは実害のある欠落だったと確認された。
 
@@ -593,3 +593,15 @@ offset += putUtf16Le(&set[offset], "{975F44D9-0D08-43FD-8B3E-127CA8AFFF9D}", tru
 ### こちらでの確認予定
 
 CR-14 が入ったら、こちらの P4 で「**同一 VID:PID・同一 serial のまま registry property を変えて、Windows 側の `Device Parameters` が更新されるか**」を測る。これは [E062](../experiments/e062_usb_same_identity_layout_change/README.ja.md)（未実行）の一部で、いまの firmware は serial を固定して devnode を使い回しているため、この条件は一度も通していない。
+
+### 2.5.0での取り込み確認（2026-09-17、当方）
+
+先方のCHANGELOGで確認した。**CR-14（vendor revision）とCR-15（GUID設定可能化）は2.5.0に入った。**
+
+| 依頼 | 2.5.0での実装 |
+|---|---|
+| CR-14 | `MS_OS_20_FEATURE_VENDOR_REVISION`を出すようになった。既定はdescriptor setからの**自動導出**（当方が提案した「利用側の上げ忘れ事故が消える」案）。`EspUsbDeviceConfig::msOs20VendorRevision`で上書きでき、`microsoftOs20VendorRevision()`が実際に適用された値を返す |
+| CR-15 | `EspUsbDeviceConfig::deviceInterfaceGuid`。**未指定なら従来のGUIDのまま**なので、既存のhost側は壊れない |
+| CR-16 | 保留のまま（`bDeviceClass`がライブラリ内で0x00か0xEF/0x02/0x01にしかならず到達しない。CCGP descriptorも未実装） |
+
+**当方の正式値（2.4.0 pin、[E116](../experiments/e116_p4_usb_in_ceiling_release/README.ja.md)〜[E118](../experiments/e118_p4_generic_fast_path/README.ja.md)）は有効なままである。** 2.5.0の変更はUVC class、isochronous FIFOの検査、HID登録順のbug fix、`deviceVersion`（`bcdDevice`）、CR-14 / CR-15で、**`writeDirect()`とvendor bulkのdata pathには手が入っていない**。再測の必要はない。2.5.0へpinし直すかは、DFUやGUIDの設定が要るようになってからでよい。

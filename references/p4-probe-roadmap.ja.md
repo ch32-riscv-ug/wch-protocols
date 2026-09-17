@@ -6,14 +6,20 @@
 
 ## 1. 現時点の結論
 
-> **数値の扱い（2026-09-15〜16、持ち主の方針）**: 製品の目安に使えるのは**正規libraryに取り込まれた機能で、リリース版をsketch.yamlでpinして取った数値**だけ。E108〜E115はEspUsbDevice 2.3.0への一時patch（E097 / E101 / E102 / E110）で取った参考値で、修正依頼（CR-10〜13）の根拠に使った。**2026-09-15にEspUsbDevice 2.4.0がリリースされ（CR-10〜13を収録、同梱TinyUSB無改変）、[E116](../experiments/e116_p4_usb_in_ceiling_release/README.ja.md)（USB-only、366 Mbps）と[E117](../experiments/e117_p4_stream_release_api/README.ja.md)（stream data path一式）で2.4.0をpinして取り直し、E109〜E115の参考値はすべて同じ値で再現した。** 以下の表の値は、E117の結果で正式な数値として読める。正式USB予算は366 Mbps × 0.9 ＝ 329 Mbps（独自patch版の350より約7%低い）。
+> **数値の扱い（2026-09-17更新、持ち主の方針）**: 製品の目安に使えるのは、**正規libraryのリリース版をpinし、かつ実際にその版がリンクされたことを成果物で証明できる数値**だけである。
+>
+> - **却下されるのは「勝手にpatchを当てて測った数値」である。** [E108](../experiments/e108_p4_zero_copy_stream/README.ja.md)〜[E115](../experiments/e115_p4_grouped_plane_transpose/README.ja.md)は**2.3.0に当方のpatch（E097 / E101 / E102 / E110）を当てた`dir:`版**で測っており、素のリリースの数値ではないので**参考値**。**素のリリース版へのpinは問題ない。**
+> - **正式値は現行リリースで取る。** いまの裏付けは[E120](../experiments/e120_p4_usb_baseline_250/README.ja.md)（USB天井）と[E121](../experiments/e121_p4_stream_baseline_250/README.ja.md)（構成別）で、どちらも**2.5.0 pin＋生成ELFで実リンク版を証明**している（`EspUsbDevice_2.5.0_55353dc9af97a625`）。`build/<profile>/libraries.cache`がpin変更に追従しない事例があるため、pinを書くだけでなくELFで残す（[実測の規則](../experiments/README.ja.md)）。**過去版との比較は行わない**——現行版の方が速く、製品の目安には現行版の数値だけを使う。
+> - **USB天井の正式値は[E120](../experiments/e120_p4_usb_baseline_250/README.ja.md)**（EspUsbDevice **2.5.0** pin、ELFで`EspUsbDevice_2.5.0_55353dc9af97a625`を確認）。**device側の天井は27,136 byte transferで45.6 MB/s＝365 Mbps**、65,024で47.3 MB/s、8,192で39.2 MB/s。**2.4.0で取った[E116](../experiments/e116_p4_usb_in_ceiling_release/README.ja.md)とdevice側が小数点以下まで一致**したので、2.5.0はvendor bulkのdata pathを変えていない。
+> - **構成別の数値は[E121](../experiments/e121_p4_stream_baseline_250/README.ja.md)（2.5.0 pin＋ELF証明）で取り直した。** 公開している4構成（16 ch F4 60、W16 60、8 ch 80、2 ch素通し160）はすべてbyte一致。**推奨構成の約4.8分soak（9.18 GB、欠損0）も取り直した。残るのは固定profile（five 60 / eight 100）だけで、どちらも予算超えで製品説明に載せていない。**
+> - **「deviceの天井」と「hostが受け取れる速度」は分けて書く。** E120ではdevice 45.6に対しhostは44.2 MB/s（静かなマシン、27,136）。hostの速度はPCの状態やbusの構成で動く（同じ経路でも日をまたぐと3%動いた）ので、**接続ごとに実測して9割で使う**という規則がこの差を吸収する。
 
 ### 1.1 製品向けの説明
 
 方針（2026-09-15、持ち主）: **16 channel時の仕様を前面に出す。** 数値は正式値（EspUsbDevice 2.4.0をpin、[E116](../experiments/e116_p4_usb_in_ceiling_release/README.ja.md) / [E117](../experiments/e117_p4_stream_release_api/README.ja.md) / [E118](../experiments/e118_p4_generic_fast_path/README.ja.md)）から、**推奨値＝USBは実測の90%、codecは`codec_limit`（core idle約10%）**、**上限＝通ったが余裕のない値（「取れる場合もある」）**の2段で書く。**保守的に書く（持ち主、2026-09-16）: 推奨値は測定済みかつ予算の90%以内のものだけ、「取れる場合もある」は予算100%以内で通ったものだけ、予算超え（five 60、eight 100）は製品説明に載せない。計算だけで未測の構成は推奨値にしない。**
 
 - **最大60 Mspsの高速取得を複数channelで行い、時間解像度を落としたchannelを多数足して、合計16 channelまで取得できる。** 推奨構成は**60 Msps×4本＋1/32（1.875 Msps）×12本＝262.5 Mbps**（当方環境の予算330 Mbpsの80%。約4.7分の連続取得を欠損0で確認）。
-- USBの通信速度は環境（PC、cable、hub、OS経路）で変わるため、**高速取得できるchannel数は環境で異なる。** 当方のPC直結（usbipd/WSL）は実測366 Mbps、推奨予算は9割の330 Mbps。60 Msps×5本＋1/32×11本は実測324〜352 Mbpsで予算超え（99〜107%）なので**製品説明には載せない**。300 Mbpsの環境でも60 Msps×4本＋1/32×12本（87.5%）が目安。
+- USBの通信速度は環境（PC、cable、hub、OS経路）で変わるため、**高速取得できるchannel数は環境で異なる。** 当方のPC直結（usbipd/WSL）はdevice側の天井が実測365 Mbps（[E120](../experiments/e120_p4_usb_baseline_250/README.ja.md)）、推奨予算は9割の329 Mbps。60 Msps×5本＋1/32×11本は実測324〜352 Mbpsで予算超え（99〜107%）なので**製品説明には載せない**。300 Mbpsの環境でも60 Msps×4本＋1/32×12本（87.5%）が目安。
 - 遅いchannelの刻みは組み合わせられる（base 60 Mで1/2 = 30 M、1/4 = 15 M、1/8 = 7.5 M、1/16 = 3.75 M、1/32 = 1.875 M、1/64 = 0.94 M）。330 Mbps予算では60 M×4＋30 M×1＋7.5 M×1＋1.875 M×10 = 296 Mbps（90%）、60 M×3＋30 M×2＋7.5 M×2＋0.94 M×9 = 263 Mbps（80%）、全16 chを同率18 Mで288 Mbps（87%）のように配分できる（60 M×4＋1/32×12以外は計算値。deviceのbenchがcodec上限を超える構成をREJECTする）。一覧は[sample rateの選び方](p4-sample-rate-selection.ja.md) §0。
 - 速度は接続ごとに実測し、**その約9割で使う**ことを推奨する。deviceは構成ごとにcodecの上限も自分で測って（bench）、超える構成をREJECTする。
 - **8 channel以下なら80 Msps（3本を高速、5本を1/64にして実測249 Mbps、予算の76%）が推奨、90 Msps（314 Mbps、95%）は取れる場合もある。2 channel以下なら150 Msps（300 Mbps、91%）が推奨、160 Msps（319 Mbps、97%）は取れる場合もある。** 1 channelなら160 Msps（160 Mbps）。100 Msps×8 chは実測349 Mbpsで予算超え（106%）なので載せない。
@@ -23,14 +29,14 @@
 
 | 説明 | 推奨値（書く数字） | 上限（取れる場合もある） | 裏付け |
 |---|---|---|---|
-| 16 ch: 60 Msps×4＋1/32×12（262.5 Mbps） | **60 Msps×4本** | — | E117: 約4.7分soak欠損0（fixed four）、E118: generic F4 60 byte一致・`codec_limit` 60。USB予算の80% |
+| 16 ch: 60 Msps×4＋1/32×12（262.5 Mbps） | **60 Msps×4本** | — | **E121（2.5.0 pin＋ELF証明）でbyte一致×2＋約4.8分soak欠損0**（9.18 GB、`bad_blocks=0`、core空き5.2 / 9.3%）。USB予算の80% |
 | 16 ch: 60 Msps×5＋1/32×11（実測324〜352 Mbps） | —（載せない） | —（予算の99〜107%で予算超え。fixed five 約4.7分soak欠損0、generic `codec_limit` 57は事実として残す） | E117 / E118 |
-| 16 ch: 60 M×3＋7.5 M×1＋0.94 M×12（実測214 Mbps） | 57 Msps（`codec_limit`） | **60 Msps**（byte一致＋25 s soak）、65で溢れる | E118 |
-| 8 ch: 3本高速＋5本1/64 | **80 Msps**（実測249 Mbps、76%） | **90 Msps**（314 Mbps、95%）。100 Msps（349 Mbps、106%。1回目host不一致、再走2回は欠損0）は予算超えで載せない。generic 8-bit F3の`codec_limit`は90 | E117 / E118 |
-| 2 ch素通し | **150 Msps**（300 Mbps、91%） | **160 Msps**（319 Mbps、97%、byte一致） | E117 |
+| 16 ch: 60 M×3＋7.5 M×1＋0.94 M×12（実測199 Mbps） | 57 Msps（`codec_limit`。deviceは60を既定でREJECTする） | **60 Msps**（**E121でbyte一致**。`--no-codec-limit`が要る）、65で溢れる | E121 / E118 |
+| 8 ch: 3本高速＋5本1/64 | **80 Msps**（**E121でbyte一致**、wire 250 Mbps、76%） | **90 Msps**（314 Mbps、95%）。100 Msps（349 Mbps、106%。1回目host不一致、再走2回は欠損0）は予算超えで載せない。generic 8-bit F3の`codec_limit`は90 | E117 / E118 |
+| 2 ch素通し | **150 Msps**（300 Mbps、91%、計算値） | **160 Msps**（320 Mbps、97%。**E121でbyte一致**、全1,310,720 block） | E121 / E117 |
 | 1 ch素通し | 160 Msps（160 Mbps） | — | E117 |
 | 4 ch素通し | —（製品説明に載せない。70 Mspsは計算値280 Mbpsで未測） | 80 Msps（320 Mbps、97%、byte一致） | E117 |
-| USB予算 | probe実測×0.9（当方366→**330 Mbps**） | — | E116（27,136 byte transfer 45.7 MB/s） |
+| USB予算 | probe実測×0.9（当方**365→329 Mbps**） | — | **E120**（2.5.0 pin、ELF証明。device 45.6 MB/s＝365 Mbps＠27,136。静かなマシンでhostが受け取れた速度は44.2＝354 Mbps、65,024なら45.8＝366） |
 | any_active / edge_latch を含む構成 | deviceの`codec_limit`に従う（例: any×6は33、edge×12は17、混在8 chは11 Msps） | — | E118 |
 
 ### 1.2 実証済みの代表profile

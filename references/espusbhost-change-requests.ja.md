@@ -234,3 +234,28 @@ README.ja.md に OUT 側の同じ話が書かれている。
 - **HR-2（転送長）の訂正**: host側は「depth 2以上かつ転送長2 KiB以上」で頭打ちになり、2 KiBと32 KiBで差がなかった。「27 KiB以上」はdevice側（zero-copy＋2 packet）で出た数字で、速いdevice相手にhost側でも要るかは未検証。**HR-1（depth 2以上）はhost側でも明確**（depth 1は全条件でstarved）。
 - 依頼として追加したいもの: (a) USB-only probe example（既知patternを最大速で受けて実測し、その90%を予算にする）、(b) docsに「`onVendorData()`など完了経路に重い処理を置かない」（先方docsに取り込み済み）。
 - **数値の扱い**: これらpatch版device相手の数値は参考値で、正規libraryに取り込まれるまで製品の目安には使わない（持ち主の方針）。
+
+## 追記（2026-09-17、EspUsbHost側sessionの最終測定）: P4 hostは42.5 MB/s
+
+**「P4 host は 36.2 MB/s を超えるか」に答えが出た。超える。42.5 MB/s。** 先方の測定（[E089](../experiments/e089_p4_host_in_queue/README.ja.md) / [E102](../experiments/e102_p4_host_zero_copy_device/README.ja.md) の続き）。**両側ともリリース版**（EspUsbHost 2.9.4 ＋ EspUsbDevice 2.5.0）、HS 直結、vendor bulk IN。
+
+| device 側の送り方 | best |
+|---|---:|
+| buffered（既定） | 28.5 MB/s |
+| direct（`-DCFG_TUD_VENDOR_TXRX_BUFFERED=0` ＋ `writeDirect()`） | **42.5 MB/s** |
+
+direct 側は host の指標が全部きれいになる（`short=0`、`per_transfer` が要求どおり、`starved=0`、queue depth も転送長も上げ止まり）。device が全転送を埋め切った上で平坦なので、**42.5 はこの host 自身の上限**（HS 理論値 53 MB/s の約 80%）。
+
+**これで「約 24〜28 MB/s」の系列はすべて device 側の FIFO 律速だったと確定した。** host の実力ではなかった。[E089](../experiments/e089_p4_host_in_queue/README.ja.md) の「P4 host 24.45 と PC 23.88 が同水準＝別々の controller が同じ天井」という観測は、**両方とも同じ device を相手にしていたから**で、律速は device 側にあった。
+
+**どちらが律速かは host 側の `short` と `per_transfer` で判別できる**（先方の知見）。buffered では全転送が short になり、`per_transfer` が 16 KB で頭打ちになる。
+
+当方の device 側の正式値と並べると次のようになる。経路が違うので直接比較ではないが、**device の direct path はどちらの host の上限よりも上**である。
+
+| 経路 | 実測 | 出典 |
+|---|---:|---|
+| P4 device（direct）→ PC host（usbipd/WSL） | **45.7 MB/s**（366 Mbps） | [E116](../experiments/e116_p4_usb_in_ceiling_release/README.ja.md)、2.4.0 pin |
+| P4 device（direct）→ P4 host | **42.5 MB/s** | 先方、2.5.0 ＋ 2.9.4 |
+| P4 device（buffered）→ P4 host | 28.5 MB/s | 同上 |
+
+P4 host は PC host の約 93%。**製品の帯域予算は PC host を前提にしているので、この結果で変える必要はない。**
