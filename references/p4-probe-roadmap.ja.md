@@ -90,7 +90,7 @@ USB帰路に関する項目（zero-copy、TX FIFO、完了callback）はpatch版
 | mixed-rateロジアナのdata path | **代表profileは成立**。固定profileでcapture、codec、PSRAM、USB、PC復元まで通った |
 | `.sr`保存とstock decoder | **達成**。P4でcaptureした`.sr`をsigrok decoderが読める |
 | PulseViewへIP経由 | **raw streamでは達成**。mixed-rate descriptorからbase gridへ復元するgatewayは未実装 |
-| USB経路の予算測定 | **測定コマンド成立。正式値はE116（2.4.0 pin）: probe 366 Mbps（usbipd/WSL）、90%予算329 Mbps。** 独自patch版の389〜395 / 377 Mbpsは参考値。90%予算による自動ACCEPT / fallbackは未実装 |
+| USB経路の予算測定 | **測定コマンド成立。正式値は[E120](../experiments/e120_p4_usb_baseline_250/README.ja.md)（2.5.0 pin＋ELF証明）: device側の天井365 Mbps（usbipd/WSL、27,136 byte transfer）、90%予算329 Mbps。** 独自patch版の389〜395 / 377 Mbpsは参考値。90%予算による自動ACCEPT / fallbackは未実装 |
 | 任意descriptorとACCEPT / REJECT | **成立**（E114）。16 byte header＋channelごと4 byteのdescriptorをdeviceが受け、幅・block・payload・padding・raw / wire帯域・bench由来のcodec上限を返し、形式・PARLIO・raw帯域・codec上限・USB予算・stage整列でREJECTする。generic codecの出力はE105 referenceとbyte一致（配線順不同、any_active、edge_latch、phase、polarity）。通常値はgenericで16 ch hold 42 Msps（E115後。50までbyte一致）、8-bit 67（80まで通る）。固定profile並み（60〜72）にはfast部の見直しが残る（E115 §4） **正式値はE117（2.4.0 pin）で再現済み** |
 | task配置と結合上限 | **E107〜E111で確定**。USBはcore 0で初期化、stageをzero-copyでDWC2へ（TX FIFO 2 packet）、codecは2 worker。8-bit 108 / wide 72 MspsまでPASS、8-bit 100 / wide 64は30 s soak欠損0。60 / 40は大きな余裕を持つ通常値。残りはhub経路と分単位超のsoak **正式値はE117（2.4.0 pin）で再現済み** |
 | RVSWDでCH32へ書込 | **未着手**。CH32とP4の配線待ち |

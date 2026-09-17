@@ -61,6 +61,11 @@ deviceのcounterは全runで`raw_sequence_bad=0` / `spill_bytes=0` / `arm_failur
 - **事実**: W16 60は`codec_limit`（57）を超えるので、deviceは既定でREJECTする。60で通すには`--no-codec-limit`が要る。**製品としては57が推奨、60は「取れる場合もある」**という §1.1 の書き方と整合する
 - **事実**: host側が重い（URB間隙28〜45 ms）状態でもbyte一致は保たれる
 - **事実**: 推奨構成の約4.8分soakは欠損0（9.18 GB、`bad_blocks=0`、device counter全部0、core空き5.2 / 9.3%）。**host側URB間隙が最大102.7 msでも崩れない**
+- **事実（コード確認、2026-09-17）**: EspUsbHost側sessionが自分のUVC転送プールで見つけた`read-then-do`（flagをlockなしで読んでからsubmitし、その間にteardownがfreeする）と同じ形が当方のfirmwareにないかを確認した。**無い。**
+  - stage free listは`portENTER_CRITICAL(&StageMux)`の中で「空きbitを見る→落とす→slot tableに記録」を一括で行う**claim-then-use**。`releaseStage()`も同じlockでbitを戻す
+  - `dispatchStage()`は`spillUsed() == 0 && armQueued() < kDirectDepth`をlockなしで読むが、**spillはusbTaskしか触らない**ので判定は正しく、**`armQueued()`はTX完了callback（usbd task）が減らす方向にしか動かさない**。つまり古い値を読んでも「直接armできるのにspillへ回す」方向にしか外れず、順序は崩れない（**spillが空のときだけ直接arm**するので、先行blockを追い越さない）
+  - **判断基準**: lockが無いこと自体は危険を意味しない。**stale readで値がどちらへ動くか**を見る。`videoStopping`のような`false → true`は「相手がもう駄目と決めた後に実行する」ので危険、`armQueued()`のような減る一方の値は速い経路を1回逃すだけで安全
+  - **この確認は一度やって終わりではない。** 先方は2.9.4の監査で「他に同じ形はない」と結論した直後、新しく書いたUVCのpoolで自分で再導入している。**firmwareに手を入れたらこの3点（spillの専有、`armQueued()`の単調性、spillが空のときだけ直接arm）を見直す。**1つでも崩れたら結論が変わる
 - **未決**: fixed profile（five 60 / eight 100）の2.5.0での取り直し。ただしどちらも予算超えで製品説明に載せていないので優先度は低い
 
 ## 反映
