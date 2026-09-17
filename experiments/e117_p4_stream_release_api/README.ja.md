@@ -88,3 +88,16 @@ build: `--clean`、libraryはLibrary Managerの`EspUsbDevice_2.4.0_396e6a991e90d
 - **仮説は成立。** 独自patchを全部外した正規実装だけで、E109〜E115で参考値としていた上限が同じ値で再現した。USB経路の−7%（E116）は、codec律速の構成には効かず、USB律速の構成（2 ch 160 M＝319 Mbps、eight 100＝349 Mbps、five 60＝324〜352 Mbps）は正式予算329 Mbps（366×0.9）に対してそれぞれ97% / 106% / 99〜107%。**2 ch 160 Mは予算内ぎりぎり、eight 100とfive 60は予算超えで「取れる場合もある」の域**。
 - 反証条件（arm_failures、last_direct_error、byte不一致）は出ていない。mirror不一致1回とeight 100の1回目のhost不一致はどちらも再走で消え、device側に欠損の痕跡がないので源側のflakeと判断。
 - **完了条件（four 60 / five 60の約4.7分soak欠損0、W16 40 / 8-bit F3 60 / 素通し2 chのbyte一致）を満たした。** roadmap §1.1の裏付けはこれで正式な数値になる。
+
+## 追記（2026-09-17）: buildの出所を実行記録から証明できない
+
+持ち主の方針（2026-09-17）: **`dir:`（working tree）で取った数値は再現性がないので使えない。正式値は、リリース版をpinし、その版が実際にリンクされたことを証明できるものだけ。**
+
+この実験は`sketch.yaml`で`EspUsbDevice (2.4.0)`をpinしているが、**実行記録（`_runs/`）にライブラリ版が残っていない**。当時はhost側のログしか保存していなかった。加えて、EspUsbDevice側sessionが2026-09-17に**`build/<profile>/libraries.cache`が`sketch.yaml`のpin変更に追従せず`--clean`でも消えない**事例を実測している（別版をpinしたbuildが前の版をリンクした）。**pinを書いただけでは、意図した版がリンクされたとは限らない。**
+
+したがって**この実験の数値は、出所を証明できない値として扱う。** [E120](../e120_p4_usb_baseline_250/README.ja.md)以降は、生成ELFの`strings`で実リンク版を実行記録に残す（[実測の規則](../README.ja.md)）。
+
+**USB天井については[E120](../e120_p4_usb_baseline_250/README.ja.md)（2.5.0 pin、ELF証明）で取り直し済みで、device側の数値はE116と小数点以下まで一致した。** stream側（E117 / E118）の取り直しは未了である。
+**訂正（2026-09-17）**: 上の注記は行き過ぎだった。**却下の対象は、当方のpatchを当てて測った数値（[E108](../e108_p4_zero_copy_stream/README.ja.md)〜[E115](../e115_p4_grouped_plane_transpose/README.ja.md)）である。素のリリース版へのpinは問題ない。** この実験はpin 1本で組んでおり、**正式値として有効**である。
+
+残る弱点は証拠の強さだけで、実行記録にライブラリ版を残していないので成果物からリンク版を示せない。**製品の目安は現行リリースで取り直した[E120](../e120_p4_usb_baseline_250/README.ja.md) / [E121](../e121_p4_stream_baseline_250/README.ja.md)（2.5.0 pin＋ELF証明）を一次の裏付けにする。**

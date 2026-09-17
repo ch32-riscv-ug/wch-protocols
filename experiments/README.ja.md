@@ -278,6 +278,38 @@ TEST_LINKE_PORT=/dev/ttyACM2
 | `esp32-p4-e8f60ae0aa24`（PARLIO 板、`/dev/ttyACM2`） | EspUsbHost の `tests/loopback/p4_role_reversal`（EspUsbHost `end()` 修正版＋`EspUsbDevice (2.4.0)` pin）。起動すると 1 台で USB Host と Device を**両ロールとも掴み**、HID を往復させて `LOOPBACK_DONE` で停止する | **PARLIO 系の実験で使う前に焼き直す。** GPIO は使っていないのでループバック治具の配線は無事 |
 | `esp32-p4-80f1b2d0b261`（第三 P4、`/dev/ttyUSB2`） | 当方の [E118](e118_p4_generic_fast_path/README.ja.md)。`303a:4021` / serial `e104-p4-windows-v1` | そのまま |
 
+#### host側のスループットを測る前に、マシンが空いているか確かめる
+
+**host側のMB/sは、同じPCで動いている他sessionのUSB活動で落ちる。** 2026-09-17の[E120](e120_p4_usb_baseline_250/README.ja.md) / [E121](e121_p4_stream_baseline_250/README.ja.md)では、host側が3〜5%低く出て、URBの間隙が**28〜102.7 ms**あった（平時は1.3 ms以下）。**device側の数値とbyte一致は影響を受けない**ので、混んでいても「deviceの能力」は測れるが、「hostが受け取れる速度」は測れない。
+
+確認のしかた。
+
+```sh
+ps aux | grep -E "pytest|arduino-cli" | grep -v grep          # 実行中のもの
+ls -la --time-style=+%H:%M:%S /tmp/pytest-embedded/ | tail    # 全 session 共有。ディレクトリ名は UTC、mtime は JST
+```
+
+`/tmp/pytest-embedded/`は全sessionで共有なので、**他sessionが何をいつ走らせたかが分かる**。host側の数値を正式値として出すときは、ここが静かな時間に取る。**`ps`が空でも安心しない**——pytestの呼び出しの合間だと捕まらないので、`/tmp/pytest-embedded/`の最新mtimeも見る（EspUsbDevice側sessionの指摘）。
+
+**実例（2026-09-17）**: 当方の測定中にEspUsbHost側sessionが`pytest --clean`の全テストを回していた（11:38:51開始、20〜30分）。`--clean`なのでarduino-cliのbuildが全コアを使い、serial flashとboard resetによる再列挙が断続する。**URB間隙は平時1.3 ms以下→最大102.7 ms**。長いrunを始める側が事前に知らせる、という運用にした。
+
+#### 正式値を出す実験は、実リンク版を成果物から記録する
+
+**`sketch.yaml` に pin を書いただけでは、何で build したかの証拠にならない。** `dir:`（working tree）で取った数値は**再現性がないので正式値に使えない**（持ち主、2026-09-17）。さらに EspUsbDevice 側 session が、**`build/<profile>/libraries.cache` が `sketch.yaml` の pin 変更に追従せず `--clean` でも消えない**事例を踏んでいる（2.9.0 を pin した build が 2.8.0 をリンクした）。**pin を書き換えただけでは、意図した版がリンクされたとは限らない。**
+
+正式値を出す実験では次を実行記録（`_runs/<ID>_*/`）へ残す。
+
+```sh
+# 出所の記録（3 点セット）
+arduino-cli compile --clean --profile <p> --build-path "$PWD/build/<p>" . 2>&1 | tee "$RUN/compile.log"
+arduino-cli compile --profile <p> --build-path "$PWD/build/<p>" --format json . \
+  | python3 -c "import json,sys; [print('LIBRARY',l['name'],l['version'],l['install_dir']) for l in json.load(sys.stdin)['builder_result']['used_libraries']]" \
+  | tee "$RUN/used_libraries.txt"
+strings build/<p>/*.elf | grep -oE '<Lib>_[0-9]+\.[0-9]+\.[0-9]+_[0-9a-f]+' | sort -u | tee "$RUN/linked_library.txt"
+```
+
+**最後の 1 つが本命**である。生成物そのものに staging dir の名前（版＋hash）が残るので、**成果物だけで版を証明できる**。[E120](e120_p4_usb_baseline_250/README.ja.md) がこの形の最初の実験。**`sketch.yaml` に `dir:` profile を同居させない**（出所が選べる状態を作らない）。
+
 #### `build_opt.h` は sketch 全体に効く。profile ごとには効かない
 
 **1 つの profile のために置いた `build_opt.h` は、同じ sketch の全 profile に効く。** EspUsbHost 側 session が 2026-09-16 に踏んだ: P4 のスループット測定用に共有 sketch へ `CFG_TUD_VENDOR_TX_BUFSIZE=32768` を置いたところ、full-speed の S3 ペアにも適用されて `peer/usb_vendor_read` が落ちた。

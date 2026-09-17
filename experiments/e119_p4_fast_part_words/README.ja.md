@@ -66,3 +66,16 @@ E118の状態（fast部はbyte emit、1 channel群はE114経路、割り込み�
 
 - **PIE（ESP32-P4のSIMD拡張）でfast部のbit gatherを書く**（LEDGER候補 `p4-pie-bit-gather`）。8 sample×16 bitの128 bit loadから、laneごとのbit抽出をvector shift / andで一度に作れれば、fast部690→200 cycle級の余地がある。
 - any / edgeの縮約pass融合（OR＋AND、rise＋fallを1 passで）。mix系layoutだけに効く。
+
+## 追記（2026-09-17）: buildの出所を実行記録から証明できない
+
+持ち主の方針（2026-09-17）: **`dir:`（working tree）で取った数値は再現性がないので使えない。正式値は、リリース版をpinし、その版が実際にリンクされたことを証明できるものだけ。**
+
+この実験は`sketch.yaml`で`EspUsbDevice (2.4.0)`をpinしているが、**実行記録（`_runs/`）にライブラリ版が残っていない**。当時はhost側のログしか保存していなかった。加えて、EspUsbDevice側sessionが2026-09-17に**`build/<profile>/libraries.cache`が`sketch.yaml`のpin変更に追従せず`--clean`でも消えない**事例を実測している（別版をpinしたbuildが前の版をリンクした）。**pinを書いただけでは、意図した版がリンクされたとは限らない。**
+
+したがって**この実験の数値は、出所を証明できない値として扱う。** [E120](../e120_p4_usb_baseline_250/README.ja.md)以降は、生成ELFの`strings`で実リンク版を実行記録に残す（[実測の規則](../README.ja.md)）。
+
+**USB天井については[E120](../e120_p4_usb_baseline_250/README.ja.md)（2.5.0 pin、ELF証明）で取り直し済みで、device側の数値はE116と小数点以下まで一致した。** stream側（E117 / E118）の取り直しは未了である。
+**訂正（2026-09-17）**: 上の注記は行き過ぎだった。**却下の対象は、当方のpatchを当てて測った数値（[E108](../e108_p4_zero_copy_stream/README.ja.md)〜[E115](../e115_p4_grouped_plane_transpose/README.ja.md)）である。素のリリース版へのpinは問題ない。** この実験はpin 1本で組んでおり、**正式値として有効**である。
+
+残る弱点は証拠の強さだけで、実行記録にライブラリ版を残していないので成果物からリンク版を示せない。**製品の目安は現行リリースで取り直した[E120](../e120_p4_usb_baseline_250/README.ja.md) / [E121](../e121_p4_stream_baseline_250/README.ja.md)（2.5.0 pin＋ELF証明）を一次の裏付けにする。**

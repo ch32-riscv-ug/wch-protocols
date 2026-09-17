@@ -108,3 +108,16 @@ byte一致検証の`find_start`は、rateが60 / 50 / 40 / 80 / 100では通り�
 **取り下げ（同日）**: 先方が `pytest --collect-only` で確認したところ、`--clean` の全テストが収集するのは 42 件（`peer/` 23、`unit/` 12、`harness/` 6、`loopback/` 1）で、**`probe/` と `manual/` は収集対象外**だった。`TEST_SERIAL_PORT_ESP32P4` を使うテストは 1 件も走らない。**この板には一度も書き込まれていない。E118 firmware はそのまま載っている。** usbipd も再 attach して貸出前の状態（`1-7` が WSL へ Attached）に戻した。**焼き直しは不要。**
 
 副産物として、`probe/p4_hs_host` / `p4_hs_device` / `p4_hs_fs_hub` は P4 の HS ポートを相手板へ繋ぐ前提なので、**HS が PC 直結のこの板では配線変更なしに走らない**ことが先方と共有できた（先方から持ち主へ連絡する）。
+
+## 追記（2026-09-17）: buildの出所を実行記録から証明できない
+
+持ち主の方針（2026-09-17）: **`dir:`（working tree）で取った数値は再現性がないので使えない。正式値は、リリース版をpinし、その版が実際にリンクされたことを証明できるものだけ。**
+
+この実験は`sketch.yaml`で`EspUsbDevice (2.4.0)`をpinしているが、**実行記録（`_runs/`）にライブラリ版が残っていない**。当時はhost側のログしか保存していなかった。加えて、EspUsbDevice側sessionが2026-09-17に**`build/<profile>/libraries.cache`が`sketch.yaml`のpin変更に追従せず`--clean`でも消えない**事例を実測している（別版をpinしたbuildが前の版をリンクした）。**pinを書いただけでは、意図した版がリンクされたとは限らない。**
+
+したがって**この実験の数値は、出所を証明できない値として扱う。** [E120](../e120_p4_usb_baseline_250/README.ja.md)以降は、生成ELFの`strings`で実リンク版を実行記録に残す（[実測の規則](../README.ja.md)）。
+
+**USB天井については[E120](../e120_p4_usb_baseline_250/README.ja.md)（2.5.0 pin、ELF証明）で取り直し済みで、device側の数値はE116と小数点以下まで一致した。** stream側（E117 / E118）の取り直しは未了である。
+**訂正（2026-09-17）**: 上の注記は行き過ぎだった。**却下の対象は、当方のpatchを当てて測った数値（[E108](../e108_p4_zero_copy_stream/README.ja.md)〜[E115](../e115_p4_grouped_plane_transpose/README.ja.md)）である。素のリリース版へのpinは問題ない。** この実験はpin 1本で組んでおり、**正式値として有効**である。
+
+残る弱点は証拠の強さだけで、実行記録にライブラリ版を残していないので成果物からリンク版を示せない。**製品の目安は現行リリースで取り直した[E120](../e120_p4_usb_baseline_250/README.ja.md) / [E121](../e121_p4_stream_baseline_250/README.ja.md)（2.5.0 pin＋ELF証明）を一次の裏付けにする。**
