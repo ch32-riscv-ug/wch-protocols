@@ -6,7 +6,7 @@ PulseView などへ「選べる sample rate」を出すとき、**値は 3 つ�
 
 ## 0. 製品としての要約
 
-> **数値の扱い（2026-09-15〜16、持ち主の方針）**: 製品の目安に使えるのは正規リリースをpinして取った数値だけ。E108以降の値は独自patch版で取ったが、EspUsbDevice 2.4.0（CR-10〜13収録）をpinしたE116 / E117で同じ値が再現したので、正式な数値として読める。正規版2.3.0で成立している数値はE106 / E107（8-bit 60 Msps、wide 40 Msps、USB-only 193〜213 Mbps）。patch版の数値はlibrary修正依頼（CR-10〜13）の根拠にのみ使う。 **2026-09-16追記: EspUsbDevice 2.4.0（pin）でのUSB-only probeの正式値は366 Mbps（[E116](../experiments/e116_p4_usb_in_ceiling_release/README.ja.md)、PC直結usbipd/WSL、27,136 byte transfer）。配分の式に入れる`probe実測`はこの値（90%で329 Mbps）。stream込みの上限は[E117](../experiments/e117_p4_stream_release_api/README.ja.md)（2.4.0 pin）で取り直し、E109〜E115の値が再現した: four 60（264 Mbps）/ five 60の約4.7分soak欠損0、16 ch hold generic 40〜50 Msps、8-bit 60〜100、2 ch 160 M（319 Mbps、予算の97%）。本節と追記の数値は正式な数値として読める（predicate: EspUsbDevice 2.4.0以上、`-DCFG_TUD_VENDOR_TXRX_BUFFERED=0`）。**
+> **数値の扱い（2026-09-17更新、持ち主の方針）**: 製品の目安に使えるのは**正規リリースをpinし、実際にその版がリンクされたことを成果物（生成ELF）で示せる数値**だけ。当方のpatchを当てて測ったE108〜E115は参考値。現在の裏付けは[E120](../experiments/e120_p4_usb_baseline_250/README.ja.md)（USB天井）と[E121](../experiments/e121_p4_stream_baseline_250/README.ja.md)（構成別）で、どちらもEspUsbDevice **2.5.0** pin＋ELF証明。**deviceの天井365 Mbps → 90%予算329 Mbps。**
 
 
 方針（持ち主、2026-09-15）: **16 channel時の仕様を前面に出す。** 最大60 Mspsの高速取得を複数channelで行い、時間解像度を落としたchannelを多数足して合計16 channelまで取る。USBの通信速度は環境で変わるので、高速取得できるchannel数は環境で異なる。速度は実測してその約9割で使うことを推奨する（当方PC直結はdevice側の天井が実測365 Mbps→予算329）。推奨構成は60 Msps×4本＋1/32×12本（262.5 Mbps）。8 channel以下なら80 Msps推奨・90 Mspsは取れる場合もある（100は予算超え）、2 channel以下なら150 Msps推奨・160 Mspsは取れる場合もある（2 ch 160 Mspsは[E113](../experiments/e113_p4_2ch_160m_passthrough/README.ja.md)でUSB 380 Mbps級の環境で欠損0、320 Mbps＝予算の93%）。数値の目安は最終的に持ち主が書き換える。
@@ -18,10 +18,10 @@ base 60 Mspsのとき、縮約したchannelの時間刻みは 1/2 = 30 M（33 ns
 | 環境（probe実測） | 構成（channel数 × rate） | 合計 | 実測比 | codec |
 |---|---|---:|---:|---|
 | **365 Mbps（[E120](../experiments/e120_p4_usb_baseline_250/README.ja.md)、2.5.0 pin＋ELF証明、PC直結 usbipd/WSL）→ 予算329** | **60 M × 4 ＋ 1/32（1.875 M）× 12**（推奨） | 262.5 Mbps | 72% | **E121でbyte一致×2**（2.5.0 pin＋ELF証明） |
-| 366 → 330 | 60 M × 5 ＋ 1/32 × 11 | 322.5（実測324〜352）Mbps | 89〜96%（予算の99〜107%。**予算超え、製品説明に載せない**） | generic `codec_limit` 57、fixed five 60は約4.7分soak欠損0 |
-| 366 → 330 | 60 M × 4 ＋ 1/2（30 M）× 1 ＋ 1/8（7.5 M）× 1 ＋ 1/32 × 10 | 296 Mbps | 81%（予算の90%、計算値） | |
-| 366 → 330 | 60 M × 3 ＋ 1/8（7.5 M）× 1 ＋ 1/64（0.94 M）× 12 | 198.75（実測214）Mbps | 58% | `codec_limit` 57（60はbyte一致＋25 s soak、上限65） |
-| 366 → 330 | 全16 chを同率18 M | 288 Mbps | 79% | |
+| 365 → 329 | 60 M × 5 ＋ 1/32 × 11 | 322.5（実測324〜352）Mbps | 89〜96%（予算の99〜107%。**予算超え、製品説明に載せない**） | generic `codec_limit` 57、fixed five 60は約4.7分soak欠損0 |
+| 365 → 329 | 60 M × 4 ＋ 1/2（30 M）× 1 ＋ 1/8（7.5 M）× 1 ＋ 1/32 × 10 | 296 Mbps | 81%（予算の90%、計算値） | |
+| 365 → 329 | 60 M × 3 ＋ 1/8（7.5 M）× 1 ＋ 1/64（0.94 M）× 12 | 198.75（実測214）Mbps | 58% | `codec_limit` 57（60はbyte一致＋25 s soak、上限65） |
+| 365 → 329 | 全16 chを同率18 M | 288 Mbps | 79% | |
 | 365 → 329 | 8 ch: 80 M × 3 ＋ 1/64 × 5（推奨、**E121でbyte一致**）／ 90（取れる場合もある） | 実測250 / 314 Mbps | 68% / 86%（予算の76 / 95%）。100は実測349 Mbps＝予算超え、載せない | generic 8-bit F3 `codec_limit` 90 |
 | 365 → 329 | 2 ch素通し 150 M（推奨）／ 160 M（**E121でbyte一致**） | 300 / 320 Mbps | 82% / 87% | PARLIO上限160 |
 | 300 Mbps | 60 M × 4 ＋ 1/32（1.875 M）× 12 | 262.5 Mbps | 87.5% | |

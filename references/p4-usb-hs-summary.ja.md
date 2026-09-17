@@ -206,3 +206,20 @@ ESP32-P4 rev 1.3 が 2 枚(`esp32-p4-30eda0e31478` / `...f5`、flash 16 MiB、**
 | packet capture | 何を指すか(USB 解析 / CH32 のフレーム)の決め |
 
 **改修の着手順**は[別紙](usb-library-change-plan.ja.md)。**device 側は全件対応済み**で、残るのは host 側([HR-1](espusbhost-change-requests.ja.md) / [HR-3](espusbhost-change-requests.ja.md))。
+
+## 参考: isochronous の FIFO 制限（2026-09-17、他 session の実測）
+
+**当方の probe は device 側の bulk だけなので踏まない**が、同じ SoC と同じ core で UVC / UAC を試す人が確実に踏むので、両側を並べて記録する。**host 側と device 側で、症状の出方まで似ている。**
+
+| 側 | 制限 | 症状 |
+|---|---|---|
+| **host**（EspUsbHost 側 session の実測、arduino-esp32 3.3.11 ＝ ESP-IDF 5.4 ビルド） | **full speed の isochronous IN は約 120 byte まで。** `CONFIG_USB_HOST_HW_BUFFER_BIAS_PERIODIC_OUT` でビルドされているため rx FIFO が約 32 line ＝ (32−2)×4 ＝ 120 byte しかない（計算と実測が一致） | 96 / 112 / 120 は動く。**128 は claim が成功するのに全 packet が `USB_TRANSFER_STATUS_ERROR` でデータ 0 byte**。256 / 512 は claim が `ESP_ERR_NOT_SUPPORTED`。**claim が通ることは、その設定が使えることの保証にならない** |
+| **device**（EspUsbDevice 2.5.0。**当方が`EspUsbDevice.cpp`の`transmitFifoFits()`で式を追った**） | S2 / S3 は送信 FIFO 256 word（1 KB）を 7 endpoint で共有。使えるのは `256 − 2×7 = 242 word`。そこから EP0 IN の 16 word と `calc_device_grxfsiz()` の諸経費 `14 + 2×(64/4+1) + 2×7 = 62 word` を引くと、**他の IN endpoint に残るのは 164 word ＝ 656 byte**（EP0 と最大 OUT packet を 64 byte としたとき）。リリースノートの「約 650 byte」はこの値。`CFG_TUD_VIDEO_STREAMING_EP_BUFSIZE` の既定は S2 / S3 で 512、**P4 で 1023** | 2.5.0 より前は、列挙も host driver の bind も通り、フレーム送出も「失敗 0」と報告しながら**何も届かず、数十秒後に無関係な EP0 経路で落ちた**。2.5.0 の `begin()` は賄えない構成を `ESP_ERR_NO_MEM` で拒否する |
+
+**full speed で他の class に出ないのは、仕様上 isochronous 以外が 64 byte 以下**だから。USB Audio のマイク（98 byte）は動き、カメラは動かない。`EspUsbHostConfig::fifo` での再分割は ESP-IDF 5.5 以降が要るので 3.3.11 では効かない。
+
+**high speed 側は IN に 2552 byte 残る計算だが、これは計算であって実測ではない**（先方も docs にそう書いている）。HS 直結リグでの UVC 実測は未了。
+
+**P4 の HS 側**は同じ式で `fifoDepthWords = 1024` / `endpointCount = 16` なので、使えるのは `1024 − 32 = 992 word`。EP0 IN 16 word と諸経費 `14 + 2×(512/4+1) + 2×16 = 304 word` を引いて **672 word ＝ 2,688 byte** が残る（最大 OUT packet 512 byte のとき）。**当方の bulk 構成（IN 512 の 2 packet 分＋OUT 512）はこの中に収まっている**ので、[E120](../experiments/e120_p4_usb_baseline_250/README.ja.md) / [E121](../experiments/e121_p4_stream_baseline_250/README.ja.md) の測定は FIFO 不足の影響を受けていない。
+
+**2 packet 化した bulk IN は packet 2 個分を食う**（`bulkInDoubleBuffered_` の bit が立っている endpoint は `packetWords()` を 2 回加算する）。CR-13 で自動有効になっているので、endpoint を増やすときはこの分を見込む。
