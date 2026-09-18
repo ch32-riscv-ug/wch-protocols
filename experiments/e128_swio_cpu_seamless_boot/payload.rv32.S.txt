@@ -11,6 +11,16 @@ cpu_reset:
     .global prepare_boot
 prepare_boot:
     # FLASH BOOT_MODEKEYR = KEY1, KEY2; STATR bit14 = BOOT.
+    li t0, 0x40022004
+    li t1, 0x45670123
+    sw t1, 0(t0)
+    li t1, 0xcdef89ab
+    sw t1, 0(t0)
+    li t0, 0x40022024
+    li t1, 0x45670123
+    sw t1, 0(t0)
+    li t1, 0xcdef89ab
+    sw t1, 0(t0)
     li t0, 0x40022028
     li t1, 0x45670123
     sw t1, 0(t0)
