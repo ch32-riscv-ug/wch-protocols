@@ -22,8 +22,24 @@ static const uint32_t kPrepareBoot[] = {
 
 static int injectWords(const uint32_t *words, size_t count, int c) {
   for (size_t i = 0; i < count; ++i) {
-    int result = writeMemoryWordRetry(0x20000000u + i * 4u, words[i], c);
-    if (result) return result;
+    const uint32_t address = 0x20000000u + i * 4u;
+    bool verified = false;
+    int result = 0;
+    for (int attempt = 1; attempt <= 5; ++attempt) {
+      result = writeMemoryWordRetry(address, words[i], c);
+      if (result) continue;
+      uint32_t actual = 0;
+      result = readThenRestoreWriter(address, &actual, c);
+      if (!result && actual == words[i]) {
+        verified = true;
+        break;
+      }
+      Serial.printf("CPU INJECT_RETRY attempt=%d address=0x%08lx expected=0x%08lx actual=0x%08lx status=%d\n",
+                    attempt, (unsigned long)address, (unsigned long)words[i],
+                    (unsigned long)actual, result);
+      Serial.flush();
+    }
+    if (!verified) return result ? result : -1;
   }
   return 0;
 }

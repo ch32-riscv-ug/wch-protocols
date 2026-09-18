@@ -46,7 +46,7 @@
 | [generic-probe-design.ja.md](generic-probe-design.ja.md) | 親の設計メモ。transport 比較・latency 見積り・足りないもの | 検討メモ |
 | [ecosystem-any-hardware.ja.md](ecosystem-any-hardware.ja.md) | **VID/PID 方針**・hardware 制御度 4 階層・連鎖 bootstrap | 検討メモ |
 | [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md) | **`dmibridge/1` の仕様**。L1/L2/L3・`caps` TLV・profile。harness はこの上に載る | draft |
-| [../protocols/link-to-target.ja.md](../protocols/link-to-target.ja.md) | 線層(SWIO/RVSWD)。**harness の自己観測で `attested` → `verified` にしたい対象** | RVSWD attested / SWIO todo |
+| [../protocols/link-to-target.ja.md](../protocols/link-to-target.ja.md) | 線層(SWIO/RVSWD)。V003 SWIOはE123〜E131で全書込み・実行まで実証 | V003 SWIO end-to-end verified / RVSWD主要frame verified |
 | [../experiments/LEDGER.ja.md](../experiments/LEDGER.ja.md) | 実験台帳。**E005/E006**(道具の性能)、**E002/E004**(握手)、**E010**(pytest の再 upload)、候補 `bl-size-*` | 台帳 |
 
 ### 2.2 ArduinoCore-CH32(コア)— `docs/`

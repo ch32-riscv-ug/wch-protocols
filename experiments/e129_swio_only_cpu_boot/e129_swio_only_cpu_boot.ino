@@ -29,12 +29,14 @@ static const uint32_t kNormalizeUserReset[] = {
   0x08030313, 0x0062a023, 0x0000006f,
 };
 
-static void normalizeByCpuReset() {
+static bool normalizeByCpuReset() {
   const int c = 10;
   if (!runPayload(kNormalizeUserReset, sizeof(kNormalizeUserReset) / 4,
                   "normalize_user_reset", c)) {
     Serial.println("SWIO STOP reason=normalize_failed");
+    return false;
   }
+  return true;
 }
 static void swioOnlyBoot() {
   const int c = 10;
@@ -268,7 +270,9 @@ void e129_loop() {
     Serial.println("# EXP E129 swio-only-cpu-boot");
     Serial.println("READY commands=NBRHSWV");
   } else if (command == 'N') {
-    Serial.println("NORMALIZE BEGIN"); normalizeByCpuReset(); Serial.println("NORMALIZE END");
+    Serial.println("NORMALIZE BEGIN");
+    if (normalizeByCpuReset()) Serial.println("NORMALIZE END");
+    else Serial.println("NORMALIZE FAILED");
   } else if (command == 'B') {
     Serial.println("SWIO BOOT BEGIN"); swioOnlyBoot(); Serial.println("SWIO BOOT END");
   } else if (command == 'R') {
