@@ -68,16 +68,15 @@ pytest run: `_runs/E126_20260918T012111Z_default/`。boot側の一時的abstract
 2. SWIO経由のBOOT key解錠とBOOT_MODE bitのset/clearはread-backまで成立した。
 3. BOOT_MODE=1でndmresetしても、software USB boot HIDは90秒以内に列挙しなかった。
 
-## 候補
+## 候補（E128後の訂正）
 
-観測はUIAP bootloader forkの既知コード「power-on reset以外なら即user codeへjump」と一致する。SWIOからのsoftware/debug resetだけでHIDに留めるには、bootloader側のsoftware-reset entry対応、またはpower-on reset相当の外部reset/power controlが必要と考えられる。
+当初はbootloaderのreset判定によるものと解釈したが、E128でオリジナルbootloaderのまま起動できたため撤回する。差はreset種別だけではなく、BOOT_MODE/PFIC操作をhalt中のdebug commandで行うかV003 CPU自身に実行させるかにあった。
 
 ## 未決
 
-- reset/power制御線がESP32の他GPIOへ接続されているか
-- UIAP bootloaderを変更せず、debug状態からPOR判定を迂回して安全にentryできるか
+- debug writeとCPU実行でFLASH_STATRのread-back後の内部状態がどう異なるか
 - `SOFT_REBOOT_TO_BOOTLOADER`対応版bootloaderなら同じ手順で留まるか
 
 ## 反映
 
-DMI ndmresetをSWIO reset primitive候補として記録する。一方、「BOOT_MODE=1 + software resetでUIAP B803を起動できる」は反証された。
+DMI ndmresetをSWIO reset primitive候補として記録する。一方、「halt中のdebug writeによるBOOT_MODE=1 + ndmresetでUIAP B803を起動できる」は反証された。CPU実行経路はE128で成立した。
