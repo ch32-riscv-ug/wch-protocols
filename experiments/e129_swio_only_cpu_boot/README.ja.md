@@ -46,6 +46,12 @@ B803出現、または90秒timeout/操作失敗を記録したら完了。
 
 V003のbootloader/user flashは変更していない。GPIO23はESP32起動時にINPUTへ設定した後、そのままHi-Zを維持した。
 
+追試用firmwareでは、追加ジグからの復帰確認用にserial command `R` / `H`も公開した。
+`R`はGPIO23→RST(PD7)を20 msだけLOWにし、その後INPUT (Hi-Z)へ戻すreset単体の診断。
+`H`はE128の成立手順（CPU resetで正規化→SWIOからBOOT_MODE設定とPD4 LOW→GPIO23外部reset）を
+一操作にした復帰コマンド。上記E129の2/2結果ではどちらも使用しておらず、SWIO-onlyという
+結論には影響しない。
+
 ## 結論
 
 外部resetは不要。必要なのは、SWIOからRAMコードとDPCを設定したあと、halt中のabstract commandではなくV003をresumeして通常実行状態で処理させることである。
