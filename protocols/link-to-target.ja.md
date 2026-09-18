@@ -1,6 +1,6 @@
 # WCH-Link ↔ target(SWIO 1 線 / RVSWD 2 線)
 
-状態: **線上エンコードは todo(WCH 公式仕様は非公開)だが、第三者実装が複数あり解読の入口は揃っている**。層は L1 物理 + L2 線上 DMI。WCH 自身は QingKe core の debug を「1-wire / 2-wire DTM」と説明する。
+状態: **V003のSWIOはESP32実装でend-to-end verified、RVSWDも主要フレームを実測済み。電気的な許容限界は未確定**。層は L1 物理 + L2 線上 DMI。WCH 自身は QingKe core の debug を「1-wire / 2-wire DTM」と説明する。
 
 PC 側からは [pc-to-link.ja.md](pc-to-link.ja.md) の `DmiOp` を送るだけで、線上の toggling は WCH-Link firmware が担う。**PC ツールを作るだけならこの層は不要**(DMI 抽象で足りる)。この層が要るのは、WCH-Link 無しで直結する自作 probe(minichlink 系)を作る場合。運ぶ中身は RISC-V の **DMI トランザクション**([riscv-debug-module.ja.md](riscv-debug-module.ja.md))。
 
@@ -70,14 +70,14 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 
 - **SWIO も運ぶ中身は同じ DMI トランザクション**。minichlink の programmer 抽象は 1 線/2 線とも `WriteReg32(reg_7bit, u32)` / `ReadReg32(reg_7bit, *u32)` = **7bit reg + 32bit data**(= §3 の RVSWD host 位相と同一)。
 - 違いは**物理だけ**: RVSWD は clock 線で bit を刻む。SWIO は clock 線が無く、**1 本の line を host が LOW に引くパルスの幅で 0/1 を符号化**する(line は pull-up で HIGH がアイドル)。
-- **exact な pulse 幅/タイミングは未確定**(gap)。一次資料候補: WCH `CH32V003RM`(datasheet の debug/SDI 章)、cnlohr の bit-bang firmware(ESP32-S2 funprog / AVR zooswio の timing)。
+- **既知のpulse幅実装はV003実機で動作確認済み**。classic ESP32 GPIO16からattach、DMI read/write、halt、RAM実行、user flash全82 page書込み、user code実行、bootloader再entryまで成立した（[E123〜E131](../experiments/LEDGER.ja.md)）。ただし0/1 pulse幅の**受理限界**と電気条件の限界は未確定。
 
 ### まだ不明
 
 - (RVSWD)STOP 条件の波形詳細(SWDIO 遷移のタイミング)、クロック周波数、複数トランザクション間のアイドル規則。
 - (RVSWD)7bit addr が RISC-V 標準 DTM(通常 abits 可変)とどう対応するか(WCH は 7bit 固定と観測)。
   - **新しい材料(2026-09-07、Swindle の source 読解)**: BMDA 側は **`dmi->address_width = 8U`** と宣言し、probe 側の responder は **`address as u8`** で受けている(`blackmagic_addon/hosted/remote_rv_protocol.c` / `rs_swindle/src/native/rpc_target/mod.rs`)。→ **8 bit 幅で上位未使用**か、**Swindle が余裕を取っている**かのどちらか。**線上が 7 か 8 かは依然未測定**。
-- (SWIO)LOW パルス幅の 0/1 閾値・start/frame・turnaround の実値。
+- (SWIO)動作点のpulse幅とframeは実装・実機検証済み。未確定なのはLOWパルス幅の0/1**許容閾値**、pull-up/open-drain条件の限界、fast-read応答先頭bit。
 
 ## 3b. なぜ ARM SWD と別 protocol なのか
 
