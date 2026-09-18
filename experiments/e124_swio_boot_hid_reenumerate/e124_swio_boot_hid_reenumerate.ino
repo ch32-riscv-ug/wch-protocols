@@ -139,6 +139,7 @@ static void bootHid() {
   Serial.println("RESET SENT");
 }
 
+#ifndef E124_EMBEDDED
 void setup() { e123_setup(); }
 
 void loop() {
@@ -153,3 +154,4 @@ void loop() {
     Serial.println("BOOT END");
   }
 }
+#endif
