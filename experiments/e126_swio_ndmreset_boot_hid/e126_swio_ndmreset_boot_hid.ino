@@ -76,6 +76,7 @@ static void switchMode(bool boot) {
   Serial.println("NDMRESET RELEASE");
 }
 
+#ifndef E126_EMBEDDED
 void setup() { e123_setup(); }
 void loop() {
   if (!Serial.available()) return;
@@ -89,3 +90,4 @@ void loop() {
     Serial.println("BOOT BEGIN"); switchMode(true); Serial.println("BOOT END");
   }
 }
+#endif
