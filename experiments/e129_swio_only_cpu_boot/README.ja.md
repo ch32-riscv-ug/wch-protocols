@@ -56,6 +56,8 @@ V003のbootloader/user flashは変更していない。GPIO23はESP32起動時�
 
 外部resetは不要。必要なのは、SWIOからRAMコードとDPCを設定したあと、halt中のabstract commandではなくV003をresumeして通常実行状態で処理させることである。
 
+E130で、開始状態に依存しないuser側への正規化には、単純なCPU resetではなくBOOT_MODE bit14を明示的にclearしてからCPU resetするpayloadが必要と判明した。E129実装もこの37-word payloadへ更新した。
+
 `NVIC_SystemReset()`の実体はUIAP coreで次の1 writeであり、payloadも同じ値をCPUから書いた。
 
 ```c

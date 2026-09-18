@@ -19,6 +19,7 @@ static int writeMemoryWordRetry(uint32_t address, uint32_t value, int c) {
     result = writeMemoryWord(address, value, c, true);
     Serial.printf("MODE WORD attempt=%d address=0x%08lx status=%d\n",
                   attempt, (unsigned long)address, result);
+    Serial.flush();
     if (result == 0) return 0;
     result = prepareWordWriter(c);
     if (result) return result;
@@ -37,13 +38,16 @@ static bool attachHaltWriter(int c) {
   uint32_t cfgr = 0;
   int result = readDmi(DMCFGR, &cfgr, c);
   Serial.printf("MODE ATTACH status=%d DMCFGR=0x%08lx\n", result, (unsigned long)cfgr);
+  Serial.flush();
   if (result || (cfgr & 0xffff0000u) != 0x5aa50000u) return false;
   uint32_t status = 0;
   result = haltTarget(c, &status);
   Serial.printf("MODE HALT status=%d DMSTATUS=0x%08lx\n", result, (unsigned long)status);
+  Serial.flush();
   if (result) return false;
   result = prepareWordWriter(c);
   Serial.printf("MODE WRITER status=%d\n", result);
+  Serial.flush();
   return result == 0;
 }
 

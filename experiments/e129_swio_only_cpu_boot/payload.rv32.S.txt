@@ -8,6 +8,33 @@ cpu_reset:
     sw t1, 0(t0)
 1:  j 1b
 
+    .global normalize_user_reset
+normalize_user_reset:
+    li t0, 0x40022004
+    li t1, 0x45670123
+    sw t1, 0(t0)
+    li t1, 0xcdef89ab
+    sw t1, 0(t0)
+    li t0, 0x40022024
+    li t1, 0x45670123
+    sw t1, 0(t0)
+    li t1, 0xcdef89ab
+    sw t1, 0(t0)
+    li t0, 0x40022028
+    li t1, 0x45670123
+    sw t1, 0(t0)
+    li t1, 0xcdef89ab
+    sw t1, 0(t0)
+    li t0, 0x4002200c
+    lw t1, 0(t0)
+    li t2, -0x4001
+    and t1, t1, t2
+    sw t1, 0(t0)
+    li t0, 0xe000e048
+    li t1, 0xbeef0080
+    sw t1, 0(t0)
+4:  j 4b
+
     .global prepare_boot_and_reset
 prepare_boot_and_reset:
     li t0, 0x40022004
