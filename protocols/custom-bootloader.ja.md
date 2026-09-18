@@ -71,7 +71,7 @@ RCC->RSTSCKR |= 0x1000000;        // reset flag クリア(RMVF)
 PFIC->CFGR = 0xBEEF0080;          // system reset(key 付き)
 ```
 
-- **起動元の選択方式は系列で 2 系統**: V103 / V2x / V3x / L103 / V407 は **BOOT0/BOOT1 ピン**、**V003 / V00X / X035 / X315 は上記レジスタによるソフトウェア選択のみ**(BOOT ピン無し)。→ [pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) §1 の表。後者では **app が協力しないと factory ISP にも自作 BL にも入れない**ので、[../references/bootloader-design-space.ja.md](../references/bootloader-design-space.ja.md) §1 の entry 設計(窓・RAM magic・reset 原因)がそのまま必要になる。
+- **起動元の選択方式は系列で 2 系統**: V103 / V2x / V3x / L103 / V407 は **BOOT0/BOOT1 ピン**、**V003 / V00X / X035 / X315 は上記レジスタによるソフトウェア選択のみ**(BOOT ピン無し)。→ [pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) §1 の表。通常はappの協力が必要だが、debug接続できる場合は例外がある。V003実機ではSWIOからRAMへ処理を注入し、DPC設定後にresumeしてCPU自身にBOOT_MODE設定とsoftware resetを実行させることで、app/外部reset線なしにUIAP bootloaderへ入れた（[E129](../experiments/e129_swio_only_cpu_boot/README.ja.md)、2/2）。一方、halt中のdebug abstract commandによる同じregister writeでは起動しなかった（[E127](../experiments/e127_uiap_seamless_boot_swio/README.ja.md)）。debug接続が無い製品では、[../references/bootloader-design-space.ja.md](../references/bootloader-design-space.ja.md) §1 のentry設計(窓・RAM magic・reset原因)が必要になる。
 - **BL 側の「留まるか」判定に reset 原因を使う**: rv003usb BL は `RCC->RSTSCKR & (1<<26)`(power-on reset)でのみ BL に留まり、それ以外は即 user code。`SOFT_REBOOT_TO_BOOTLOADER` を有効にすると `RSTSCKR == 0x10000000`(software reset のみ)を「app からの要求」と解釈する。
 - minichlink は **`FLASH_STATR` bit13 で「いま BOOT 領域で走っているか」**を判定する(`B003DetermineIfInBoot`)。
 - V003 で BOOT 領域から起動させるには option byte 側の設定も要る(rv003usb `configurebootloader`: `OBKEYR`/`KEYR`/`MODEKEYR` 解錠 → `OPTER` → 再書込)。**出荷状態の多くは BOOT 起動になっている**が、要確認。
