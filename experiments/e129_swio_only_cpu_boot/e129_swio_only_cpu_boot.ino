@@ -17,9 +17,22 @@ static const uint32_t kPrepareBootAndReset[] = {
   0x04828293, 0xbeef0337, 0x08030313, 0x0062a023, 0x0000006f,
 };
 
+static const uint32_t kNormalizeUserReset[] = {
+  0x400222b7, 0x00428293, 0x45670337, 0x12330313, 0x0062a023,
+  0xcdef9337, 0x9ab30313, 0x0062a023,
+  0x400222b7, 0x02428293, 0x45670337, 0x12330313, 0x0062a023,
+  0xcdef9337, 0x9ab30313, 0x0062a023,
+  0x400222b7, 0x02828293, 0x45670337, 0x12330313, 0x0062a023,
+  0xcdef9337, 0x9ab30313, 0x0062a023,
+  0x400222b7, 0x00c28293, 0x0002a303, 0xffffc3b7, 0xfff38393,
+  0x00737333, 0x0062a023, 0xe000e2b7, 0x04828293, 0xbeef0337,
+  0x08030313, 0x0062a023, 0x0000006f,
+};
+
 static void normalizeByCpuReset() {
   const int c = 10;
-  if (!runPayload(kCpuReset, sizeof(kCpuReset) / 4, "normalize_reset", c)) {
+  if (!runPayload(kNormalizeUserReset, sizeof(kNormalizeUserReset) / 4,
+                  "normalize_user_reset", c)) {
     Serial.println("SWIO STOP reason=normalize_failed");
   }
 }
@@ -47,10 +60,14 @@ static void inspectBootStatus() {
 static bool waitFlashIdle(int c, uint32_t *lastStatus = nullptr) {
   uint32_t statr = 0;
   for (int attempt = 0; attempt < 400; ++attempt) {
-    if (readThenRestoreWriter(0x4002200c, &statr, c)) return false;
+    const int readResult = readMemoryWord(0x4002200c, &statr, c);
+    if (readResult) continue;
     if (!(statr & 1u)) {
       if (lastStatus) *lastStatus = statr;
-      return true;
+      for (int restore = 0; restore < 5; ++restore) {
+        if (!prepareWordWriter(c)) return true;
+      }
+      return false;
     }
   }
   if (lastStatus) *lastStatus = statr;
@@ -176,7 +193,7 @@ static bool programFlashPage64(uint32_t address, const uint8_t *data) {
 }
 
 static void receiveFlashPage() {
-  uint8_t packet[68];
+  uint8_t packet[72];
   const size_t received = Serial.readBytes(packet, sizeof(packet));
   if (received != sizeof(packet)) {
     Serial.printf("FLASH STOP reason=short_packet received=%u expected=%u\n",
@@ -187,6 +204,23 @@ static void receiveFlashPage() {
                            ((uint32_t)packet[1] << 8) |
                            ((uint32_t)packet[2] << 16) |
                            ((uint32_t)packet[3] << 24);
+  uint32_t crc = 0xffffffffu;
+  for (size_t index = 0; index < 68; ++index) {
+    crc ^= packet[index];
+    for (int bit = 0; bit < 8; ++bit) {
+      crc = (crc >> 1) ^ (0xedb88320u & (0u - (crc & 1u)));
+    }
+  }
+  crc = ~crc;
+  const uint32_t expectedCrc = (uint32_t)packet[68] |
+                               ((uint32_t)packet[69] << 8) |
+                               ((uint32_t)packet[70] << 16) |
+                               ((uint32_t)packet[71] << 24);
+  if (crc != expectedCrc) {
+    Serial.printf("FLASH STOP reason=packet_crc actual=0x%08lx expected=0x%08lx\n",
+                  (unsigned long)crc, (unsigned long)expectedCrc);
+    return;
+  }
   programFlashPage64(address, packet + 4);
 }
 
@@ -221,13 +255,13 @@ static void receiveReadPage() {
   Serial.println("\nREAD OK");
 }
 
-void setup() {
+void e129_setup() {
   // GPIO23 remains Hi-Z for the entire experiment.
   pinMode(kTargetResetPin, INPUT);
   e123_setup();
 }
 
-void loop() {
+void e129_loop() {
   if (!Serial.available()) return;
   const int command = Serial.read();
   if (command == '?') {
@@ -251,3 +285,8 @@ void loop() {
     receiveReadPage();
   }
 }
+
+#ifndef E129_EMBEDDED
+void setup() { e129_setup(); }
+void loop() { e129_loop(); }
+#endif

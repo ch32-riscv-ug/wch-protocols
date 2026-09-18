@@ -19,14 +19,14 @@ def windows_b803():
 def test_swio_only_cpu_boot(dut):
     dut.write("?")
     dut.expect_exact("# EXP E129 swio-only-cpu-boot", timeout=10)
-    dut.expect_exact("READY commands=NB", timeout=5)
+    dut.expect_exact("READY commands=NBRHSWV", timeout=5)
 
     dut.write("N")
     dut.expect_exact("NORMALIZE BEGIN", timeout=5)
     for pattern in (
-        rb"CPU INJECT name=normalize_reset words=6 status=0",
-        rb"CPU DPC name=normalize_reset address=0x20000000 status=0",
-        rb"CPU RESUME name=normalize_reset",
+        rb"CPU INJECT name=normalize_user_reset words=37 status=0",
+        rb"CPU DPC name=normalize_user_reset address=0x20000000 status=0",
+        rb"CPU RESUME name=normalize_user_reset",
         rb"NORMALIZE END",
     ):
         dut.expect(re.compile(pattern), timeout=20)
@@ -41,7 +41,7 @@ def test_swio_only_cpu_boot(dut):
     for pattern in (
         rb"SWIO BOOT BEGIN",
         rb"MODE ATTACH status=0 DMCFGR=0x5aa5[0-9a-fA-F]{4}",
-        rb"CPU INJECT name=prepare_boot_and_reset words=45 status=0",
+        rb"CPU INJECT name=prepare_boot_and_reset words=61 status=0",
         rb"CPU DPC name=prepare_boot_and_reset address=0x20000000 status=0",
         rb"CPU RESUME name=prepare_boot_and_reset",
         rb"SWIO CPU_RESET_ARMED delay_loops=5000000",

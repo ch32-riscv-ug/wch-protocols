@@ -46,9 +46,11 @@ static bool runPayload(const uint32_t *words, size_t count, const char *name, in
   int result = injectWords(words, count, c);
   Serial.printf("CPU INJECT name=%s words=%u status=%d\n", name,
                 static_cast<unsigned>(count), result);
+  Serial.flush();
   if (result) return false;
   result = setDpc(0x20000000, c);
   Serial.printf("CPU DPC name=%s address=0x20000000 status=%d\n", name, result);
+  Serial.flush();
   if (result) return false;
   Serial.printf("CPU RESUME name=%s\n", name); Serial.flush();
   resumeCpu(c);
