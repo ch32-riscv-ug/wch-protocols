@@ -67,6 +67,7 @@ static void cpuSeamlessBoot() {
   Serial.println("CPU HWRESET RELEASE pin=23");
 }
 
+#ifndef E128_EMBEDDED
 void setup() {
   pinMode(kTargetResetPin, INPUT);
   e123_setup();
@@ -86,3 +87,4 @@ void loop() {
     Serial.println("RESET RELEASE pin=23");
   }
 }
+#endif

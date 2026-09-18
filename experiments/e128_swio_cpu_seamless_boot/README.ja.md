@@ -50,4 +50,6 @@ V003のbootloaderとuser flashは変更していない。変更したのはreset
 
 ESP32 GPIO16一本のSWIOとGPIO23のreset線から、UIAPduino Pro Micro CH32V003 V1.4のオリジナルbootloaderを起動できる。ただし、単なるdebug memory write + DMI/external resetでは足りず、少なくとも今回の実機ではFLASH/PFIC操作をV003 CPU自身に実行させる必要があった。
 
+その後E129で、最後のGPIO23外部resetもCPU実行の`NVIC_SystemReset()`へ置換でき、SWIO一本だけで2/2成功した。E128のGPIO23は成立性確認には有効だったが必須条件ではない。
+
 `payload.rv32.S.txt`は注入word列の原典であり、UIAP同梱toolchainの`riscv-none-embed-as -march=rv32imac -mabi=ilp32`で生成した。

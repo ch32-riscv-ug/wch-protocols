@@ -1,0 +1,49 @@
+    .option norvc
+    .section .text
+
+    .global cpu_reset
+cpu_reset:
+    li t0, 0xe000e048
+    li t1, 0xbeef0080
+    sw t1, 0(t0)
+1:  j 1b
+
+    .global prepare_boot_and_reset
+prepare_boot_and_reset:
+    li t0, 0x40022028
+    li t1, 0x45670123
+    sw t1, 0(t0)
+    li t1, 0xcdef89ab
+    sw t1, 0(t0)
+    li t0, 0x4002200c
+    lw t1, 0(t0)
+    li t2, -0x4001
+    and t1, t1, t2
+    li t2, 0x4000
+    or t1, t1, t2
+    sw t1, 0(t0)
+
+    li t0, 0x40021018
+    lw t1, 0(t0)
+    ori t1, t1, 0x20
+    sw t1, 0(t0)
+    li t0, 0x40011400
+    lw t1, 0(t0)
+    li t2, 0xfff0ffff
+    and t1, t1, t2
+    li t2, 0x00030000
+    or t1, t1, t2
+    sw t1, 0(t0)
+    li t0, 0x40011414
+    li t1, 0x10
+    sw t1, 0(t0)
+
+    # A deliberately generous detach interval; exact duration is observed by USB.
+    li t0, 5000000
+2:  addi t0, t0, -1
+    bnez t0, 2b
+
+    li t0, 0xe000e048
+    li t1, 0xbeef0080
+    sw t1, 0(t0)
+3:  j 3b
