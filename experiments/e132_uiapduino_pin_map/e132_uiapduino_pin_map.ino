@@ -8,7 +8,7 @@
 // not have internal pulls, but are retained because a driven HIGH is still
 // observable there.
 static const uint8_t kFixturePins[] = {
-  0, 2, 4, 5, 13, 14, 15, 17, 18, 19,
+  0, 4, 5, 13, 14, 17, 18, 19,
   21, 22, 25, 26, 27, 32, 33, 34, 35, 36, 39,
 };
 static HardwareSerial gDutSerial(2);
@@ -286,13 +286,12 @@ static void startSpiSlave(uint8_t mode) {
     Wire.end();
     gI2cStarted = false;
   }
-  // Use one side of each duplicated UIAP header signal and leave the other
-  // side unbiased.
-  pinMode(27, INPUT); pinMode(15, INPUT);
+  // Strap-safe wiring measured on 2026-09-19:
+  // PC5/SCK=GPIO27, PC6/MOSI=GPIO4, PC7/MISO=GPIO14.
   spi_bus_config_t bus = {};
-  bus.mosi_io_num = 2;
+  bus.mosi_io_num = 4;
   bus.miso_io_num = 14;
-  bus.sclk_io_num = 4;
+  bus.sclk_io_num = 27;
   bus.quadwp_io_num = -1;
   bus.quadhd_io_num = -1;
   bus.max_transfer_sz = 4;
@@ -306,7 +305,7 @@ static void startSpiSlave(uint8_t mode) {
     gSpiStarted = true;
     xTaskCreate(spiSlaveTask, "uiap-spi", 2048, nullptr, 2, nullptr);
   }
-  Serial.printf("SPI %s mode=%u sck=4 mosi=2 miso=14 cs=19 status=%d\n",
+  Serial.printf("SPI %s mode=%u sck=27 mosi=4 miso=14 cs=19 status=%d\n",
                 gSpiStarted ? "READY" : "ERROR", mode & 3u, (int)result);
 }
 
