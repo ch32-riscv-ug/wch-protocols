@@ -157,6 +157,44 @@ static void scanFixture(unsigned long durationMs) {
   fixtureInputs();
 }
 
+static void measureEdges() {
+  const String request = Serial.readStringUntil('\n');
+  int pin = -1;
+  unsigned durationMs = 0;
+  if (sscanf(request.c_str(), "%d %u", &pin, &durationMs) != 2 ||
+      !isFixturePin(pin) || durationMs == 0 || durationMs > 5000) {
+    Serial.printf("EDGE ERROR request=%s\n", request.c_str());
+    return;
+  }
+  if (gDutSerialStarted && (pin == 21 || pin == 22)) {
+    gDutSerial.end();
+    gDutSerialStarted = false;
+  }
+  pinMode(pin, INPUT);
+  unsigned rises = 0;
+  unsigned falls = 0;
+  uint32_t highUs = 0;
+  int previous = digitalRead(pin);
+  uint32_t segmentStarted = micros();
+  const uint32_t started = segmentStarted;
+  const uint32_t requestedUs = durationMs * 1000u;
+  while ((uint32_t)(micros() - started) < requestedUs) {
+    const int current = digitalRead(pin);
+    if (current == previous) continue;
+    const uint32_t now = micros();
+    if (previous) highUs += now - segmentStarted;
+    if (current) ++rises;
+    else ++falls;
+    previous = current;
+    segmentStarted = now;
+  }
+  const uint32_t ended = micros();
+  if (previous) highUs += ended - segmentStarted;
+  Serial.printf("EDGE gpio=%d elapsed_us=%lu rises=%u falls=%u high_us=%lu\n",
+                pin, (unsigned long)(ended - started), rises, falls,
+                (unsigned long)highUs);
+}
+
 static void startDutSerial() {
   if (gDutSerialStarted) return;
   // Measured mapping: V003 PD5/TX -> GPIO22, PD6/RX <- GPIO21.
@@ -327,7 +365,7 @@ void loop() {
   const int command = Serial.read();
   if (command == '?') {
     Serial.println("# EXP E132 UIAPduino pin-map fixture");
-    Serial.println("READY commands=NBRHSWVvGMPUTIKJjQX");
+    Serial.println("READY commands=NBRHSWVvGMPEUTIKJjQX");
   } else if (command == 'G') {
     // One DUT cycle is 12 s.  Two cycles make phase-independent decoding
     // straightforward and expose unstable or multiply-connected inputs.
@@ -337,6 +375,8 @@ void loop() {
     printFixtureMask(fixtureMask());
   } else if (command == 'P') {
     configureFixturePin();
+  } else if (command == 'E') {
+    measureEdges();
   } else if (command == 'U') {
     startDutSerial();
   } else if (command == 'T') {
