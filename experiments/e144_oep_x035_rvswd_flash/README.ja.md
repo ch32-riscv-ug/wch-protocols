@@ -54,3 +54,29 @@ halt、memory read、flash erase/program/verify、resetまで実行できた。�
 
 これは一台、低速software bit-bang、末尾1論理pageの破壊前提試験である。全image、反復、電源断、
 複数個体、速度および失敗途中からの復旧は未検証であり、正式Protocol仕様の確定根拠にはしない。
+
+## 追加検証
+
+同日、次を追加で実施した。
+
+- 64-byte patternと全FF復元を10周期、20操作。2周期ごとのsoftware reset後照合を含め全件成功
+- 現image 62 KiBをOEPだけで退避（240.41秒）
+- 1,032 byteのPA0 HIGHテストアプリへ差分109 pageを書込み（297.85秒）
+- reset後に`GPIOA_OUTDR=1`を確認
+- 62 KiB全域の独立readで期待imageと不一致0（240.25秒）
+- 元imageへ109 pageを復元（297.90秒）し、reset後の全域hash一致（240.55秒）
+
+テストimageのSHA-256は
+`9f472e4b9d2f12634e90eb0d5861eb7addca1d2f5ff5f755dc3e42fb20eb04a5`、元imageは
+`17ad3777ba42af0bd8d61ae5521ab5a4d5f10057e148d22b3fae5b8fbc235988`だった。
+
+故障注入buildでは物理erase直後と最初の64-byte commit直後に一度だけfailureを返した。targetが
+全FFまたは先頭64 byteだけprogramされた部分状態を独立readで確認した後、probe RAMに保持した
+erase前256 byteと同一要求を使って全pageを回復できた。未回復中の別物理page要求は拒否した。
+
+これにより通常の通信失敗後に同一probe sessionで再送する経路は成立した。一方、erase後にprobeも
+reset・電源断するとRAM上の退避像を失い、64-byte要求だけでは消えた隣接192 byteを再構成できない。
+この障害範囲には物理page全体を再送する複数page/streaming操作または永続journalが必要である。
+
+したがって上記「未検証」のうち、全image、短期反復、同一session内の二段階の途中失敗回復は検証済み
+となった。複数個体、probe同時電源断、性能改善は引き続き未検証である。
