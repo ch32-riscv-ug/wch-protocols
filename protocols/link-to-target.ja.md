@@ -62,7 +62,7 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 
 ### 52-bit short形式（LinkE + X035実測）
 
-2026-09-11の実測では、通常packetは`addr7 + R/W1 + parity1 + park1 + padding4 + data32 + parity1 + park1 + status2 + padding2`の52 bitで、その後に`0`のtermination clockとSTOP条件が続いた。data/parity位置は8,628 packetsすべてで検算済み。readはbit 14、writeはbit 48で方向切替する。`sigrok-rvswd`、Saleae analyzer、Tapioca、pico-rvswdの境界と一致する。
+2026-09-11の実測では、通常packetは`addr7 + R/W1 + parity1 + aux5 + data32 + parity1 + aux5`の52 bitで、その後にSTOP条件が続いた。data/parity位置は8,628 packetsすべてで検算済み。2026-09-20のESP32-P4→X035実機試験では、hostがauxを`10101`/`10111`として駆動する独立実装と同じ方式でDMI read/writeが成立した。**従来ここでbit 48–49をtarget statusと解釈した記述は誤り**で、short direct-DMIではUSB応答のstatusと対応付けない。
 
 さらに4 KiB readbackでは585-edge/15-word burstを64回観測した。park/paddingはLinkEが一定値に固定せず、既存probeが使う`10101`/`10111`とも異なるが、X035はその固定値でも実機動作している。したがって同期語ではなくdon’t-careとして扱う。
 
