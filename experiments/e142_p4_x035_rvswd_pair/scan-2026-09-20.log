@@ -1,0 +1,32 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff028d6
+Core1 Saved PC:0x4fc055f8
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x1174
+load:0x4ff29ed0,len:0xd08
+load:0x4ff2cbd0,len:0x3518
+entry 0x4ff29ed0
+# EXP E142 v2 chip=ESP32-P4 candidates=46 pairs=2070 half_us=3
+PROGRESS tested=100 found=0 last_dio=2 last_clk=10
+PROGRESS tested=200 found=0 last_dio=4 last_clk=20
+PROGRESS tested=300 found=0 last_dio=6 last_clk=39
+PROGRESS tested=400 found=0 last_dio=8 last_clk=49
+PROGRESS tested=500 found=0 last_dio=11 last_clk=4
+PROGRESS tested=600 found=0 last_dio=13 last_clk=15
+PROGRESS tested=700 found=0 last_dio=15 last_clk=29
+PROGRESS tested=800 found=0 last_dio=17 last_clk=44
+PROGRESS tested=900 found=0 last_dio=19 last_clk=54
+PROGRESS tested=1000 found=0 last_dio=22 last_clk=9
+PROGRESS tested=1100 found=0 last_dio=28 last_clk=19
+PROGRESS tested=1200 found=0 last_dio=30 last_clk=39
+PROGRESS tested=1300 found=0 last_dio=32 last_clk=49
+PROGRESS tested=1400 found=0 last_dio=40 last_clk=4
+PROGRESS tested=1500 found=0 last_dio=42 last_clk=14
+PROGRESS tested=1600 found=0 last_dio=44 last_clk=28
+PROGRESS tested=1700 found=0 last_dio=46 last_clk=43
+PROGRESS tested=1800 found=0 last_dio=48 last_clk=54
+PROGRESS tested=1900 found=0 last_dio=51 last_clk=9
+PROGRESS tested=2000 found=0 last_dio=53 last_clk=19
+DONE tested=2070 found=0 lines=Hi-Z

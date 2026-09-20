@@ -120,9 +120,7 @@ START（DIO falling while CLK high）からSTOP（DIO rising while CLK high）�
 | 10–13 | 4 | host padding/don't-care。`0000` × 8,358、`0100` × 270 |
 | 14–45 | 32 | write/read data |
 | 46 | 1 | data32 のeven parity。8,628 packetすべて一致 |
-| 47 | 1 | park/don't-care。実測ではbit 46と8,613/8,628一致 |
-| 48–49 | 2 | target status。`00` × 8,560、`01` × 68 |
-| 50–51 | 2 | target padding/don't-care = `11`。8,628 packetすべて一致 |
+| 47–51 | 5 | aux。実機動作するprobe実装はhostが`10111`を駆動する。旧解析の「target status 2 bit」はE142のX035 DMI試験で反証 |
 | 52 | — | termination clock。sample値は常に`0`、直後にSTOP |
 
 4 KiB pattern write の 1024 packets では、`addr=0x04, R/W=1`、header後半6 bit=`000000`、data後半6 bit=`000011`、STOP sample=`0`がすべて一致した。data32 は `0x03020100, 0x07060504, …` と1024 words全体が一致する。この境界は偶然に合うのではなく、実装に使える強さで確定できる。
