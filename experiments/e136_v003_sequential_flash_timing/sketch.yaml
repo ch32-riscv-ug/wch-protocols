@@ -1,0 +1,7 @@
+profiles:
+  esp32_swio:
+    fqbn: esp32:esp32:esp32
+    platforms:
+      - platform: esp32:esp32 (3.3.11)
+    port: /run/board-identify/by-id/esp32-d0wd-v3-0070070d9394
+default_profile: esp32_swio
