@@ -137,6 +137,43 @@ def main() -> None:
         f"range:{min(poll_gaps_ns)}..{max(poll_gaps_ns)}"
     )
 
+    # Four real 1 KiB program invocations. Unlock/erase are separate earlier
+    # invocations; block writes use a0=8 (program only), not a combined
+    # unlock+erase+program operation for every small page.
+    resumes = [
+        index for index, frame in enumerate(frames)
+        if frame[2:] == (0x10, 1, 0x40000001)
+    ]
+    block_resumes = resumes[3:7]
+    assert len(block_resumes) == 4
+    for block, resume_index in enumerate(block_resumes):
+        setup = [frame[2:] for frame in frames[resume_index - 18 : resume_index]]
+        expected = [
+            (0x04, 1, 0x00000008), (0x17, 1, 0x0023100A),
+            (0x04, 1, 0x08000000 + block * 0x400),
+            (0x17, 1, 0x0023100B),
+            (0x04, 1, 0x00000400), (0x17, 1, 0x0023100C),
+            (0x04, 1, 0x00000000), (0x17, 1, 0x00230300),
+            (0x04, 1, 0x20000800), (0x17, 1, 0x00231002),
+            (0x04, 1, 0x20000000), (0x17, 1, 0x002307B1),
+        ]
+        assert setup[-12:] == expected
+        polls = 0
+        finished = None
+        for frame in frames[resume_index + 1 :]:
+            if frame[2:4] != (0x11, 0):
+                break
+            polls += 1
+            if frame[4] & 0x00000300 == 0x00000300:
+                finished = frame
+                break
+        assert finished is not None
+        elapsed_us = (finished[1] - frames[resume_index][0]) / RATE * 1_000_000
+        print(
+            f"program_block={block} address=0x{0x08000000 + block * 0x400:08x} "
+            f"length=1024 polls={polls} elapsed_us={elapsed_us:.1f}"
+        )
+
 
 if __name__ == "__main__":
     main()

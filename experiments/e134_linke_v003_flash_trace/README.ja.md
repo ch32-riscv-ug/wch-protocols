@@ -29,6 +29,11 @@ SWIOの通常の隣接フレーム間隔は約7 us、stub実行待ちのDMSTATUS
 E133でLinkEに近いpulse幅へ変更しても従来列が成立しなかった結果と合わせ、次の実装は
 単発DMI速度の追加調整より、RAM loader方式の再現を優先する。
 
+追加解析では4 KiBを1 KiB×4 blockとして実行していた。各blockは`a0=8`（programのみ）、
+`a1=0x08000000 + 0x400*n`、`a2=0x400`であり、unlock/eraseは先行する別invocationである。
+loaderを残したまま小pageごとにunlock+erase+program+verifyを繰り返す方式ではない。複数page高速化を
+行う場合は、この1 KiB bufferと操作分離を再現する必要がある。
+
 ## 再現
 
 ```sh
