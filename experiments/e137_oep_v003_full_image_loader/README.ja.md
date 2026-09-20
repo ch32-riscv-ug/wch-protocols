@@ -1,6 +1,6 @@
 # E137 OEP RAM loaderでV003 Arduino image全体を書込む
 
-状態: **書込み・実行確認完了、製品HID再列挙は未確認（2026-09-20）**
+状態: **再評価中（2026-09-20）**
 
 ## 問い
 
@@ -20,13 +20,15 @@ GPIO16→PD1/SWIOだけを使い、GPIO23外部RESETと製品BOOT領域は使用
 
 - image: 5,220 byte
 - padded: 5,248 byte / 82 page
-- page retry: **0**
+- page retry: **0**（ただし既存内容との一致pageはbackendが書込みを省略する）
 - 全page書込みからreset後marker確認まで: **5.266秒**
 - marker address: `0x200000f8`
 - marker value: `0xe131b007`（期待値一致、`setup()`実行済み）
 
-同じfixtureを旧逐次経路で書いたE131は10.664秒と11.169秒だった。条件が完全には同一でないが、
-今回のRAM loader経路は約半分の時間で完了した。
+後のE140準備で、この実行前からE131と同じfixtureがuser flashへ入っていたことを再確認した。
+したがって5.266秒は全82 pageを実際にerase/programした時間ではなく、一致確認と必要pageだけの
+更新時間である。「旧逐次経路の約半分」という比較は撤回する。全pageを異なる内容へ変えてから
+同じimageへ戻す試験で再測定する。
 
 続けてOEPから製品bootloader移行を要求するとoperation自体はsuccessを返したが、30秒以内に
 Windows/WSLのどちらにも`1209:b803`は現れなかった。user flashの書込み・実行確認とは分け、
