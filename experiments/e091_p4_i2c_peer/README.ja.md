@@ -6,6 +6,8 @@ P4 pair `30eda0e31108` / `30eda0e34a0e` のGPIO32=SDA、GPIO33=SCL直結を使�
 ## 手順
 
 - `master` を `30eda0e31108`、`slave` を `30eda0e34a0e` に書き込む。
+- 両sketchの `sketch.yaml` はArduino-ESP32 `3.3.12` とP4のCDC設定を固定する。
+  `arduino-cli compile --clean --profile esp32p4 <sketch-dir>` でビルドする。
 - master のUSB CDCへ `RUN 1000`、`RUN 10000`、`RUN 100000`、`RUN 400000` を送る。
 - slave の `bytes=4 length=4` とmasterの成功結果を組にして記録する。
 
@@ -40,6 +42,9 @@ callbackを完全に登録せず `i2c_slave_receive()` を一回だけarmした�
 `memcpy` で、呼出元はIDFの `esp_driver_i2c/i2c_slave.c` の
 `s_i2c_handle_complete` → `s_slave_fifo_isr_handler` → `s_slave_isr_handle_default` である。
 
-これは実験アプリのcallback処理ではなく、Arduino-ESP32 3.3.12が同梱するP4 new I2C slave driverの
-FIFO受信完了経路にある再現性のある障害として扱う。P4をOEP I2C targetに採用する前に上流へ最小再現として
-報告し、当面のprobe実装はS3で実証済みのI2C targetまたはP4のソフトウェアtargetを使う。
+これは実験アプリのcallback処理ではなく、Arduino-ESP32 3.3.12が同梱するP4 I2C slave **v1** driverの
+FIFO受信完了経路にある再現性のある障害として扱う。Espressif IDF v5.5.5の
+`i2c_slave_network_sensor` 例はslave **v2** API（`.receive_buf_depth`、`.on_receive`、
+`i2c_slave_write()`）を使うため、このArduino配布SDKのv1構成とは同じ使い方にできない。
+P4をOEP I2C targetに採用する前に上流へ最小再現として報告し、当面のprobe実装はS3で実証済みのI2C target
+またはP4のソフトウェアtargetを使う。
