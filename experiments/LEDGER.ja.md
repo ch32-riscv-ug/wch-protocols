@@ -155,6 +155,7 @@
 | **E147** | P4 peerのArduino-ESP32 3.3.12 new I2C driverで、固定長slave writeはどの速度・長さまで成立するか | **一時**(P4 `30eda0e31108`/`30eda0e34a0e`、GPIO32=SDA/33=SCL) | P4 probe I2C target候補 | **完了**([e147_p4_i2c_peer/](e147_p4_i2c_peer/README.ja.md))。1/10/100/400 kHzの4 byte、100 kHzの1/16/32/64/128 byte、100 kHz 4 byte×100連続が成功。v1はarm時に期待長を固定する |
 | **E148** | P4 I2C slave v1で長さheaderとpayloadを別transactionにすれば、可変長payloadを待ち時間なしで連続受信できるか | **一時**(E147と同じ) | P4 probe I2C target protocol候補 | **完了**([e148_p4_i2c_v1_framing/](e148_p4_i2c_v1_framing/README.ja.md))。1 MHz・128 byte・gap 0 msを1000/1000成功。実効62.0 kB/s、可変長単一writeは対象外 |
 | **E149** | P4 I2C slave v1はpreload済みTX ringからmaster readへ全byte正しく応答できるか | **一時**(E147と同じ) | P4 probe I2C target response候補 | **完了**([e149_p4_i2c_v1_target_read/](e149_p4_i2c_v1_target_read/README.ja.md))。1 kHz〜1 MHz、4/16/128 byteで全byte一致。v1の動的read応答は未検証 |
+| **E150** | P4 I2C slave v1のpreloaded TX ringは複数master readへ連続して正しいframeを返せるか | **一時**(E147と同じ) | P4 probe I2C target burst-response候補 | **完了**([e150_p4_i2c_v1_target_read_burst/](e150_p4_i2c_v1_target_read_burst/README.ja.md))。NACK境界で1 byteを余分に消費するため129 byte slotが必要。128 byte×100を1 MHzで全byte一致、64.0 kB/s |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
