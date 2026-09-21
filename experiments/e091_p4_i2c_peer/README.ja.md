@@ -14,6 +14,12 @@ P4 pair `30eda0e31108` / `30eda0e34a0e` のGPIO32=SDA、GPIO33=SCL直結を使�
 識別済みの `/run/board-identify/by-id/esp32-series-*` だけをポート指定に使う。
 リンクが無い時に `/dev/tty*` へ代替しない。
 
+### ビルド再現性
+
+platform versionはCLIに現在インストールされている版へ暗黙に追従させない。必ず
+`sketch.yaml` のprofileを選択する。platform versionまたはFQBN/profileを変更した時は、
+古いcore由来の中間成果物を使わないよう `--clean` を必須とする。
+
 ## 2026-09-21 の観測
 
 Arduino-ESP32 3.3.11 の `Wire` master/slave では、32/33の双方が内部プルアップでHighであり、
