@@ -24,3 +24,7 @@ P4のIDFは新旧I2C driverの混在を禁止する。旧式の `i2c_master_writ
 このためmasterは新I2C driver API (`driver/i2c_master.h`) 専用にしてあり、次回はこの版と
 slave側の新I2C target APIを対にして再試験する。診断中に `30eda0e31108` の識別リンクが消えたため、
 本日時点では新API版の実機結果は未確定である。
+
+その後の再アタッチ後に、新driver masterをI2C0・I2C1の双方で実行した。bus作成とdevice追加は成功したが、
+`i2c_master_transmit()`（stage 3）が全速度で `ESP_ERR_INVALID_STATE (0x103)` を返した。
+次の比較対象は、Arduino `Wire` slaveではなく新driver target APIにしたP4 peerである。
