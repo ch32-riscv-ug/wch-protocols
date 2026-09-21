@@ -43,14 +43,16 @@ bus作成とdevice追加は成功したが、`i2c_master_transmit()`（stage 3�
 1/10/100/400 kHzの全てでmasterの `i2c_master_transmit()` が `ESP_OK (0x0)` になった。
 従ってP4のGPIO32/33配線、内部プルアップ、ハードウェアtargetのアドレスACK、およびmaster送信は成立する。
 
-しかしtargetが最初のwriteを受けるとCore 1で必ずLoad access faultになった。callbackを登録した場合も、
-callbackを完全に登録せず `i2c_slave_receive()` を一回だけarmした場合も同じだった。クラッシュPCは
-`memcpy` で、呼出元はIDFの `esp_driver_i2c/i2c_slave.c` の
-`s_i2c_handle_complete` → `s_slave_fifo_isr_handler` → `s_slave_isr_handle_default` である。
+最初のtarget診断は、4 byte writeに対して `i2c_slave_receive()` のbuffer sizeを128 byteにしていたため
+Load access faultになった。v1のFIFO完了ISRは要求された受信サイズを使ってFIFOからコピーする。
+そのため、v1では受信ジョブのsizeを当該トランザクションの期待長に合わせる必要がある。
 
-これは実験アプリのcallback処理ではなく、Arduino-ESP32 3.3.12が同梱するP4 I2C slave **v1** driverの
-FIFO受信完了経路にある再現性のある障害として扱う。Espressif IDF v5.5.5の
-`i2c_slave_network_sensor` 例はslave **v2** API（`.receive_buf_depth`、`.on_receive`、
-`i2c_slave_write()`）を使うため、このArduino配布SDKのv1構成とは同じ使い方にできない。
-P4をOEP I2C targetに採用する前に上流へ最小再現として報告し、当面のprobe実装はS3で実証済みのI2C target
-またはP4のソフトウェアtargetを使う。
+現行slaveは公式v1手順どおり、staticな4 byte bufferをcallback完了まで保持し、callbackでは完了通知だけを
+行い、`loop()` 側で次の `i2c_slave_receive()` をarmする。1/10/100/400 kHzで全て4 byte
+`11 22 33 44` を受信した。100 kHzでの100連続トランザクションもmaster 100/100成功、slaveは
+クラッシュせず全件を受信した。
+
+Espressif IDF v5.5.5の `i2c_slave_network_sensor` 例はslave **v2** API
+（`.receive_buf_depth`、`.on_receive`、`i2c_slave_write()`）であり、Arduino配布SDKのv1構成とは
+同じAPIにはならない。P4 OEP targetとしては、固定長のv1受信は実証済みだが、可変長フレームは
+v1 FIFO挙動を別途設計・試験してから提供する。
