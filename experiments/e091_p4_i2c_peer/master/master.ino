@@ -3,6 +3,7 @@
 constexpr int kScl = 33, kSda = 32;
 constexpr uint8_t kAddress = 0x42;
 constexpr i2c_port_num_t kPort = I2C_NUM_1;
+constexpr size_t kMaxPayload = 128;
 
 void setup() { Serial.begin(115200); }
 
@@ -11,6 +12,9 @@ void loop() {
   String c = Serial.readStringUntil('\n');
   uint32_t hz = c.substring(4).toInt();
   if (!hz) hz = 10000;
+  size_t length = c.substring(c.indexOf(' ', 4) + 1).toInt();
+  if (!length) length = 4;
+  if (length > kMaxPayload) length = kMaxPayload;
 
   pinMode(kSda, INPUT_PULLUP);
   pinMode(kScl, INPUT_PULLUP);
@@ -37,13 +41,15 @@ void loop() {
     dev_cfg.scl_speed_hz = hz;
     result = i2c_master_bus_add_device(bus, &dev_cfg, &dev);
   }
-  const uint8_t payload[] = {0x11, 0x22, 0x33, 0x44};
+  uint8_t payload[kMaxPayload];
+  for (size_t i = 0; i < length; ++i) payload[i] = static_cast<uint8_t>(0x11 + i);
   if (result == ESP_OK) {
     stage = 3;
-    result = i2c_master_transmit(dev, payload, sizeof(payload), 50);
+    result = i2c_master_transmit(dev, payload, length, 50);
   }
-  Serial.printf("MASTER-NG port=%d stage=%d hz=%lu result=0x%x lines sda=%d scl=%d\n",
-                kPort, stage, (unsigned long)hz, (unsigned)result, digitalRead(kSda), digitalRead(kScl));
+  Serial.printf("MASTER-NG port=%d stage=%d hz=%lu length=%u result=0x%x lines sda=%d scl=%d\n",
+                kPort, stage, (unsigned long)hz, (unsigned)length, (unsigned)result,
+                digitalRead(kSda), digitalRead(kScl));
   if (dev) i2c_master_bus_rm_device(dev);
   if (bus) i2c_del_master_bus(bus);
 }
