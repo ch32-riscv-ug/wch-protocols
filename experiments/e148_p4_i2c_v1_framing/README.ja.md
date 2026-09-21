@@ -37,3 +37,7 @@ transactionごとのI2C初期化を除いたframing経路の実効性能を測�
 `BURST` は400 kHzで3,406,382 us（37.6 kB/s）、1 MHzで2,064,581 us（62.0 kB/s）であり、
 いずれも1000/1000成功・slave crashなしだった。実効値は2 transaction/frameとslave callback→loop→再armの
 往復を含むため、線速度そのものではない。
+
+checksumの衝突でデータ化けを見逃さないよう、slaveは各payload byteを`0x11 + offset`と全byte比較する。
+この検査を加えた1 MHz・128 byte・1000 frameの再測でも1000/1000成功、`pattern_errors=0`だった
+（2,067,005 us、61.9 kB/s）。
