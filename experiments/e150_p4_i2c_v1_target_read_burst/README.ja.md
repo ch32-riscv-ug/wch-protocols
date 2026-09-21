@@ -23,6 +23,11 @@ Arduino-ESP32 3.3.12は各sketchの`sketch.yaml`で固定し、変更時を含�
 `completed=100`、`pattern_errors=0`、`bad_frames=0`だった。従ってこの値は一回限りの
 初回成功ではなく、現在の配線・Arduino-ESP32 3.3.12における再現可能な基準値である。
 
+続けて、毎回`PREP 100`からやり直す1 MHz burstを10回反復した。10/10回が
+`completed=100`、`pattern_errors=0`、`bad_frames=0`で、elapsedは199,716–199,849 us
+（平均199,828 us）だった。これは短時間の反復安定性を示すが、温度・給電変動を含む長時間
+耐久、clock stretch、masterが途中でNACKする異常系は別試験とする。
+
 従ってP4 I2C slave v1で複数の固定128 byte応答をpreloadする場合、**read slotごとに1 byte fillerを
 予約する**。これはdriver固有の実測契約であり、OEP capabilityにはtarget側がこのslot管理を提供できる場合だけ
 `i2c.target.read.preloaded`を宣言する。
