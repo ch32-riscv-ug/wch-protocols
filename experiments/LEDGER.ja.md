@@ -161,6 +161,7 @@
 | **E153** | dedicated GPIO（E151で1 bit 94.5 ns）でRVSWDを駆動すると、X035F8U6のDMI read/writeが全数一致する最小half periodは何nsか。od/ppで違うか | **一時**(E152と同じ) | oep-probe-arduino RVSWD PHY設計値 | **完了**([e153_p4_x035_rvswd_dedic_ceiling/](e153_p4_x035_rvswd_dedic_ceiling/README.ja.md))。**pp + dedicated GPIOはhalf 0 nsまで全数一致、1 DMI read=10.1 µs（≈5.1 Mbit/s、現行OEPの約12倍）**。odはhalf 300 ns以下で崩れ、上限≈1 MHz。X035側の上限はP4コスト律速の先で未観測 |
 | **E154** | fixture P4 `30eda0e31108`とpeer P4 `30eda0e34a0e`の8本直結（申告: GPIO 33,32,26〜31同番号）は両方向1対1か。pytest `peers`で二台同時に回せるか | **一時**(8本リンクphase。HS USBと排他) | rebuild plan Phase Aの配線記録、E155以降のpeer実験の前提 | **完了**([e154_p4_link_pin_map/](e154_p4_link_pin_map/README.ja.md))。両方向とも8×8単位行列（GPIO 33,32,26,27,28,29,30,31同番号）。`peers` fixtureで二台同時のbuild/upload/monitorが通る |
 | **E155** | fixture P4のUSB-Serial/JTAG（HWCDC）でecho往復は frame 8/64/512/4096 byte × in-flight 1/4/16 で1 frame何µs・何kB/sか | **一時**(fixture P4、target不要) | oep-spec v0 frame上限とpipelining window（rebuild plan S1）、候補`dmi-latency` | **完了**([e155_p4_usb_jtag_roundtrip/](e155_p4_usb_jtag_roundtrip/README.ja.md))。往復 min 0.36 / median 1.3 / p95 11.7 ms（usbipd/WSL）。512 B × in-flight ≥4 で **≈320〜345 kB/s** に飽和、4 KiB でも上がらない。outstanding が ring 8 KiB を超えると HWCDC が落とす（4 KiB × 4 で stall + mismatch）。port の open/close で P4 が reset する |
+| **E156** | dedicated GPIO PHY上でX035 flash 63,488 byteの全域読出しは scalar / autoexec+poll / autoexec+poll省略 で何秒か。CRC32は一致するか。program buffer 1回のbusy時間は | **一時**(fixture P4 + X035F8U6、E153と同じ。halt/resumeのみ、flashは書かない) | oep-probe-arduino target.memory実装（pollの要否）、rebuild plan E156、候補`flash-time` | **完了**([e156_p4_x035_flash_read_strategies/](e156_p4_x035_flash_read_strategies/README.ja.md))。scalar 1.445 s / autoexec+poll 0.279 s / **autoexec poll なし 0.146 s（435 kB/s、現OEPの34倍）**、3方式CRC一致、3回反復で同値。program buffer 1回はDMI 1回以内に完了。halt直後に約0.3 sの掃引を挟まないと約6割parity不一致（未決→`x035-halt-settle`） |
 
 **表は番号順に並べている。番号順は実行順ではない。** E002 が反証されて追試が要り、それが E004 になったので、実行順は E001 → E002 → E004 → E003 だった。§2 の「採番は着手直前に 1 件ずつ」はこの反省から来ている。
 
@@ -179,6 +180,7 @@
 
 | slug | 問い | ベンチ種別 | 必要な機材 | 用意 | 影響する doc |
 |---|---|---|---|---|---|
+| `x035-halt-settle` | X035をhaltした直後、abstract commandが安定するまでに待ち時間（または一定回数のDMI read）が要るか。E156の最初の2 runで約6割のparity不一致が出た | **一時**(fixture P4 + X035F8U6) | 既設fixture | 有 | [E156](e156_p4_x035_flash_read_strategies/README.ja.md)、oep-probe-arduino target.control |
 | `p4-pie-bit-gather` | ESP32-P4のSIMD拡張（PIE、`xesppie`）でgeneric codecのfast部（F bit gather、F=3 16-bitで約5 cycle/sample＝690 cycle/block）をベクトル化すると、128 bit loadからlaneごとのbit抽出をまとめて作れて200 cycle級になるか。スカラーの4手はE119で全部反証済み | **一時・第三P4** | 第三P4、PC直結 | 有 | [E119](e119_p4_fast_part_words/README.ja.md)、[P4ロードマップ](../references/p4-probe-roadmap.ja.md) Phase D |
 | `loopback-inject` | loopback phy で DMI status の fail/busy・無応答・CRC 誤りを注入したとき、host は仕様どおり回復するか | **常設 v0**(実機なし) | host Arduino core のみ | 有 | [dmi-bridge](../protocols/dmi-bridge.ja.md) §2–§4/§6 |
 | `device-lock` | device lock は 2 プロセス間で実際に効くか(片方が待つか) | **常設 v1** | 実機 1 枚 | 有 | [README.ja.md §7-9](README.ja.md) |
