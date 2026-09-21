@@ -25,6 +25,21 @@ P4のIDFは新旧I2C driverの混在を禁止する。旧式の `i2c_master_writ
 slave側の新I2C target APIを対にして再試験する。診断中に `30eda0e31108` の識別リンクが消えたため、
 本日時点では新API版の実機結果は未確定である。
 
-その後の再アタッチ後に、新driver masterをI2C0・I2C1の双方で実行した。bus作成とdevice追加は成功したが、
-`i2c_master_transmit()`（stage 3）が全速度で `ESP_ERR_INVALID_STATE (0x103)` を返した。
-次の比較対象は、Arduino `Wire` slaveではなく新driver target APIにしたP4 peerである。
+その後の再アタッチ後に、新driver masterをI2C0・I2C1の双方で実行した。Arduino-ESP32 3.3.11では
+bus作成とdevice追加は成功したが、`i2c_master_transmit()`（stage 3）が全速度で
+`ESP_ERR_INVALID_STATE (0x103)` を返した。
+
+## Arduino-ESP32 3.3.12 の結果
+
+3.3.12へ更新後、new driver master（I2C1）とnew driver target（I2C0）の組では、
+1/10/100/400 kHzの全てでmasterの `i2c_master_transmit()` が `ESP_OK (0x0)` になった。
+従ってP4のGPIO32/33配線、内部プルアップ、ハードウェアtargetのアドレスACK、およびmaster送信は成立する。
+
+しかしtargetが最初のwriteを受けるとCore 1で必ずLoad access faultになった。callbackを登録した場合も、
+callbackを完全に登録せず `i2c_slave_receive()` を一回だけarmした場合も同じだった。クラッシュPCは
+`memcpy` で、呼出元はIDFの `esp_driver_i2c/i2c_slave.c` の
+`s_i2c_handle_complete` → `s_slave_fifo_isr_handler` → `s_slave_isr_handle_default` である。
+
+これは実験アプリのcallback処理ではなく、Arduino-ESP32 3.3.12が同梱するP4 new I2C slave driverの
+FIFO受信完了経路にある再現性のある障害として扱う。P4をOEP I2C targetに採用する前に上流へ最小再現として
+報告し、当面のprobe実装はS3で実証済みのI2C targetまたはP4のソフトウェアtargetを使う。
