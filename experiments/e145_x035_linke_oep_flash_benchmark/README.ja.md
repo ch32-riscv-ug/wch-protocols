@@ -99,6 +99,10 @@ P4をresetせず同じstaged pageをretry commitすると成功し、target rese
 imageと一致した。recovery cacheはerase前imageを保持し、staged希望像で上書きしないことを実機で
 確認した。この結論は同一probe sessionに限る。probe reset/電源断後のrecoveryは未解決である。
 
+最初の64-byte program後の部分状態も同様に確認した。`OEP_X035_INJECT_FLASH_FAILURE=2`で最初の
+commitは`0xe2`により失敗し、独立readでは先頭64 byteだけが希望値、続く24 byteは全FFだった。
+同じstaged pageのretry commitは成功し、target reset後の全62 KiB hashは元PWM imageと一致した。
+
 差の大半は P4 USB や flash の物理速度そのものとはまだ断定しない。OEP 暫定 backend は
 software RVSWD の短い transaction を順に往復し、host request、DMI、flash page 処理、
 readback を細かく同期させる構造である。一方 LinkE は線上 fast-read burst と firmware 内の
