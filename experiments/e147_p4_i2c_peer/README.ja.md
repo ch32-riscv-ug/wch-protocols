@@ -1,4 +1,4 @@
-# E091 P4 peer: hardware I2C slave baseline
+# E147 P4 peer: hardware I2C slave baseline
 
 P4 pair `30eda0e31108` / `30eda0e34a0e` のGPIO32=SDA、GPIO33=SCL直結を使う。
 既存flashは保存せず上書きし、slave `0x42` への固定長write を確認する。

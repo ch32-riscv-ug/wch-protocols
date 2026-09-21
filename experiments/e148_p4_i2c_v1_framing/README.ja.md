@@ -1,4 +1,4 @@
-# E092 P4 I2C slave v1: length-prefixed framing
+# E148 P4 I2C slave v1: length-prefixed framing
 
 Arduino-ESP32 3.3.12のP4 I2C slave v1は、受信をarmする時点で長さを決める必要がある。
 そこで1-byte payload lengthを独立I2C transactionで送り、slaveがpayload長で再armした後に
@@ -16,6 +16,9 @@ masterのCDCへ `FRAME <Hz> <length> [gap_ms]` を送る。`gap_ms` はheader受
 slaveへ与える時間であり、0/1/5/10 msを比較する。payloadは`0x11, 0x12, ...`で、slaveは
 長さと8-bit checksumを報告する。
 
+`BURST <Hz> <length> <count>` は同じI2C busを維持して連続送信するため、CDC commandと
+transactionごとのI2C初期化を除いたframing経路の実効性能を測る。
+
 ## 2026-09-22 実測
 
 100 kHzで以下を実行し、header/payloadともmasterの結果は`ESP_OK (0x0)`だった。
@@ -29,3 +32,8 @@ slaveへ与える時間であり、0/1/5/10 msを比較する。payloadは`0x11,
 したがってこのP4ペアでは、v1の「長さヘッダとpayloadを別transactionにする」方式は、追加の待ち時間を
 プロトコルへ要求せずに128 byteまで成立する。ただしこれは治具配線・100 kHzでの実測値であり、OEP公開APIは
 ターゲットや速度ごとに同じ連続フレーム試験を通した後に対応能力として宣言する。
+
+400 kHzと1 MHzでも、128 byte・gap 0 msを100フレームずつ成功した。さらに128 byte・1000 frameの
+`BURST` は400 kHzで3,406,382 us（37.6 kB/s）、1 MHzで2,064,581 us（62.0 kB/s）であり、
+いずれも1000/1000成功・slave crashなしだった。実効値は2 transaction/frameとslave callback→loop→再armの
+往復を含むため、線速度そのものではない。
