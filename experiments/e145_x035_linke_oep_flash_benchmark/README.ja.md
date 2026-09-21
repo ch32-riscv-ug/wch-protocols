@@ -93,6 +93,12 @@ program経路の安全確認であって、変更pageの性能値ではない。
 ただし旧APIとの同一image・同一backend比較はまだ採っていないため、ここから削減率や速度倍率を
 主張しない。
 
+同一session内の回復も確認した。`OEP_X035_INJECT_FLASH_FAILURE=1`でphysical erase直後に
+一度だけ失敗を注入すると、最初のcommitは診断`0xe1`で失敗し、独立readの先頭88 byteは全FFだった。
+P4をresetせず同じstaged pageをretry commitすると成功し、target reset後の全62 KiB hashは元PWM
+imageと一致した。recovery cacheはerase前imageを保持し、staged希望像で上書きしないことを実機で
+確認した。この結論は同一probe sessionに限る。probe reset/電源断後のrecoveryは未解決である。
+
 差の大半は P4 USB や flash の物理速度そのものとはまだ断定しない。OEP 暫定 backend は
 software RVSWD の短い transaction を順に往復し、host request、DMI、flash page 処理、
 readback を細かく同期させる構造である。一方 LinkE は線上 fast-read burst と firmware 内の
