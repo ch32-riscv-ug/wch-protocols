@@ -103,6 +103,11 @@ imageと一致した。recovery cacheはerase前imageを保持し、staged希望
 commitは`0xe2`により失敗し、独立readでは先頭64 byteだけが希望値、続く24 byteは全FFだった。
 同じstaged pageのretry commitは成功し、target reset後の全62 KiB hashは元PWM imageと一致した。
 
+通常firmwareでのfull verify soakも実施した。同じPWM imageを20回連続verifyし、全回hash一致・
+reset成功だった。verifyは平均 **5.166509 s**、中央値 **5.164288 s**、p95 **5.226030 s**、
+最大 **5.249059 s**。resetは平均 **3.376 ms**、p95 **3.868 ms**、最大 **4.298 ms**。これは
+read/verify gateだけの結果であり、差分program 20回とhost/client中断試験は別途必要である。
+
 差の大半は P4 USB や flash の物理速度そのものとはまだ断定しない。OEP 暫定 backend は
 software RVSWD の短い transaction を順に往復し、host request、DMI、flash page 処理、
 readback を細かく同期させる構造である。一方 LinkE は線上 fast-read burst と firmware 内の
