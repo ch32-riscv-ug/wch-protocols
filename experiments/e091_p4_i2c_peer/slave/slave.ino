@@ -3,13 +3,22 @@
 constexpr int kScl = 33, kSda = 32;
 constexpr uint8_t kAddress = 0x42;
 constexpr i2c_port_num_t kPort = I2C_NUM_0;
-constexpr size_t kWriteLength = 4;
+#ifndef E091_WRITE_LENGTH
+#define E091_WRITE_LENGTH 4
+#endif
+constexpr size_t kWriteLength = E091_WRITE_LENGTH;
+static_assert(kWriteLength >= 1 && kWriteLength <= 128, "E091_WRITE_LENGTH must be 1..128");
 
 static i2c_slave_dev_handle_t slave;
 static uint8_t receive_buffer[kWriteLength];
 static esp_err_t receive_result;
 static volatile bool receive_complete;
 static volatile uint32_t transactions;
+static uint8_t received_sum;
+
+static uint8_t received_at(size_t index) {
+  return index < kWriteLength ? receive_buffer[index] : 0;
+}
 
 static bool receive_done(i2c_slave_dev_handle_t,
                          const i2c_slave_rx_done_event_data_t *, void *) {
@@ -42,12 +51,15 @@ void setup() {
 void loop() {
   if (receive_complete) {
     receive_complete = false;
+    received_sum = 0;
+    for (size_t i = 0; i < kWriteLength; ++i) received_sum += receive_buffer[i];
     receive_result = i2c_slave_receive(slave, receive_buffer, sizeof(receive_buffer));
   }
   static uint32_t deadline;
   if (millis() - deadline < 250) return;
   deadline = millis();
-  Serial.printf("SLAVE-NG transactions=%lu armed=0x%x data=%02x %02x %02x %02x\n",
-                (unsigned long)transactions, (unsigned)receive_result,
-                receive_buffer[0], receive_buffer[1], receive_buffer[2], receive_buffer[3]);
+  Serial.printf("SLAVE-NG length=%u transactions=%lu armed=0x%x sum=%02x data=%02x %02x %02x %02x\n",
+                (unsigned)kWriteLength, (unsigned long)transactions, (unsigned)receive_result,
+                received_sum,
+                received_at(0), received_at(1), received_at(2), received_at(3));
 }

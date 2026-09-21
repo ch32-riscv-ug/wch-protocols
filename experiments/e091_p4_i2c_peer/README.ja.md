@@ -1,15 +1,15 @@
 # E091 P4 peer: hardware I2C slave baseline
 
 P4 pair `30eda0e31108` / `30eda0e34a0e` のGPIO32=SDA、GPIO33=SCL直結を使う。
-既存flashは保存せず上書きし、slave `0x42` への4-byte write を確認する。
+既存flashは保存せず上書きし、slave `0x42` への固定長write を確認する。
 
 ## 手順
 
 - `master` を `30eda0e31108`、`slave` を `30eda0e34a0e` に書き込む。
 - 両sketchの `sketch.yaml` はArduino-ESP32 `3.3.12` とP4のCDC設定を固定する。
   `arduino-cli compile --clean --profile esp32p4 <sketch-dir>` でビルドする。
-- master のUSB CDCへ `RUN 1000`、`RUN 10000`、`RUN 100000`、`RUN 400000` を送る。
-- slave の `bytes=4 length=4` とmasterの成功結果を組にして記録する。
+- master のUSB CDCへ `RUN <Hz> <length>`（例: `RUN 100000 4`）を送る。
+- slaveの `length`、payload checksum、transaction countとmasterの成功結果を組にして記録する。
 
 識別済みの `/run/board-identify/by-id/esp32-series-*` だけをポート指定に使う。
 リンクが無い時に `/dev/tty*` へ代替しない。
@@ -19,6 +19,10 @@ P4 pair `30eda0e31108` / `30eda0e34a0e` のGPIO32=SDA、GPIO33=SCL直結を使�
 platform versionはCLIに現在インストールされている版へ暗黙に追従させない。必ず
 `sketch.yaml` のprofileを選択する。platform versionまたはFQBN/profileを変更した時は、
 古いcore由来の中間成果物を使わないよう `--clean` を必須とする。
+
+受信長は `slave/build_opt.h` の `E091_WRITE_LENGTH` で選ぶ。`build.extra_flags` と
+`compiler.cpp.extra_flags` は使わない。`build_opt.h` を変更した場合も、core/library objectへ
+確実に反映させるため `--clean` を必須とする。
 
 ## 2026-09-21 の観測
 
@@ -47,10 +51,11 @@ bus作成とdevice追加は成功したが、`i2c_master_transmit()`（stage 3�
 Load access faultになった。v1のFIFO完了ISRは要求された受信サイズを使ってFIFOからコピーする。
 そのため、v1では受信ジョブのsizeを当該トランザクションの期待長に合わせる必要がある。
 
-現行slaveは公式v1手順どおり、staticな4 byte bufferをcallback完了まで保持し、callbackでは完了通知だけを
+現行slaveは公式v1手順どおり、staticな固定長bufferをcallback完了まで保持し、callbackでは完了通知だけを
 行い、`loop()` 側で次の `i2c_slave_receive()` をarmする。1/10/100/400 kHzで全て4 byte
 `11 22 33 44` を受信した。100 kHzでの100連続トランザクションもmaster 100/100成功、slaveは
-クラッシュせず全件を受信した。
+クラッシュせず全件を受信した。`build_opt.h`で指定して再ビルドした1/16/32/64/128 byteも100 kHzで
+master成功・payload checksum一致・再arm成功を確認した。
 
 Espressif IDF v5.5.5の `i2c_slave_network_sensor` 例はslave **v2** API
 （`.receive_buf_depth`、`.on_receive`、`i2c_slave_write()`）であり、Arduino配布SDKのv1構成とは
