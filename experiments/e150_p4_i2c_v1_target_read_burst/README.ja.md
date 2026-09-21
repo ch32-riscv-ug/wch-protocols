@@ -18,6 +18,11 @@ Arduino-ESP32 3.3.12は各sketchの`sketch.yaml`で固定し、変更時を含�
 | 400 kHz | 100 | 12,800 byte | 331,278 us | PASS |
 | 1 MHz | 100 | 12,800 byte | 199,838 us | PASS |
 
+同じ二台（`30:ed:a0:e3:11:08` controller、`30:ed:a0:e3:4a:0e` target）の固定aliasを
+2026-09-22に再接続後、firmwareを上書きせず再実行した結果も、`199,844 us`、
+`completed=100`、`pattern_errors=0`、`bad_frames=0`だった。従ってこの値は一回限りの
+初回成功ではなく、現在の配線・Arduino-ESP32 3.3.12における再現可能な基準値である。
+
 従ってP4 I2C slave v1で複数の固定128 byte応答をpreloadする場合、**read slotごとに1 byte fillerを
 予約する**。これはdriver固有の実測契約であり、OEP capabilityにはtarget側がこのslot管理を提供できる場合だけ
 `i2c.target.read.preloaded`を宣言する。
