@@ -108,6 +108,12 @@ reset成功だった。verifyは平均 **5.166509 s**、中央値 **5.164288 s**
 最大 **5.249059 s**。resetは平均 **3.376 ms**、p95 **3.868 ms**、最大 **4.298 ms**。これは
 read/verify gateだけの結果であり、差分program 20回とhost/client中断試験は別途必要である。
 
+差分program soakも実施した。PWM probe imageとI2C probe imageを交互にし、各回27 physical pageを
+stage/commitしてfull verifyした20回は、全回`pages=27, attempts=27`、retry 0、hash一致、両reset
+成功だった。programは平均 **11.888387 s**、中央値 **11.886405 s**、p95 **11.925864 s**、最大
+**11.949021 s**。続くfull verifyは平均 **5.161236 s**、中央値 **5.158991 s**、p95
+**5.243148 s**、最大 **5.250146 s**。最終target imageはPWM probe imageである。
+
 差の大半は P4 USB や flash の物理速度そのものとはまだ断定しない。OEP 暫定 backend は
 software RVSWD の短い transaction を順に往復し、host request、DMI、flash page 処理、
 readback を細かく同期させる構造である。一方 LinkE は線上 fast-read burst と firmware 内の
