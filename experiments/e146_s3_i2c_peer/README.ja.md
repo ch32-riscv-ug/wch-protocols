@@ -1,4 +1,4 @@
-# E090 S3 peer: I2C slave 基礎比較
+# E146 S3 peer: I2C slave 基礎比較
 
 GPIO19=SCL、GPIO20=SDAで直結された常設S3 peer対を使う。既存imageは保存せず直接上書きする。
 最初の段階ではArduino `Wire` hardware slave（address `0x42`）へ4 byte writeを行い、master statusが
