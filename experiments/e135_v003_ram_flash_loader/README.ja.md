@@ -40,3 +40,14 @@ DMI frame後の8 us待ちは維持した。LinkE実測の通常frame間隔中央
 以前のhost-driven flash controller逐次操作で起きた部分書込みとreset後不一致は、この試験では
 再現しなかった。V003 prototypeの書込み経路はRAM loader方式を採用し、TargetFlashを再公開する。
 ただし電源再投入、全image、複数個体は未試験であり、製品品質を示す結果ではない。
+
+## 2026-09-22 追記（oep-probe-arduino v0 stack への移植時）
+
+「loader の `a0=0` を成功条件にする」は誤りだった。`dcsr.ebreakm` を立てずに resume すると loader 末尾の `ebreak` は debug mode に
+入らず例外として mtvec（未設定なら 0 = reset vector）へ飛び、application が再起動して RAM（loader と入力 buffer）を上書きする。
+その後の attach/halt で読んだ a0 は application のものだった。page 自体は ebreak 前に書き終わっているので read-back は一致し、
+「完了 poll を取りこぼす」「fresh attach を fence にする」という観察もこれで説明できる。
+
+`dcsr.ebreakm`（CSR 0x7b0 bit15）を立ててから resume すると loader は ebreak（loader 先頭 + 0x15c）で確実に halt し、a0 は 0x10
+（処理した word 数）を返す。完了判定は「dpc == loader の ebreak 番地」と read-back で行う。この形で 216 page を 4.26 s
+（約 20 ms/page、loader は halt 中常駐させ再注入しない）、CRC 一致、reset 後に sketch の banner を確認した。
