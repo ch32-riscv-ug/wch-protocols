@@ -181,6 +181,7 @@
 
 | slug | 問い | ベンチ種別 | 必要な機材 | 用意 | 影響する doc |
 |---|---|---|---|---|---|
+| `x035-attach-resets-target` | P4 probeの`attach()`（bus初期化100 clock + STOP、dmactive=1、DMSTATUS 1000 read）を実行中のX035へ行うと、約半分の回でtargetがresetされる（DMSTATUS havereset=1、millisが約17 msから再開。2026-09-22、6回中3回）。どの操作が原因か（100 clock、dmactive、線のHi-Z→駆動の遷移）。旧prototypeでも起きていたか | **一時**(fixture P4 + X035F8U6) | 既設fixture | 有 | oep-probe-arduino `OepRvswdPhy::attach`、target.control の非破壊attach契約 |
 | `x035-dmi-parity-intermittent` | half 0 nsのDMI readがrunによって約6〜8割parity不一致になる（E156の2 run、E157の2 run。次のrunでは全数一致）のはP4側（code配置・cache・割込み）かtarget側か。LAでSWCLK/SWDIOを同時観測して切り分ける | **使い捨て**(fixture P4 + X035F8U6 + LA 2ch) | LA（sigrok） | 不明 | [E156](e156_p4_x035_flash_read_strategies/README.ja.md)、[E157](e157_p4_x035_page_program_strategies/README.ja.md)、oep-probe-arduino PHY margin check |
 | `p4-pie-bit-gather` | ESP32-P4のSIMD拡張（PIE、`xesppie`）でgeneric codecのfast部（F bit gather、F=3 16-bitで約5 cycle/sample＝690 cycle/block）をベクトル化すると、128 bit loadからlaneごとのbit抽出をまとめて作れて200 cycle級になるか。スカラーの4手はE119で全部反証済み | **一時・第三P4** | 第三P4、PC直結 | 有 | [E119](e119_p4_fast_part_words/README.ja.md)、[P4ロードマップ](../references/p4-probe-roadmap.ja.md) Phase D |
 | `loopback-inject` | loopback phy で DMI status の fail/busy・無応答・CRC 誤りを注入したとき、host は仕様どおり回復するか | **常設 v0**(実機なし) | host Arduino core のみ | 有 | [dmi-bridge](../protocols/dmi-bridge.ja.md) §2–§4/§6 |
