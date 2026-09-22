@@ -1,0 +1,9 @@
+profiles:
+  esp32p4_x035:
+    fqbn: esp32:esp32:esp32p4:USBMode=hwcdc,CDCOnBoot=cdc
+    platforms:
+      - platform: esp32:esp32 (3.3.12)
+        platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+    libraries:
+      - dir: ../../../../dev_oep/oep-probe-arduino
+default_profile: esp32p4_x035
