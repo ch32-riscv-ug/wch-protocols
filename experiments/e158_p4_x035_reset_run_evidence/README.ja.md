@@ -73,6 +73,10 @@ attach 時の実測 SWCLK（`max_clock_hz`）は 6.29 / 6.42 MHz（half 0 ns）�
 | A `confirm=0`（DMSTATUS だけ） | 96/100 | 98/100 | — | — | 66 / 59 ms |
 | B `confirm=1`（PC sample） | 100/100 | 100/100 | 100/100 | 5 / 5 | 76 / 64 ms |
 
+追加 run（同日、`_runs/E158_20260922T032907Z_default/`、300 + 300 cycle、`resetOnce` は baseline のまま）: A **290/300**（欠落 10 は全て駐留、
+走っているのに無応答の cycle は 0）、B **300/300**（駐留検出 9）。契約の累計は **500/500**。`haltreq_through` 版 firmware での再測
+（150/300）は [E159](../e159_p4_x035_ndmreset_order/README.ja.md) の追試を見ること。
+
 banner が出なかった 6 cycle（A 4 + 2）はすべて同じ状態だった:
 
 | register | banner あり（196 cycle 全て） | banner なし（6 cycle 全て） |
@@ -96,7 +100,7 @@ halt → resume の直後 1.3〜11 ms で banner が出た（`AFTER=`）。run 1
   線解放 → 再 attach（従来の回復、43/44）より確実。
 - **事実**: 「halt できて dpc が読めた」は証拠にならない（駐留中でも halt は成功し dpc=0 が読める）。**dpc ≠ 0** が証拠。
 - **候補（採用: oep-probe-arduino）**: target.control reset は `confirm=1` で、解放後に attach → halt → dpc → resume を行い、dpc=0 なら
-  「駐留を解放した」（flags bit2）として再 sample、dpc≠0 で完了（bit1）。200/200。
+  「駐留を解放した」（flags bit2）として再 sample、dpc≠0 で完了（bit1）。200/200 + 300/300。
 - **未決**: なぜ ndmreset 後に駐留するか `—`（DM 側の hart reset 解放条件か、haltreq/ndmreset の順序か）。LA で SWCLK/SWDIO を見ても
   DM 内部の状態は見えないので、DMCONTROL の書込み順序を変える実験（`x035-ndmreset-hart-not-running` を「原因」の問いに改題）で追う。
 
