@@ -46,9 +46,9 @@ AttachChip の中の memory access(abstract command を組にしたもの)を、
 
 線上の流れ(時刻は収録の開始から):
 
-1. 約 0〜120 ms は線が静か。電源を切っている区間と見られるが、3V3 が見えないので未確認。
+1. 約 0〜120 ms は線が静か。当初は電源を切っている区間と見ていたが、E167 と 2b で、3V3 は切れていないと分かった。この区間で LinkE が何をしているかは未確認(RST の pulse はこの区間の後に始まる。E167)。
 2. **起動直後の haltreq**: 約 5.6 ms の塊を、約 11 ms 間隔で送る。中身は dmcontrol ← `0x80000001` と dmstatus の読出しの繰り返しで、最初の約 20 ms は parity の不一致が多い(target の debug module がまだ安定していない)。
-3. 144.26 ms に DMSTATUS `0x00000382`(halt)を確認した。最初の塊から約 24 ms。app が HPRE を書き換える前に止めていると見られる。
+3. 144.26 ms に DMSTATUS `0x00000382`(halt)を確認した。最初の塊から約 24 ms。当初は「起動直後、app が HPRE を書き換える前に止めた」と読んだが、電源は切れていないので、止まったままの core を、化けがちな DMI の中で halt できたところと見る方が合う(推定)。
 4. halt した後の操作:
    - FLASH_CTLR ← `0x8080`、STATR ← `0xB020`。
    - KEYR / MODEKEYR の解錠。
@@ -61,8 +61,15 @@ AttachChip の中の memory access(abstract command を組にしたもの)を、
 
 - `81 0d 01 0a`(3V3 off)→ 1 s → `81 0d 01 09`(on)の間、**GPIO13 は常に 1 だった**(`out/40_x035_3v3_off_on`)。E166 でも、この間 X035 は動き続けた。
 - 特殊消去(正常な X035、1 回目で `0f`)の間も、**GPIO13 は常に 1 だった**(`out/41_x035_special_erase_3v3`)。最初の約 124 ms は SWCLK も SWDIO も high のまま静かで、そのあとに haltreq の塊が始まる。
-- P4 の digital 入力で 1 と読める範囲(おおよそ 2 V 以上)より下には、3V3 は落ちていない。それでも特殊消去では target が reset される(E165 の 2. で havereset)。
-- LinkE が 3V3 の出力を切り、UART の TX や pull-up からの back-power で電源の電位が中途半端に残り、X035 は電源電圧低下で reset する、という読みが考えられる(推定)。ただし `probe power 3v3 off` では X035 は reset されなかったので、特殊消去は別の切り方をしている可能性もある。電圧の測定(テスター・オシロ)が要る。
+- P4 の digital 入力で 1 と読める範囲(おおよそ 2 V 以上)より下には、3V3 は落ちていない。
+- **E167 で、LinkE 2.22 は特殊消去の中でも 3V3 を切らない(target なしで 3.0 V 以上)と分かった。** この X035 は RST も未接続なので、電源や pin で reset されたのではない。
+- 特殊消去の収録(`21`・`31`・`41`)の parity が一致する frame には、ndmreset を立てた DMCONTROL の書込みは無い。正常な X035(`41`)では、最初の DMSTATUS がいきなり `0x382`(halt、havereset なし)だった。止まった X035(`21`・`31`)の最初の DMSTATUS は、化けた frame が偶然 parity を通った値(`58464a5a` など)で、havereset の証拠にはならない。
+- したがって「特殊消去で target が reset される」は示されていない。止まった X035 が戻るのは、次の流れと見ている(推定)。
+  1. HCLK が落ちても core と DM は動いていて、化けながらも時々通る DMI で LinkE が halt を取る。
+  2. flash を消す。
+  3. 続く AttachChip の中で、LinkE 自身が CFGR0 ← `0`、ACTLR ← `0x2` を書いて clock を戻す。
+  - 「1 回目は `00`」は、LinkE が 2.1 s のうちに halt を取れなかった回と読める(E167 で、target が無いと 2.1 s で `00`)。
+  - E164 の窓の中で読んだ DMSTATUS `0x000c0382` の havereset の出どころは、未確定。
 
 ### 3. V103 + CH549 WCH-Link の接続(`out/00_pins_v103`)
 
@@ -79,7 +86,7 @@ AttachChip の中の memory access(abstract command を組にしたもの)を、
 ## 結論
 
 - LinkE 2.22 は、X035 の接続中に「読んだ CFGR0 の bit 6 を立てて書く」らしい。HPRE が `1xxx` だと HCLK が /32 以下に落ち、以後の DMI が化けて ACTLR や CFGR0 に誤った値を書き、target を止める。**回避は、X035 の app で HPRE に `1xxx` を使わないこと**(E164 と同じ結論に、仕組みが加わった)。
-- 特殊消去は、電源の投入の直後に haltreq を約 11 ms 間隔で送り、約 24 ms で halt を取ってから消去する。ch32rv の recover の phase 2(消去せずに直す)も、同じ時間の窓を狙える。
+- 特殊消去は、約 120 ms の静かな区間の後、haltreq を約 11 ms 間隔で送り、halt が取れたら MER で全体消去を 2 回行う。電源は切らない(E167)。ch32rv の recover の phase 2(消去せずに直す)は、E166 で LinkE 単体ではできないと分かった。
 - 資料にある long 形式の「odd / even parity」は、CH549 Link と V103 の組合せでは parity として働いていない(host 側は常に 0、target 側は read / write の印)。link-to-target §3 の表を直す。
 
 ## 未決
