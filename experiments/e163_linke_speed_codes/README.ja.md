@@ -12,7 +12,7 @@ WCH-LinkE の SetSpeed(`81 0c 02 <family> <speed>`)の high `01` / medium `02` /
 
 ## 手順
 
-- 機材: WCH-LinkE fw 2.22 `0E028F0692F1` → CH32L103C8T6。線は ESP32-P4(`esp32-series-30eda0e343c6`)の OEP logic capture で、50 MHz、LinkE 側で分岐(2026-09-25 fixture と同じ配線)。
+- 機材: WCH-LinkE fw 2.22 `0E028F0692F1` → CH32L103C8T6(V203 は `FBC18F0680B0` → CH32V203C8T6)。線は ESP32-P4(`esp32-series-30eda0e343c6`)の OEP logic capture で、50 MHz、LinkE 側で分岐(2026-09-25 fixture と同じ配線)。
 - 収録の script は [`linke_cap.py`](linke_cap.py)。fixture の tools の写しで、OEP client を `OEP_CLIENT_SRC` で指定できるようにした。今回は `oep-client-python` の `b9e60ed` を `git archive` で取り出して使った。
 - (a) 生のコマンド: [`raw_speed.py`](raw_speed.py) を ch32rv の代わりに走らせる(`CH32RV=raw_speed.py`)。
   - 流れは SetSpeed(family `01`、値 `00`〜`06` / `ff`)→ AttachChip →(任意で、実の family `0x0e` での SetSpeed)→ DmiOp で DMSTATUS の読出し 20 回 → DATA0 の書込み 4 回 → abstract memory read 4 回 → DetachChip。
@@ -47,20 +47,31 @@ cd ../../captures && uv run python ../experiments/e163_linke_speed_codes/analyze
 | low | `81 0c 02 01 03` | 約 2.12 µs(0.47 MHz) | 389.5 ms | 0.87 s |
 
 - どれも 4 KiB pattern と一致し、parity の誤りは 0。
+
+**(c) V203(LinkE `FBC18F0680B0`、100 MHz で収録、`rvswd.py --k 1 --k-frame 3`)の flash**
+
+| `--speed` | 4 KiB のデータ書込み frame | 4 KiB を書く区間 | ch32rv 全体 |
+|---|---|---|---|
+| high | **約 100 ns(10 MHz)**。Program 経路の DMSTATUS / DATA0 の読出しは約 130〜140 ns | 51.3 ms | 0.40 s |
+| medium | 約 1.12 µs | 216.7 ms | 0.61 s |
+| low | 約 2.11 µs | 389.3 ms | 0.80 s |
+
+- 1024 word すべてが順に出た。high は 9,389 frame のうち 15 件が parity 不一致だった(100 MHz 収録の分解能の限界。E162 以前の fixture と同じ)。
+- high でも、検証の burst・abstractauto・接続は約 1.1 µs / 2.1 µs で、L103 と同じ。
 - ch32rv は SetSpeed を接続前に family `01` で 1 回送るだけで、接続後には送り直していない。
 
 ## 結論
 
 - LinkE 2.22 + L103 の実際の SWCLK:
-  - **high: flash の Program 経路だけ 2.5 MHz、それ以外(単発の DMI・読出し・burst)は 0.89 MHz。**
+  - **high: flash の Program 経路だけ速い。L103 は 2.5 MHz、V203 は 10 MHz と target の系統で違う。それ以外(単発の DMI・読出し・burst)は 0.89 MHz。**
   - **medium: どこでも 0.89 MHz。**
   - **low: どこでも 0.47 MHz。**
   - 接続時の区間は設定に関係なく、long 3.04 µs・short 2.1 µs。
-- 名目の 6 MHz / 4 MHz / 400 kHz には、どれも合わない。high と medium で差が出るのは flash 書込みの速さだけ(この試験で 1.3 倍)。
+- 名目の 6 MHz / 4 MHz / 400 kHz には、どれも合わない。high と medium で差が出るのは flash 書込みの速さだけ(ch32rv 全体で L103 1.3 倍、V203 1.5 倍)。
 - SetSpeed の値は、実質 `03`(と `ff`)とそれ以外の 2 種類に分かれ、それ以外の中で high だけが Program 経路を速くする。`00`・`04`〜`06` は、単発の DMI では high と同じだった(flash では試していない)。
 
 ## 未決
 
-- V203 は高速区間の一部が 60〜100 ns 周期だった(fixture)。target によって LinkE の速さが違うか。
+- high の Program 経路の速さを決めるもの(family ごとの表か、target の clock か)。X035・V003・V307 では未測定。
 - `00`・`04`〜`06` の flash 経路での速さ。
 - 速度の上限と target の HCLK の関係(E162 の X035 の件)。
