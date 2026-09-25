@@ -26,21 +26,60 @@ def clean_edges(clk, k=None):
             out.append(x)
     return out
 
+def debounce(x, k):
+    """A level change counts only once the new level holds k samples; shorter runs keep the old level."""
+    e = np.flatnonzero(np.diff(x.astype(np.int8))) + 1
+    bounds = np.concatenate(([0], e, [len(x)]))
+    out = np.empty_like(x)
+    level = int(x[0]); pos = 0
+    for a, b in zip(bounds[:-1], bounds[1:]):
+        v = int(x[a])
+        if v != level and b - a >= k:
+            out[pos:a] = level; pos = a; level = v
+    out[pos:] = level
+    return out
+
 def decode(path):
-    d = np.frombuffer(zipfile.ZipFile(path).read("logic-1-1"), dtype=np.uint8)
+    global RATE
+    z = zipfile.ZipFile(path)
+    d = np.frombuffer(z.read("logic-1-1"), dtype=np.uint8)
+    meta = z.read("metadata").decode()
+    RATE = float(meta.split("samplerate=")[1].split()[0])
+    sc = RATE / 50e6   # the sample thresholds below are for 50 MHz
     clk, dio = d & 1, (d >> 1) & 1
-    edges = clean_edges(clk)
+    db = int(__import__("os").environ.get("DEBOUNCE", "0"))
+    if db:   # hold-time filter on both lines (V203: many 1-sample spikes); then no edge cancelling
+        clk, dio = debounce(clk, db), debounce(dio, db)
+        edges = list(np.flatnonzero(np.diff(clk.astype(np.int8))) + 1)
+    else:
+        edges = clean_edges(clk)
     level0 = int(clk[0])
     rising = [x for i, x in enumerate(edges) if (level0 + i + 1) % 2 == 1]   # edges alternate from the start level
     # Fast frames (~2.7 MHz) are separated by > 100 samples of idle SWCLK. The attach phase clocks slowly (~470 kHz,
     # ~106 samples a period), so each of its clocks falls into a group of its own: runs of such tiny groups closer
     # than 400 samples are joined back into one slow frame.
+    split = __import__("os").environ.get("SPLIT", "100")
+    # SPLIT=two: split at 250 samples first (the attach phase clocks at ~105-155 samples a period, frames >= ~280
+    # apart), then split again at 100 any group that is not a known frame length (fast frames merged together)
     fast, cur = [], []
+    first = 250 * sc if split == "two" else int(split) * sc
     for x in rising:
-        if cur and x - cur[-1] > 100:
+        if cur and x - cur[-1] > first:
             fast.append(cur); cur = []
         cur.append(x)
     if cur: fast.append(cur)
+    if split == "two":
+        again = []
+        for g in fast:
+            if len(g) in (53, 54, 85, 585) or len(g) <= 2:
+                again.append(g); continue
+            part = [g[0]]
+            for x in g[1:]:
+                if x - part[-1] > 100 * sc:
+                    again.append(part); part = []
+                part.append(x)
+            again.append(part)
+        fast = again
     groups = []
     for g in fast:
         if groups and len(g) <= 2 and len(groups[-1]) >= 1 and groups[-1][-1] - groups[-1][-2 if len(groups[-1]) > 1 else -1] >= 0 \
