@@ -34,6 +34,25 @@
 
 [WCH-LinkE ↔ target 線上 capture](fixtures/wire-flash-v003-x035-2026-09-11/README.ja.md)。LA2016/PulseView 50 MHz の `.sr`、同時間帯の ch32rv USB NDJSON、既知の 4 KiB pattern を V003(SWIO) / X035(RVSWD) の対で保存した。[link-to-target.ja.md](../protocols/link-to-target.ja.md) §3/§5 の検証用。
 
+### `fixtures/wire-linke-p4-2026-09-25/`（LinkE ↔ L103 / V203 / V003 線上実測）
+
+[WCH-LinkE 線上 capture(ESP32-P4)](fixtures/wire-linke-p4-2026-09-25/README.ja.md)。ESP32-P4 の OEP logic capture(50 MHz、V203 は 100 / 160 MHz も)で取った `.sr` と、同時の ch32rv USB NDJSON。ch32rv の 12 操作に加えて、速度・DMI 単発・誤り・option byte・読出し保護・clock・monitor・反復・RedetectChip を収め、ch32rv 0.8.0〜0.10.0 での比較もある。L103 は DMI まで復号済み(`.dmi.txt` / `.mem.txt`)。arduinocore-ch32 セッションが収録・commit した。[link-to-target.ja.md](../protocols/link-to-target.ja.md) §3/§5 と [pc-to-link.ja.md](../protocols/pc-to-link.ja.md) §4/§11 の根拠。
+
+## 解析環境(uv)
+
+capture の解析 script は `captures/` の uv project で動かす。Python 3.13 と numpy は `pyproject.toml` / `uv.lock` で固定してある。
+
+```console
+cd captures
+uv sync
+SPLIT=two DEBOUNCE=3 uv run python tools/linke_repeat_compare.py l103 target_info read_ram_256
+```
+
+- fixture の `tools/dmi_decode.py <dir>` は、`<dir>` の `.dmi.txt` / `.mem.txt` を**上書きする**(SHA256SUMS の対象)。作り直すときは fixture の外へ `.sr` を写してから実行する。
+
+- `tools/linke_repeat_compare.py`: `more/<target>/repeat{1..5}_*` を bit 単位で比べる。区切りには fixture の decoder を使う。出力は frame 数、run 間の差、85 clock frame の中身、don't-care bit の分布。
+- 09-11 fixture の `analyze.py` は標準 library だけで動く(uv でも system の python3 でもよい)。
+
 [`fixtures/`](fixtures/) に実機 capture を置く。命名例: `<操作>-<target>-fw<版>.ndjson`。firmware 版で挙動が変わる項目(消去済みセルの read 値など)は**版ごとに**記録する。
 
 ### `fixtures/target-info-v307.ndjson`(attach + identify、LinkE fw2.22 → CH32V307)

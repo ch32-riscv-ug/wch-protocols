@@ -68,7 +68,7 @@
 **P3 — 自作 probe/線を作る場合のみ**
 
 6. **SWIO の物理的な許容限界**([link-to-target](protocols/link-to-target.ja.md) §3): 既知の動作点ではV003の全書込み・実行まで実証済み。残るのはpulse幅の受理範囲、pull-up/open-drain条件、温度・個体差のmargin測定。
-7. **RVSWD の bit フレームをロジアナで verify**([link-to-target](protocols/link-to-target.ja.md) §3): attested → verified。STOP 波形・クロックも実測。
+7. **RVSWD の bit フレームをロジアナで verify**([link-to-target](protocols/link-to-target.ja.md) §3): attested → verified。STOP 波形・クロックも実測。→ **2026-09-25 に大半を実測**(L103/V203、[fixture](captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md)): write 53 / read 54 clock、接続時の long 形式の問い合わせ、burst の条件、LinkE の clock 周期。残りは STOP 波形の詳細、速度設定と clock の対応表、V203 高速区間と V003 SWIO の復号。
 8. custom BL 各実装(wch-uf2 / Swindle DFU / PlumBL)の header/CRC/entry を source から転記([custom-bootloader](protocols/custom-bootloader.ja.md))。
 
 ## 4. 現況

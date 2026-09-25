@@ -189,7 +189,7 @@
 | 1b | **取りまとめ・第 2 部(相反の裁定)** | この repo | **未作成**。`C-12` が最優先(§5) |
 | 2 | 一意な要求 ID の正本を形式的に決めるか | (§4) | 未決(運用は成立している) |
 | 3 | probe firmware の実装 | `ch32rv-probe` | `LICENSE` のみ |
-| 4 | attach 副作用の還流(`RCC_CFGR0` / `FLASH ACTLR`) | `../protocols/pc-to-link.ja.md` | 未反映。**一次実測はコア側の成果**(V307、probe-rs と ch32rv の双方で同一)、ライタは**裏づけ**を出せる、**書き込みは protocol 側の仕事**(ライタ `0006` §16 の回答)。なおライタ固有の材料 `s1`(x9)破壊は **pc-to-link に既に記録済み**(V103 attach quirk) |
+| 4 | attach 副作用の還流(`RCC_CFGR0` / `FLASH ACTLR`) | `../protocols/pc-to-link.ja.md` | **反映済み(2026-09-25)**: pc-to-link §11「AttachChip の clock 組み直し」。LinkE firmware が AttachChip 中に HSI → PLL(系統ごとの決まった倍率)へ組み直し、元の clock を戻さない(L103/V203 の線上実測、[fixture](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md))。V307 は線上では未収録。**一次実測はコア側の成果**(V307、probe-rs と ch32rv の双方で同一)、ライタは**裏づけ**を出せる、**書き込みは protocol 側の仕事**(ライタ `0006` §16 の回答)。なおライタ固有の材料 `s1`(x9)破壊は **pc-to-link に既に記録済み**(V103 attach quirk) |
 | 5 | 1/2 線両対応 15 series の反映 | `../protocols/link-to-target.ja.md` §1 | 未反映(材料は `data/harness-wiring/`) |
 
 ## 7. 更新の仕方

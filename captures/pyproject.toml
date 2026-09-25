@@ -1,0 +1,11 @@
+[project]
+name = "wch-protocols-captures"
+version = "0.1.0"
+description = "Offline analysis of the wire/USB capture fixtures (decoders, cross-checks)"
+requires-python = "==3.13.*"
+dependencies = [
+    "numpy==2.3.3",
+]
+
+[tool.uv]
+package = false

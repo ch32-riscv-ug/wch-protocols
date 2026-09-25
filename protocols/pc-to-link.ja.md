@@ -41,8 +41,8 @@ payload は「cmd の後」を示す。応答が生バイト(frame 無し)の場
 | cmd | sub/payload | 意味 | 状態 |
 |---|---|---|---|
 | `0x0d` | `0x01` | **GetProbeInfo**。応答 payload = `[fw_major, fw_minor, variant, fw_mode]`(4B)。variant: 1=CH549 / 2,0x12=LinkE / 3=LinkS / 4=DAPLink / 5,0x85=LinkW。fw_mode: 0=RISC-V / 1=ARM(RV/ARM 別 firmware は CH549 のみ) | **verified**(LinkE variant 0x12・raw `02 16`=2.22、CH549 variant 1・raw `02 0c`=2.12) |
-| `0x0d` | `0x02` | **AttachChip**。応答 payload = `[family, chip_id_be32]`(5B)。target 無しは 4B 応答 or reason `0x55` エラー | **verified**(V203→family `0x05`/id `0x20310500`、V103→`0x01`/`0x2500410f`、V003→`0x09`/`0x00300500`) |
-| `0x0d` | `0x03` | **RedetectChip**。target を **reset せずに** probe に把握し直させる。壊れ読み値(§7)の復旧に使う | attested |
+| `0x0d` | `0x02` | **AttachChip**。応答 payload = `[family, chip_id_be32]`(5B)。target 無しは 4B 応答 or reason `0x55` エラー。**target の clock を書き換える副作用がある**(§11「AttachChip の clock 組み直し」) | **verified**(V203→family `0x05`/id `0x20310500`、V103→`0x01`/`0x2500410f`、V003→`0x09`/`0x00300500`) |
+| `0x0d` | `0x03` | **RedetectChip**。target を **reset せずに** probe に把握し直させる。壊れ読み値(§7)の復旧に使う。線上(L103、reset 後): clock には触らず、**FLASH_KEYR / MODEKEYR に鍵を書く 4 件だけ**(flash の解錠が付いてくる)。**RedetectChip だけの状態では、続く `DmiOp` は target に届かない**(応答はデータ 0・状態 0、線上の frame も値を載せない) | attested(線上の挙動は [2026-09-25 fixture](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md) で L103 のみ実測) |
 | `0x0d` | `0xff` | **DetachChip(OptEnd)**。掴んだ core の解放 + セッション前の状態クリア | **verified** |
 | `0x0d` | `0x01 0x09`/`0x0a` | 3.3V 出力 on/off(`81 0d 01 09` / `0a`) | attested |
 | `0x0d` | `0x01 0x0b`/`0x0c` | 5V 出力 on/off | attested |
@@ -399,6 +399,8 @@ WCH-LinkUtility の `Firmware_Link/` に平文で入っている。**全ファ�
 | **CH549 の stale fast-read** | stub 実行直後の高速 bulk read が program 前の古い flash 像(0xff/ゴミ)を返すことがある。照合は権威ある DMI 読みで再確認。偽 verify-mismatch の原因 |
 | **V103 attach quirk** | AttachChip が生きた GPR `s1`/`x9` を chip id で上書きし復元しない → resume 後 program が s1 を使う瞬間 fault(V103 固有)。**attach 後に soft-reset** で回避 |
 | attach の掴み | AttachChip は target core を掴む。セッション終了時は必ず DetachChip(失敗経路含む) |
+| **AttachChip の clock 組み直し**(LinkE 2.22、L103/V203 実測) | AttachChip(`81 0d 01 02`、応答まで約 55 ms)の間に、LinkE firmware が自分で RCC を書き換える。USB 上にはこの操作は現れない。流れ: HSI へ切替 → PLL off → 系統ごとの処理 → PLL を**系統ごとの決まった倍率**で起動 → SW = PLL。**元の clock は戻さない**。<br>・L103: reset 直後の CFGR0 `0`(HSI)が `0x001c040a` になり、FLASH_ACTLR は決め打ちで `0x1`<br>・V203: CFGR0 `0x0028000a` が `0x0034040a` になり、RCC_CFGR2(`0x4002102C`)は読まずに `0` を書く<br>このため、**attach → resume すると sketch は自分で設定したのと違う clock で動き続ける**。reset すれば既定値に戻る。<br>同じ接続の中で FLASH_CTLR = `0x8080`(LOCK\|FLOCK)と FLASH_STATR = `0xB020` を書き、ESIG(`0x1FFFF7E0`/`E8`/`EC`/`F0`)を読む。STATR の bit 12/13/15 は L103 では予約で、書く意図は不明。<br>注意: **同じ probe で前後を読んでもこの副作用は見えない**(1 回目の読み出し自体が接続なので、すでに書き換わった後を読む)。基準値は reset 直後の最初の接続の線上か、target 自身の報告から取る。<br>出典: [2026-09-25 fixture](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md)「低速区間と L103 / V203 の比較」。L103 は `extra/l103/clock_read_rcc_0.mem.txt` でも確認。V203 の値は fixture README の解析による |
+| **flash 書込み時の周辺 clock 停止**(LinkE 2.22、L103 実測) | Program(`0x01`)の経路で、APB1PCENR = 0 にしてから KEYR/MODEKEYR を解錠し、**MER(chip 全体消去)**を行う。stub を置く前に AHB/APB2/APB1 の PCENR と SysTick CTLR を 0 にし、**戻さない**。最後の PFIC SYSRST(`0xE000E048` ← `0xBEEF0080`)で既定値に戻る。**erase_all は SYSRST が無いので、APB1 が止まったまま終わる** |
 
 ## 12. 未解読(todo)
 

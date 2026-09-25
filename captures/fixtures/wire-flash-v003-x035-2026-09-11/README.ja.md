@@ -116,7 +116,7 @@ START（DIO falling while CLK high）からSTOP（DIO rising while CLK high）�
 | 0–6 | 7 | DMI address |
 | 7 | 1 | R/W（read = `0`, write = `1`） |
 | 8 | 1 | address + R/W のeven parity。8,628 packetすべて一致 |
-| 9 | 1 | park/don't-care。実測ではbit 8と同値（8,628/8,628） |
+| 9 | 1 | park/don't-care。実測ではbit 8と同値（8,628/8,628）。ただし2026-09-25のL103では約93 %しか一致しない（[wire-linke-p4-2026-09-25](../wire-linke-p4-2026-09-25/README.ja.md)、[link-to-target §3](../../../protocols/link-to-target.ja.md)） |
 | 10–13 | 4 | host padding/don't-care。`0000` × 8,358、`0100` × 270 |
 | 14–45 | 32 | write/read data |
 | 46 | 1 | data32 のeven parity。8,628 packetすべて一致 |
