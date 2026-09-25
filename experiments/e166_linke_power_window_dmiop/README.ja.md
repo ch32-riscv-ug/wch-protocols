@@ -28,6 +28,7 @@ ch32rv の recover の phase 2(消去せずに直す)は、LinkE の特殊消去
    - off の間も UART は流れ続けた(before 11 行 / off の間 12 行 / on の後 21 行)。
    - loop counter は 184164 → 217505 … → 417556 と続けて増え、再起動していない。
    - 応答は `82 0d 01 0a` / `82 0d 01 09` で、どちらも受理されている。
+   - E167 で、target をつながない LinkE でも 3V3 の出力がこの命令で切れないことを確かめた(back-power のせいではない)。
    - E165 の特殊消去では、DMSTATUS に havereset(`0x000c0382`)が立ち、target は reset されていた。LinkE は特殊消去の中で、`probe power 3v3` とは別の方法で電源を切るか reset している(方法は未確認)。
 2. **AttachChip なしの DmiOp は target に届かない。** SetSpeed の後の DmiOp の応答は、data `0xffffffff`、status `3` だった。RedetectChip だけの状態(2026-09-25 fixture の `dmiop_*`)と同じ。AttachChip を先に送ると、DMSTATUS `0x00000382`、CFGR0 `0`、ACTLR `2` と正しく読めた。
    - script の halt 判定は、`0xffffffff` の bit 9 を halt と誤って数えた(結果の `halted_after_iterations: 0` は無効)。

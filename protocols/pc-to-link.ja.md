@@ -44,7 +44,7 @@ payload は「cmd の後」を示す。応答が生バイト(frame 無し)の場
 | `0x0d` | `0x02` | **AttachChip**。応答 payload = `[family, chip_id_be32]`(5B)。target 無しは 4B 応答 or reason `0x55` エラー。**target の clock を書き換える副作用がある**(§11「AttachChip の clock 組み直し」) | **verified**(V203→family `0x05`/id `0x20310500`、V103→`0x01`/`0x2500410f`、V003→`0x09`/`0x00300500`) |
 | `0x0d` | `0x03` | **RedetectChip**。target を **reset せずに** probe に把握し直させる。壊れ読み値(§7)の復旧に使う。線上(L103、reset 後): clock には触らず、**FLASH_KEYR / MODEKEYR に鍵を書く 4 件だけ**(flash の解錠が付いてくる)。**RedetectChip だけの状態では、続く `DmiOp` は target に届かない**(応答はデータ 0・状態 0、線上の frame も値を載せない) | attested(線上の挙動は [2026-09-25 fixture](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md) で L103 のみ実測) |
 | `0x0d` | `0xff` | **DetachChip(OptEnd)**。掴んだ core の解放 + セッション前の状態クリア | **verified** |
-| `0x0d` | `0x01 0x09`/`0x0a` | 3.3V 出力 on/off(`81 0d 01 09` / `0a`) | attested |
+| `0x0d` | `0x01 0x09`/`0x0a` | 3.3V 出力 on/off(`81 0d 01 09` / `0a`)。**LinkE fw 2.22 `497E8F06CE2E` では、受理されるが 3V3 の出力は切れなかった**(target なしで ADC 測定、[E167](../experiments/e167_linke_3v3_output/README.ja.md)) | attested(効果は未確認) |
 | `0x0d` | `0x01 0x0b`/`0x0c` | 5V 出力 on/off | attested |
 | `0x11` | `0x05` | **ChipInfo**。応答は **frame 無しの生 20B**: `[0:2]?` / `flash_kb(be16, [2:4])` / `UUID([4:12])` / `protection flags([12:16], 解釈未確立)` / `chip_id([16:20])`。UUID 全 0/全 ff は未応答 | **verified**(V203→flash 64KiB・UUID `b661abcd1e91bc63`。UUID は独立読取と一致) |
 | `0x01` | `0x01` / `0x02` | CheckFlashProtection / UnprotectFlash | attested |
@@ -163,7 +163,7 @@ option bytes は通常の page と手順が違う(専用の unlock と OPTPG/OPT
 | cmd | payload | 意味 | 状態 |
 |---|---|---|---|
 | `0x0c` | `family speed` | SetSpeed(先に必要) | verified |
-| `0x0d` | `0x0f family` | EraseCodeFlash By Power off。probe が target を電源再投入(**LinkE/LinkW のみ**、probe 給電が条件) | verified(受理を実機確認) |
+| `0x0d` | `0x0f family` | EraseCodeFlash By Power off。名前は電源再投入だが、LinkE fw 2.22 は target が無いとき 3V3 を切らず、**RST に low の pulse(約 4 ms、約 30 ms ごと)を入れながら接続を試す**([E167](../experiments/e167_linke_3v3_output/README.ja.md))。応答 `82 0d 01 0f` = 消去した、`82 0d 01 00`(約 2.1 s)= target を捕まえられず消去していない | verified(受理と応答の意味を実機確認) |
 | `0x0d` | `0x08 family` | EraseCodeFlash By RST pin。NRST 配線が要る | attested |
 
 - power-off erase 後の flash debug-read は `0xe339e339` の繰り返し(**wlink dump も同値**なので chip の挙動そのもの)。この状態でも **通常 flash を実行すれば即復旧**する(実機確認)。
