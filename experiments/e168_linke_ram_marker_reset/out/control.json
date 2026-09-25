@@ -1,0 +1,7 @@
+{
+ "mode": "control",
+ "write_rc": 0,
+ "marker_before_ok": true,
+ "flash_rc": 0,
+ "marker_after_equal_bytes": 256
+}

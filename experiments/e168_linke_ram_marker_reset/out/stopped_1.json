@@ -1,0 +1,109 @@
+{
+ "mode": "stopped",
+ "write_rc": 0,
+ "marker_before_ok": true,
+ "flash_rc": 0,
+ "stop_target_info": [
+  "uid:      -",
+  "warning[uuid-unavailable]: the target did not answer the UUID query (protected, or unsupported by this family)"
+ ],
+ "special_erase_tries": [
+  "820d0100",
+  "820d0100",
+  "820d0100",
+  "820d0100"
+ ],
+ "attach": "820d050d03510601",
+ "dmstatus_after": "000c0382",
+ "havereset": true,
+ "abstractcs": "08000602",
+ "marker_word0_in_session": "d4a418ca",
+ "marker_word0_expected": "d4a418ca",
+ "usb": [
+  {
+   "t_ms": 0.0,
+   "out": "810d0101",
+   "in": "820d0402161200",
+   "ms": 1.0
+  },
+  {
+   "t_ms": 1.1,
+   "out": "810c020d03",
+   "in": "820c0101",
+   "ms": 0.6
+  },
+  {
+   "t_ms": 1.7,
+   "out": "810d020f0d",
+   "in": "820d0100",
+   "ms": 2102.8
+  },
+  {
+   "t_ms": 2104.5,
+   "out": "810d020f0d",
+   "in": "820d0100",
+   "ms": 2103.4
+  },
+  {
+   "t_ms": 4207.9,
+   "out": "810d020f0d",
+   "in": "820d0100",
+   "ms": 2103.2
+  },
+  {
+   "t_ms": 6311.1,
+   "out": "810d020f0d",
+   "in": "820d0100",
+   "ms": 2103.0
+  },
+  {
+   "t_ms": 8414.2,
+   "out": "810d0102",
+   "in": "820d050d03510601",
+   "ms": 48.5
+  },
+  {
+   "t_ms": 8462.6,
+   "out": "810806110000000001",
+   "in": "82080611000c038200",
+   "ms": 1.5
+  },
+  {
+   "t_ms": 8464.1,
+   "out": "810806052000300002",
+   "in": "820806052000300000",
+   "ms": 0.8
+  },
+  {
+   "t_ms": 8464.9,
+   "out": "810806170220000002",
+   "in": "820806170220000000",
+   "ms": 0.9
+  },
+  {
+   "t_ms": 8465.8,
+   "out": "810806160000000001",
+   "in": "820806160800060200",
+   "ms": 0.8
+  },
+  {
+   "t_ms": 8466.6,
+   "out": "810806040000000001",
+   "in": "82080604d4a418ca00",
+   "ms": 0.8
+  },
+  {
+   "t_ms": 8467.4,
+   "out": "810d0103",
+   "in": "820d0103",
+   "ms": 1.8
+  },
+  {
+   "t_ms": 8469.1,
+   "out": "810d01ff",
+   "in": "820d01ff",
+   "ms": 0.9
+  }
+ ],
+ "marker_after_equal_bytes": 1
+}
