@@ -54,7 +54,7 @@ uv run --no-project --with pyserial==3.5 python power_check.py F90E8F067DFD /dev
 - 線上で見た接続後の値(L103 `0x001c040a` / `0x1`、V203 `0x0034040a`、V003 は RCC に触れない)と一致した。
 - V307 では、これまで接続後の読み値からの推定だった書き換えを、アプリ側から確認した。
 - X035 は、LinkE が接続中に書く値(CFGR0 `0`、ACTLR `0x2`。09-11 fixture の線上の解析)が core の既定の clock と同じなので、既定のままでは変化が見えない。09-11 の target は CFGR0 `0x50`(AHB /6)で動いていて、線上では 0 に書き換えられていた。
-- **LinkE の 3.3V・5V 出力を切っても、L103 / V203 / V003 の UART は止まらなかった。** target は LinkE から給電されていないので、「target 無給電での接続」はこの配線ではできない(見送り)。3.3V と 5V は、試験後にどちらも on にした。試験前の状態は記録していない。
+- **LinkE の 3.3V・5V 出力を切っても、L103 / V203 / V003 の UART は止まらなかった。** 電圧は測っていないので、LinkE から給電されていないのか、UART の TX や RVSWD の pull-up から電源へ回り込んで(back-power)落ちきらなかったのかは区別できていない。いずれにせよ、この配線では「target 無給電での接続」をきれいには作れないので見送った。3.3V と 5V は、試験後にどちらも on にした。試験前の状態は記録していない。
 
 ## X035 が応答しなくなった件(復旧済み。原因は推定)
 
@@ -68,15 +68,15 @@ X035 で変化を見えるようにするため、`-DCW_AHB_DIV2` で build し�
    - medium 設定: UID `ffffffffc3ffffff`、flash 65535 KiB と値が化ける。
 4. 試した復旧(LinkE `FC92` から):
    - `reset --speed low`: 失敗。
-   - `probe power 3v3 off/on`: 変化なし。
-   - `recover --method power-off`(3 回): 毎回「issued」になり、直後の 1 コマンドだけ通る。「issued」は特殊消去のコマンドを送ったというだけの意味である。power-off 消去は LinkE が target の電源を切って入れ直す間に消す方式で、この配線では電源が落ちないので、**何も消えていない可能性が高い**。直後の 1 コマンドだけ通るのは、ch32rv が特殊消去の後に送る RedetectChip + detach で probe の状態が一度きれいになるため、と見られる(ch32rv-c8 の指摘)。その窓の中で次を試した。
+   - `probe power 3v3 off/on`(1.5 s): 接続の結果は変わらず。**X035 は LinkE の 3V3 から給電されている**(ch32rv-c8 セッションのユーザーの確認。外部との接続は LinkE の UART・RVSWD・3V3・GND だけで、NRST は未接続)ので、電源は切れていたはずだが、back-power で落ちきらなかった可能性もある(電圧は未測定)。
+   - `recover --method power-off`(3 回): 毎回「issued」になり、直後の 1 コマンドだけ通る。power-off 消去は LinkE が target の電源を切って入れ直す間に消す方式で、X035 は LinkE 給電なので**実際に消去は効いていた**(復旧後に flash が空だった)。直後の 1 コマンドだけ通ったのは、LinkE が電源を入れ直した直後の起動の窓だったからと読める。その窓の中で次を試した。
      - `recover --method unprotect --speed low`: option byte が読めず、書込みは `cmderr 4`(hart が halt しない)で失敗した。abstract command の段階で失敗しているので、flash には届いていないと見ているが、確認はできていない。**通信が化けている間に option byte を書く操作は、状態を悪化させるおそれがあるので、以後はしない。**
      - `dbg dmi write 0x10 0x3`(ndmreset): 書込みは通ったが、直後の DMSTATUS は `0xfffff9ff` → `0x800001c1`(正常時は `0x00030382` 付近)と化け、以後は応答しない。
    - USB の往復: `results/x035-recover-*.ndjson`。
-5. NRST は LinkE につながっておらず、target は LinkE から給電されていないので、LinkE 側からの手は尽きた。基板の電源の入れ直しが要る。それでも戻らなければ、X035 の VCC を LinkE の 3V3 から取る配線にすれば、power-off / unbrick の方式で起動直後の窓を狙える(配線の変更になる)。
+5. NRST は LinkE につながっていない。この時点では、target は LinkE から給電されていないと誤って判断し、LinkE 側からの手は尽きたと考えた。基板の電源の入れ直しが要る。それでも戻らなければ、X035 の VCC を LinkE の 3V3 から取る配線にすれば、power-off / unbrick の方式で起動直後の窓を狙える(配線の変更になる)。
 
 6. ユーザーが基板の電源を入れ直した。それでも AttachChip は 20/20 で `81 55 01 01`(target 無し)だった(`attach_loop.py`、`results/x035-attach-fail-after-power-cycle.ndjson`)。
-7. **特殊消去(`81 0d 02 0f 0d`)を送った直後の同じ USB session の中では、AttachChip・DMI・ChipInfo が安定して通る**ことが分かった(`raw_seq.py`)。その窓の中で読むと、次のとおりだった。
+7. **特殊消去(`81 0d 02 0f 0d`)を送った直後の同じ USB session の中では、AttachChip・DMI・ChipInfo が安定して通る**ことが分かった(`raw_seq.py`)。LinkE が 3V3 を切って入れ直した直後の起動の窓で、RST_MODE の reset がまだ効いていない間と見られる(推定)。その窓の中で読むと、次のとおりだった。
    - DMSTATUS `0x00000382`(halt 中)、flash の先頭 `ffffffff`(sketch は消えていた)。
    - option byte `f8075aa5 ff00ff00 00ff00ff 00ff00ff`: RDPR `a5`(保護なし)、**USER `0x07`**、DATA0/1 `00`、WRPR0〜3 `ff`。2 回読んで一致し、補数もすべて整合。
    - X035 RM では USER[4:3] RST_MODE の復帰値は `11b`(reset pin 無効)で、`00` は「外部 reset pin を有効にする」。C8T6 では PA21 が reset pin になる。
@@ -86,7 +86,7 @@ X035 で変化を見えるようにするため、`-DCW_AHB_DIV2` で build し�
    - 最後に PFIC SYSRST を送った。
 9. 以後、high / low の通常の接続で chip ID・UID `1ff9abcd880ebc48`・flash 62 KiB が読め、`target option get` を 2 回読んでも同じ値(raw `a55a1fe000ff00ffff00ff00ff00ff00`)だった。
 
-見立て(推定): LinkE は接続中に X035 の RCC / FLASH を書く。target が HCLK 24 MHz で動いていたため、高速設定の DMI 通信が target にとって速すぎ、書込みが化けた可能性がある。化けた書込みが FLASH_CTLR の option byte 関係の bit に当たっていれば、option byte が壊れている可能性もある(ch32rv-c8 セッションの指摘)。ただし ndmreset の後も、電源を入れ直した後も接続できなかったので、clock だけでは説明できない。USER の RST_MODE を `11` に戻しただけで直ったので、**PA21 が外部 reset として働き、chip がほぼ reset に入ったままだった**と見ている。USER `0x07` が事故の前からの値だったのか、化けた書込みで変わったのかは確かめられない(X035 の option byte は事故の前に読んでいない)。予約 bit 7:5 も 0 なので、書込みで bit が落ちたように見えるが、推定にとどまる。特殊消去の直後だけ接続できた理由も分かっていない。
+見立て(推定): LinkE は接続中に X035 の RCC / FLASH を書く。target が HCLK 24 MHz で動いていたため、高速設定の DMI 通信が target にとって速すぎ、書込みが化けた可能性がある。化けた書込みが FLASH_CTLR の option byte 関係の bit に当たっていれば、option byte が壊れている可能性もある(ch32rv-c8 セッションの指摘)。ただし ndmreset の後も、電源を入れ直した後も接続できなかったので、clock だけでは説明できない。USER の RST_MODE を `11` に戻しただけで直ったので、**PA21 が外部 reset として働き、chip がほぼ reset に入ったままだった**と見ている。USER `0x07` が事故の前からの値だったのか、化けた書込みで変わったのかは確かめられない(X035 の option byte は事故の前に読んでいない)。予約 bit 7:5 も 0 なので、書込みで bit が落ちたように見えるが、推定にとどまる。特殊消去の直後だけ接続できたのは、LinkE による電源の入れ直しの直後の起動の窓と見ている(推定。reset pin の時定数などは未確認)。
 
 ## 結論
 
