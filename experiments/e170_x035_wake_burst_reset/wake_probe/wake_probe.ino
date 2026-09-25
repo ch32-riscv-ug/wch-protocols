@@ -10,11 +10,13 @@
 //   ack             DMCONTROL = ackhavereset | dmactive
 //   wake            the library's wake burst: 100 clocks with SWDIO high, one low bit, STOP; then DM config
 //   resync          bus bring-up without the wake burst
-//   hi <n>          raw: SWDIO driven high, n SWCLK clocks, then STOP         (bit-banged here)
-//   lo <n>          raw: SWDIO driven low,  n SWCLK clocks, then SWDIO high    (bit-banged here)
+//   hi <n>          raw: SWDIO driven high, n SWCLK clocks (~1 us half period), then STOP
+//   lo <n>          raw: SWDIO driven low,  n SWCLK clocks, then STOP
 //   idle <ms>       release the bus and wait
 #include <Arduino.h>
 #include <OepRvswdPhy.h>
+#include <hal/dedic_gpio_cpu_ll.h>
+#include <hal/gpio_ll.h>
 
 static const int DIO = 2, CLK = 54;
 static oep::RvswdPhy phy;
@@ -40,21 +42,21 @@ static bool memWrite(uint32_t addr, uint32_t v) {
   return true;
 }
 
-// Raw clock runs with plain GPIO (about 1 us per half period). The library releases the pins first.
+// Raw clock runs through the library's own dedicated-GPIO bundle (bit 0 = SWDIO, bit 1 = SWCLK, created by
+// RvswdPhy::begin). Plain pinMode/digitalWrite would move the pins off that bundle for good.
+static inline void io(bool dio, bool clk) { dedic_gpio_cpu_ll_write_mask(0x3, (dio ? 1 : 0) | (clk ? 2 : 0)); }
 static void rawRun(bool dioLevel, int n, bool stopAfter) {
-  phy.release();
-  pinMode(DIO, OUTPUT); pinMode(CLK, OUTPUT);
-  digitalWrite(CLK, HIGH); digitalWrite(DIO, HIGH); delayMicroseconds(5);
-  if (!dioLevel) { digitalWrite(CLK, LOW); delayMicroseconds(2); digitalWrite(DIO, LOW); delayMicroseconds(2); }
+  gpio_ll_output_enable(&GPIO, CLK); gpio_ll_output_enable(&GPIO, DIO);
+  io(true, true); delayMicroseconds(5);
+  if (!dioLevel) { io(true, false); delayMicroseconds(1); io(false, false); delayMicroseconds(1); }
   for (int i = 0; i < n; ++i) {
-    digitalWrite(CLK, LOW); delayMicroseconds(2);
-    digitalWrite(CLK, HIGH); delayMicroseconds(2);
+    io(dioLevel, false); delayMicroseconds(1);
+    io(dioLevel, true); delayMicroseconds(1);
   }
-  if (stopAfter || !dioLevel) {   // leave both lines high; for a high run, end with a STOP (DIO rises while CLK high)
-    digitalWrite(CLK, LOW); delayMicroseconds(2); digitalWrite(DIO, LOW); delayMicroseconds(2);
-    digitalWrite(CLK, HIGH); delayMicroseconds(2); digitalWrite(DIO, HIGH); delayMicroseconds(5);
+  if (stopAfter || !dioLevel) {   // end with a STOP: DIO low while CLK low, CLK high, then DIO rises
+    io(false, false); delayMicroseconds(1); io(false, true); delayMicroseconds(1); io(true, true); delayMicroseconds(5);
   }
-  pinMode(DIO, INPUT); pinMode(CLK, INPUT);
+  phy.release();
 }
 
 static void printStatus() {

@@ -1,0 +1,696 @@
+{
+ "mode": "healthy",
+ "rows": [
+  {
+   "treatment": "hi 100",
+   "i": 0,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "hi 100",
+   "i": 1,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "hi 100",
+   "i": 2,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "hi 200",
+   "i": 0,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "hi 200",
+   "i": 1,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "hi 200",
+   "i": 2,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "lo 100",
+   "i": 0,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "lo 100",
+   "i": 1,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "lo 100",
+   "i": 2,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "lo 236",
+   "i": 0,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "lo 236",
+   "i": 1,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "lo 236",
+   "i": 2,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "wake",
+   "i": 0,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "wake",
+   "i": 1,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "wake",
+   "i": 2,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "idle 100",
+   "i": 0,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "idle 100",
+   "i": 1,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  },
+  {
+   "treatment": "idle 100",
+   "i": 2,
+   "before": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "after": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1",
+   "relinked": false,
+   "reset": false
+  }
+ ],
+ "log": [
+  {
+   "t": 1790348688.248,
+   "cmd": "a",
+   "reply": "ok half_ns=0 dmstatus=00030c82"
+  },
+  {
+   "t": 1790348688.249,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.25,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.251,
+   "cmd": "hi 100",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.302,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.302,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.303,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.303,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.304,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.305,
+   "cmd": "hi 100",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.356,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.356,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.358,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.359,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.359,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.36,
+   "cmd": "hi 100",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.412,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.413,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.415,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.416,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.418,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.419,
+   "cmd": "hi 200",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.471,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.472,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.473,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.474,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.476,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.477,
+   "cmd": "hi 200",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.529,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.53,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.532,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.533,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.534,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.536,
+   "cmd": "hi 200",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.588,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.589,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.59,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.591,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.593,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.594,
+   "cmd": "lo 100",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.645,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.647,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.649,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.65,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.651,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.652,
+   "cmd": "lo 100",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.703,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.704,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.705,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.705,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.706,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.707,
+   "cmd": "lo 100",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.758,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.76,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.761,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.761,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.762,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.763,
+   "cmd": "lo 236",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.814,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.814,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.815,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.815,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.816,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.817,
+   "cmd": "lo 236",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.868,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.869,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.869,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.87,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.871,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.872,
+   "cmd": "lo 236",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.923,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.923,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.924,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.924,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.925,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.926,
+   "cmd": "wake",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.977,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.979,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348688.981,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.982,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348688.984,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348688.985,
+   "cmd": "wake",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348689.037,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348689.038,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348689.04,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348689.04,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348689.042,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348689.042,
+   "cmd": "wake",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348689.093,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348689.093,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348689.094,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348689.095,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348689.095,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348689.188,
+   "cmd": "idle 100",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348689.238,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348689.239,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348689.24,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348689.24,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348689.241,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348689.333,
+   "cmd": "idle 100",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348689.384,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348689.385,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348689.385,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348689.386,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348689.386,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348689.479,
+   "cmd": "idle 100",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348689.531,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348689.532,
+   "cmd": "r 11",
+   "reply": "ok 00030c82"
+  },
+  {
+   "t": 1790348689.534,
+   "cmd": "st",
+   "reply": "ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  }
+ ]
+}
