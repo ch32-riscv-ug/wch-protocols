@@ -15,13 +15,13 @@ WCH-LinkE の AttachChip は、線上で target の RCC を書き換えている
 
 機材は WCH-LinkE fw 2.22 の 3 台で、target の USART1 TX は LinkE の UART RX につながっている(CDC)。配線は変えていない。P4 の capture 機は使っていない。
 
-| target | LinkE | CDC |
+| target | LinkE | CDC(board-identify の link。`/dev/ttyACM*` の番号は抜き差しで入れ替わるので使わない) |
 |---|---|---|
-| CH32L103C8T6 | `0E028F0692F1` | `/dev/ttyACM8` |
-| CH32V203C8T6 | `FBC18F0680B0` | `/dev/ttyACM9` |
-| CH32V003F4P6 | `F90E8F067DFD` | `/dev/ttyACM3` |
-| CH32X035C8T6(UID `1ff9abcd880ebc48`、OEP の P4 治具の X035F8U6 とは別基板) | `FC928F068181` | `/dev/ttyACM6` |
-| CH32V307VCT6 | `38EF8F06BDC2` | `/dev/ttyACM4` |
+| CH32L103C8T6 | `0E028F0692F1` | `/run/board-identify/by-id/wch-link-0e028f0692f1` |
+| CH32V203C8T6 | `FBC18F0680B0` | `/run/board-identify/by-id/wch-link-fbc18f0680b0` |
+| CH32V003F4P6 | `F90E8F067DFD` | `/run/board-identify/by-id/wch-link-f90e8f067dfd` |
+| CH32X035C8T6(UID `1ff9abcd880ebc48`、OEP の P4 治具の X035F8U6 とは別基板) | `FC928F068181` | `/run/board-identify/by-id/wch-link-fc928f068181` |
+| CH32V307VCT6 | `38EF8F06BDC2` | `/run/board-identify/by-id/wch-link-38ef8f06bdc2` |
 
 1. [`clockwatch/clockwatch.ino`](clockwatch/clockwatch.ino) を ArduinoCore-CH32(`ch32-riscv-ug:ch32v`、xpack riscv-none-elf-gcc 14.3.0-1、既定の clock)で build し、`ch32rv flash --reset run` で書く。
    - sketch は 100 ms ごとに `CW <loop> CTLR=… CFGR0=… ACTLR=…` を 115200 baud で送る。baud は起動時の clock から決まる。
@@ -32,8 +32,8 @@ WCH-LinkE の AttachChip は、線上で target の RCC を書き換えている
 3. [`power_check.py`](power_check.py) で LinkE の 3.3V / 5V 出力を切り、UART が止まるか(= target が LinkE から給電されているか)を見る。出力は最後に必ず on に戻す。
 
 ```console
-uv run --no-project --with pyserial==3.5 python run_clockwatch.py l103 0E028F0692F1 /dev/ttyACM8 clockwatch/clockwatch-CH32L103.bin out
-uv run --no-project --with pyserial==3.5 python power_check.py F90E8F067DFD /dev/ttyACM3 3v3
+uv run --no-project --with pyserial==3.5 python run_clockwatch.py l103 0E028F0692F1 /run/board-identify/by-id/wch-link-0e028f0692f1 clockwatch/clockwatch-CH32L103.bin out
+uv run --no-project --with pyserial==3.5 python power_check.py F90E8F067DFD /run/board-identify/by-id/wch-link-f90e8f067dfd 3v3
 ```
 
 ## 結果

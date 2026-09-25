@@ -7,7 +7,7 @@ import serial
 
 CH = "/home/mt/dev_wch/ch32rv/target/release/ch32rv"
 SN = "FC928F068181"
-TTY = "/dev/serial/by-id/usb-wch.cn_WCH-Link_FC928F068181-if01"
+TTY = f"/run/board-identify/by-id/wch-link-{SN.lower()}"   # board-identify link; ttyACM numbers move on replug
 IMG = "/home/mt/dev_wch/wch-protocols/experiments/e162_linke_attach_clock_uart/clockwatch/clockwatch-CH32X035-ahb-div2.bin"
 out, speed = sys.argv[1], sys.argv[2]
 n = int(sys.argv[3]) if len(sys.argv) > 3 else 2
