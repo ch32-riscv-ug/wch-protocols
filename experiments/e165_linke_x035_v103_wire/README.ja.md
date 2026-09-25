@@ -1,6 +1,6 @@
 # E165 X035 が止まる接続・特殊消去の窓・V103 の long 形式を線で見る
 
-状態: **完了(2026-09-25)**。3V3 の線は信号が来ておらず、電源の切断と投入の時刻は見えていない。
+状態: **完了(2026-09-25)**。3V3 の線は GPIO13 につながっていた(ユーザーの確認)。収録では GPIO10 を 3V3 として撮ったので、電源の切断と投入の時刻は見えていない。
 
 ## 問い
 
@@ -12,7 +12,7 @@
 
 - 配線(ユーザーが 2026-09-25 に付け替え)。ESP32-P4 `esp32-series-30eda0e343c6` の OEP logic capture に、次をつないだ。
   - GPIO12 = SWCLK、GPIO11 = SWDIO: X035C8T6(LinkE fw 2.22 `FC928F068181`、LinkE 3V3 給電)。
-  - GPIO10 = X035 の 3V3 のつもり。ただし収録ではずっと 0 で、信号は来ていない。
+  - X035 の 3V3 は **GPIO13**(ユーザーの確認)。収録では誤って GPIO10 を 3V3 として撮り、GPIO10 はずっと 0 だった(何もつながっていない)。
   - GPIO14 = SWCLK、GPIO15 = SWDIO: CH32V103R8T6(**CH549 の WCH-Link fw 2.12** `434A124C5596`。LinkE ではない)。
   - どれも probe 側で分岐した。pin の割当ては、`out/00_pins_*` の edge の数から決めた。
 - 収録 script は [`linke_cap.py`](linke_cap.py)。E163 の写しで、OEP v1 の新しい wire に合わせて subscribe を `cap.subscribe(0, 0)` にした。client は `oep-client-python` の `fd05776`。
@@ -77,7 +77,7 @@ AttachChip の中の memory access(abstract command を組にしたもの)を、
 
 ## 未決
 
-- 3V3 の線(GPIO10)に信号が来ていない。電源の切断と投入の時刻が見えない。
+- 3V3(GPIO13)を撮って、電源の切断と投入の時刻を見る。
 - 「1 回目は `00`」が今回起きなかった理由。
 - LinkE が CFGR0 に OR するのは `0x40` か `0x50` か(HPRE `1000` / `0011` などで確かめられる)。
 - LinkE が long 形式に応答する target(V103 を LinkE につなぐ)で、short 形式に切り替えるかどうか。
