@@ -6,13 +6,13 @@ a tap at the target end broke the link). P4 GPIO14 = SWCLK, GPIO15 = SWDIO.
 Saves <out>.sr (sigrok, D0 = SWCLK, D1 = SWDIO, as the 2026-09-11 LA2016 fixture) and <out>.json.
 
     linke_cap.py <p4 hs serial> <rate_hz> <out> <segments> <linke serial> <pins csv> <names csv> [target] -- <ch32rv args...>"""
-import json, struct, subprocess, sys, threading, time, zipfile
+import json, os, struct, subprocess, sys, threading, time, zipfile
 import numpy as np
 sys.path.insert(0, "/home/mt/dev_oep/oep-client-python/src")
 from oep_client.v1 import core, link
 from oep_client.v1.capture import LogicCapture, Segment, REPEAT, EVENT_SEGMENT, EVENT_STOPPED
 
-CH32RV = "/home/mt/dev_wch/ch32rv/target/release/ch32rv"
+CH32RV = os.environ.get("CH32RV", "/home/mt/dev_wch/ch32rv/target/release/ch32rv")
 A = sys.argv[:sys.argv.index("--")]
 LINKE = "serial:" + A[5]
 PINS = tuple(int(x) for x in A[6].split(","))    # role k = PINS[k] = NAMES[k]

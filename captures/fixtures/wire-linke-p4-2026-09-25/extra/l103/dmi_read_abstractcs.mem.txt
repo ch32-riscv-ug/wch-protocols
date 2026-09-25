@@ -1,0 +1,7 @@
+# dmi_read_abstractcs.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  124.4339 MEMW 40022010 = 00008080 
+  124.5286 MEMW 4002200c = 0000b020 
+  125.1197 MEMR 1ffff7e0 = ffff0040 
+  125.2139 MEMR 1ffff7e8 = 3a6dabcd 
+  125.3081 MEMR 1ffff7ec = a282bc48 
+  125.4007 MEMR 1ffff7f0 = ffffffff 

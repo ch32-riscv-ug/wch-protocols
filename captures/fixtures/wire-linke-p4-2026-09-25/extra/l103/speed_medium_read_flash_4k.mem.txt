@@ -1,0 +1,135 @@
+# speed_medium_read_flash_4k.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  122.7578 MEMW 40022010 = 00008080 
+  122.9640 MEMW 4002200c = 0000b020 
+  123.5620 MEMR 1ffff7e0 = ? 
+  123.8216 MEMR 1ffff7e8 = ? 
+  124.0811 MEMR 1ffff7ec = ? 
+  124.3402 MEMR 1ffff7f0 = ffffffff 
+  129.7116 MEMR 08000000 = ? 
+  129.7762 BURST15 (data1 0x8000004) 12c0006f 00000000 0000012a 0000012a 00000000 0000012a 00000000 00000000 0000012a 0000012a 00000000 00000000 000002b2 00000000 0000012a
+  130.8151 MEMR 08000040 = ? 
+  130.8799 BURST15 (data1 0x8000044) 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a
+  131.9292 MEMR 08000080 = ? 
+  131.9941 BURST15 (data1 0x8000084) 0000012a 0000012a 0000012a 0000012a 0000012a 00000000 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a
+  133.0455 MEMR 080000c0 = ? 
+  133.1103 BURST15 (data1 0x80000c4) 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a 0000012a
+  134.1491 MEMR 08000100 = ? 
+  134.2139 BURST15 (data1 0x8000104) 0000012a 0000012a 00000000 0000012a 0000012a 00000001 07378082 27832000 07850007 00f72023 a0018082 20000197 6d418193 20005117 ecc10113
+  135.2858 MEMR 08000140 = ? 
+  135.3506 BURST15 (data1 0x8000144) 20000597 ec058593 20000617 eb860613 00c5fa63 00052283 0055a023 05910511 fec5eae3 20000517 e9c50513 20000597 e9c58593 00b57763 00052023
+  136.4050 MEMR 08000180 = ? 
+  136.4699 BURST15 (data1 0x8000184) 42fdfeb5 bc029073 9073428d 02938042 90730880 02973002 82930000 e293e6a2 90730032 00ef3052 04130480 04932e00 77632e00 22830094 92820004
+  137.5301 MEMR 080001c0 = ? 
+  137.5949 BURST15 (data1 0x80001c4) 00000297 01228293 34129073 30200073 11418082 c422c606 3f3d3fe5 07933f3d dfed0000 00000097 000000e7 1737bfc5 431c4002 0017e793 431cc31c
+  138.6350 MEMR 08000200 = ? 
+  138.6998 BURST15 (data1 0x8000204) 400217b7 079143d8 c3989b71 40021737 8ab14394 4314fef5 08ff0637 0016e693 4394c314 c3948ef1 06374314 166dfef7 c3148ef1 06374314 167dfffc
+  139.7588 MEMR 08000240 = ? 
+  139.8236 BURST15 (data1 0x8000244) 06b74398 16fdff01 c3988f75 400217b7 009f0737 873ec798 8b89431c 2737dff5 431c4002 06b176f1 c31c9bf1 400217b7 079143d8 c3988f75 c3984398
+  140.8687 MEMR 08000280 = ? 
+  140.9336 BURST15 (data1 0x8000284) f737ff75 2023e000 22230007 67890007 00072423 f3f78793 2623cb1c 2a230007 e7b70007 6685e000 10d7a023 c31c479d 11418082 c43ec63a e000f7b7
+  141.9727 MEMR 080002c0 = ? 
+  142.0375 BURST15 (data1 0x80002c4) 0007a423 0007a623 20000737 00472783 22230785 473200f7 014147a2 30200073 ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  143.0812 MEMR 08000300 = ? 
+  143.1460 BURST15 (data1 0x8000304) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  144.2086 MEMR 08000340 = ? 
+  144.2735 BURST15 (data1 0x8000344) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  145.3350 MEMR 08000380 = ? 
+  145.3998 BURST15 (data1 0x8000384) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  146.4490 MEMR 080003c0 = ? 
+  146.5139 BURST15 (data1 0x80003c4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  147.5587 MEMR 08000400 = ? 
+  147.6235 BURST15 (data1 0x8000404) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  148.6756 MEMR 08000440 = ? 
+  148.7405 BURST15 (data1 0x8000444) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  149.8016 MEMR 08000480 = ? 
+  149.8664 BURST15 (data1 0x8000484) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  150.9486 MEMR 080004c0 = ? 
+  151.0134 BURST15 (data1 0x80004c4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  152.0738 MEMR 08000500 = ? 
+  152.1386 BURST15 (data1 0x8000504) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  153.2047 MEMR 08000540 = ? 
+  153.2695 BURST15 (data1 0x8000544) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  154.3483 MEMR 08000580 = ? 
+  154.4131 BURST15 (data1 0x8000584) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  155.5051 MEMR 080005c0 = ? 
+  155.5699 BURST15 (data1 0x80005c4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  156.6419 MEMR 08000600 = ? 
+  156.7068 BURST15 (data1 0x8000604) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  157.7647 MEMR 08000640 = ? 
+  157.8295 BURST15 (data1 0x8000644) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  158.9052 MEMR 08000680 = ? 
+  158.9700 BURST15 (data1 0x8000684) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  160.0367 MEMR 080006c0 = ? 
+  160.1015 BURST15 (data1 0x80006c4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  161.1560 MEMR 08000700 = ? 
+  161.2208 BURST15 (data1 0x8000704) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  162.2629 MEMR 08000740 = ? 
+  162.3277 BURST15 (data1 0x8000744) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  163.4154 MEMR 08000780 = ? 
+  163.4803 BURST15 (data1 0x8000784) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  164.5368 MEMR 080007c0 = ? 
+  164.6016 BURST15 (data1 0x80007c4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  165.6759 MEMR 08000800 = ? 
+  165.7407 BURST15 (data1 0x8000804) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  166.8029 MEMR 08000840 = ? 
+  166.8677 BURST15 (data1 0x8000844) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  167.9274 MEMR 08000880 = ? 
+  167.9923 BURST15 (data1 0x8000884) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  169.0363 MEMR 080008c0 = ? 
+  169.1011 BURST15 (data1 0x80008c4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  170.1565 MEMR 08000900 = ? 
+  170.2213 BURST15 (data1 0x8000904) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  171.2864 MEMR 08000940 = ? 
+  171.3512 BURST15 (data1 0x8000944) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  172.4272 MEMR 08000980 = ? 
+  172.4920 BURST15 (data1 0x8000984) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  173.5750 MEMR 080009c0 = ? 
+  173.6398 BURST15 (data1 0x80009c4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  174.6997 MEMR 08000a00 = ? 
+  174.7645 BURST15 (data1 0x8000a04) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  175.8463 MEMR 08000a40 = ? 
+  175.9111 BURST15 (data1 0x8000a44) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  176.9927 MEMR 08000a80 = ? 
+  177.0575 BURST15 (data1 0x8000a84) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  178.1566 MEMR 08000ac0 = ? 
+  178.2214 BURST15 (data1 0x8000ac4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  179.2802 MEMR 08000b00 = ? 
+  179.3450 BURST15 (data1 0x8000b04) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  180.4122 MEMR 08000b40 = ? 
+  180.4770 BURST15 (data1 0x8000b44) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  181.5598 MEMR 08000b80 = ? 
+  181.6247 BURST15 (data1 0x8000b84) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  182.7062 MEMR 08000bc0 = ? 
+  182.7710 BURST15 (data1 0x8000bc4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  183.8354 MEMR 08000c00 = ? 
+  183.9002 BURST15 (data1 0x8000c04) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  184.9711 MEMR 08000c40 = ? 
+  185.0359 BURST15 (data1 0x8000c44) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  186.1567 MEMR 08000c80 = ? 
+  186.2216 BURST15 (data1 0x8000c84) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  187.3015 MEMR 08000cc0 = ? 
+  187.3663 BURST15 (data1 0x8000cc4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  188.4271 MEMR 08000d00 = ? 
+  188.4919 BURST15 (data1 0x8000d04) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  189.5401 MEMR 08000d40 = ? 
+  189.6049 BURST15 (data1 0x8000d44) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  190.6548 MEMR 08000d80 = ? 
+  190.7196 BURST15 (data1 0x8000d84) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  191.7802 MEMR 08000dc0 = ? 
+  191.8451 BURST15 (data1 0x8000dc4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  192.9120 MEMR 08000e00 = ? 
+  192.9769 BURST15 (data1 0x8000e04) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  194.0392 MEMR 08000e40 = ? 
+  194.1041 BURST15 (data1 0x8000e44) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  195.1567 MEMR 08000e80 = ? 
+  195.2215 BURST15 (data1 0x8000e84) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  196.2900 MEMR 08000ec0 = ? 
+  196.3549 BURST15 (data1 0x8000ec4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  197.4350 MEMR 08000f00 = ? 
+  197.4998 BURST15 (data1 0x8000f04) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  198.5522 MEMR 08000f40 = ? 
+  198.6170 BURST15 (data1 0x8000f44) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  199.6988 MEMR 08000f80 = ? 
+  199.7636 BURST15 (data1 0x8000f84) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+  200.8487 MEMR 08000fc0 = ? 
+  200.9136 BURST15 (data1 0x8000fc4) ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff

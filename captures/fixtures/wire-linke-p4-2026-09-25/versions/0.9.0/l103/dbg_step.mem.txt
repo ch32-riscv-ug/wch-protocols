@@ -1,0 +1,11 @@
+# dbg_step.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  125.2880 MEMW 40022010 = 00008080 
+  125.3824 MEMW 4002200c = 0000b020 
+  125.9692 MEMR 1ffff7e0 = ffff0040 
+  126.0625 MEMR 1ffff7e8 = 3a6dabcd 
+  126.1561 MEMR 1ffff7ec = a282bc48 
+  126.2495 MEMR 1ffff7f0 = ffffffff 
+  130.8173 REGR 000007b0 = 400000c3 
+  134.4184 REGW 000007b0 = 400000c7 
+  139.2775 REGW 000007b0 = 400000c3 
+  142.6683 REGR 000007b1 = 00000002 

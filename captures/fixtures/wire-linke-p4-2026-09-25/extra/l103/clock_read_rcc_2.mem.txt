@@ -1,0 +1,8 @@
+# clock_read_rcc_2.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  128.7818 MEMW 40022010 = 00008080 
+  128.8761 MEMW 4002200c = 0000b020 
+  129.4981 MEMR 1ffff7e0 = ffff0040 
+  129.5931 MEMR 1ffff7e8 = 3a6dabcd 
+  129.6884 MEMR 1ffff7ec = a282bc48 
+  129.7833 MEMR 1ffff7f0 = ffffffff 
+  132.7916 MEMR 40021000 = 03107f83 

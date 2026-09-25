@@ -1,0 +1,8 @@
+# reset.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  120.9152 MEMW 40022010 = 00008080 
+  121.0097 MEMW 4002200c = 0000b020 
+  121.6177 MEMR 1ffff7e0 = ffff0040 
+  121.7113 MEMR 1ffff7e8 = 3a6dabcd 
+  121.8053 MEMR 1ffff7ec = a282bc48 
+  121.9000 MEMR 1ffff7f0 = ffffffff 
+  122.6486 MEMW e000e048 = beef0080 

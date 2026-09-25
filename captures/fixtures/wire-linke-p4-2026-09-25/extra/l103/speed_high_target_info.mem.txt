@@ -1,0 +1,7 @@
+# speed_high_target_info.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  129.3465 MEMW 40022010 = 00008080 
+  129.4411 MEMW 4002200c = 0000b020 
+  129.9799 MEMR 1ffff7e0 = ffff0040 
+  130.0725 MEMR 1ffff7e8 = 3a6dabcd 
+  130.1675 MEMR 1ffff7ec = a282bc48 
+  130.2620 MEMR 1ffff7f0 = ffffffff 

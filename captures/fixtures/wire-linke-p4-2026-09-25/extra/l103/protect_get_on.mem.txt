@@ -1,0 +1,15 @@
+# protect_get_on.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  121.9638 MEMW 40022010 = 00008080 
+  122.0582 MEMW 4002200c = 0000b020 
+  122.6066 MEMR 1ffff7e0 = ffff0040 
+  122.6996 MEMR 1ffff7e8 = 3a6dabcd 
+  122.7930 MEMR 1ffff7ec = a282bc48 
+  122.8877 MEMR 1ffff7f0 = ffffffff 
+  129.0779 REGW 00001005 = 1ffff800 postexec
+  130.5573 REGR 00001006 = 00ff00ff 
+  135.2536 REGW 00001005 = 1ffff804 postexec
+  137.9445 REGR 00001006 = 00ff00ff 
+  143.3952 REGW 00001005 = 1ffff808 postexec
+  144.9244 REGR 00001006 = 00ff00ff 
+  150.8018 REGW 00001005 = 1ffff80c postexec
+  152.4818 REGR 00001006 = 00ff00ff 

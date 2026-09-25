@@ -1,0 +1,74 @@
+=== speed_low_target_info
+extra-v203-2026-09-25/speed_low_target_info: 9434880 samples at 50 MHz, segments 36 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== speed_low_read_ram_256
+extra-v203-2026-09-25/speed_low_read_ram_256: 10316544 samples at 50 MHz, segments 40 (gap-marked 0), ch32rv rc 0 in 0.08 s
+=== speed_low_read_flash_4k
+extra-v203-2026-09-25/speed_low_read_flash_4k: 15436288 samples at 50 MHz, segments 59 (gap-marked 0), ch32rv rc 0 in 0.20 s
+=== speed_medium_target_info
+extra-v203-2026-09-25/speed_medium_target_info: 9680384 samples at 50 MHz, segments 37 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== speed_medium_read_ram_256
+extra-v203-2026-09-25/speed_medium_read_ram_256: 9890048 samples at 50 MHz, segments 38 (gap-marked 0), ch32rv rc 0 in 0.08 s
+=== speed_medium_read_flash_4k
+extra-v203-2026-09-25/speed_medium_read_flash_4k: 12932864 samples at 50 MHz, segments 50 (gap-marked 0), ch32rv rc 0 in 0.14 s
+=== speed_high_target_info
+extra-v203-2026-09-25/speed_high_target_info: 9418752 samples at 50 MHz, segments 36 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== speed_high_read_ram_256
+extra-v203-2026-09-25/speed_high_read_ram_256: 9825536 samples at 50 MHz, segments 38 (gap-marked 0), ch32rv rc 0 in 0.08 s
+=== speed_high_read_flash_4k
+extra-v203-2026-09-25/speed_high_read_flash_4k: 13081600 samples at 50 MHz, segments 50 (gap-marked 0), ch32rv rc 0 in 0.14 s
+=== dmi_write_dmcontrol_01
+extra-v203-2026-09-25/dmi_write_dmcontrol_01: 9660672 samples at 50 MHz, segments 37 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== dmi_read_dmstatus
+extra-v203-2026-09-25/dmi_read_dmstatus: 9483264 samples at 50 MHz, segments 37 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== dmi_read_data0
+extra-v203-2026-09-25/dmi_read_data0: 9302272 samples at 50 MHz, segments 36 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== dmi_read_abstractcs
+extra-v203-2026-09-25/dmi_read_abstractcs: 9531648 samples at 50 MHz, segments 37 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== err_read_unmapped
+extra-v203-2026-09-25/err_read_unmapped: 9334528 samples at 50 MHz, segments 36 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== err_wrong_chip
+extra-v203-2026-09-25/err_wrong_chip: 9409024 samples at 50 MHz, segments 36 (gap-marked 0), ch32rv rc 23 in 0.06 s
+=== option_get
+extra-v203-2026-09-25/option_get: 10936576 samples at 50 MHz, segments 42 (gap-marked 0), ch32rv rc 0 in 0.09 s
+=== option_set_data
+extra-v203-2026-09-25/option_set_data: 36121344 samples at 50 MHz, segments 138 (gap-marked 0), ch32rv rc 0 in 0.56 s
+=== option_get_after_set
+extra-v203-2026-09-25/option_get_after_set: 11492096 samples at 50 MHz, segments 44 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== read_obr_after_set
+extra-v203-2026-09-25/read_obr_after_set: 9761024 samples at 50 MHz, segments 38 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== option_reset
+extra-v203-2026-09-25/option_reset: 37606912 samples at 50 MHz, segments 144 (gap-marked 0), ch32rv rc 0 in 0.58 s
+=== option_get_after_reset
+extra-v203-2026-09-25/option_get_after_reset: 11240448 samples at 50 MHz, segments 43 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== clock_flash
+extra-v203-2026-09-25/clock_flash: 22367744 samples at 50 MHz, segments 86 (gap-marked 0), ch32rv rc 0 in 0.30 s
+=== clock_read_rcc_0
+extra-v203-2026-09-25/clock_read_rcc_0: 9728768 samples at 50 MHz, segments 38 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== clock_read_actlr_0
+extra-v203-2026-09-25/clock_read_actlr_0: 9809408 samples at 50 MHz, segments 38 (gap-marked 0), ch32rv rc 0 in 0.08 s
+=== clock_target_info
+extra-v203-2026-09-25/clock_target_info: 9990400 samples at 50 MHz, segments 39 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== clock_read_rcc_1
+extra-v203-2026-09-25/clock_read_rcc_1: 9696512 samples at 50 MHz, segments 37 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== clock_dbg_halt
+extra-v203-2026-09-25/clock_dbg_halt: 9777152 samples at 50 MHz, segments 38 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== clock_read_rcc_2
+extra-v203-2026-09-25/clock_read_rcc_2: 9680384 samples at 50 MHz, segments 37 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== clock_dbg_resume
+extra-v203-2026-09-25/clock_dbg_resume: 9974272 samples at 50 MHz, segments 39 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== clock_reset
+extra-v203-2026-09-25/clock_reset: 11230464 samples at 50 MHz, segments 43 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== clock_read_rcc_3
+extra-v203-2026-09-25/clock_read_rcc_3: 9906176 samples at 50 MHz, segments 38 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== clock_read_actlr_3
+extra-v203-2026-09-25/clock_read_actlr_3: 9728768 samples at 50 MHz, segments 38 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== connect_under_reset
+extra-v203-2026-09-25/connect_under_reset: 9857792 samples at 50 MHz, segments 38 (gap-marked 0), ch32rv rc 0 in 0.07 s
+=== protect_on
+extra-v203-2026-09-25/protect_on: 38188544 samples at 50 MHz, segments 146 (gap-marked 0), ch32rv rc 0 in 0.59 s
+=== protect_get_on
+extra-v203-2026-09-25/protect_get_on: 10707200 samples at 50 MHz, segments 41 (gap-marked 0), ch32rv rc 0 in 0.09 s
+=== protect_off
+extra-v203-2026-09-25/protect_off: 38540544 samples at 50 MHz, segments 148 (gap-marked 0), ch32rv rc 0 in 0.62 s
+=== protect_get_off
+extra-v203-2026-09-25/protect_get_off: 10988544 samples at 50 MHz, segments 42 (gap-marked 0), ch32rv rc 0 in 0.10 s

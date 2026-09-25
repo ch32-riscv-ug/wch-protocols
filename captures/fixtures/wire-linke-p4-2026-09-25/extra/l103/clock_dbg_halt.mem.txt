@@ -1,0 +1,8 @@
+# clock_dbg_halt.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  123.7402 MEMW 40022010 = 00008080 
+  123.8346 MEMW 4002200c = 0000b020 
+  124.4361 MEMR 1ffff7e0 = ffff0040 
+  124.5303 MEMR 1ffff7e8 = 3a6dabcd 
+  124.6252 MEMR 1ffff7ec = a282bc48 
+  124.7206 MEMR 1ffff7f0 = ffffffff 
+  130.4416 REGR 000007b1 = 000001de 
