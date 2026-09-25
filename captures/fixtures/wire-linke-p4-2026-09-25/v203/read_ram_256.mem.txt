@@ -1,0 +1,6 @@
+# read_ram_256.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  128.6129 MEMR 20000000 = ? 
+  129.7351 MEMR 20000040 = ? 
+  129.8000 BURST15 (data1 0x20000044) aaa68693 04076713 47d8cb98 eb618b05 9b6d4b98 7793cb98 cba90045 0ff60793 c62e83a1 7681682d 08b7ca3e 27b70002 33374002 08134000 16fdaaa8
+  130.8473 MEMR 20000080 = 40022737 
+  131.9633 MEMR 200000c0 = ? 

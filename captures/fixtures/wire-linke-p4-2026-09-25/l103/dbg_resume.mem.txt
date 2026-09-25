@@ -1,0 +1,7 @@
+# dbg_resume.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  122.1453 MEMW 40022010 = 00008080 
+  122.2398 MEMW 4002200c = 0000b020 
+  122.8069 MEMR 1ffff7e0 = ffff0040 
+  122.9013 MEMR 1ffff7e8 = 3a6dabcd 
+  122.9948 MEMR 1ffff7ec = a282bc48 
+  123.0884 MEMR 1ffff7f0 = ffffffff 
