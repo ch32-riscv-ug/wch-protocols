@@ -57,6 +57,7 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 | Parity2 | target | **1** | Address+Data+Status の **even parity** |
 
 - host 位相(7+32+2+1)→ target 位相(7+32+2+1)と続き、明示の turnaround bit は文書化されていない(位相の並びで暗黙に切替)。
+- **実測(2026-09-25、CH549 WCH-Link fw 2.12 → V103、[E165](../experiments/e165_linke_x035_v103_wire/README.ja.md))**: CH549 Link はすべての DMI をこの形(START + 85 clock + STOP、最後の clock は `0`)で送る。target 位相の番地は host の番地をそのまま返し、write では data も返し、read では読んだ値が載る。status は `00`。**表の Parity1 / Parity2 は parity として働いていない**。host 位相の bit 41 は常に `0`(LinkE の接続時の問い合わせでは `1`)で、target 位相の bit 83 は write で `0`、read で `1` だった。
 - これは [riscv-debug-module.ja.md](riscv-debug-module.ja.md) の DMI トランザクションと 1:1(op/status のコード、addr=DMDATA0=`0x04`/DMCONTROL=`0x10` 等がそのまま線上の 7bit addr に乗る)。
 - USB `DmiOp` 応答 `[addr, data_be32, status]` の status(0/2/3)も、この target 位相の 2bit status と同じ。
 
