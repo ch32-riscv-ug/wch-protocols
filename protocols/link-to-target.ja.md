@@ -217,6 +217,7 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
   4. CSR `0x7C0` に `0x300` を書く。
   5. clock の組み直し(L103/V203 のみ。[pc-to-link](pc-to-link.ja.md) §11)と ESIG の読出し。
   6. 最後に DMCONTROL = `0x40000001`(resumereq)→ `0x40000000`。
+     - 後者は dmactive = 0 なので、debug module を reset する(RISC-V Debug 仕様)。target が DATA0 に出していた dmseq の frame も消える。oep-probe-arduino は、接続を外すときの DMCONTROL = 0 で同じことが起き、SerialDMSeq の console が 1〜10 s 戻らないことを見つけた(arduinocore-ch32 セッション、2026-09-26)。LinkE で接続を外した後も、同じことが起きうる(LinkE では未確認)。
   - 0x7c〜0x7f は RISC-V Debug 仕様では未定義で、QingKe V2 manual の debug module register の表(Table 6-1)にも無い。minichlink(ch32fun `91032ac`、`minichlink/minichlink.h`)は `DMCPBR` 0x7C / `DMCFGR` 0x7D / `DMSHDWCFGR` 0x7E / `DMCHIPID` 0x7F と名付け、LinkE と同じ `0x5aa50000 | (1<<10)` を DMSHDWCFGR と DMCFGR に書いている(bit 10 に「Allow output from slave」と注記)。0x7F を chip ID として読む点も同じ。上位 16 bit の `0x5aa5` は書込みの鍵に見える。WCH の一次資料での定義は見つかっていない。
 - **SDI monitor**(L103、`more/l103/monitor_sdi`): 「49〜52 clock の未知の frame」は、25 MHz 収録で clock を落とした **DMDATA0 の read** だった。LinkE は DMDATA0 を約 29 µs ごとに読み続ける。0 以外(低 byte = 文字数、上位 3 byte = 文字)なら、文字数が 4 以上のとき DMDATA1 も読み、DMDATA0 に 0 を書いて受領を返す。[serial-and-print](serial-and-print.ja.md) §3 の郵便受け方式が線上でもそのまま見える。
 - **V003 SWIO**: 41 パルス(start + addr7 + R/W + data32)と 33 パルス(fast-read)だけで、パルス幅は 1 = 約 260 ns、0 = 約 860 ns(09-11 と同じ)。
