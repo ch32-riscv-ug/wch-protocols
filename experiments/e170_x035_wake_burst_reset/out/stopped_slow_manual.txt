@@ -1,0 +1,38 @@
+  h 5000         -> ok half_ns=5000
+  resync         -> ok
+state now (halted?)
+  st             -> ok dmstatus=00000382 allhalted=1 allhavereset=0 anyhavereset=0 allrunning=0
+  m 40021004     -> err 00000000
+  m 40022000     -> ok 00000083
+  m 40021000     -> ok 00003f83
+resume and let the broken core run
+  w 10 40000001  -> ok
+  st             -> ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1
+treatment idle 2000
+  idle 2000      -> ok
+  h 5000         -> ok half_ns=5000
+  st             -> ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1
+treatment resync
+  resync         -> ok
+  h 5000         -> ok half_ns=5000
+  st             -> ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1
+treatment wake
+  wake           -> ok
+  h 5000         -> ok half_ns=5000
+  resync         -> ok
+  st             -> ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1
+treatment wake
+  wake           -> ok
+  h 5000         -> ok half_ns=5000
+  resync         -> ok
+  st             -> ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1
+treatment hi 100
+  hi 100         -> ok
+  h 5000         -> ok half_ns=5000
+  resync         -> ok
+  st             -> ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1
+treatment lo 236
+  lo 236         -> ok
+  h 5000         -> ok half_ns=5000
+  resync         -> ok
+  st             -> ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1

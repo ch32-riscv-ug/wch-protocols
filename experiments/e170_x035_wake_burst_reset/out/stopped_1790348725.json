@@ -1,0 +1,117 @@
+{
+ "mode": "stopped",
+ "rows": [
+  {
+   "treatment": "idle 2000",
+   "dmstatus_read": "ok 1fffffff",
+   "status": "ok dmstatus=1fffffff allhalted=1 allhavereset=1 anyhavereset=1 allrunning=1",
+   "halted_regs": [
+    "ok dmstatus=01ffffff allhalted=1 allhavereset=1 anyhavereset=1 allrunning=1",
+    "err 00000000",
+    "ok 00000000"
+   ]
+  }
+ ],
+ "log": [
+  {
+   "t": 1790348723.561,
+   "cmd": "a",
+   "reply": "ok half_ns=0 dmstatus=00000c82"
+  },
+  {
+   "t": 1790348723.562,
+   "cmd": "ack",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348723.563,
+   "cmd": "st",
+   "reply": "ok dmstatus=00000c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1"
+  },
+  {
+   "t": 1790348723.564,
+   "cmd": "w 10 80000001",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348723.575,
+   "cmd": "st",
+   "reply": "ok dmstatus=00000382 allhalted=1 allhavereset=0 anyhavereset=0 allrunning=0"
+  },
+  {
+   "t": 1790348723.575,
+   "cmd": "m 40021004",
+   "reply": "err 00000000"
+  },
+  {
+   "t": 1790348723.576,
+   "cmd": "m 40022000",
+   "reply": "ok 00000002"
+  },
+  {
+   "t": 1790348723.577,
+   "cmd": "s 40022000 ffffffff",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348723.577,
+   "cmd": "s 40021004 000000d0",
+   "reply": "err"
+  },
+  {
+   "t": 1790348723.579,
+   "cmd": "w 10 40000001",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348723.881,
+   "cmd": "r 11",
+   "reply": "ok 00000000"
+  },
+  {
+   "t": 1790348723.884,
+   "cmd": "st",
+   "reply": "ok dmstatus=07ffffff allhalted=1 allhavereset=1 anyhavereset=1 allrunning=1"
+  },
+  {
+   "t": 1790348725.718,
+   "cmd": "idle 2000",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348725.769,
+   "cmd": "r 11",
+   "reply": "ok 1fffffff"
+  },
+  {
+   "t": 1790348725.77,
+   "cmd": "st",
+   "reply": "ok dmstatus=1fffffff allhalted=1 allhavereset=1 anyhavereset=1 allrunning=1"
+  },
+  {
+   "t": 1790348725.771,
+   "cmd": "w 10 80000001",
+   "reply": "ok"
+  },
+  {
+   "t": 1790348725.782,
+   "cmd": "st",
+   "reply": "ok dmstatus=01ffffff allhalted=1 allhavereset=1 anyhavereset=1 allrunning=1"
+  },
+  {
+   "t": 1790348725.783,
+   "cmd": "m 40021004",
+   "reply": "err 00000000"
+  },
+  {
+   "t": 1790348725.784,
+   "cmd": "m 40022000",
+   "reply": "ok 00000000"
+  },
+  {
+   "t": 1790348725.784,
+   "cmd": "w 10 40000001",
+   "reply": "ok"
+  }
+ ]
+}

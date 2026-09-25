@@ -1,0 +1,19 @@
+  h 20000          -> ok half_ns=20000
+  resync           -> ok
+  ack              -> ok
+  st               -> ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1
+make the stopped state: halt, CFGR0 = d0 (HPRE /64), ACTLR = ffffffff, resume
+  w 10 80000001    -> ok
+  st               -> ok dmstatus=00030382 allhalted=1 allhavereset=0 anyhavereset=0 allrunning=0
+  s 40021004 000000d0 -> ok
+  m 40021004       -> ok 000000d0
+  s 40022000 ffffffff -> ok
+  m 40022000       -> ok 00000083
+  w 10 40000001    -> ok
+  st               -> ok dmstatus=00030c82 allhalted=0 allhavereset=0 anyhavereset=0 allrunning=1
+#### marginal DMCONTROL haltreq x50 at half 1000
+  st               -> ok dmstatus=00000382 allhalted=1 allhavereset=0 anyhavereset=0 allrunning=0
+#### marginal wake x5 at half 1000
+  st               -> ok dmstatus=00000382 allhalted=1 allhavereset=0 anyhavereset=0 allrunning=0
+#### fast DMCONTROL haltreq x50 at half 0
+  st               -> ok dmstatus=00000382 allhalted=1 allhavereset=0 anyhavereset=0 allrunning=0
