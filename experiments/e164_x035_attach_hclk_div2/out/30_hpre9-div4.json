@@ -1,0 +1,65 @@
+[
+ {
+  "tag": "flash",
+  "args": [
+   "--speed",
+   "low",
+   "flash",
+   "clockwatch-CH32X035-hpre9-div4.bin",
+   "--reset",
+   "run"
+  ],
+  "rc": 0,
+  "t0": 1790333405.36852,
+  "t1": 1790333406.128816,
+  "stdout": "flashed 3304 bytes to CH32X035\nerase:   chip\nverify:  OK (readback matches)\n",
+  "stderr": ""
+ },
+ {
+  "tag": "uart after flash, before any attach",
+  "bytes": 245,
+  "last": "=1\r\nCW 34582 CTLR=4483 CFGR0=90 ACTLR=2 CFGR2=0 n=1\r\nCW 51786 CTLR=4483 CFGR0=90 ACTLR=2 CFGR2=0 n=1\r\nCW 68990 CTLR=4483 CFGR0=90 ACTLR=2 CFGR2=0 n=1\r\nCW 86194 CTLR=4483 CFGR0=90 ACTLR=2 CFGR2=0 n=1\r\n"
+ },
+ {
+  "tag": "attach 0 (high)",
+  "args": [
+   "--speed",
+   "high",
+   "--capture",
+   "out/30_hpre9-div4_attach0.ndjson",
+   "target",
+   "info"
+  ],
+  "rc": 0,
+  "t0": 1790333408.141953,
+  "t1": 1790333408.1994164,
+  "stdout": "model:    WCH-LinkE\nmode:     riscv\nusb:      1a86:8010\nserial:   FC928F068181\ntopology: 3-4\nports:    /dev/ttyACM10\nfirmware: 2.22 (WCH v42, raw 0216, riscv firmware)\n---\nfamily:   CH32X035\nchip id:  0x03510601  (bits [7:4] = silicon revision)\nuid:      ffffffff00000000\nflash:    65535 KiB\nsku:      CH32X035C8T6 (verified on silicon)\ndebug:    2-wire (SWDIO/DAT=PC18, SWCLK=PC19)\n",
+  "stderr": ""
+ },
+ {
+  "tag": "uart after attach 0",
+  "bytes": 0,
+  "last": ""
+ },
+ {
+  "tag": "attach 1 (high)",
+  "args": [
+   "--speed",
+   "high",
+   "--capture",
+   "out/30_hpre9-div4_attach1.ndjson",
+   "target",
+   "info"
+  ],
+  "rc": 20,
+  "t0": 1790333410.2126973,
+  "t1": 1790333410.3272862,
+  "stdout": "",
+  "stderr": "ch32rv: error[target-no-response]: no target detected on the debug pins\n  hint: check target wiring/power/BOOT; for a protected or bricked target see `ch32rv recover`\n"
+ },
+ {
+  "tag": "uart after attach 1",
+  "bytes": 0,
+  "last": ""
+ }
+]

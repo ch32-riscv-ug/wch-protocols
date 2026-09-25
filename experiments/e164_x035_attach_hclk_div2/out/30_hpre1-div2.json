@@ -1,0 +1,65 @@
+[
+ {
+  "tag": "flash",
+  "args": [
+   "--speed",
+   "low",
+   "flash",
+   "clockwatch-CH32X035-hpre1-div2.bin",
+   "--reset",
+   "run"
+  ],
+  "rc": 0,
+  "t0": 1790333391.3209424,
+  "t1": 1790333392.0801308,
+  "stdout": "flashed 3304 bytes to CH32X035\nerase:   chip\nverify:  OK (readback matches)\n",
+  "stderr": ""
+ },
+ {
+  "tag": "uart after flash, before any attach",
+  "bytes": 495,
+  "last": "CW 119531 CTLR=4483 CFGR0=10 ACTLR=2 CFGR2=0 n=1\r\nCW 136551 CTLR=4483 CFGR0=10 ACTLR=2 CFGR2=0 n=1\r\nCW 153570 CTLR=4483 CFGR0=10 ACTLR=2 CFGR2=0 n=1\r\nCW 170589 CTLR=4483 CFGR0=10 ACTLR=2 CFGR2=0 n=1\r\n"
+ },
+ {
+  "tag": "attach 0 (high)",
+  "args": [
+   "--speed",
+   "high",
+   "--capture",
+   "out/30_hpre1-div2_attach0.ndjson",
+   "target",
+   "info"
+  ],
+  "rc": 0,
+  "t0": 1790333394.0900111,
+  "t1": 1790333394.1466558,
+  "stdout": "model:    WCH-LinkE\nmode:     riscv\nusb:      1a86:8010\nserial:   FC928F068181\ntopology: 3-4\nports:    /dev/ttyACM10\nfirmware: 2.22 (WCH v42, raw 0216, riscv firmware)\n---\nfamily:   CH32X035\nchip id:  0x03510601  (bits [7:4] = silicon revision)\nuid:      1ff9abcd880ebc48\nflash:    62 KiB\nsku:      CH32X035C8T6 (verified on silicon)\ndebug:    2-wire (SWDIO/DAT=PC18, SWCLK=PC19)\n",
+  "stderr": ""
+ },
+ {
+  "tag": "uart after attach 0",
+  "bytes": 506,
+  "last": "\u0085\u00a2$!\u0082Cp@\u00c2\u0084!\b\u00b9\u00a0\u00e9\u00f2\u00fe\u00ac).a@\u00c6\u0085\u00a6$!\u0086(sA\u00c1\u0086\u00d0\t\u00bd\u00a1\u00ea\u00f0\u00fc\u00e8*\u00ab`G\u00c2\u0084\u00a6$!\u0082CsA\u00c1\u0086\u00d0\t\u00bd\u00a1\u00ea\u00f0\u00fe\u00edn\u00a9`@\u00c2\u0084\u00a6$%\u0080\u0086\u0004\u00f0\u00f3*\u00b3\u000b\u00bd\u00a0\u00e9\u00f3\u00felklaA\u00c1\u0087\u00a6 !\u0081(rC\u00c1\u0082\u00d6\t\u00bd\u00a1\u00ea\u00f0\u00fcoh/`@\u00c6\u0087\u00a6 !\u0081)pG\u00c2\u0085\u00d4\b\u00b9\u00a1S\u00c2\u00f8/(\u00a8aA\u00c1\u0087\u00a6 !\u0081)p@\u00c2\u0085\u00d4\b\u00b9\u00a1S\u00c2\u00fe\u00ae/j`C\u00c1\u0083\u00a6$!\u0080\u0086\u0004\u00f0\u00f3*\u00b3\b\u00b9\u00a1\u00ea\u00f0\u00f8\u00af*/`@\u00c2\u0085\u00a6$!\u0082(sA\u00c1\u0084\u00d4\b\u00bd\u00a1\u00ea\u00f0"
+ },
+ {
+  "tag": "attach 1 (high)",
+  "args": [
+   "--speed",
+   "high",
+   "--capture",
+   "out/30_hpre1-div2_attach1.ndjson",
+   "target",
+   "info"
+  ],
+  "rc": 0,
+  "t0": 1790333396.159842,
+  "t1": 1790333396.220074,
+  "stdout": "model:    WCH-LinkE\nmode:     riscv\nusb:      1a86:8010\nserial:   FC928F068181\ntopology: 3-4\nports:    /dev/ttyACM10\nfirmware: 2.22 (WCH v42, raw 0216, riscv firmware)\n---\nfamily:   CH32X035\nchip id:  0x03510601  (bits [7:4] = silicon revision)\nuid:      1ff9abcd880ebc48\nflash:    62 KiB\nsku:      CH32X035C8T6 (verified on silicon)\ndebug:    2-wire (SWDIO/DAT=PC18, SWCLK=PC19)\n",
+  "stderr": ""
+ },
+ {
+  "tag": "uart after attach 1",
+  "bytes": 506,
+  "last": "\u0083\u00a6$!\u0081(r\u0080\u00c0\u0085\u00d6\u000b\u00bd\u00a0\u00e9\u00f2\u00feho(aA\u00c1\u0087\u00a6$!\u0081(r\u0080\u00c0\u0085\u00d6\u000b\u00bd\u00a0\u00e9\u00f2\u00f8i\u00ac\u00a8aA\u00c1\u0087\u00a6 !\u0081)pG\u00c0\u0085\u00d6\u000b\u00bd\u00a0\u00e9\u00f3\u00fe\u00e9\u00a8.a@\u00c6\u0085\u00a2$!\u0082CsA\u00c6\u0084\u00d0\b\u00bd\u00a1\u00e8\u00f0\u00fe\u00a8\u00a9n`C\u00c1\u0087\u00a6 !\u0081(rC\u00c1\u0082\u00d6\t\u00bd\u00a0\u00ea\u00f3\u00fc,\u00ec\u00a8a@\u00c6\u0087\u00a6 !\u0081)pG\u00c2\u0085!\b\u00b9\u00a1\u00ea\u00f0\u00f8,\u00e8+`@\u00c2\u0084\u00a2$!\u0082Cs@\u00c6\u0086\u00d0\t\u00bd\u00a1\u00ea\u00f3\u00fek\u00ecnaA\u00c1\u0087\u00a6 !\u0081(r\u0080\u00c0\u0085\u00d6\u000b\u00bd\u00a0S\u00c2\u00fej\u00ea\u00a8aA\u00c1\u0087\u00a6 !\u0081(rC\u00c1\u0086\u00d6\t\u00bd\u00a1\u00ea\u00f0"
+ }
+]

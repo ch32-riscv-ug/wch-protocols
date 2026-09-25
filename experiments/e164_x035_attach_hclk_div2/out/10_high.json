@@ -1,0 +1,65 @@
+[
+ {
+  "tag": "flash",
+  "args": [
+   "--speed",
+   "low",
+   "flash",
+   "/home/mt/dev_wch/wch-protocols/experiments/e162_linke_attach_clock_uart/clockwatch/clockwatch-CH32X035-ahb-div2.bin",
+   "--reset",
+   "run"
+  ],
+  "rc": 0,
+  "t0": 1790333230.8000662,
+  "t1": 1790333231.55728,
+  "stdout": "flashed 3304 bytes to CH32X035\nerase:   chip\nverify:  OK (readback matches)\n",
+  "stderr": ""
+ },
+ {
+  "tag": "uart after flash, before any attach",
+  "bytes": 495,
+  "last": "CW 119531 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\nCW 136551 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\nCW 153570 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\nCW 170589 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\n"
+ },
+ {
+  "tag": "attach 0 (high)",
+  "args": [
+   "--speed",
+   "high",
+   "--capture",
+   "out/10_high_attach0.ndjson",
+   "target",
+   "info"
+  ],
+  "rc": 0,
+  "t0": 1790333233.5694015,
+  "t1": 1790333233.627544,
+  "stdout": "model:    WCH-LinkE\nmode:     riscv\nusb:      1a86:8010\nserial:   FC928F068181\ntopology: 3-4\nports:    /dev/ttyACM10\nfirmware: 2.22 (WCH v42, raw 0216, riscv firmware)\n---\nfamily:   CH32X035\nchip id:  0x03510601  (bits [7:4] = silicon revision)\nuid:      -\nflash:    -\nsku:      CH32X035C8T6 (verified on silicon)\ndebug:    2-wire (SWDIO/DAT=PC18, SWCLK=PC19)\n",
+  "stderr": ""
+ },
+ {
+  "tag": "uart after attach 0",
+  "bytes": 0,
+  "last": ""
+ },
+ {
+  "tag": "attach 1 (high)",
+  "args": [
+   "--speed",
+   "high",
+   "--capture",
+   "out/10_high_attach1.ndjson",
+   "target",
+   "info"
+  ],
+  "rc": 20,
+  "t0": 1790333235.6403008,
+  "t1": 1790333235.7200162,
+  "stdout": "",
+  "stderr": "ch32rv: error[target-no-response]: no target detected on the debug pins\n  hint: check target wiring/power/BOOT; for a protected or bricked target see `ch32rv recover`\n"
+ },
+ {
+  "tag": "uart after attach 1",
+  "bytes": 0,
+  "last": ""
+ }
+]

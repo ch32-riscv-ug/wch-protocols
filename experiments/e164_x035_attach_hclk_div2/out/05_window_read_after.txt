@@ -1,0 +1,9 @@
+  File "/home/mt/dev_wch/wch-protocols/experiments/e162_linke_attach_clock_uart/x035_fix_user.py", line 74, in <module>
+    a = [rd32(OB + 4 * i) for i in range(4)]
+         ~~~~^^^^^^^^^^^^
+  File "/home/mt/dev_wch/wch-protocols/experiments/e162_linke_attach_clock_uart/x035_fix_user.py", line 43, in rd32
+    dmi(0x05, a, 2); dmi(0x17, 0x02200000, 2); cs_check(f"read {a:08x}")
+                                               ~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/mt/dev_wch/wch-protocols/experiments/e162_linke_attach_clock_uart/x035_fix_user.py", line 39, in cs_check
+    raise RuntimeError(f"{tag}: abstractcs {cs:08x} (cmderr {err})")
+RuntimeError: read 1ffff800: abstractcs 08000602 (cmderr 6)
