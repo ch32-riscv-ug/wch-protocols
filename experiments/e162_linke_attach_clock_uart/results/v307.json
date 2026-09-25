@@ -1,0 +1,74 @@
+{
+ "name": "v307",
+ "probe": "38EF8F06BDC2",
+ "tty": "/dev/ttyACM4",
+ "image": "build-CH32V307/clockwatch.ino.bin",
+ "steps": [
+  {
+   "tag": "flash",
+   "args": [
+    "flash",
+    "build-CH32V307/clockwatch.ino.bin",
+    "--reset",
+    "run"
+   ],
+   "rc": 0,
+   "t0": 1790327614.028962,
+   "t1": 1790327614.5295568,
+   "stdout": "flashed 4224 bytes to CH32V30x\nerase:   chip\nverify:  OK (readback matches)\n",
+   "stderr": ""
+  },
+  {
+   "tag": "attach(target info)",
+   "args": [
+    "target",
+    "info"
+   ],
+   "rc": 0,
+   "t0": 1790327616.5315278,
+   "t1": 1790327616.5954633,
+   "stdout": "model:    WCH-LinkE\nmode:     riscv\nusb:      1a86:8010\nserial:   38EF8F06BDC2\ntopology: 1-6\nports:    /dev/ttyACM4\nfirmware: 2.22 (WCH v42, raw 0216, riscv firmware)\n---\nfamily:   CH32V30x\nchip id:  0x30700528  (bits [7:4] = silicon revision)\nuid:      7bbed00a9c1c5054\nflash:    288 KiB\nsku:      CH32V307VCT6 (verified on silicon)\ndebug:    2-wire (SWDIO/DAT=PA13, SWCLK=PA14)\n",
+   "stderr": ""
+  },
+  {
+   "tag": "read ram log",
+   "args": [
+    "read",
+    "--range",
+    "0x2000000c+0x2a4",
+    "-o",
+    "out/v307.ram.bin",
+    "--format",
+    "bin"
+   ],
+   "rc": 0,
+   "t0": 1790327618.6470997,
+   "t1": 1790327618.728137,
+   "stdout": "wrote 676 bytes to out/v307.ram.bin\n",
+   "stderr": ""
+  }
+ ],
+ "uart_before_tail": "0323 CTLR=3008E83 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 1685668 CTLR=3008E83 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 1791012 CTLR=3008E83 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 1896358 CTLR=3008E83 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 2001703 CTLR=3008E83 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 2107048 CTLR=3008E83 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 2212391 CTLR=3008E83 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\n",
+ "uart_after_tail": "\u0094@P\u00d4MH\u0092`P\u00d5HE\u00f1A\u000bPXR`\\\u0007\u008cH\u0084;Y`\\\tLP\u00d4MHtY`Z\u0084P\u00c8ID\u0094`P\u00d4MH\u0092`P\u00d5HG\u00f1A\tPY\u0012hY\u0006\u008cH\u0084;Y@\\\tlP\u00d4OHtY@X\u0084P\u00c8IF\u00b4@P\u00d4OH\u0092@P\u00d5hE\u00f1A\u000bPZ\u0092T[\t\u008cJ\u00849Y`\\\tLP\u00d4MHtY`Z\u0084P\u00c8ID\u0094@P\u00d4MH\u0092@P\u00d5HE\u00f1A\u000bp[2dX\u0004\u008cH\u0084;Y@\\\tLP\u00d4OHtY@Z\u0084P\u00c8ID\u0094@P\u00d4MH\u0092@P\u00d5HE\u00f1A\tP\\IhZ\t\u008cH\u0084;Y@\\\tLP\u00d4OHtY@Z\u0084P\u00c8ID\u0094@P\u00d4MH\u0092`P\u00d5HG\u00f1A\u000bP]\u0007XX@A\u00cbE_\u0012@\\\tLP\u00d4OHtY@Z\u0084P\u00c8ID\u0094`P\u00d4MH\u0092`P\u00d5HG\u00f1A\u000bTXG\u0089tY\u008cH\u0084;Y@\\\tLP\u00d4OHtY`Z\u0084P\u00c8IF\u00b4@P\u00d4MH\u0092@P\u00d5HE\u00f1A\tTY\tH]\t\u008cH\u00849Y@\\\tlP\u00d4OHtY`X\u0084P\u00c8ID\u0094`P\u00d4OH\u0092@P\u00d5HG\u00f1A\tTXIXZ\u0012\u008cH\u0084;Y`\\\tLP\u00d4OHtY@Z\u0084P\u00c8ID\u0094`P\u00d4OH\u0092@P\u00d5HE\u00f1",
+ "ram": {
+  "seq": 5415036,
+  "count": 2,
+  "magic": "0xc10c4a7c",
+  "entries": [
+   {
+    "seq": 0,
+    "ctlr": "0x3008e83",
+    "cfgr0": "0x28000a",
+    "actlr": "0x0",
+    "cfgr2": "0x0"
+   },
+   {
+    "seq": 2375919,
+    "ctlr": "0x3008e83",
+    "cfgr0": "0x38040a",
+    "actlr": "0x0",
+    "cfgr2": "0x0"
+   }
+  ]
+ }
+}

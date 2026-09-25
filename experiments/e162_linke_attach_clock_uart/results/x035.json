@@ -1,0 +1,67 @@
+{
+ "name": "x035",
+ "probe": "FC928F068181",
+ "tty": "/dev/ttyACM6",
+ "image": "build-CH32X035/clockwatch.ino.bin",
+ "steps": [
+  {
+   "tag": "flash",
+   "args": [
+    "flash",
+    "build-CH32X035/clockwatch.ino.bin",
+    "--reset",
+    "run"
+   ],
+   "rc": 0,
+   "t0": 1790327609.3651664,
+   "t1": 1790327609.8358457,
+   "stdout": "flashed 3276 bytes to CH32X035\nerase:   chip\nverify:  OK (readback matches)\n",
+   "stderr": ""
+  },
+  {
+   "tag": "attach(target info)",
+   "args": [
+    "target",
+    "info"
+   ],
+   "rc": 0,
+   "t0": 1790327611.8388243,
+   "t1": 1790327611.8963373,
+   "stdout": "model:    WCH-LinkE\nmode:     riscv\nusb:      1a86:8010\nserial:   FC928F068181\ntopology: 1-8\nports:    /dev/ttyACM6\nfirmware: 2.22 (WCH v42, raw 0216, riscv firmware)\n---\nfamily:   CH32X035\nchip id:  0x03510601  (bits [7:4] = silicon revision)\nuid:      1ff9abcd880ebc48\nflash:    62 KiB\nsku:      CH32X035C8T6 (verified on silicon)\ndebug:    2-wire (SWDIO/DAT=PC18, SWCLK=PC19)\n",
+   "stderr": ""
+  },
+  {
+   "tag": "read ram log",
+   "args": [
+    "read",
+    "--range",
+    "0x2000000c+0x2a4",
+    "-o",
+    "out/x035.ram.bin",
+    "--format",
+    "bin"
+   ],
+   "rc": 0,
+   "t0": 1790327613.9098933,
+   "t1": 1790327613.9874403,
+   "stdout": "wrote 676 bytes to out/x035.ram.bin\n",
+   "stderr": ""
+  }
+ ],
+ "uart_before_tail": "=0 n=1\r\nCW 234175 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 250846 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 267517 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 284187 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 300858 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 317529 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 334200 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 350870 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\n",
+ "uart_after_tail": "=0 n=1\r\nCW 600876 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 617547 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 634217 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 650888 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 667559 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 684230 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 700900 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\nCW 717571 CTLR=4483 CFGR0=0 ACTLR=2 CFGR2=0 n=1\r\n",
+ "ram": {
+  "seq": 741689,
+  "count": 1,
+  "magic": "0xc10c4a7c",
+  "entries": [
+   {
+    "seq": 0,
+    "ctlr": "0x4483",
+    "cfgr0": "0x0",
+    "actlr": "0x2",
+    "cfgr2": "0x0"
+   }
+  ]
+ }
+}

@@ -103,7 +103,7 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 
 ### まだ不明
 
-- (RVSWD)STOP 条件の波形詳細(SWDIO 遷移のタイミング)、複数トランザクション間のアイドル規則。clock 周波数は LinkE 2.22 の実測値がある(上記)が、速度設定(`0x0c`)との対応表はまだ作っていない(`extra/*/speed_*` に収録済み)。
+- (RVSWD)STOP 条件の波形詳細(SWDIO 遷移のタイミング)、複数トランザクション間のアイドル規則。clock 周波数と速度設定(`0x0c`)の対応は §5 の表(LinkE 2.22 実測)。
 - (RVSWD)接続時の long 形式の問い合わせ(上記)に target が応答した場合の続き、long/short を選ぶ規則。
 - (RVSWD)7bit addr が RISC-V 標準 DTM(通常 abits 可変)とどう対応するか(WCH は 7bit 固定と観測)。
   - **新しい材料(2026-09-07、Swindle の source 読解)**: BMDA 側は **`dmi->address_width = 8U`** と宣言し、probe 側の responder は **`address as u8`** で受けている(`blackmagic_addon/hosted/remote_rv_protocol.c` / `rs_swindle/src/native/rpc_target/mod.rs`)。→ **8 bit 幅で上位未使用**か、**Swindle が余裕を取っている**かのどちらか。**線上が 7 か 8 かは依然未測定**。
@@ -212,17 +212,28 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 - **接続の DMI 列(3 target 共通の部分)**: long 形式の問い合わせの後、次の順で進む。
   1. 非標準の DMI 番地 `0x7e` と `0x7d` に `0x5aa50400` を書く(V003 では続けて `0x7c` = `0x00010403`、`0x7d` = `0x5aa50401` を読む)。
   2. DMSTATUS を読み、DMCONTROL = `0x80000001`(haltreq)を 2 回書く。**接続中 hart は halt している**。
-  3. `0x7f` を読む。chip ID が返る(L103 `0x10310710`、V003 `0x00300500`)。
+  3. `0x7f` を読む。chip ID が返る(L103 `0x10310710`、X035 `0x03510601`、V003 `0x00300500`)。
   4. CSR `0x7C0` に `0x300` を書く。
   5. clock の組み直し(L103/V203 のみ。[pc-to-link](pc-to-link.ja.md) §11)と ESIG の読出し。
   6. 最後に DMCONTROL = `0x40000001`(resumereq)→ `0x40000000`。
-  - 0x7c〜0x7f は RISC-V Debug 仕様では未定義で、WCH 独自と見られる。意味は分からない。
+  - 0x7c〜0x7f は RISC-V Debug 仕様では未定義で、QingKe V2 manual の debug module register の表(Table 6-1)にも無い。minichlink(ch32fun `91032ac`、`minichlink/minichlink.h`)は `DMCPBR` 0x7C / `DMCFGR` 0x7D / `DMSHDWCFGR` 0x7E / `DMCHIPID` 0x7F と名付け、LinkE と同じ `0x5aa50000 | (1<<10)` を DMSHDWCFGR と DMCFGR に書いている(bit 10 に「Allow output from slave」と注記)。0x7F を chip ID として読む点も同じ。上位 16 bit の `0x5aa5` は書込みの鍵に見える。WCH の一次資料での定義は見つかっていない。
 - **SDI monitor**(L103、`more/l103/monitor_sdi`): 「49〜52 clock の未知の frame」は、25 MHz 収録で clock を落とした **DMDATA0 の read** だった。LinkE は DMDATA0 を約 29 µs ごとに読み続ける。0 以外(低 byte = 文字数、上位 3 byte = 文字)なら、文字数が 4 以上のとき DMDATA1 も読み、DMDATA0 に 0 を書いて受領を返す。[serial-and-print](serial-and-print.ja.md) §3 の郵便受け方式が線上でもそのまま見える。
 - **V003 SWIO**: 41 パルス(start + addr7 + R/W + data32)と 33 パルス(fast-read)だけで、パルス幅は 1 = 約 260 ns、0 = 約 860 ns(09-11 と同じ)。
   - メモリの読出しは abstract memory access ではなく、program buffer 8 語に置いた routine を command `0x00040000`(postexec のみ)で実行する方式。番地は data1、値は data0 で受け渡す。
   - **V003 の接続では RCC に触れない**。
 - **V203 の高速区間**: 100 MHz 収録を hold filter なしで読み、START/STOP の判定だけ 3 sample の filter を使うと、99.7 % が parity 一致で区切れる。160 MHz 収録では全 frame が既知の長さになる。
-- 未解読のまま: 1 個目の long frame(op `00`、data `0x19`)の目的、非標準番地 0x7c〜0x7f の意味、V003 で接続前に 1 個出る 33 パルスの frame。
+- **速度設定と clock**(`0x0c` SetSpeed。ch32rv は接続前に family `0x01` で 1 回だけ送る。`captures/tools/linke_speed_table.py`)。接続時の区間は設定に関係なく、long 3.04 µs・short 2.1 µs で一定。
+
+  | 設定 | 接続後の short / burst の SWCLK 周期(L103・V203 とも同じ) |
+  |---|---|
+  | high(`01`、ch32rv の既定) | 約 1.1 µs(0.9 MHz)。flash 書込み中のデータ転送部は約 400 ns(2.5 MHz)、V203 の一部は 60〜100 ns |
+  | medium(`02`) | 約 1.1 µs(high との差は、この 3 操作では見えない) |
+  | low(`03`) | 約 2.1 µs(0.47 MHz、接続時と同じ) |
+
+  V003 の SWIO は 3 設定とも同じだった(1 = 約 260 ns、0 = 約 860 ns、パルス周期 約 1.1〜1.2 µs)。
+- **09-11 の X035 fixture を START/STOP で読み直した結果**: short 8,846 個はすべて 53 clock で、parity は全件一致。long 606 個(接続 3 回 × 202)、burst 64 個が出て、4 KiB pattern の書込みも一致した。接続の DMI 列は L103 と同じ形だった(0x7e/0x7d の書込み、haltreq、0x7f = `0x03510601`、CSR 0x7C0、RCC/ACTLR の書き換え、FLASH_CTLR/STATR の書込み、ESIG の読出し)。
+- **V003 の接続前の 32 パルス**: 接続の最初に、約 900 ns の LOW(SWIO の「0」の幅)が約 1.1 µs 間隔で 32 個並ぶ(20 ns のひげが 1 個混ざることがある)。09-11 の V003 capture にもある。同じ時刻に L103 では short frame が 3 個(dmcontrol ← `0x40000001`、dmstatus の読出し、dmcontrol ← `0x40000000`)出るが、LOW 区間の並びは一致しない。意味は分からない。
+- 未解読のまま: 1 個目の long frame(op `00`、data `0x19`)の目的、0x7c〜0x7f の各 bit の意味、V003 の接続前の 32 パルス。
 
 ## 6. 調査の入口
 

@@ -1,0 +1,74 @@
+{
+ "name": "l103",
+ "probe": "0E028F0692F1",
+ "tty": "/dev/ttyACM8",
+ "image": "build-CH32L103/clockwatch.ino.bin",
+ "steps": [
+  {
+   "tag": "flash",
+   "args": [
+    "flash",
+    "build-CH32L103/clockwatch.ino.bin",
+    "--reset",
+    "run"
+   ],
+   "rc": 0,
+   "t0": 1790327366.3227046,
+   "t1": 1790327366.7412121,
+   "stdout": "flashed 3308 bytes to CH32L103\nerase:   chip\nverify:  OK (readback matches)\n",
+   "stderr": ""
+  },
+  {
+   "tag": "attach(target info)",
+   "args": [
+    "target",
+    "info"
+   ],
+   "rc": 0,
+   "t0": 1790327368.7431846,
+   "t1": 1790327368.807754,
+   "stdout": "model:    WCH-LinkE\nmode:     riscv\nusb:      1a86:8010\nserial:   0E028F0692F1\ntopology: 3-2\nports:    /dev/ttyACM8\nfirmware: 2.22 (WCH v42, raw 0216, riscv firmware)\n---\nfamily:   CH32L103\nchip id:  0x10310710  (bits [7:4] = silicon revision)\nuid:      3a6dabcda282bc48\nflash:    64 KiB\nsku:      CH32L103C8T6 (verified on silicon)\ndebug:    2-wire (SWDIO/DAT=PA13, SWCLK=PA14)\n",
+   "stderr": ""
+  },
+  {
+   "tag": "read ram log",
+   "args": [
+    "read",
+    "--range",
+    "0x2000000c+0x2a4",
+    "-o",
+    "out/l103.ram.bin",
+    "--format",
+    "bin"
+   ],
+   "rc": 0,
+   "t0": 1790327370.858038,
+   "t1": 1790327370.9354084,
+   "stdout": "wrote 676 bytes to out/l103.ram.bin\n",
+   "stderr": ""
+  }
+ ],
+ "uart_before_tail": "3 CTLR=107F83 CFGR0=0 ACTLR=0 CFGR2=0 n=1\r\nCW 128155 CTLR=107F83 CFGR0=0 ACTLR=0 CFGR2=0 n=1\r\nCW 136567 CTLR=107F83 CFGR0=0 ACTLR=0 CFGR2=0 n=1\r\nCW 144980 CTLR=107F83 CFGR0=0 ACTLR=0 CFGR2=0 n=1\r\nCW 153662 CTLR=107F83 CFGR0=0 ACTLR=0 CFGR2=0 n=1\r\nCW 162250 CTLR=107F83 CFGR0=0 ACTLR=0 CFGR2=0 n=1\r\nCW 170660 CTLR=107F83 CFGR0=0 ACTLR=0 CFGR2=0 n=1\r\nCW 179072 CTLR=107F83 CFGR0=0 ACTLR=0 CFGR2=0 n=1\r\n",
+ "uart_after_tail": "\u0000`\u00fa\u00b8\u0000\u0012h\u00fa\u0010\u0090\u0006j\u00f8\u0090\u0090\u0006\u0088\u0006\u0000\u0090\u0006@\u00f8@\u0090\u0006dX\u0090\u0090\u0006\u0088\u0006\u0092\u0092\u0012@\u00f8b\u0090\u0006`\u00fa\u0010\u0090\u0006dz\u0010\u0090\u0006e\u0090\u0092\u0091\u0006`\u00fa\u0092\u0092\u0006j\u00f8\u0010\u0090\u0006\u0088\u0006\u0092lA\u0000`\u00fa@\u0090\u0006d\u00d2\u0090\u0090\u0006j\u00fe\u0092\u0090\u0006eX`\u0090\u0006d\u00d2@\u0090\u0007@\u00fa\u0010$(j\u00f8\u0090\u0090\u0006\u0000\u0006\u0000\u0090\u0006dX\u0001\u0090\u0006d\u00d0\u0010\u0090\u0006`\u00f82:(\u008a@\u00fa2\u0090\u0006\u0088\u0006\u0010:(\u0000`\u00fa\u0010:2@\u00f80%(\u0000@\u00f8\u0010\u0090\u0006d\u00d22:(\u0000h\u00fa2:(`\u00fa\u0010\u0090\u0006d\u00d2\u0010l@\u0080\u0000\u00c0\u0010lj\u0080h\u00fa\u0010\u0090\u0006@\u00f82\u0090\u0006h\u00fe\u0010\u0090\u0006\u0088\u00062:(\u00aa\u00c0\u0010lj\u0000@\u00f80\u0090\u0006\u00aa\u00c0\u0010\u0092\u0006`\u00fa\u0000\u0090\u0006\u0088\u0006\u0010l@\u0080\u00aa\u00c0\u0092$(d\u00d22:(\u0000h\u00fe\u0000\u0090\u0006@\u00f8\u0010l@\u0080\u00aa\u00c0\u0010l@\u0082@\u00f8\u0010\u0090\u0006d\u00d2\u0080\u00902`\u00fa\u0092l@\u0080\u00aa\u00c0\u0010\u0090\u0006\u0000F\u00fe 2\u0080j\u00f8\u0000\u00902h\u00fa\u0010\u0090\u0006@\u00f8\u0010\u0090\u0006dX2l@\u0080@\u00f82\u0090\u0007@\u00f82\u00902`\u00fa2\u0090\u0006\u0000\u0006\u0010%(\u00aa\u00c00%(`\u00fa\u0010\u0090\u0006@\u00f8\u0010\u0090\u0006\u0000f\u00fe2:(d\u00900\u0090\u0006`\u00fa2:(d\u0090\u0010\u0090\u0006`\u00fa2:(@\u00f8\u0010\u0090\u0006`\u00fa\u0010\u0090\u0006h\u00f80\u00902`\u00fa2$\u00a0\u0082@\u00fa0\u0090\u0006`\u00fa2:(d\u00d2",
+ "ram": {
+  "seq": 1327479,
+  "count": 2,
+  "magic": "0xc10c4a7c",
+  "entries": [
+   {
+    "seq": 0,
+    "ctlr": "0x107f83",
+    "cfgr0": "0x0",
+    "actlr": "0x0",
+    "cfgr2": "0x0"
+   },
+   {
+    "seq": 189936,
+    "ctlr": "0x3107f83",
+    "cfgr0": "0x1c040a",
+    "actlr": "0x1",
+    "cfgr2": "0x0"
+   }
+  ]
+ }
+}

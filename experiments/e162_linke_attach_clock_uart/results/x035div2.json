@@ -1,0 +1,53 @@
+{
+ "name": "x035div2",
+ "probe": "FC928F068181",
+ "tty": "/dev/ttyACM6",
+ "image": "build-CH32X035-div2/clockwatch.ino.bin",
+ "steps": [
+  {
+   "tag": "flash",
+   "args": [
+    "flash",
+    "build-CH32X035-div2/clockwatch.ino.bin",
+    "--reset",
+    "run"
+   ],
+   "rc": 0,
+   "t0": 1790327664.972188,
+   "t1": 1790327665.4408553,
+   "stdout": "flashed 3304 bytes to CH32X035\nerase:   chip\nverify:  OK (readback matches)\n",
+   "stderr": ""
+  },
+  {
+   "tag": "attach(target info)",
+   "args": [
+    "target",
+    "info"
+   ],
+   "rc": 0,
+   "t0": 1790327667.442893,
+   "t1": 1790327667.5041666,
+   "stdout": "model:    WCH-LinkE\nmode:     riscv\nusb:      1a86:8010\nserial:   FC928F068181\ntopology: 1-8\nports:    /dev/ttyACM6\nfirmware: 2.22 (WCH v42, raw 0216, riscv firmware)\n---\nfamily:   CH32X035\nchip id:  0x03510601  (bits [7:4] = silicon revision)\nuid:      -\nflash:    -\nsku:      CH32X035C8T6 (verified on silicon)\ndebug:    2-wire (SWDIO/DAT=PC18, SWCLK=PC19)\n",
+   "stderr": ""
+  },
+  {
+   "tag": "read ram log",
+   "args": [
+    "read",
+    "--range",
+    "0x2000000c+0x2a4",
+    "-o",
+    "out/x035div2.ram.bin",
+    "--format",
+    "bin"
+   ],
+   "rc": 20,
+   "t0": 1790327669.559044,
+   "t1": 1790327669.6385784,
+   "stdout": "",
+   "stderr": "ch32rv: error[target-no-response]: no target detected on the debug pins\n  hint: check target wiring/power/BOOT; for a protected or bricked target see `ch32rv recover`\n"
+  }
+ ],
+ "uart_before_tail": "CW 51432 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\nCW 68459 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\nCW 85485 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\nCW 102512 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\nCW 119531 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\nCW 136551 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\nCW 153570 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\nCW 170589 CTLR=4483 CFGR0=80 ACTLR=2 CFGR2=0 n=1\r\n",
+ "uart_after_tail": ""
+}

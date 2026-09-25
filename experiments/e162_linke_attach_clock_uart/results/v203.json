@@ -1,0 +1,74 @@
+{
+ "name": "v203",
+ "probe": "FBC18F0680B0",
+ "tty": "/dev/ttyACM9",
+ "image": "build-CH32V203/clockwatch.ino.bin",
+ "steps": [
+  {
+   "tag": "flash",
+   "args": [
+    "flash",
+    "build-CH32V203/clockwatch.ino.bin",
+    "--reset",
+    "run"
+   ],
+   "rc": 0,
+   "t0": 1790327398.6976163,
+   "t1": 1790327399.06837,
+   "stdout": "flashed 3148 bytes to CH32V20x\nerase:   chip\nverify:  OK (readback matches)\n",
+   "stderr": ""
+  },
+  {
+   "tag": "attach(target info)",
+   "args": [
+    "target",
+    "info"
+   ],
+   "rc": 0,
+   "t0": 1790327401.0705607,
+   "t1": 1790327401.1344073,
+   "stdout": "model:    WCH-LinkE\nmode:     riscv\nusb:      1a86:8010\nserial:   FBC18F0680B0\ntopology: 3-3\nports:    /dev/ttyACM9\nfirmware: 2.22 (WCH v42, raw 0216, riscv firmware)\n---\nfamily:   CH32V20x\nchip id:  0x20310500  (bits [7:4] = silicon revision)\nuid:      b661abcd1e91bc63\nflash:    64 KiB\nsku:      CH32V203C8T6 (verified on silicon)\ndebug:    2-wire (SWDIO/DAT=PA13, SWCLK=PA14)\n",
+   "stderr": ""
+  },
+  {
+   "tag": "read ram log",
+   "args": [
+    "read",
+    "--range",
+    "0x2000000c+0x2a4",
+    "-o",
+    "out/v203.ram.bin",
+    "--format",
+    "bin"
+   ],
+   "rc": 0,
+   "t0": 1790327403.1857119,
+   "t1": 1790327403.26279,
+   "stdout": "wrote 676 bytes to out/v203.ram.bin\n",
+   "stderr": ""
+  }
+ ],
+ "uart_before_tail": "0207 CTLR=3007083 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 1504213 CTLR=3007083 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 1598219 CTLR=3007083 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 1692225 CTLR=3007083 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 1786231 CTLR=3007083 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 1880237 CTLR=3007083 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\nCW 1974243 CTLR=3007083 CFGR0=28000A ACTLR=0 CFGR2=0 n=1\r\n",
+ "uart_after_tail": "\u00b4`P\u00d4MH\u00b2`P\u00f5hG\u00f1A\tl]\u0089`Z\t\u008cH\u00849Y`[`Y\u008cB*\u00c3_\u0092`Z\u0084P\u00c8IF\u00b4`P\u00d4OH\u00b2`P\u00f5hG\u00f1A\u000bpX)`[@A\u00c9E]\u0012`[`Y\u008cB*\u00c3_\u0092`Z\u0084P\u00c8IF\u00b4`P\u00d4MH\u00b2`P\u00f5HE\u00f1A\u000bpY\u00d2`[\t\u008cJ\u0084;Y`[`Y\u008cB*\u00c3]\u0092`Z\u0084P\u00c8IF\u00b4`P\u00d4OH\u00b2`P\u00f5hE\u00f1A\u000bpX\u0012`Z\u0012\u008cH\u0084;Y`[`Y\u008cB*\u00c3]\u0092`Z\u0084P\u00c8IF\u00b4`P\u00d4OH\u00b2`P\u00f5hG\u00f1A\u000bpY\u0092`Z@A\u00cbE]\u0012`[`Y\u008cB*\u00c3]\u0092`Z\u0084P\u00c8IF\u00b4`P\u00d4OH\u00b2@P\u00f5hG\u00f1A\u000bpZ\u0006`[\t\u008cH\u0084;Y`[`Y\u008cB*\u00c3_\u0092`X\u0084P\u00c8IF\u0094`P\u00d4OH\u00b2@P\u00f5hG\u00f1A\tp[\u0086`\\@A\u00cbE_\u0012`[`Y\u008cB(\u00c1_\u0092`X\u0084P\u00c8IF\u00b4`P\u00d4OH\u00b2`P\u00f5hG\u00f1A\tPZxXxP\u0094#E_\u0012`[`Y\u008cB*\u00c1_\u0092`Z\u0084P\u00c8IF\u00b4`P\u00d4OH\u00b2`P\u00f5hG\u00f1A\u000bp[`X\u0086@A\u00cbE_\u0012`[`Y\u008cB\b\u00c3]\u0092`Z\u0084P\u00c8ID\u00b4`P\u00d4OH\u00b2`P\u00f5hG\u00f1",
+ "ram": {
+  "seq": 4844148,
+  "count": 2,
+  "magic": "0xc10c4a7c",
+  "entries": [
+   {
+    "seq": 0,
+    "ctlr": "0x3007083",
+    "cfgr0": "0x28000a",
+    "actlr": "0x0",
+    "cfgr2": "0x0"
+   },
+   {
+    "seq": 2125227,
+    "ctlr": "0x3007083",
+    "cfgr0": "0x34040a",
+    "actlr": "0x0",
+    "cfgr2": "0x0"
+   }
+  ]
+ }
+}

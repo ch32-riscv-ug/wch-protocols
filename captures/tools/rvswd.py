@@ -29,9 +29,16 @@ NAMES = {0x04: "data0", 0x05: "data1", 0x10: "dmcontrol", 0x11: "dmstatus", 0x12
 
 
 def load(path):
+    """Samples (one integer per sample, bit k = channel k) and the samplerate of a sigrok session file.
+    Handles unitsize 1 or 2 and sessions split into several logic-1-<n> chunks (PulseView / LA2016 captures)."""
     z = zipfile.ZipFile(path)
-    d = np.frombuffer(z.read("logic-1-1"), dtype=np.uint8)
-    rate = float(z.read("metadata").decode().split("samplerate=")[1].split()[0])
+    meta = z.read("metadata").decode()
+    value, *unit_name = meta.split("samplerate=")[1].splitlines()[0].split()
+    rate = float(value) * {"hz": 1, "khz": 1e3, "mhz": 1e6, "ghz": 1e9}[(unit_name or ["hz"])[0].lower()]
+    unit = int(meta.split("unitsize=")[1].split()[0]) if "unitsize=" in meta else 1
+    chunks = sorted((n for n in z.namelist() if n.startswith("logic-1-")), key=lambda n: int(n.rsplit("-", 1)[1]))
+    raw = b"".join(z.read(n) for n in chunks)
+    d = np.frombuffer(raw, dtype=np.uint8 if unit == 1 else "<u2")
     return d, rate
 
 

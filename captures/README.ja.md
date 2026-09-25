@@ -55,6 +55,8 @@ uv run python tools/linke_repeat_compare.py l103 target_info read_ram_256
   - 区切りの条件と、空き時間で区切る方式の問題は [link-to-target](../protocols/link-to-target.ja.md) §3。
   - `--k` は bit clock の hold filter で、既定 3 sample。V203 100 MHz では 1 にする。START/STOP の判定だけに使う filter は `--k-frame` で、V203 100 MHz では 3 にする。
 - `tools/swio.py`: SWIO の LOW パルス幅を 500 ns で 0/1 に分け、4 µs の空きで区切る。41 / 33 パルスを復号する。
+- `tools/linke_speed_table.py`: `extra/<target>/speed_{high,medium,low}_*` から、速度設定ごとの SWCLK 周期(RVSWD)と SWIO のパルス幅を出す。
+- `rvswd.load()` は unitsize 1 / 2、複数 chunk の `.sr`、単位付きの samplerate(`50 MHz`)を読めるので、09-11 fixture の `wire-x035.sr` もそのまま読める。
 - `tools/linke_repeat_compare.py`: `more/<target>/repeat{1..5}_*` を bit 単位で比べる。出力は frame 数、run 間の差、85 clock frame の中身、don't-care bit の分布。
 - fixture 付属の `tools/dmi_decode.py` は空き時間で区切る方式で、一部の write を R と表示し、低速設定の burst を割る(値は rvswd.py と一致)。また `<dir>` の `.dmi.txt` / `.mem.txt` を**上書きする**(SHA256SUMS の対象)ので、使うときは fixture の外へ `.sr` を写してから実行する。
 - 09-11 fixture の `analyze.py` は標準 library だけで動く(uv でも system の python3 でもよい)。
