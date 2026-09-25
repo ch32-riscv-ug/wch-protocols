@@ -1,0 +1,14 @@
+# dmiop_1_malformed_7byte_dmiop.sr: DMI transactions decoded from the wire (t in ms from capture start)
+  175.9705 W data1        40022004 st=00
+  176.0390 W data0        45670123 st=00
+  176.1076 W command      02210000 st=00
+  176.1765 W data1        40022004 st=00
+  176.2450 W data0        cdef89ab st=00
+  176.3135 W command      02210000 st=00
+  176.3825 W data1        40022024 st=00
+  176.4511 W data0        45670123 st=00
+  176.5196 W command      02210000 st=00
+  176.5886 W data1        40022024 st=00
+  176.6571 W data0        cdef89ab st=00
+  176.7257 W command      02210000 st=00
+  177.7592 R 0x8          00000000 st=00

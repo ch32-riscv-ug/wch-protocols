@@ -1,0 +1,5 @@
+# dmiop_1_malformed_7byte_dmiop.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  176.1076 MEMW 40022004 = 45670123 
+  176.3135 MEMW 40022004 = cdef89ab 
+  176.5196 MEMW 40022024 = 45670123 
+  176.7257 MEMW 40022024 = cdef89ab 

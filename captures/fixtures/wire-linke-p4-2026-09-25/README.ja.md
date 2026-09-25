@@ -177,3 +177,16 @@ monitor は L103 / V203 25 MHz（長い収録を空白なしで取るため。V2
   接続し直さずに済む経路としては、flash の解除が付いてくる点に注意。
 - 5 回の繰り返しは、アクセス列の違いがどれも 1 frame の取りこぼし（番地の取り違え・欠け）で、系統的な差は見えていない。
   padding / park bit などの bit 単位の比較は `.sr` から。
+
+### RedetectChip の後の DmiOp（L103、`more/l103/dmiop_*`）
+
+ch32rv セッションの提案で、「AttachChip を送らずに DMI を使えるか」を確かめた。HelloDMDATA を焼き、`reset` の後に `tools/redetect.py` で
+1 回の USB セッションとして送った。
+
+- `dmiop_3_redetect_then_dmi`: `81 0d 01 03` の後に DmiOp（`81 08 06 addr data_be32 op`）を 6 件（dmstatus 読み、data0 読み、data0 ← 0x12345678、
+  data0 読み、dmstatus 読み、abstractcs 読み）。
+- `dmiop_5_redetect_dmactive_then_dmi`: 先に dmcontrol ← 0x1（dmactive）を足したもの。
+- **どちらも DmiOp の応答はデータ 0、状態 0。** 線上には DmiOp ごとに 54 clock の frame が 1 つ出るが、データ部分は全部 0 で、書き込みの値も
+  載っていない（復号では番地が 1 bit ずれて `R 0x8` / `R 0x2` と出る）。通常の接続の後の DmiOp（`extra/l103/dmi_*`）とは frame が違う。
+  → **RedetectChip だけの状態では DmiOp は target に届いていない**（reset の後の L103 で確認。ほかの状態・target は未確認）。
+- `dmiop_1_malformed_7byte_dmiop` は hex の区切りを誤って op の byte が欠けた 7 byte の DmiOp を送ったもの（応答 `82 08 06 11 00000000 00`）。

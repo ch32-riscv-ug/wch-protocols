@@ -1,0 +1,5 @@
+# dmiop_5_redetect_dmactive_then_dmi.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  159.8452 MEMW 40022004 = 45670123 
+  160.0513 MEMW 40022004 = cdef89ab 
+  160.2575 MEMW 40022024 = 45670123 
+  160.4637 MEMW 40022024 = cdef89ab 
