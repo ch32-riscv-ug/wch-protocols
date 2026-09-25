@@ -1,6 +1,7 @@
 # WCH-LinkE ↔ target 線上 capture（ESP32-P4 の OEP logic capture で収録、L103 / V203 / V003）
 
-状態: **生データ収録済み・一部解析済み**（2026-09-25）。解析の途中経過は下の「分かったこと」。低速の attach 区間は未解読。
+状態: **生データ収録済み・一部解析済み**（2026-09-25）。解析の途中経過は下の「分かったこと」。低速の attach 区間は L103 / V203 とも復号済み
+（下の「低速区間と L103 / V203 の比較」。**LinkE は接続のたびに RCC を組み直している**。以前の版のこの README の「RCC へのアクセスは無い」は誤り）。
 同じ日に、配線を変えずに追加の操作（`extra/`）と ch32rv の版ごとの比較（`versions/`）も収録した（下の「追加の収録」）。
 
 [2026-09-11 の fixture](../wire-flash-v003-x035-2026-09-11/README.ja.md)（LA2016）と同じ 50 MHz・同じ channel の割り当て・同じ
@@ -33,7 +34,7 @@
 | `<op>.sr` | 線の sigrok session（unitsize 1、bit k = channel k）。PulseView で開ける |
 | `<op>.ndjson` | 同じ操作の ch32rv の USB 往復（captures/README の形式） |
 | `<op>.json` | 収録条件、ch32rv の終了コードと出力、区画の数と開始時刻 |
-| `<op>.dmi.txt` | `tools/dmi_decode.py` で RVSWD を DMI の読み書きに復号したもの（L103。V203 は復号が不完全、V003 は SWIO なので対象外） |
+| `<op>.dmi.txt` | `tools/dmi_decode.py` で RVSWD を DMI の読み書きに復号したもの（L103 は `SPLIT=two DEBOUNCE=3` で作り直し済み、低速区間を含む。V203 は未収載、V003 は SWIO なので対象外） |
 | `<op>.mem.txt` | 抽象コマンドを data1 / data0 と組にしたメモリ・レジスタのアクセス一覧 |
 | `read_*.bin` | ch32rv の読み出し結果 |
 | `stub_flash_pattern4k.bin`（l103） | 線から組み立てた RAM stub（0x20000000、512 byte） |
@@ -46,7 +47,7 @@
 
 - 読み出しは 54 clock（target が駆動する 1 clock 多い）、書き込みは 53 clock。データは 54 clock 中の 15 ビット目から。
   parity の誤りは全操作で 0。
-- **RCC_CTLR / RCC_CFGR0 / FLASH_ACTLR へのアクセスは無い**（抽象コマンドでも RAM stub でも）。
+- ~~RCC_CTLR / RCC_CFGR0 / FLASH_ACTLR へのアクセスは無い~~ → **誤り**。低速区間を読めていなかった。下の「低速区間と L103 / V203 の比較」。
 - 接続のたびに FLASH_CTLR = 0x8080（LOCK|FLOCK、リセット値）と **FLASH_STATR = 0xB020** を書き、0x1FFFF7E0 / E8 / EC / F0 を読む。
   STATR のビット 12 / 13 / 15 は L103 では予約（新しい系統では BOOT_AVA / BOOT_STATUS / BOOT_LOCK）。
 - 書き込み: ch32rv の Program 0x01 で APB1PCENR = 0、KEYR と MODEKEYR の解除、**MER（全体消去）**。stub の前に
@@ -60,8 +61,8 @@
 
 ## 未解読・未確認
 
-- 接続時の約 55 ms の低速区間（約 400 kHz、84 clock と 53 clock の frame）の中身。USB 側では ch32rv の `81 0d 01 02`
-  （接続・チップ検出）1 件にあたり、応答まで約 55 ms かかる。LinkE のファームウェアが自分で行う処理。
+- 低速区間の 85 clock の frame（201 個、L103 と V203 で bit 列が同一）の意味。
+- V203 の高速区間（下）の復号。V203 の接続の後半（L103 の FLASH_CTLR / STATR 書き込みと ESIG 読み出しに当たる部分）は高速区間にあって未確認。
 - V203 の frame の区切り（ひげが多い）、V003（SWIO）の復号。
 
 ## 追加の収録（2026-09-25、配線は上と同じ）
@@ -103,3 +104,42 @@
   ファームウェアが自分で行う**。`l103/target_info.ndjson` の USB 往復は `81 0d 01 ff`、`81 0d 01 01`、`81 0c 02 01 01`、
   `81 0d 01 02`（応答 `82 0d 05 0e 10310710`、約 55 ms）、`81 11 01 05`（応答に ESIG の 20 byte）、`81 0d 01 ff` だけで、
   ch32rv はメモリ書き込みを送っていない。ch32rv の版（0.8.0〜0.10.0）で線上の列も変わらない。
+
+## 低速区間と L103 / V203 の比較（2026-09-25 追記）
+
+### 復号ツールの変更（`tools/dmi_decode.py`）
+
+- `DEBOUNCE=k`: 両線に保持時間フィルタ（新しいレベルが k sample 続いて初めて変化とみなす）。V203 は 1 sample の尖りが多い。
+- `SPLIT=two`: まず 250 sample（50 MHz 換算）の間で frame を区切り、既知の長さ（53 / 54 / 85 / 585）でない塊を 100 sample で区切り直す。
+  低速区間は clock の周期が 105〜155 sample（L103 約 475 kHz、V203 の書き込み frame は low が 2 倍で約 320 kHz）で、
+  以前の 100 sample の区切りでは frame が割れていた。閾値は `.sr` の samplerate に合わせて伸縮する。
+- L103 の `.dmi.txt` / `.mem.txt`（`l103/`、`extra/l103/`、`versions/*/l103/`）は `SPLIT=two DEBOUNCE=3` で作り直した。parity の誤りは
+  l103 / extra 0、versions 0.10.0 で 1、0.8.0 で 3。版の比較: target_info / read_ram_256 は 4 版で一致。flash / erase / reset の違いは 1〜2 行の
+  欠け・ずれで、復号の取りこぼしと見ている（系統的な差ではない、未確定）。
+
+### 接続時（USB `81 0d 01 02`、約 55 ms）に LinkE がすること（target_info の `.mem.txt`、L103 と V203 で同じ流れ）
+
+1. `MEMR 0x1FFFF704`（チップ ID。L103 0x10310710、V203 0x20310500）、`REGW 0x7C0 = 0x300`（CSR 0x7C0）
+2. RCC_CTLR を読んで同じ値を書く。RCC_CFGR0 を読み、**SW / 分周を 0 に**（L103 0x001c040a → 0x001c0000、V203 0x0034040a → 0x00340000）
+3. CTLR の **PLLON を落とす**（0x03107f83 → 0x02107f83 → 0x00107f83）、CFGR0 = 0
+4. 系統ごとの部分:
+   - L103: INTR 0x40021008 = 0x009f0000、0x40023800 を読んで同じ値を書く、**FLASH_ACTLR 0x40022000 に 0x11 を書いてから 0x1 に戻す**
+   - V203: CTLR を読んで同じ値を書く、INTR = 0x00ff0000、**0x4002102c = 0**、0x40023800 を読んで同じ値を書く、0x1FFFF70C を読む（0xc13e0005）
+5. CFGR0 = 0x400（PPRE1）、元の PLLMUL を戻す（0x001c0400 / 0x00340400）
+6. PLLON を立て、PLLRDY を待つ（0x01107f83 → 0x03107f83）
+7. SW = PLL（0x...0402）、SWS = PLL を確認（0x...040a）
+8. （L103）FLASH_CTLR = 0x8080、FLASH_STATR = 0xB020、ESIG の読み出し
+
+- 終わりの値が元と同じになるので、`extra/` の外からの前後読みでは変化が見えなかった。**接続中の約 10 ms は HSI で動く**
+  （PLL を止めてから入れ直す）。PLLMUL は元の値から取っているので、元が HSE や別の分周だった場合に同じ値へ戻るかは未確認。
+- ch32rv の USB 送信には RCC の操作は無い（LinkE のファームウェアが自分で行う）。
+
+### V203 の高速区間（`v203-100mhz/`、`v203-160mhz/`）
+
+- V203 の書き込み・読み出しの一部で、SWCLK は **high 約 20〜30 ns、周期 60〜100 ns**（160 MHz の収録で high 3〜4 sample、low 5〜6 / 12 sample）。
+  L103 の高速区間（周期約 20 sample @ 50 MHz、約 2.5 MHz）よりずっと速く、50 MHz の `v203/` はこの区間を正しく記録できていない。
+- `v203-100mhz/`: 12 操作 + `clock_flash` / `clock_target_info` を 100 MHz で取り直した（すべて空白なし、rc 0、read_flash_4k = pattern）。
+  ひげ除去なし（`DEBOUNCE=1`、`SPLIT=two`）で flash_pattern4k の R が 1683 件（L103 は 1646）取れ、V203 もデータは DMI で送っているとみられる。
+  55 / 56 clock の frame が残り、復号は未完。
+- `v203-160mhz/flash_pattern4k`: 160 MHz。格納先が足りず **空白 7 か所**（gap-marked 7、stopped reason 2）。パルス幅を見る用。
+- V003（SWIO）は 1 周期 11〜14 sample @ 50 MHz（約 240 ns）で、50 MHz で足りる。
