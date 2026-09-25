@@ -45,7 +45,9 @@
 
 ## 分かったこと（L103、高速区間。wch-protocols / ch32rv / ch32-device-data の各セッションの解析と一致）
 
-- 読み出しは 54 clock（target が駆動する 1 clock 多い）、書き込みは 53 clock。データは 54 clock 中の 15 ビット目から。
+- ~~読み出しは 54 clock~~ → **読み出しも 53 clock**（2026-09-25 訂正。wch-protocols の `captures/tools/rvswd.py` が START / STOP で
+  frame を区切って確かめた。L103 の 23,447 frame がすべて 53 clock で parity 一致。この README の `tools/dmi_decode.py` は空き時間で
+  区切るので、値は一致するが write の一部を R と表示し、frame を取りこぼす）。書き込みは 53 clock。
   parity の誤りは全操作で 0。
 - ~~RCC_CTLR / RCC_CFGR0 / FLASH_ACTLR へのアクセスは無い~~ → **誤り**。低速区間を読めていなかった。下の「低速区間と L103 / V203 の比較」。
 - 接続のたびに FLASH_CTLR = 0x8080（LOCK|FLOCK、リセット値）と **FLASH_STATR = 0xB020** を書き、0x1FFFF7E0 / E8 / EC / F0 を読む。
@@ -166,8 +168,9 @@ monitor は L103 / V203 25 MHz（長い収録を空白なしで取るため。V2
 | `after_recover_target_info` / `redo_after_recover_target_info` | 消去の後の接続 |
 
 - 最初の `redetect_*`（redo でない方）は、送信は成功しているが `tools/redetect.py` の引数処理の誤りで 2 つ目のコマンドで落ちた（rc 1）。線は有効。
-- L103 の `.dmi.txt` / `.mem.txt` は `SPLIT=two DEBOUNCE=3` で作った。`monitor_sdi` は 128 万 frame のほとんどが 49〜52 clock の未知の
-  frame で復号できず、`.dmi.txt`（85 MB）は置いていない（ツールで再生成できる）。
+- L103 の `.dmi.txt` / `.mem.txt` は `SPLIT=two DEBOUNCE=3` で作った。`monitor_sdi` の `.dmi.txt`（85 MB）は置いていない（ツールで再生成できる）。
+  その 49〜52 clock の frame は、**25 MHz の収録で clock が落ちた DMDATA0 の読み出し**だった（2026-09-25、wch-protocols の
+  `captures/tools/rvswd.py` で解読。LinkE は約 29 µs ごとに poll し、0 以外を読むと DATA0 に 0 を書いて受領を返す）。
 - L103 の `monitor_sdi` は `--duration 4` なのに 34.8 s 動いた（V203 / V003 は約 4〜5 s）。その `.sr` は 76 MB。
 
 ### 分かったこと（L103）
@@ -186,7 +189,7 @@ ch32rv セッションの提案で、「AttachChip を送らずに DMI を使え
 - `dmiop_3_redetect_then_dmi`: `81 0d 01 03` の後に DmiOp（`81 08 06 addr data_be32 op`）を 6 件（dmstatus 読み、data0 読み、data0 ← 0x12345678、
   data0 読み、dmstatus 読み、abstractcs 読み）。
 - `dmiop_5_redetect_dmactive_then_dmi`: 先に dmcontrol ← 0x1（dmactive）を足したもの。
-- **どちらも DmiOp の応答はデータ 0、状態 0。** 線上には DmiOp ごとに 54 clock の frame が 1 つ出るが、データ部分は全部 0 で、書き込みの値も
+- **どちらも DmiOp の応答はデータ 0、状態 0。** 線上には DmiOp ごとに frame が 1 つ出る（`tools/dmi_decode.py` の区切りでは 54 clock）が、データ部分は全部 0 で、書き込みの値も
   載っていない（復号では番地が 1 bit ずれて `R 0x8` / `R 0x2` と出る）。通常の接続の後の DmiOp（`extra/l103/dmi_*`）とは frame が違う。
   → **RedetectChip だけの状態では DmiOp は target に届いていない**（reset の後の L103 で確認。ほかの状態・target は未確認）。
 - `dmiop_1_malformed_7byte_dmiop` は hex の区切りを誤って op の byte が欠けた 7 byte の DmiOp を送ったもの（応答 `82 08 06 11 00000000 00`）。
