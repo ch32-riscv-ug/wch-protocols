@@ -1,0 +1,13 @@
+# redo_redetect_2_again.sr: DMI transactions decoded from the wire (t in ms from capture start)
+  114.2547 W data1        40022004 st=00
+  114.3229 W data0        45670123 st=00
+  114.3914 W command      02210000 st=00
+  114.4604 W data1        40022004 st=00
+  114.5288 W data0        cdef89ab st=00
+  114.5973 W command      02210000 st=00
+  114.6663 W data1        40022024 st=00
+  114.7348 W data0        45670123 st=00
+  114.8034 W command      02210000 st=00
+  114.8724 W data1        40022024 st=00
+  114.9409 W data0        cdef89ab st=00
+  115.0094 W command      02210000 st=00

@@ -1,0 +1,5 @@
+# redo_redetect_3_status_then_redetect.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  116.8767 MEMW 40022004 = 45670123 
+  117.0828 MEMW 40022004 = cdef89ab 
+  117.2889 MEMW 40022024 = 45670123 
+  117.4951 MEMW 40022024 = cdef89ab 

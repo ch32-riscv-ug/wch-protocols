@@ -1,0 +1,66 @@
+=== monitor_sdi_enable
+more-v003-2026-09-25/monitor_sdi_enable: 5820416 samples at 50 MHz, segments 23 (gap-marked 0), ch32rv rc 2 in 0.00 s
+=== monitor_sdi
+more-v003-2026-09-25/monitor_sdi: 280010752 samples at 50 MHz, segments 1069 (gap-marked 0), ch32rv rc 0 in 5.19 s
+=== monitor_dmdata
+more-v003-2026-09-25/monitor_dmdata: 229608960 samples at 50 MHz, segments 876 (gap-marked 0), ch32rv rc 0 in 4.11 s
+=== monitor_dmseq
+more-v003-2026-09-25/monitor_dmseq: 229641216 samples at 50 MHz, segments 877 (gap-marked 0), ch32rv rc 0 in 4.11 s
+=== monitor_rtt
+more-v003-2026-09-25/monitor_rtt: 231443968 samples at 50 MHz, segments 883 (gap-marked 0), ch32rv rc 0 in 4.14 s
+=== repeat1_target_info
+more-v003-2026-09-25/repeat1_target_info: 11085312 samples at 50 MHz, segments 43 (gap-marked 0), ch32rv rc 0 in 0.11 s
+=== repeat1_read_ram_256
+more-v003-2026-09-25/repeat1_read_ram_256: 10969088 samples at 50 MHz, segments 42 (gap-marked 0), ch32rv rc 0 in 0.11 s
+=== repeat2_target_info
+more-v003-2026-09-25/repeat2_target_info: 10658816 samples at 50 MHz, segments 41 (gap-marked 0), ch32rv rc 0 in 0.11 s
+=== repeat2_read_ram_256
+more-v003-2026-09-25/repeat2_read_ram_256: 11576320 samples at 50 MHz, segments 45 (gap-marked 0), ch32rv rc 0 in 0.11 s
+=== repeat3_target_info
+more-v003-2026-09-25/repeat3_target_info: 11085312 samples at 50 MHz, segments 43 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== repeat3_read_ram_256
+more-v003-2026-09-25/repeat3_read_ram_256: 11511808 samples at 50 MHz, segments 44 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== repeat4_target_info
+more-v003-2026-09-25/repeat4_target_info: 11311104 samples at 50 MHz, segments 44 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== repeat4_read_ram_256
+more-v003-2026-09-25/repeat4_read_ram_256: 11246592 samples at 50 MHz, segments 43 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== repeat5_target_info
+more-v003-2026-09-25/repeat5_target_info: 11117568 samples at 50 MHz, segments 43 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== repeat5_read_ram_256
+more-v003-2026-09-25/repeat5_read_ram_256: 11576320 samples at 50 MHz, segments 45 (gap-marked 0), ch32rv rc 0 in 0.11 s
+=== redetect_0_reset
+more-v003-2026-09-25/redetect_0_reset: 13113856 samples at 50 MHz, segments 51 (gap-marked 0), ch32rv rc 0 in 0.14 s
+=== redetect_1_after_reset
+more-v003-2026-09-25/redetect_1_after_reset: 11898880 samples at 50 MHz, segments 46 (gap-marked 0), ch32rv rc 1 in 0.11 s
+=== redetect_2_again
+more-v003-2026-09-25/redetect_2_again: 11375616 samples at 50 MHz, segments 44 (gap-marked 0), ch32rv rc 1 in 0.10 s
+=== redetect_3_status_then_redetect
+more-v003-2026-09-25/redetect_3_status_then_redetect: 11769856 samples at 50 MHz, segments 45 (gap-marked 0), ch32rv rc 1 in 0.11 s
+=== redetect_4_target_info
+more-v003-2026-09-25/redetect_4_target_info: 10988544 samples at 50 MHz, segments 42 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== recover_power_off
+more-v003-2026-09-25/recover_power_off: 5949440 samples at 50 MHz, segments 23 (gap-marked 0), ch32rv rc 2 in 0.00 s
+=== recover_nrst
+more-v003-2026-09-25/recover_nrst: 5884928 samples at 50 MHz, segments 23 (gap-marked 0), ch32rv rc 2 in 0.00 s
+=== recover_unbrick
+more-v003-2026-09-25/recover_unbrick: 18934272 samples at 50 MHz, segments 73 (gap-marked 0), ch32rv rc 0 in 0.24 s
+=== after_recover_target_info
+more-v003-2026-09-25/after_recover_target_info: 10949120 samples at 50 MHz, segments 42 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== redo_redetect_0_reset
+more-v003-2026-09-25/redo_redetect_0_reset: 13533184 samples at 50 MHz, segments 52 (gap-marked 0), ch32rv rc 0 in 0.14 s
+=== redo_redetect_1_after_reset
+more-v003-2026-09-25/redo_redetect_1_after_reset: 10884608 samples at 50 MHz, segments 42 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== redo_redetect_2_again
+more-v003-2026-09-25/redo_redetect_2_again: 11117568 samples at 50 MHz, segments 43 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== redo_redetect_3_status_then_redetect
+more-v003-2026-09-25/redo_redetect_3_status_then_redetect: 11898880 samples at 50 MHz, segments 46 (gap-marked 0), ch32rv rc 0 in 0.12 s
+=== redo_monitor_sdi_on
+more-v003-2026-09-25/redo_monitor_sdi_on: 10691072 samples at 50 MHz, segments 41 (gap-marked 0), ch32rv rc 0 in 0.09 s
+=== redo_monitor_sdi_off
+more-v003-2026-09-25/redo_monitor_sdi_off: 10497536 samples at 50 MHz, segments 41 (gap-marked 0), ch32rv rc 0 in 0.09 s
+=== redo_recover_power_off
+more-v003-2026-09-25/redo_recover_power_off: 11492352 samples at 50 MHz, segments 44 (gap-marked 0), ch32rv rc 0 in 0.10 s
+=== redo_recover_nrst
+more-v003-2026-09-25/redo_recover_nrst: 11640832 samples at 50 MHz, segments 45 (gap-marked 0), ch32rv rc 0 in 0.11 s
+=== redo_after_recover_target_info
+more-v003-2026-09-25/redo_after_recover_target_info: 11343360 samples at 50 MHz, segments 44 (gap-marked 0), ch32rv rc 0 in 0.10 s

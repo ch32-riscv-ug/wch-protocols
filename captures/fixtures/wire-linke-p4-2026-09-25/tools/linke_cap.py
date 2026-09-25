@@ -32,7 +32,9 @@ try:
     result = {}
     def run():
         t = time.monotonic()
-        p = subprocess.run(cmd, capture_output=True, text=True)
+        feed = os.environ.get("STDIN")   # text for the command's stdin (monitor dmdata / dmseq input); else none
+        p = subprocess.run(cmd, capture_output=True, text=True,
+                           **({"input": feed.encode().decode("unicode_escape")} if feed else {"stdin": subprocess.DEVNULL}))
         result.update(rc=p.returncode, stdout=p.stdout, stderr=p.stderr, seconds=time.monotonic() - t)
     t0 = time.monotonic(); cap.start(); time.sleep(0.05)
     th = threading.Thread(target=run); th.start()
