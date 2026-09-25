@@ -68,5 +68,5 @@ E165〜E167 で、LinkE 2.22 は `probe power 3v3 / 5v` でも特殊消去でも
 
 ## 未決
 
-- TX / RX を外し、3V3・GND・SWDIO・SWCLK だけで同じ 4 つと止まった状態の試験を繰り返す(配線の変更待ち)。
-- 止まった X035 の reset の出どころ(化けた DMCONTROL の書込みか、target 自身か)。線を見るには X035 を P4 の capture の配線につなぐ。
+- (TX / RX を外す試験は不要と判断した。E167 で LinkE の 3V3 出力そのものが切れないため、back-power を疑う理由が無い。)
+- 止まった X035 の reset の出どころ。E165 の 2c で過去の収録を洗い直すと、線上に reset 操作(ndmreset・PFIC)は無く、時刻は特殊消去の 136〜142 ms に絞れた。LinkE が繰り返す線の初期化か、target 自身かは未確定。
