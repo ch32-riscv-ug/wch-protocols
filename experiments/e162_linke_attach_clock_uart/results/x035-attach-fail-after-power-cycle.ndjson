@@ -1,0 +1,10 @@
+{"_meta":{"format":1,"unit":"us"}}
+{"_device":{"pid":32784,"ports":["/dev/ttyACM6"],"product":"WCH-Link","serial":"FC928F068181","topology":"1-8","vid":6790}}
+{"seq":0,"t_us":3151,"ep":"0x01","chan":"cmd","dir":"out","len":4,"ok":true,"data":"810d01ff"}
+{"seq":1,"t_us":45314,"ep":"0x81","chan":"cmd","dir":"in","len":4,"ok":true,"data":"820d01ff"}
+{"seq":2,"t_us":45984,"ep":"0x01","chan":"cmd","dir":"out","len":4,"ok":true,"data":"810d0101"}
+{"seq":3,"t_us":46409,"ep":"0x81","chan":"cmd","dir":"in","len":7,"ok":true,"data":"820d0402161200"}
+{"seq":4,"t_us":46843,"ep":"0x01","chan":"cmd","dir":"out","len":5,"ok":true,"data":"810c020103"}
+{"seq":5,"t_us":47322,"ep":"0x81","chan":"cmd","dir":"in","len":4,"ok":true,"data":"820c0101"}
+{"seq":6,"t_us":47693,"ep":"0x01","chan":"cmd","dir":"out","len":4,"ok":true,"data":"810d0102"}
+{"seq":7,"t_us":120048,"ep":"0x81","chan":"cmd","dir":"in","len":4,"ok":true,"data":"81550101"}
