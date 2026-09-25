@@ -20,7 +20,7 @@ E162 で、HPRE を /2 にして動かした X035C8T6 に `target info` で接�
 - sketch は E162 の [`clockwatch.ino`](../e162_linke_attach_clock_uart/clockwatch/clockwatch.ino)。`-DCW_HPRE=<field> -DCW_HDIV=<分周>` を付けると、起動時に CFGR0 の HPRE を書き換え、USART1 の BRR を合わせ直す。image は `clockwatch-CH32X035-hpre*.bin`。
 - [`sequence.py`](sequence.py) の流れ:
   1. `ch32rv flash --reset run` で書く。
-  2. 接続の前に UART を 2 s 受ける(by-id の tty)。
+  2. 接続の前に UART を 2 s 受ける(`/run/board-identify/by-id/wch-link-<serial>`)。
   3. `target info` を 2 回行い、そのたびに UART を 2 s 受ける。
 - 復旧: E162 の特殊消去(`81 0d 02 0f 0d`)を送り、応答が `82 0d 01 0f` になるまで繰り返す(`../e162_linke_attach_clock_uart/raw_seq.py`)。
 - option byte は、試験の前と、止まった後の特殊消去の窓の中で読んだ(`x035_fix_user.py` の読むだけの mode)。
