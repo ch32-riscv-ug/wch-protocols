@@ -149,3 +149,31 @@
   55 / 56 clock の frame が残り、復号は未完。
 - `v203-160mhz/flash_pattern4k`: 160 MHz。格納先が足りず **空白 7 か所**（gap-marked 7、stopped reason 2）。パルス幅を見る用。
 - V003（SWIO）は 1 周期 11〜14 sample @ 50 MHz（約 240 ns）で、50 MHz で足りる。
+
+## さらに追加の収録（`more/<target>/`、2026-09-25、配線は同じ）
+
+収録の手順: `tools/run_more.sh`、失敗分の取り直しは `tools/run_redo.sh`（ファイル名 `redo_*`）。速さは L103 / V003 50 MHz、V203 100 MHz、
+monitor は L103 / V203 25 MHz（長い収録を空白なしで取るため。V203 の高速区間は記録しきれない）、V003 50 MHz。すべて空白なし。
+
+| 操作 | 内容 |
+|---|---|
+| `monitor_{sdi,dmdata,dmseq,rtt}` | core の例 `HelloSDI` / `HelloDMDATA` / `HelloDMSeq` / `HelloRTT`（`tools/monitor_images/<target>_Hello*.bin`）を焼いて `monitor --source <s> --duration 4`。dmdata / dmseq / rtt は stdin に `abc\n`（大文字で返る） |
+| `redo_monitor_sdi_on` / `_off` | `monitor sdi on` / `off`（SDI 転送の有効化・無効化）。`monitor_sdi_enable` は書式違いで rc 2（線は記録なし同然） |
+| `repeat{1..5}_{target_info,read_ram_256}` | 同じ操作を 5 回 |
+| `redo_redetect_0_reset` → `redo_redetect_1_after_reset` → `redo_redetect_2_again` → `redo_redetect_3_status_then_redetect` | クロックスケッチを焼いて reset した後、**USB `81 0d 01 03`（RedetectChip）だけ**を LinkE に直接送る（`tools/redetect.py`、ch32rv を通さない。`.ndjson` は無い）。3 は `81 0d 01 ff` の後に送る |
+| `redo_recover_power_off` / `redo_recover_nrst` | `--chip <family> recover --method power-off / nrst`（code flash の消去） |
+| `recover_unbrick` | `recover --method unbrick`（全体消去）。`recover_power_off` / `recover_nrst`（redo でない方）は `--chip` 無しで rc 2 |
+| `after_recover_target_info` / `redo_after_recover_target_info` | 消去の後の接続 |
+
+- 最初の `redetect_*`（redo でない方）は、送信は成功しているが `tools/redetect.py` の引数処理の誤りで 2 つ目のコマンドで落ちた（rc 1）。線は有効。
+- L103 の `.dmi.txt` / `.mem.txt` は `SPLIT=two DEBOUNCE=3` で作った。`monitor_sdi` は 128 万 frame のほとんどが 49〜52 clock の未知の
+  frame で復号できず、`.dmi.txt`（85 MB）は置いていない（ツールで再生成できる）。
+- L103 の `monitor_sdi` は `--duration 4` なのに 34.8 s 動いた（V203 / V003 は約 4〜5 s）。その `.sr` は 76 MB。
+
+### 分かったこと（L103）
+
+- **RedetectChip（`81 0d 01 03`、応答 `82 0d 01 03`）はクロックに触らない。** 線上の書き込みは FLASH_KEYR（0x40022004）と
+  FLASH_MODEKEYR（0x40022024）に鍵 0x45670123 / 0xCDEF89AB を書く 4 件だけ（3 回とも同じ、`81 0d 01 ff` の後でも同じ）。
+  接続し直さずに済む経路としては、flash の解除が付いてくる点に注意。
+- 5 回の繰り返しは、アクセス列の違いがどれも 1 frame の取りこぼし（番地の取り違え・欠け）で、系統的な差は見えていない。
+  padding / park bit などの bit 単位の比較は `.sr` から。

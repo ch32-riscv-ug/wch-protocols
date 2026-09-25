@@ -1,0 +1,16 @@
+# redo_redetect_3_status_then_redetect.sr: DMI transactions decoded from the wire (t in ms from capture start)
+  115.6305 W dmcontrol    40000001 st=00
+  115.6945 R dmstatus     00000c82 st=01
+  115.8167 R dmcontrol    40000000 st=00
+  116.7394 W data1        40022004 st=00
+  116.8080 W data0        45670123 st=00
+  116.8767 W command      02210000 st=00
+  116.9456 W data1        40022004 st=00
+  117.0141 W data0        cdef89ab st=00
+  117.0828 W command      02210000 st=00
+  117.1518 W data1        40022024 st=00
+  117.2202 W data0        45670123 st=00
+  117.2889 W command      02210000 st=00
+  117.3579 W data1        40022024 st=00
+  117.4265 W data0        cdef89ab st=00
+  117.4951 W command      02210000 st=00
