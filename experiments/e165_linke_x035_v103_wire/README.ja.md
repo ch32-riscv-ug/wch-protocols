@@ -71,6 +71,18 @@ AttachChip の中の memory access(abstract command を組にしたもの)を、
   - 「1 回目は `00`」は、LinkE が 2.1 s のうちに halt を取れなかった回と読める(E167 で、target が無いと 2.1 s で `00`)。
   - E164 の窓の中で読んだ DMSTATUS `0x000c0382` の havereset の出どころは、未確定。
 
+### 2c. 止まった X035 に reset がかかる時刻(2026-09-25 夜の再解析。E168 で havereset を確認した後)
+
+化けた frame も含めて `10`(止める接続)・`21` / `31`(止まった X035 への特殊消去)・`41`(正常な X035 への特殊消去)を洗い直した。
+
+- **DMCONTROL の書込みで ndmreset(bit 1)が立ったものは 1 つも無い**(化けた frame を含めても)。PFIC への書込みも無い。X035 の RST は未接続。
+- `31` の消去の後の AttachChip が読んだ CFGR0 は `0x50`、ACTLR は `0` で、どちらも reset の既定値だった。止める接続(`10`)の後は ACTLR `0xffffffff` / CFGR0 `0x80000000` だったので、その間に register が既定値に戻る reset があった。
+- `31` では、120〜125.7 ms と 130.6〜136.2 ms の塊は化けていて、142.1 ms からの塊は正常だった。**reset は 136〜142 ms の、線が静かな区間に起きている。**
+- 止まった X035 の塊では、frame にならない clock が並ぶ。SWDIO が low のまま SWCLK だけが 99〜236 回刻まれる列(`31` では 99 / 205 / 110、`21` では 236)と、SWDIO high の 99 clock(線の初期化)が 17〜37 回繰り返される列である。正常な X035(`41`、`00_pins_x035`)には、SWDIO low の列は無く、線の初期化も 1 回だけ。
+  - SWDIO が low に張り付くと、START / STOP を作れず frame にならない。**止まった target が SWDIO を low に引いたままになり、LinkE が線の初期化をやり直している**と読める(症状であり、reset の原因ではない見込み)。
+- 止める接続(`10`)の中の化けた書込みには、番地が化けて DMCFGR に当たった `W 0x7d = 0x1ffff7f0`(鍵 `0x5aa5` が無いので効かない見込み)と、未定義の abstract command `0xfff00000` がある。IWDG などへの書込みは無い。
+- 結論: reset を起こした LinkE の操作は、線上には見当たらない。時刻は特殊消去の 136〜142 ms に絞れる。LinkE が繰り返す線の初期化が target を reset したのか、target 自身なのかは、収録からは区別できない。
+
 ### 3. V103 + CH549 WCH-Link の接続(`out/00_pins_v103`)
 
 - **CH549 Link は、すべての DMI を long 形式(START + 85 clock + STOP)で送る**。53 frame すべてがこの形で、short 形式は 1 つも無い。
