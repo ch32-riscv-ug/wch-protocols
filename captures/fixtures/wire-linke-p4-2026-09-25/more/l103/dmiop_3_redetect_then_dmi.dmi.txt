@@ -1,0 +1,19 @@
+# dmiop_3_redetect_then_dmi.sr: DMI transactions decoded from the wire (t in ms from capture start)
+  132.6271 W data1        40022004 st=00
+  132.6955 W data0        45670123 st=00
+  132.7639 W command      02210000 st=00
+  132.8328 W data1        40022004 st=00
+  132.9011 W data0        cdef89ab st=00
+  132.9696 W command      02210000 st=00
+  133.0386 W data1        40022024 st=00
+  133.1071 W data0        45670123 st=00
+  133.1756 W command      02210000 st=00
+  133.2446 W data1        40022024 st=00
+  133.3131 W data0        cdef89ab st=00
+  133.3816 W command      02210000 st=00
+  134.1786 R 0x8          00000000 st=00
+  135.2063 R 0x2          00000000 st=01
+  136.3179 R 0x2          00000000 st=01
+  137.4898 R 0x2          00000000 st=01
+  138.8138 R 0x8          00000000 st=00
+  140.0200 R 0xb          00000000 st=01

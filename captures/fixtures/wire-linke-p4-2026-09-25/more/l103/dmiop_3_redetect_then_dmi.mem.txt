@@ -1,0 +1,5 @@
+# dmiop_3_redetect_then_dmi.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  132.7639 MEMW 40022004 = 45670123 
+  132.9696 MEMW 40022004 = cdef89ab 
+  133.1756 MEMW 40022024 = 45670123 
+  133.3816 MEMW 40022024 = cdef89ab 

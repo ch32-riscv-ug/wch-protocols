@@ -1,0 +1,19 @@
+# dmiop_5_redetect_dmactive_then_dmi.sr: DMI transactions decoded from the wire (t in ms from capture start)
+  159.7081 W data1        40022004 st=00
+  159.7765 W data0        45670123 st=00
+  159.8452 W command      02210000 st=00
+  159.9141 W data1        40022004 st=00
+  159.9827 W data0        cdef89ab st=00
+  160.0513 W command      02210000 st=00
+  160.1204 W data1        40022024 st=00
+  160.1888 W data0        45670123 st=00
+  160.2575 W command      02210000 st=00
+  160.3265 W data1        40022024 st=00
+  160.3950 W data0        cdef89ab st=00
+  160.4637 W command      02210000 st=00
+  161.2851 R 0x8          00000000 st=01
+  162.6748 R 0x8          00000000 st=00
+  164.0376 R 0x2          00000000 st=01
+  165.2910 R 0x2          00000000 st=01
+  166.5319 R 0x2          00000000 st=01
+  167.9810 R 0x8          00000000 st=00
