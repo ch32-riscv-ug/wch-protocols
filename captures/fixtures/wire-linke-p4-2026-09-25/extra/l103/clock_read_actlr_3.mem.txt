@@ -1,0 +1,8 @@
+# clock_read_actlr_3.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  121.6175 MEMW 40022010 = 00008080 
+  121.7121 MEMW 4002200c = 0000b020 
+  122.1708 MEMR 1ffff7e0 = ffff0040 
+  122.2651 MEMR 1ffff7e8 = 3a6dabcd 
+  122.3587 MEMR 1ffff7ec = a282bc48 
+  122.4541 MEMR 1ffff7f0 = ffffffff 
+  125.7697 MEMR 40022000 = 00000001 

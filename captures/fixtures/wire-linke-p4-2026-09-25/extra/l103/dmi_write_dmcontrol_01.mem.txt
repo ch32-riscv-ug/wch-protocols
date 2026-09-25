@@ -1,0 +1,7 @@
+# dmi_write_dmcontrol_01.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  126.3035 MEMW 40022010 = 00008080 
+  126.3981 MEMW 4002200c = 0000b020 
+  126.9467 MEMR 1ffff7e0 = ffff0040 
+  127.0409 MEMR 1ffff7e8 = 3a6dabcd 
+  127.1351 MEMR 1ffff7ec = a282bc48 
+  127.2281 MEMR 1ffff7f0 = ffffffff 

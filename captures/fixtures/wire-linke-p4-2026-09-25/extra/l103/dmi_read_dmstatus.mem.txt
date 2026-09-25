@@ -1,0 +1,7 @@
+# dmi_read_dmstatus.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  125.8826 MEMW 40022010 = 00008080 
+  125.9772 MEMW 4002200c = 0000b020 
+  126.6225 MEMR 1ffff7e0 = ffff0040 
+  126.7159 MEMR 1ffff7e8 = 3a6dabcd 
+  126.8106 MEMR 1ffff7ec = a282bc48 
+  126.9037 MEMR 1ffff7f0 = ffffffff 

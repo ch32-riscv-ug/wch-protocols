@@ -1,0 +1,15 @@
+# option_get.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  124.1461 MEMW 40022010 = 00008080 
+  124.2404 MEMW 4002200c = 0000b020 
+  125.1211 MEMR 1ffff7e0 = ffff0040 
+  125.2155 MEMR 1ffff7e8 = 3a6dabcd 
+  125.3097 MEMR 1ffff7ec = a282bc48 
+  125.4039 MEMR 1ffff7f0 = ffffffff 
+  132.3084 REGW 00001005 = 1ffff800 postexec
+  137.6929 REGR 00001006 = 00ff5aa5 
+  147.4478 REGW 00001005 = 1ffff804 postexec
+  149.1691 REGR 00001006 = 00ff00ff 
+  154.1690 REGW 00001005 = 1ffff808 postexec
+  155.5301 REGR 00001006 = 00ff00ff 
+  160.5648 REGW 00001005 = 1ffff80c postexec
+  161.8463 REGR 00001006 = 00ff00ff 

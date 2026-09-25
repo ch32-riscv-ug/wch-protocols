@@ -1,0 +1,7 @@
+# target_info.sr: abstract-command memory / register accesses (addr from data1, value via data0)
+  126.1412 MEMW 40022010 = 00008080 
+  126.2356 MEMW 4002200c = 0000b020 
+  126.7779 MEMR 1ffff7e0 = ffff0040 
+  126.8725 MEMR 1ffff7e8 = 3a6dabcd 
+  126.9678 MEMR 1ffff7ec = a282bc48 
+  127.0619 MEMR 1ffff7f0 = ffffffff 
