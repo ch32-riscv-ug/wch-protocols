@@ -224,11 +224,17 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 - **V203 の高速区間**: 100 MHz 収録を hold filter なしで読み、START/STOP の判定だけ 3 sample の filter を使うと、99.7 % が parity 一致で区切れる。160 MHz 収録では全 frame が既知の長さになる。
 - **速度設定と clock**(`0x0c` SetSpeed。ch32rv は接続前に family `0x01` で 1 回だけ送る。`captures/tools/linke_speed_table.py`)。接続時の区間は設定に関係なく、long 3.04 µs・short 2.1 µs で一定。
 
-  | 設定 | 接続後の short / burst の SWCLK 周期(L103・V203 とも同じ) |
-  |---|---|
-  | high(`01`、ch32rv の既定) | 約 1.1 µs(0.9 MHz)。flash 書込み中のデータ転送部は約 400 ns(2.5 MHz)、V203 の一部は 60〜100 ns |
-  | medium(`02`) | 約 1.1 µs(high との差は、この 3 操作では見えない) |
-  | low(`03`) | 約 2.1 µs(0.47 MHz、接続時と同じ) |
+  | 設定 | flash 書込み(Program 経路) | 単発の DMI・読出し・burst |
+  |---|---|---|
+  | high(`01`、ch32rv の既定) | **約 400 ns(2.5 MHz)** | 約 1.12 µs(0.89 MHz) |
+  | medium(`02`) | 約 1.12 µs | 約 1.12 µs |
+  | low(`03`) | 約 2.12 µs(0.47 MHz) | 約 2.12 µs |
+
+  L103 で測った([E163](../experiments/e163_linke_speed_codes/README.ja.md))。
+  - 名目の 6 MHz / 4 MHz / 400 kHz には合わない。
+  - 値 `00`・`04`〜`06` は、単発の DMI では high と同じだった。`ff` は low と同じだった。
+  - 接続の後に実の family で SetSpeed を送り直すと効く。
+  - V203 は high の一部の区間が 60〜100 ns 周期で、target によって違う可能性がある。
 
   V003 の SWIO は 3 設定とも同じだった(1 = 約 260 ns、0 = 約 860 ns、パルス周期 約 1.1〜1.2 µs)。
 - **09-11 の X035 fixture を START/STOP で読み直した結果**: short 8,846 個はすべて 53 clock で、parity は全件一致。long 606 個(接続 3 回 × 202)、burst 64 個が出て、4 KiB pattern の書込みも一致した。接続の DMI 列は L103 と同じ形だった(0x7e/0x7d の書込み、haltreq、0x7f = `0x03510601`、CSR 0x7C0、RCC/ACTLR の書き換え、FLASH_CTLR/STATR の書込み、ESIG の読出し)。
