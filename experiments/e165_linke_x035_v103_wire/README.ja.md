@@ -57,6 +57,13 @@ AttachChip の中の memory access(abstract command を組にしたもの)を、
    - **この消去をもう一度くり返し**、最後に CTLR ← 0。
 5. OBR・WPR と `0x08000400` を読む(消えたことの確認)。そのあと、続けて送った AttachChip の通常の列(long 形式の問い合わせ 202 回から)が始まる。
 
+### 2b. 3V3 を含めた収録(`out/40_*`、`out/41_*`、25 MHz、GPIO13 = 3V3)
+
+- `81 0d 01 0a`(3V3 off)→ 1 s → `81 0d 01 09`(on)の間、**GPIO13 は常に 1 だった**(`out/40_x035_3v3_off_on`)。E166 でも、この間 X035 は動き続けた。
+- 特殊消去(正常な X035、1 回目で `0f`)の間も、**GPIO13 は常に 1 だった**(`out/41_x035_special_erase_3v3`)。最初の約 124 ms は SWCLK も SWDIO も high のまま静かで、そのあとに haltreq の塊が始まる。
+- P4 の digital 入力で 1 と読める範囲(おおよそ 2 V 以上)より下には、3V3 は落ちていない。それでも特殊消去では target が reset される(E165 の 2. で havereset)。
+- LinkE が 3V3 の出力を切り、UART の TX や pull-up からの back-power で電源の電位が中途半端に残り、X035 は電源電圧低下で reset する、という読みが考えられる(推定)。ただし `probe power 3v3 off` では X035 は reset されなかったので、特殊消去は別の切り方をしている可能性もある。電圧の測定(テスター・オシロ)が要る。
+
 ### 3. V103 + CH549 WCH-Link の接続(`out/00_pins_v103`)
 
 - **CH549 Link は、すべての DMI を long 形式(START + 85 clock + STOP)で送る**。53 frame すべてがこの形で、short 形式は 1 つも無い。
@@ -77,7 +84,7 @@ AttachChip の中の memory access(abstract command を組にしたもの)を、
 
 ## 未決
 
-- 3V3(GPIO13)を撮って、電源の切断と投入の時刻を見る。
+- 特殊消去の中で target が reset される仕組み。3V3(GPIO13)は digital では常に 1 だったので、電圧の測定が要る。
 - 「1 回目は `00`」が今回起きなかった理由。
 - LinkE が CFGR0 に OR するのは `0x40` か `0x50` か(HPRE `1000` / `0011` などで確かめられる)。
 - LinkE が long 形式に応答する target(V103 を LinkE につなぐ)で、short 形式に切り替えるかどうか。

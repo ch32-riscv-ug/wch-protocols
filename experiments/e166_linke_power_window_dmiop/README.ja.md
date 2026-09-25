@@ -38,5 +38,5 @@ LinkE fw 2.22 では、host が「電源の入れ直し + 起動直後の haltre
 
 ## 未決
 
-- 特殊消去の中で LinkE がどうやって target を reset しているか(3V3 の線は GPIO13 につながっているので、次に P4 を借りたときに撮る)。
+- 特殊消去の中で LinkE がどうやって target を reset しているか。E165 の 2b で 3V3(GPIO13)を撮ったが、off/on の間も特殊消去の間も digital では常に 1 だった。電圧の測定が要る。
 - 失敗した AttachChip の直後の DmiOp(この試験では、成功した AttachChip の有無だけを比べた)。
