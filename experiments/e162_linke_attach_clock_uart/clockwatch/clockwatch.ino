@@ -46,10 +46,14 @@ static void snapshot(bool force) {
 void setup() {
   Serial.begin(115200);
 #ifdef CW_AHB_DIV2
-  // Run at HCLK = F_CPU / 2 (HPRE = /2) so that a debugger resetting HPRE to /1 is visible; USART1 is on APB2
-  // (PPRE2 = /1), so its BRR follows HCLK.
-  REG(RCC_CFGR0) = (REG(RCC_CFGR0) & ~0xF0u) | 0x80u;
-  REG(0x40013808u) = (uint16_t)((F_CPU / 2 + 115200 / 2) / 115200);
+#define CW_HPRE 0x8
+#define CW_HDIV 2
+#endif
+#ifdef CW_HPRE
+  // Run at HCLK = F_CPU / CW_HDIV by writing HPRE = CW_HPRE, so that a debugger resetting HPRE is visible;
+  // USART1 is on APB2 (PPRE2 = /1), so its BRR follows HCLK.
+  REG(RCC_CFGR0) = (REG(RCC_CFGR0) & ~0xF0u) | ((uint32_t)CW_HPRE << 4);
+  REG(0x40013808u) = (uint16_t)((F_CPU / CW_HDIV + 115200 / 2) / 115200);
 #endif
   snapshot(true);
   cw_magic = 0xC10C4A7Cu;

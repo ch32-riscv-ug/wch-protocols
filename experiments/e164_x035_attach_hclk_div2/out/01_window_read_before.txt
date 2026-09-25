@@ -1,0 +1,18 @@
+probe 820d0402161200 speed 820c0101
+special erase 820d0100
+attach 81550101
+redetect 81550102 detach 820d01ff
+Traceback (most recent call last):
+  File "/home/mt/dev_wch/wch-protocols/experiments/e162_linke_attach_clock_uart/x035_fix_user.py", line 70, in <module>
+    assert r.startswith("820d05"), "attach failed"
+           ~~~~~~~~~~~~^^^^^^^^^^
+AssertionError: attach failed
+810d0101                 -> 81550102   (1 ms)
+810c020d03               -> 820c0101   (1 ms)
+810d020f0d               -> 820d0100   (2175 ms)
+810d0102                 -> 81550101   (35 ms)
+810d0103                 -> 81550102   (2 ms)
+810d0102                 -> 81550101   (35 ms)
+810d0102                 -> 81550101   (36 ms)
+810d0102                 -> 81550101   (34 ms)
+810d01ff                 -> 820d01ff   (1 ms)
