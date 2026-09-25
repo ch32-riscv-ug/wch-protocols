@@ -43,6 +43,7 @@ EVT の `SDI_Printf` サンプル。**target が debug data レジスタ(memory-
   - `*DEBUG_DATA0 != 0` の間は待つ(host が前フレーム未消費)。
   - 1 フレーム最大 **7 byte**: `DATA1 = buf[3..7]`(4B)、`DATA0 = count | buf[0]<<8 | buf[1]<<16 | buf[2]<<24`(**低 byte = 長さ(≤7)、上位 3 byte = 先頭 3 文字**)。
   - host は DATA0 低 byte ≠ 0 を見て count + 7 byte を取り出し、`DATA0 = 0` を書いて ACK。
+  - **線上で確認済み**(WCH-LinkE 2.22 → CH32L103、HelloSDI、[2026-09-25 fixture](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md) `more/l103/monitor_sdi`)。LinkE は DMDATA0 を約 29 µs ごとに DMI read する。0 以外なら、文字数が 4 以上のとき DMDATA1 も読み、DMDATA0 に 0 を書く。例: DATA0 `0x74707507`(7 文字、"upt")+ DATA1 `0x20656d69`("ime ")、DATA0 `0x000a0d02`(2 文字、"\r\n")。
 - **DEBUG_DATA0/1 のアドレスは core 世代で違う**(§4 表)。DMI から見た DMDATA0/DMDATA1(`0x04`/`0x05`)と同じ郵便受けの、target 側 memory-mapped view。
 - **DATA0 低 byte の 2 方式に注意**(同じ郵便受け・別 encode):
   - **WCH EVT SDI_Printf**(本節・LinkE が CDC へ forward): 低 byte = **長さ(1..7)**、host は非 0 で読取。

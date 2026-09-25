@@ -60,17 +60,24 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 - これは [riscv-debug-module.ja.md](riscv-debug-module.ja.md) の DMI トランザクションと 1:1(op/status のコード、addr=DMDATA0=`0x04`/DMCONTROL=`0x10` 等がそのまま線上の 7bit addr に乗る)。
 - USB `DmiOp` 応答 `[addr, data_be32, status]` の status(0/2/3)も、この target 位相の 2bit status と同じ。
 
-**LinkE の接続時に出る long 形式（2026-09-25 実測、L103）。** USB `81 0d 01 02`(AttachChip)の低速区間(約 475 kHz)の先頭で、85 clock の frame が 201 個続いた。5 回の接続(`more/l103/repeat*`)の 1005 個はすべて同じ bit 列だった。上の表の 84 bit + 1 clock として区切ると次のようになる。
+**LinkE の接続時に出る long 形式（2026-09-25 実測、L103/V203/V003）。** USB `81 0d 01 02`(AttachChip)の低速区間(約 475 kHz)の先頭に、START + 85 clock + STOP の frame が 202 個並ぶ。short の 52 bit + 終端 1 clock と同じく、上の表の 84 bit + 終端 1 clock と読める。
 
-| 部分 | 値 |
-|---|---|
-| host 位相 | addr `0x11`(DMSTATUS)、data `0`、op `01`(read)、parity `1` |
-| target 位相 | addr `1111101`、data `0xffffffff`、status `11`、parity `1` |
-| 最後の 1 clock | `0` |
+| 部分 | 1 個目 | 2〜202 個目(201 個、5 回の接続で 1005/1005 が同一) |
+|---|---|---|
+| host 位相 | addr `0x11`、data `0x19`、op `00`、parity `0` | addr `0x11`(DMSTATUS)、data `0`、op `01`(read)、parity `1` |
+| target 位相 | addr `0010010`、data `0xffffffff`、status `11`、parity `1` | addr `1111101`、data `0xffffffff`、status `11`、parity `1` |
+| 終端 clock | `0` | `0` |
 
-- target 位相は 1 bit を除いて全部 1 なので、線が pull-up のまま(誰も駆動していない)と読める。**LinkE はまず long 形式で DMSTATUS を問い合わせ、応答が無いので short 形式へ移る**という解釈。ただしこれは推定で、long 形式に応答する target(V103 等)では未確認。
-- この frame の host parity は addr+data+op と合わせて**偶数**になる。表の「odd parity」と合わない。資料の誤りか、この問い合わせだけの値かは未確定(観測した bit 列は 1 種類だけ)。
-- 解析: `captures/tools/linke_repeat_compare.py`(fixture の decoder を使う。実行方法は [captures/README](../captures/README.ja.md)「解析環境(uv)」)。
+- target 位相は data が全部 1 なので、線が pull-up のまま(誰も駆動していない)と読める。**LinkE はまず long 形式で DMSTATUS を問い合わせ、応答が無いので short 形式へ移る**という解釈(推定)。L103 と V203 で同じ列が出る。long 形式に応答する target(V103 等)では未確認。
+- **1 線の V003 でも同じ問い合わせが SWIO の pin に出る**。V003 の接続時には LOW 4.0 / 8.3 / 9.3 / 102 µs の組が 202 回並ぶが、これは L103 の long frame 中の SWDIO の LOW 区間(4.1 / 8.3 / 9.3 / 102.3 µs)と同じ。続けて 0x7e/0x7d 書込みの RVSWD short frame(L103 と同じ LOW 区間の並び)が数回出て、約 2 ms の LOW の後に SWIO の通信が始まる。LinkE は target の線の種類を知らずに、まず 2 線の形で問い合わせていると読める。
+- 2〜202 個目の host parity は addr+data+op と合わせて**偶数**になる。表の「odd parity」と合わない。1 個目は op `00` で、何のための frame かは分からない。
+- 解析: `captures/tools/rvswd.py` / `swio.py` / `linke_repeat_compare.py`(実行方法は [captures/README](../captures/README.ja.md)「解析環境(uv)」)。
+
+**frame の区切り方(実装・解析向け、LinkE 2.22 実測)。** clock の空き時間ではなく、START / STOP で区切る。
+- START: SWCLK が high(アイドル)の間に SWDIO が立ち下がる。高速区間では立ち下がりの約 160 ns 前、低速区間では high の中ほどに来る。
+- STOP: SWCLK が high の間に SWDIO が立ち上がり、その後 SWCLK の high が 2 µs 以上続く。
+- read 中は **target も SWCLK の立ち上がりから 0.3 µs 以内に、high の間に SWDIO を変える**。形の上では START/STOP と同じなので、「frame の外の立下りだけを START とする」「後に長い high が続く立上りだけを STOP とする」という状態の区別が要る。
+- 空き時間で区切ると、低速設定の burst が 46 + 14×(3+35) + 7 のように割れる。また前後の clock を 1 つ取り込むので、read が 54 clock に見える(fixture 付属の `dmi_decode.py` はこの方式で、2,018 件の write を R と表示し、60 frame を取りこぼしていた。値は START/STOP 方式と全件一致)。
 
 ### 52-bit short形式（LinkE + X035/L103実測）
 
@@ -80,11 +87,13 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 
 2026-09-25 の L103 実測([fixture](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md))で、次のことが加わった。
 
-- **write は 53 clock、read は 54 clock**。read は target が 1 clock 多く駆動し、data は 54 clock のうち 15 bit 目からになる。parity の誤りは全操作で 0。09-11 の X035 capture では read も 53 clock として区切れていたので、target による違いか区切り方の違いかは未確定。
-- 同じ操作を 5 回繰り返しても、park/padding(bit 9–13)と末尾(bit 47–52)は run ごとにほぼあらゆる組合せが出た。その状態で parity は一致し、操作もすべて成功した。したがって **don't-care という扱いの根拠が強まった**。
-  - X035 で見えた「bit 9 は常に bit 8(parity)と同値」は L103 では成り立たない。53 clock の frame で一致したのは 480/517 と 575/604 だった。
-  - 5 run 間の frame 数は同じだった(target_info 335、read_ram_256 362)。違いは、いくつかの位置で 53/54/56 clock の区切りが run によって変わることだけ。
-- clock: L103 の高速区間は約 2.5 MHz。接続時の低速区間は約 475 kHz。V203 は高速区間の一部で **SWCLK の周期が 60〜100 ns**(high 約 20〜30 ns)と速く、50 MHz の収録では記録しきれない(fixture は 100 MHz で取り直した)。
+- **read も write も 53 clock**(52 bit + 終端 1 clock。09-11 の X035 と同じ)。START/STOP で区切ると、L103 の全 capture(12 操作 + extra)の 23,447 個と繰返し 5 回分がすべて 53 clock で、header / data の parity はすべて一致した。以前ここに書いた「read は 54 clock」は、空き時間で区切った解析の誤りだった。
+- 同じ操作を 5 回繰り返すと、frame の並びと値は bit 単位で一致した(違いは RAM 上で動いている counter の 1 word だけ)。一方で park/padding(bit 9–13)と末尾(bit 47–52)は run ごとに変わり、53 clock の frame に write で 32 通り、read で 17〜22 通りが出た。その状態で parity は一致し、操作もすべて成功したので、**don't-care という扱いの根拠が強まった**。
+  - X035 で見えた「bit 9 は常に bit 8(parity)と同値」は L103 では成り立たない(618/660、737/775)。
+- burst は 15 word(585 clock)のほかに 7 word(281)と 3 word(129)も出た。長さは常に 15 + 38×N clock。
+- clock: L103 の高速区間は約 2.5 MHz、接続時の低速区間は約 475 kHz。V203 は高速区間の一部で **SWCLK の周期が 60〜100 ns**(high 約 20〜30 ns)。
+  - 50 MHz の収録では記録しきれない。100 MHz では 1 sample のひげと区別しきれない所が残る(99.7 % を parity 一致で復元)。160 MHz なら既知の長さだけに区切れた。
+  - SDI monitor の 25 MHz 収録では、約 0.2 % の frame で clock が 1 つ落ちる。
 
 ### SWIO 1 線との関係(transaction は同じ、bit 符号化だけ違う)
 
@@ -199,8 +208,21 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 2026-09-25 に WCH-LinkE ↔ L103/V203(RVSWD)/V003(SWIO)を ESP32-P4 で収録した。12 操作に加え、速度・DMI 単発・誤り・option byte・読出し保護・clock・monitor・反復・RedetectChip を収めてある([fixture](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md))。上の未解決点のうち、ここで進んだもの:
 
 - **bulk burst の条件(L103)**: `abstractauto = 1` → `data1 = 番地` → `command = 0x02280000`(memory read、postincrement)の直後に 585 clock の burst(15 word)が出て、続く通常の data0 read 1 回で 16 word = 64 byte になる。read_flash_4k で 64 回、read_ram_256 で 4 回。burst 先頭の 14 bit は short packet の先頭と同じ並び(addr `0x04`、read、parity、park、padding 4)で、padding には `0000` / `0100` / `0101` が出た。
-- **long/short**: 接続時に long 形式の DMSTATUS 問い合わせが 201 回出る(§3)。
-- 未解読のまま: L103 の SDI monitor 中に出る 49〜52 clock の frame(約 128 万個)、V203 の高速区間、V003 SWIO の復号。
+- **long/short**: 接続時に long 形式の DMSTATUS 問い合わせが 202 回出る(§3)。
+- **接続の DMI 列(3 target 共通の部分)**: long 形式の問い合わせの後、次の順で進む。
+  1. 非標準の DMI 番地 `0x7e` と `0x7d` に `0x5aa50400` を書く(V003 では続けて `0x7c` = `0x00010403`、`0x7d` = `0x5aa50401` を読む)。
+  2. DMSTATUS を読み、DMCONTROL = `0x80000001`(haltreq)を 2 回書く。**接続中 hart は halt している**。
+  3. `0x7f` を読む。chip ID が返る(L103 `0x10310710`、V003 `0x00300500`)。
+  4. CSR `0x7C0` に `0x300` を書く。
+  5. clock の組み直し(L103/V203 のみ。[pc-to-link](pc-to-link.ja.md) §11)と ESIG の読出し。
+  6. 最後に DMCONTROL = `0x40000001`(resumereq)→ `0x40000000`。
+  - 0x7c〜0x7f は RISC-V Debug 仕様では未定義で、WCH 独自と見られる。意味は分からない。
+- **SDI monitor**(L103、`more/l103/monitor_sdi`): 「49〜52 clock の未知の frame」は、25 MHz 収録で clock を落とした **DMDATA0 の read** だった。LinkE は DMDATA0 を約 29 µs ごとに読み続ける。0 以外(低 byte = 文字数、上位 3 byte = 文字)なら、文字数が 4 以上のとき DMDATA1 も読み、DMDATA0 に 0 を書いて受領を返す。[serial-and-print](serial-and-print.ja.md) §3 の郵便受け方式が線上でもそのまま見える。
+- **V003 SWIO**: 41 パルス(start + addr7 + R/W + data32)と 33 パルス(fast-read)だけで、パルス幅は 1 = 約 260 ns、0 = 約 860 ns(09-11 と同じ)。
+  - メモリの読出しは abstract memory access ではなく、program buffer 8 語に置いた routine を command `0x00040000`(postexec のみ)で実行する方式。番地は data1、値は data0 で受け渡す。
+  - **V003 の接続では RCC に触れない**。
+- **V203 の高速区間**: 100 MHz 収録を hold filter なしで読み、START/STOP の判定だけ 3 sample の filter を使うと、99.7 % が parity 一致で区切れる。160 MHz 収録では全 frame が既知の長さになる。
+- 未解読のまま: 1 個目の long frame(op `00`、data `0x19`)の目的、非標準番地 0x7c〜0x7f の意味、V003 で接続前に 1 個出る 33 パルスの frame。
 
 ## 6. 調査の入口
 

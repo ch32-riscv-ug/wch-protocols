@@ -45,12 +45,18 @@ capture の解析 script は `captures/` の uv project で動かす。Python 3.
 ```console
 cd captures
 uv sync
-SPLIT=two DEBOUNCE=3 uv run python tools/linke_repeat_compare.py l103 target_info read_ram_256
+uv run python tools/rvswd.py fixtures/wire-linke-p4-2026-09-25/l103/target_info.sr        # RVSWD(L103、50 MHz)
+uv run python tools/rvswd.py --k 1 --k-frame 3 fixtures/wire-linke-p4-2026-09-25/v203-100mhz/target_info.sr   # V203 100 MHz
+uv run python tools/swio.py fixtures/wire-linke-p4-2026-09-25/v003/target_info.sr         # SWIO(V003)
+uv run python tools/linke_repeat_compare.py l103 target_info read_ram_256
 ```
 
-- fixture の `tools/dmi_decode.py <dir>` は、`<dir>` の `.dmi.txt` / `.mem.txt` を**上書きする**(SHA256SUMS の対象)。作り直すときは fixture の外へ `.sr` を写してから実行する。
-
-- `tools/linke_repeat_compare.py`: `more/<target>/repeat{1..5}_*` を bit 単位で比べる。区切りには fixture の decoder を使う。出力は frame 数、run 間の差、85 clock frame の中身、don't-care bit の分布。
+- `tools/rvswd.py`: RVSWD を **START/STOP で区切って**復号する。1 行 1 frame で、short(53 clock)は R/W・番地・値・parity、long(85 clock)は host/target 位相、burst(15+38N clock)は各 word を出す。`memory_log()` は abstract command を memory / register access にまとめる。
+  - 区切りの条件と、空き時間で区切る方式の問題は [link-to-target](../protocols/link-to-target.ja.md) §3。
+  - `--k` は bit clock の hold filter で、既定 3 sample。V203 100 MHz では 1 にする。START/STOP の判定だけに使う filter は `--k-frame` で、V203 100 MHz では 3 にする。
+- `tools/swio.py`: SWIO の LOW パルス幅を 500 ns で 0/1 に分け、4 µs の空きで区切る。41 / 33 パルスを復号する。
+- `tools/linke_repeat_compare.py`: `more/<target>/repeat{1..5}_*` を bit 単位で比べる。出力は frame 数、run 間の差、85 clock frame の中身、don't-care bit の分布。
+- fixture 付属の `tools/dmi_decode.py` は空き時間で区切る方式で、一部の write を R と表示し、低速設定の burst を割る(値は rvswd.py と一致)。また `<dir>` の `.dmi.txt` / `.mem.txt` を**上書きする**(SHA256SUMS の対象)ので、使うときは fixture の外へ `.sr` を写してから実行する。
 - 09-11 fixture の `analyze.py` は標準 library だけで動く(uv でも system の python3 でもよい)。
 
 [`fixtures/`](fixtures/) に実機 capture を置く。命名例: `<操作>-<target>-fw<版>.ndjson`。firmware 版で挙動が変わる項目(消去済みセルの read 値など)は**版ごとに**記録する。
