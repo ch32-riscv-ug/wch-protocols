@@ -24,7 +24,7 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 
 ## 3. RVSWD 2 線の線上フレーム(具体)
 
-状態: **形式別**。52-bit short形式はWCH-LinkE + X035実測と複数の実機動作実装により主要境界を`verified`、84-bit long形式は複数資料で`attested`。WCH-LinkEの585-edge bulk burstは構造のみ実測済み。詳細は[実測report](../captures/fixtures/wire-flash-v003-x035-2026-09-11/README.ja.md)。
+状態: **形式別**。52-bit short形式はWCH-LinkE + X035/L103実測と複数の実機動作実装により主要境界を`verified`。84-bit long形式は複数資料で`attested`で、LinkEの接続時にhost位相だけを実測した（targetは応答しない。下記）。WCH-LinkEの585-edge bulk burstは構造のみ実測済み。詳細は実測report [2026-09-11 V003/X035](../captures/fixtures/wire-flash-v003-x035-2026-09-11/README.ja.md) / [2026-09-25 L103/V203/V003](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md)。
 
 **要点: RVSWDはDMI address/data/operation/statusを運ぶが、線上形式は一つではない。** USBの`DmiOp`（cmd `0x08`）から、WCH-Link firmwareがshort/long/burstの選択、busy再試行、内部DMI操作を加えることがあるため、常にbyte列の透過ブリッジとは限らない。
 
@@ -60,11 +60,31 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 - これは [riscv-debug-module.ja.md](riscv-debug-module.ja.md) の DMI トランザクションと 1:1(op/status のコード、addr=DMDATA0=`0x04`/DMCONTROL=`0x10` 等がそのまま線上の 7bit addr に乗る)。
 - USB `DmiOp` 応答 `[addr, data_be32, status]` の status(0/2/3)も、この target 位相の 2bit status と同じ。
 
-### 52-bit short形式（LinkE + X035実測）
+**LinkE の接続時に出る long 形式（2026-09-25 実測、L103）。** USB `81 0d 01 02`(AttachChip)の低速区間(約 475 kHz)の先頭で、85 clock の frame が 201 個続いた。5 回の接続(`more/l103/repeat*`)の 1005 個はすべて同じ bit 列だった。上の表の 84 bit + 1 clock として区切ると次のようになる。
+
+| 部分 | 値 |
+|---|---|
+| host 位相 | addr `0x11`(DMSTATUS)、data `0`、op `01`(read)、parity `1` |
+| target 位相 | addr `1111101`、data `0xffffffff`、status `11`、parity `1` |
+| 最後の 1 clock | `0` |
+
+- target 位相は 1 bit を除いて全部 1 なので、線が pull-up のまま(誰も駆動していない)と読める。**LinkE はまず long 形式で DMSTATUS を問い合わせ、応答が無いので short 形式へ移る**という解釈。ただしこれは推定で、long 形式に応答する target(V103 等)では未確認。
+- この frame の host parity は addr+data+op と合わせて**偶数**になる。表の「odd parity」と合わない。資料の誤りか、この問い合わせだけの値かは未確定(観測した bit 列は 1 種類だけ)。
+- 解析: `captures/tools/linke_repeat_compare.py`(fixture の decoder を使う。実行方法は [captures/README](../captures/README.ja.md)「解析環境(uv)」)。
+
+### 52-bit short形式（LinkE + X035/L103実測）
 
 2026-09-11の実測では、通常packetは`addr7 + R/W1 + parity1 + aux5 + data32 + parity1 + aux5`の52 bitで、その後にSTOP条件が続いた。data/parity位置は8,628 packetsすべてで検算済み。2026-09-20のESP32-P4→X035実機試験では、hostがauxを`10101`/`10111`として駆動する独立実装と同じ方式でDMI read/writeが成立した。**従来ここでbit 48–49をtarget statusと解釈した記述は誤り**で、short direct-DMIではUSB応答のstatusと対応付けない。
 
 さらに4 KiB readbackでは585-edge/15-word burstを64回観測した。park/paddingはLinkEが一定値に固定せず、既存probeが使う`10101`/`10111`とも異なるが、X035はその固定値でも実機動作している。したがって同期語ではなくdon’t-careとして扱う。
+
+2026-09-25 の L103 実測([fixture](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md))で、次のことが加わった。
+
+- **write は 53 clock、read は 54 clock**。read は target が 1 clock 多く駆動し、data は 54 clock のうち 15 bit 目からになる。parity の誤りは全操作で 0。09-11 の X035 capture では read も 53 clock として区切れていたので、target による違いか区切り方の違いかは未確定。
+- 同じ操作を 5 回繰り返しても、park/padding(bit 9–13)と末尾(bit 47–52)は run ごとにほぼあらゆる組合せが出た。その状態で parity は一致し、操作もすべて成功した。したがって **don't-care という扱いの根拠が強まった**。
+  - X035 で見えた「bit 9 は常に bit 8(parity)と同値」は L103 では成り立たない。53 clock の frame で一致したのは 480/517 と 575/604 だった。
+  - 5 run 間の frame 数は同じだった(target_info 335、read_ram_256 362)。違いは、いくつかの位置で 53/54/56 clock の区切りが run によって変わることだけ。
+- clock: L103 の高速区間は約 2.5 MHz。接続時の低速区間は約 475 kHz。V203 は高速区間の一部で **SWCLK の周期が 60〜100 ns**(high 約 20〜30 ns)と速く、50 MHz の収録では記録しきれない(fixture は 100 MHz で取り直した)。
 
 ### SWIO 1 線との関係(transaction は同じ、bit 符号化だけ違う)
 
@@ -74,7 +94,8 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 
 ### まだ不明
 
-- (RVSWD)STOP 条件の波形詳細(SWDIO 遷移のタイミング)、クロック周波数、複数トランザクション間のアイドル規則。
+- (RVSWD)STOP 条件の波形詳細(SWDIO 遷移のタイミング)、複数トランザクション間のアイドル規則。clock 周波数は LinkE 2.22 の実測値がある(上記)が、速度設定(`0x0c`)との対応表はまだ作っていない(`extra/*/speed_*` に収録済み)。
+- (RVSWD)接続時の long 形式の問い合わせ(上記)に target が応答した場合の続き、long/short を選ぶ規則。
 - (RVSWD)7bit addr が RISC-V 標準 DTM(通常 abits 可変)とどう対応するか(WCH は 7bit 固定と観測)。
   - **新しい材料(2026-09-07、Swindle の source 読解)**: BMDA 側は **`dmi->address_width = 8U`** と宣言し、probe 側の responder は **`address as u8`** で受けている(`blackmagic_addon/hosted/remote_rv_protocol.c` / `rs_swindle/src/native/rpc_target/mod.rs`)。→ **8 bit 幅で上位未使用**か、**Swindle が余裕を取っている**かのどちらか。**線上が 7 か 8 かは依然未測定**。
 - (SWIO)動作点のpulse幅とframeは実装・実機検証済み。未確定なのはLOWパルス幅の0/1**許容閾値**、pull-up/open-drain条件の限界、fast-read応答先頭bit。
@@ -174,6 +195,12 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 - RVSWD bulk burstを選ぶcommand条件、termination clockの役割、long/short選択規則、トランザクション間アイドル規則。LinkE 2.22 + X035の52/585構造と位相ごとのclock周期は実測済み。
 - 1/2 線切替 target の判定と entry シーケンス(debug mode 突入の初期化)。
 - `status=2/3`（fail/busy）を意図的に発生させ、shortとbulkの再試行動作を実測する。
+
+2026-09-25 に WCH-LinkE ↔ L103/V203(RVSWD)/V003(SWIO)を ESP32-P4 で収録した。12 操作に加え、速度・DMI 単発・誤り・option byte・読出し保護・clock・monitor・反復・RedetectChip を収めてある([fixture](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md))。上の未解決点のうち、ここで進んだもの:
+
+- **bulk burst の条件(L103)**: `abstractauto = 1` → `data1 = 番地` → `command = 0x02280000`(memory read、postincrement)の直後に 585 clock の burst(15 word)が出て、続く通常の data0 read 1 回で 16 word = 64 byte になる。read_flash_4k で 64 回、read_ram_256 で 4 回。burst 先頭の 14 bit は short packet の先頭と同じ並び(addr `0x04`、read、parity、park、padding 4)で、padding には `0000` / `0100` / `0101` が出た。
+- **long/short**: 接続時に long 形式の DMSTATUS 問い合わせが 201 回出る(§3)。
+- 未解読のまま: L103 の SDI monitor 中に出る 49〜52 clock の frame(約 128 万個)、V203 の高速区間、V003 SWIO の復号。
 
 ## 6. 調査の入口
 
