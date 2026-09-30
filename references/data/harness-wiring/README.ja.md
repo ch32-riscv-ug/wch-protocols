@@ -7,8 +7,10 @@
 ## 生成の仕方
 
 ```sh
-CH32_DEVICE_DATA=../../../../ch32-device-data python3 extract.py
+CH32_DEVICE_DATA=/path/to/ch32-device-data python3 extract.py
 ```
+
+置き場所は決め打ちしない(未指定なら止まる)。読むのは ch32-device-data の consumer 契約の内側(`index/`)だけで、各表を `index/manifest.csv` の sha256 と照合する。読んだ表の commit と sha256 は `source.lock.csv` に書く。
 
 **手書きしない。** ピン表は必ず腐るので、一次データが更新されたら再生成する。
 

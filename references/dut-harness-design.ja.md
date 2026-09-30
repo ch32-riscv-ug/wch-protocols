@@ -331,7 +331,7 @@ ADC を 4ch 全部観測に回して DAC を全部外付けにする案もある
 - 多 lane 側の protocol 仕様: [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)
 - 自己観測で埋めたい穴(SWIO パルス幅 / RVSWD STOP 波形): [../protocols/link-to-target.ja.md](../protocols/link-to-target.ja.md)
 - target 側 print(時間軸に載せるもの (d)): [../protocols/serial-and-print.ja.md](../protocols/serial-and-print.ja.md)
-- **§8 の生成データと抽出スクリプト**: [data/harness-wiring/](data/harness-wiring/README.ja.md)(一次データ = `ch32-device-data/evidence/{debug_wiring,remap_routes}.csv`)
+- **§8 の生成データと抽出スクリプト**: [data/harness-wiring/](data/harness-wiring/README.ja.md)(一次データ = `ch32-device-data/index/{debug_interfaces,pinout}.csv`。読んだ表の commit と sha256 は `source.lock.csv`)
 - series 差の扱い方の先例: [bootloader-survey.ja.md](bootloader-survey.ja.md)
 - 実測の規則(計画 → 実行 → レポート): [../experiments/README.ja.md](../experiments/README.ja.md) / 台帳 [../experiments/LEDGER.ja.md](../experiments/LEDGER.ja.md)
 - board 実ピンの出典: [Waveshare RP2040-Zero wiki](https://www.waveshare.com/wiki/RP2040-Zero) / [TinyGo waveshare-rp2040-zero](https://tinygo.org/docs/reference/microcontrollers/machine/waveshare-rp2040-zero/) / [Waveshare RP2350-Zero wiki](https://www.waveshare.com/wiki/RP2350-Zero)

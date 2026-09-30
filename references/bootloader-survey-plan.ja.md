@@ -107,10 +107,10 @@
 `ch32-device-data` の CSV を join する:
 
 - `index/parts.csv`(104 行) — `flash_bytes`, `sram_bytes`, `vdd_min`, `vdd_max`, `clock_max`, `usb`
-- `evidence/operating_conditions.csv`(2,797 行) — **電圧軸の一次データ**(`series,symbol,parameter,condition,min,typ,max,unit`)
 - `evidence/memory_map.csv`(798 行) — 領域番地
 - `index/capabilities.csv`(1,708 行) — 周辺の有無
-- `evidence/evt_examples.csv`(1,605 行) — EVT sample の全数(対象漏れ検出に使う)
+
+読むのは consumer 契約の内側だけ(`catalog/`・`index/`・`evidence/` のうち「安定」印の表。ch32-device-data の `index/README.ja.md`)。`memory_map` は安定表。電圧は `evidence/operating_conditions` を直接読まず `parts.csv` の `vdd_min`/`vdd_max`(同表から組み直したもの)を使う。EVT sample の全数(対象漏れ検出)は公開面に無いので、要るときは data 担当に整備を要望する。
 
 join key は `series` / `family`。**このリポジトリ側では chip 素性を再入力せず、`series` 列だけ持って参照する**。
 
@@ -672,5 +672,5 @@ stub に asm を選ぶ理由(サイズ以外):
 
 - 既存の分析: [../protocols/wch-iap.ja.md](../protocols/wch-iap.ja.md)(世代 A/B/C)、[../protocols/custom-bootloader.ja.md](../protocols/custom-bootloader.ja.md)(BOOT 領域・HID scratchpad protocol・stub 一覧)
 - 設計側: [bootloader-design-space.ja.md](bootloader-design-space.ja.md)(entry 方式・BL↔Core↔host 契約)
-- chip 素性の join 元: [`ch32-riscv-ug/ch32-device-data`](https://github.com/ch32-riscv-ug/ch32-device-data)(`index/parts.csv`, `evidence/operating_conditions.csv`, `evidence/memory_map.csv`)
+- chip 素性の join 元: [`ch32-riscv-ug/ch32-device-data`](https://github.com/ch32-riscv-ug/ch32-device-data)(`index/parts.csv`, `evidence/memory_map.csv`)
 - 実装可否の現状: [../coverage.ja.md](../coverage.ja.md)
