@@ -109,7 +109,7 @@ wlink 由来の 5 本と minichlink 由来の blob だけ。
 ## 他 repo が持つデータ(ここには置かない)
 
 - **flash 消去後の読み出し値**(系統 A = `0xFFFFFFFF` / B = `0xe339e339`)は
-  `ch32-device-data` の `evidence/flash_geometry.csv` が一次ソース
+  `ch32-device-data` の `index/flash_geometry.csv` が一次ソース
   (`erased_read_word/half/byte_even/byte_odd` = RM 原文、**`blank_check_word` = word 幅に
   正規化した比較用の値**)。当初ここに暫定 CSV を置いていたが、依頼 `R-31`
   ([request-ch32-device-data.ja.md](request-ch32-device-data.ja.md))が反映されたので**削除した**。
