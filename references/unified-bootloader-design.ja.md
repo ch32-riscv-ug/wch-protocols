@@ -44,8 +44,8 @@
 
 | 種別 | 引く先 | 項目 |
 |---|---|---|
-| **chip の事実** | `ch32-device-data` `evidence/flash_geometry.csv` | `blank_check_word` / `fast_program_bytes` / `fast_erase_bytes` / `page_erase_bytes` |
-| 同上 | 同 `evidence/product_attributes.csv` + `index/parts.csv` | Code FLASH 総容量(`CalAddr` を導出するなら必要) |
+| **chip の事実** | `ch32-device-data` `index/flash_geometry.csv` | `blank_check_word` / `fast_program_bytes` / `fast_erase_bytes` / `page_erase_bytes` |
+| 同上 | 同 `index/parts.csv`(`flash_bytes`) | Code FLASH 総容量(`CalAddr` を導出するなら必要) |
 | **protocol / entry の事実** | 本調査 [`port_matrix.csv`](data/bootloader-survey/port_matrix.csv) | `flash_base` / `cal_addr` / `polarity` / `exit_method` / `uart_port` / `baud` / `vid` / `pid_*` / `gpio_pin` / `driver_class` |
 
 ### 2.1 port matrix(13 行 = 12 series + H417 の 2 core)
@@ -321,7 +321,7 @@ HID report ID = 0xAA + pad_size/1024,  pad_size ∈ {128, 1152, 2176, 3200, 4096
 
 移植 1 件に必要なのは **11〜13 個の定数と 2 個の選択**。**数は D1 の選び方で動く**。
 値は [`port_matrix.csv`](data/bootloader-survey/port_matrix.csv) と
-`ch32-device-data` `evidence/flash_geometry.csv` から引ける(§2)。
+`ch32-device-data` `index/flash_geometry.csv` から引ける(§2)。
 
 | # | 名前 | 出所 | 取りうる値 |
 |---|---|---|---|
@@ -358,6 +358,6 @@ HID report ID = 0xAA + pad_size/1024,  pad_size ∈ {128, 1152, 2176, 3200, 4096
 
 - 調査結果: [bootloader-survey.ja.md](bootloader-survey.ja.md) / 調査設計: [bootloader-survey-plan.ja.md](bootloader-survey-plan.ja.md)
 - 移植パラメータ: [`data/bootloader-survey/port_matrix.csv`](data/bootloader-survey/port_matrix.csv)
-- chip の事実: `ch32-device-data` `evidence/flash_geometry.csv`(`blank_check_word` ほか)
+- chip の事実: `ch32-device-data` `index/flash_geometry.csv`(`blank_check_word` ほか)
 - 設計空間の広い議論: [bootloader-design-space.ja.md](bootloader-design-space.ja.md)
 - protocol の詳細: [../protocols/wch-iap.ja.md](../protocols/wch-iap.ja.md) / [../protocols/custom-bootloader.ja.md](../protocols/custom-bootloader.ja.md)

@@ -18,8 +18,9 @@
   coverage.csv      series ごとの網羅状況
   source.lock.csv   読んだ表の出所(ch32-device-data の commit と表ごとの sha256)
 
-読むのは consumer 契約(`index/README.ja.md`「consumer の契約」)の内側だけ。
+読むのは公開面 `index/` だけ(`index/README.md`「Contract for consumers」)。
 各表は `index/manifest.csv` の sha256 と照合し、合わなければ止まる。
+`index/VERSION` が EXPECT_VERSION と違えば止まる(列の削除・改名・書き方の変更で上がる)。
 
 使い方(ch32-device-data の置き場所は決め打ちしない。必ず指定する):
   CH32_DEVICE_DATA=/path/to/ch32-device-data python3 extract.py
@@ -31,6 +32,7 @@ SRC = os.environ.get("CH32_DEVICE_DATA")
 if not SRC:
     sys.exit("CH32_DEVICE_DATA に ch32-device-data の checkout を指定してください")
 IDX = os.path.join(SRC, "index")
+EXPECT_VERSION = "1"   # この script が前提にしている index の列の形
 OUT = os.path.dirname(os.path.abspath(__file__))
 
 # harness が関心を持つ役割の class。これ以外(power/nc/USB/CAN/…)は落とす。
@@ -88,11 +90,20 @@ def write_lock():
     with open(os.path.join(OUT, "source.lock.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["path", "sha256", "commit"])
+        w.writerow(["index/VERSION", EXPECT_VERSION, commit + ("+dirty" if dirty else "")])
         for p, h in READ:
             w.writerow([p, h, commit + ("+dirty" if dirty else "")])
 
 
+def check_version():
+    path = os.path.join(IDX, "VERSION")
+    got = open(path, encoding="utf-8").read().strip() if os.path.exists(path) else "(無し)"
+    if got != EXPECT_VERSION:
+        sys.exit(f"index/VERSION が {got}(想定 {EXPECT_VERSION})。列の変更を index/README.md で確かめてから EXPECT_VERSION を上げる")
+
+
 def main():
+    check_version()
     dbg_rows = read("debug_interfaces.csv")
     pinout = read("pinout.csv")
 

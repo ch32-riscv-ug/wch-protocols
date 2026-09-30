@@ -10,7 +10,7 @@
 CH32_DEVICE_DATA=/path/to/ch32-device-data python3 extract.py
 ```
 
-置き場所は決め打ちしない(未指定なら止まる)。読むのは ch32-device-data の consumer 契約の内側(`index/`)だけで、各表を `index/manifest.csv` の sha256 と照合する。読んだ表の commit と sha256 は `source.lock.csv` に書く。
+置き場所は決め打ちしない(未指定なら止まる)。読むのは ch32-device-data の consumer 契約の内側(`index/`)だけで、各表を `index/manifest.csv` の sha256 と照合し、`index/VERSION` が想定と違えば止まる。読んだ表の commit と sha256 は `source.lock.csv` に書く。
 
 **手書きしない。** ピン表は必ず腐る。**再生成は ch32-device-data 側が FIX したと言ってから**行い、出力に差分が出たら、取り込む前に data 担当へその差分を確認する。
 
