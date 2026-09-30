@@ -30,7 +30,7 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 
 ### 信号とアイドル
 
-- 2 線: **SWDIO(data)/ SWCLK(clock)**。無トランザクション時は**両方 HIGH**。
+- 2 線: **SWDIO(data)/ SWCLK(clock)**。無トランザクション時のレベルは **target で違う**。WCH-LinkE fw 2.22 は、X035 では**両方 HIGH**、L103 / V203 では **SWCLK LOW・SWDIO HIGH** で休ませる([E171](../experiments/e171_linke_rvswd_idle_level/README.ja.md))。L103 は両方 HIGH で約 1 ms 置くと link を失う。X035 は frame の間を SWCLK LOW で休ませると接続できない(oep-probe-arduino、2026-09-23)。
 - pin 名は ARM SWD に似るが**別 protocol**(RISC-V Debug 0.13、designer=WCH)。
 
 ### start / reset

@@ -1,0 +1,25 @@
+captures/fixtures/wire-linke-p4-2026-09-25/l103/dbg_halt.sr	0.20 s	inner: SWCLK=0 SWDIO=1: 25 runs, max 21.90 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 64.91 ms
+captures/fixtures/wire-linke-p4-2026-09-25/l103/dbg_regs.sr	0.32 s	inner: SWCLK=0 SWDIO=1: 347 runs, max 1.12 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 64.52 ms
+captures/fixtures/wire-linke-p4-2026-09-25/l103/dbg_resume.sr	0.19 s	inner: SWCLK=0 SWDIO=1: 18 runs, max 26.28 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 60.85 ms
+captures/fixtures/wire-linke-p4-2026-09-25/l103/dbg_step.sr	0.21 s	inner: SWCLK=0 SWDIO=1: 60 runs, max 0.74 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 63.50 ms
+captures/fixtures/wire-linke-p4-2026-09-25/l103/erase_all.sr	0.26 s	inner: SWCLK=0 SWDIO=1: 11 runs, max 1.02 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 61.44 ms
+captures/fixtures/wire-linke-p4-2026-09-25/l103/flash_pattern4k.sr	0.59 s	inner: SWCLK=0 SWDIO=1: 74 runs, max 39.94 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 54.58 ms
+captures/fixtures/wire-linke-p4-2026-09-25/l103/flash_sketch.sr	0.44 s	inner: SWCLK=0 SWDIO=1: 60 runs, max 22.37 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 60.75 ms
+captures/fixtures/wire-linke-p4-2026-09-25/l103/read_flash_4k.sr	0.26 s	inner: SWCLK=0 SWDIO=1: 20 runs, max 0.57 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 59.59 ms
+captures/fixtures/wire-linke-p4-2026-09-25/l103/read_ram_256.sr	0.20 s	inner: SWCLK=0 SWDIO=1: 18 runs, max 0.74 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 61.69 ms
+captures/fixtures/wire-linke-p4-2026-09-25/l103/reset.sr	0.23 s	inner: SWCLK=0 SWDIO=1: 32 runs, max 22.31 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 65.21 ms
+captures/fixtures/wire-linke-p4-2026-09-25/l103/target_info.sr	0.19 s	inner: SWCLK=0 SWDIO=1: 10 runs, max 4.16 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 59.66 ms
+captures/fixtures/wire-linke-p4-2026-09-25/l103/verify_pattern4k.sr	0.27 s	inner: SWCLK=0 SWDIO=1: 22 runs, max 0.78 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 64.92 ms
+captures/fixtures/wire-linke-p4-2026-09-25/v203/dbg_halt.sr	0.19 s	inner: SWCLK=0 SWDIO=1: 289 runs, max 1.35 ms	edge: SWCLK=0 SWDIO=1: 1 runs, max 0.60 ms
+captures/fixtures/wire-linke-p4-2026-09-25/v203/dbg_regs.sr	0.37 s	inner: SWCLK=0 SWDIO=1: 670 runs, max 1.03 ms	edge: none
+captures/fixtures/wire-linke-p4-2026-09-25/v203/dbg_resume.sr	0.19 s	inner: SWCLK=0 SWDIO=1: 264 runs, max 1.85 ms	edge: SWCLK=0 SWDIO=1: 1 runs, max 0.11 ms
+captures/fixtures/wire-linke-p4-2026-09-25/v203/dbg_step.sr	0.20 s	inner: SWCLK=0 SWDIO=1: 285 runs, max 1.36 ms	edge: SWCLK=0 SWDIO=1: 1 runs, max 0.99 ms
+captures/fixtures/wire-linke-p4-2026-09-25/v203/erase_all.sr	0.28 s	inner: SWCLK=0 SWDIO=1: 272 runs, max 2.00 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 0.40 ms
+captures/fixtures/wire-linke-p4-2026-09-25/v203/flash_pattern4k.sr	0.55 s	inner: SWCLK=0 SWDIO=1: 332 runs, max 1.51 ms	edge: none
+captures/fixtures/wire-linke-p4-2026-09-25/v203/flash_sketch.sr	0.43 s	inner: SWCLK=0 SWDIO=1: 321 runs, max 2.33 ms	edge: SWCLK=0 SWDIO=1: 1 runs, max 0.17 ms
+captures/fixtures/wire-linke-p4-2026-09-25/v203/read_flash_4k.sr	0.26 s	inner: SWCLK=0 SWDIO=1: 278 runs, max 1.41 ms	edge: SWCLK=0 SWDIO=1: 1 runs, max 0.84 ms
+captures/fixtures/wire-linke-p4-2026-09-25/v203/read_ram_256.sr	0.19 s	inner: SWCLK=0 SWDIO=1: 272 runs, max 1.18 ms	edge: SWCLK=0 SWDIO=1: 1 runs, max 0.58 ms
+captures/fixtures/wire-linke-p4-2026-09-25/v203/reset.sr	0.23 s	inner: SWCLK=0 SWDIO=1: 333 runs, max 2.00 ms	edge: SWCLK=0 SWDIO=1: 1 runs, max 0.11 ms
+captures/fixtures/wire-linke-p4-2026-09-25/v203/target_info.sr	0.19 s	inner: SWCLK=0 SWDIO=1: 237 runs, max 1.17 ms	edge: SWCLK=0 SWDIO=1: 2 runs, max 0.38 ms
+captures/fixtures/wire-linke-p4-2026-09-25/v203/verify_pattern4k.sr	0.26 s	inner: SWCLK=0 SWDIO=1: 258 runs, max 1.72 ms	edge: SWCLK=0 SWDIO=1: 1 runs, max 0.39 ms
+captures/fixtures/wire-flash-v003-x035-2026-09-11/wire-x035.sr	1.00 s	inner: SWCLK=1 SWDIO=1: 68 runs, max 10.33 ms	edge: SWCLK=1 SWDIO=1: 2 runs, max 392.96 ms
