@@ -69,7 +69,7 @@
 
 | 事実 | 意味 |
 |---|---|
-| `ch32-device-data` の `index/parts.csv` は **27 series・103 型番**を持つが、**release / availability / EOL の列が無い** | **「資料がある」と「買える」が区別できない** |
+| `ch32-device-data` の `index/parts.csv` は全 series・全型番を持つが、**release / availability / EOL の列が無い** | **「資料がある」と「買える」が区別できない** |
 | EVT の `eval_boards.csv` も**未発売 series に eval board が載っている**(WCH が資料を先行公開する) | eval board の有無は入手可否の代理にならない |
 
 → **`ch32-device-data` へ「入手可否(released / preview / 未発売 / EOL)」の列を依頼する候補。** これが無いと、**D2 の判断を毎回人の知識に頼ることになる**。同型の依頼が [data/harness-wiring/](data/harness-wiring/README.ja.md) にもある。

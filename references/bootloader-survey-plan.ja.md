@@ -106,9 +106,9 @@
 
 `ch32-device-data` の CSV を join する:
 
-- `index/parts.csv`(104 行) — `flash_bytes`, `sram_bytes`, `vdd_min`, `vdd_max`, `clock_max`, `usb`
-- `evidence/memory_map.csv`(798 行) — 領域番地
-- `index/capabilities.csv`(1,708 行) — 周辺の有無
+- `index/parts.csv` — `flash_bytes`, `sram_bytes`, `vdd_min`, `vdd_max`, `clock_max`, `usb`
+- `evidence/memory_map.csv` — 領域番地
+- `index/capabilities.csv` — 周辺の有無
 
 読むのは consumer 契約の内側だけ(`catalog/`・`index/`・`evidence/` のうち「安定」印の表。ch32-device-data の `index/README.ja.md`)。`memory_map` は安定表。電圧は `evidence/operating_conditions` を直接読まず `parts.csv` の `vdd_min`/`vdd_max`(同表から組み直したもの)を使う。EVT sample の全数(対象漏れ検出)は公開面に無いので、要るときは data 担当に整備を要望する。
 

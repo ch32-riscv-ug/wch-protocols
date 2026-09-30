@@ -229,11 +229,11 @@ ADC を 4ch 全部観測に回して DAC を全部外付けにする案もある
 
 | 項目 | 値 | 出典 / confidence |
 |---|---|---|
-| debug 線(1 線 / 2 線 / 両対応 + pad) | **27 series** | `index/debug_interfaces.csv` — **`confirmed`**(各 DS + WCH-Link User Manual、章・ページつき) |
-| 役割 → pad の route | **5,243 組 / 103 型番** | `index/pinout.csv` — **24,828 行が `confirmed`**(pin table zh+en)。uart/spi/i2c/pioc/clock/analog/timer に絞って抽出 |
-| pad の衝突 | **1,118 組**(うち **debug 絡み 47 組**) | 上記からの導出 |
+| debug 線(1 線 / 2 線 / 両対応 + pad) | `debug_pins.csv` | `index/debug_interfaces.csv` — **`confirmed`**(各 DS + WCH-Link User Manual、章・ページつき) |
+| 役割 → pad の route | `routes.csv` | `index/pinout.csv` — ほぼ全行が **`confirmed`**(pin table zh+en)。uart/spi/i2c/pioc/clock/analog/timer に絞って抽出 |
+| pad の衝突 | `pin_conflicts.csv`(`involves_debug` で debug 絡みを分離) | 上記からの導出 |
 
-**穴は無い。27 series すべてに uart/spi/i2c の route がある。**
+**穴は無い。全 series に uart/spi/i2c の route がある**(`coverage.csv`)。件数は生成物を見る。文書には写さない。
 
 ### 8.1 debug 線と、その pad に来る他の役割
 
@@ -301,7 +301,7 @@ ADC を 4ch 全部観測に回して DAC を全部外付けにする案もある
 8. **target 5V 時の扱い**(直列抵抗だけで済む線と、レベル変換が要る線の切り分け)。
 9. **エミュが駆動した時刻と firmware の指示時刻のずれ**。大きければ §3.3 の「Pico が駆動する線は窓から落とす」原則を見直す。
 10. **名前**。DUT harness / bench probe / DUT scope など仮。[dmi-bridge §8.1](../protocols/dmi-bridge.ja.md) に既に `Bench` プロファイルがあるので、`bench` は避けた方がよいかもしれない。
-11. ~~`ch32-device-data` の route データの穴~~ → **穴は無かった**。`index/pinout.csv` に 27 series 全部ある(初版が `evidence/` を読んでいたのが原因。[data/harness-wiring/](data/harness-wiring/README.ja.md) 参照)。
+11. ~~`ch32-device-data` の route データの穴~~ → **穴は無かった**。`index/pinout.csv` に全 series ある(初版が `evidence/` を読んでいたのが原因。[data/harness-wiring/](data/harness-wiring/README.ja.md) 参照)。
 12. **`debug_if = both` の series で 1 線モードに入る手順**(option byte / レジスタ)。`debug_interfaces.csv` は「両対応」までしか言わない。→ [custom-bootloader §2a](../protocols/custom-bootloader.ja.md) の切替レジスタと突き合わせる。
 12b. **MCO をキャプチャ窓に入れて「絶対時間」を「比率」に落とすか**。DUT の MCO(`class = clock`、`pinout.csv` にあり)を同じ窓で撮れば、UART の bit 幅などを **DUT の実コア clock 何周期分**として測れる。HSI ±1% と probe の水晶 ±30 ppm を分離できるので、**timing tolerance の決め方が「両者の誤差を分ける」問題から「比率を測る」問題になる**。1ch 消費。
 13. **[link-to-target](../protocols/link-to-target.ja.md) §1 の「1/2 線 切替可」の列挙に V205 / V407 / V467 / X305 / X315 / H41x を反映するか**。`debug_wiring.csv` は `confirmed` で 15 series を挙げている(§8.3-1)。→ protocol 側の記述変更なので別判断。

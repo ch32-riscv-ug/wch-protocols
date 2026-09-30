@@ -96,7 +96,7 @@
 | repo | 何があるか |
 |---|---|
 | **ch32rv-probe** | `LICENSE` のみ(2026-09-04 初回 commit)。**実装の置き場は確保済み** |
-| **ch32-device-data** | `index/pinout.csv`(24,983 行・103 型番)/ `index/debug_interfaces.csv`(27 series)/ `index/routes.csv` / `index/conflicts.csv`。**引くのは `index/`**(`evidence/` ではない) |
+| **ch32-device-data** | `index/pinout.csv` / `index/debug_interfaces.csv` / `index/routes.csv` / `index/conflicts.csv`。**引くのは `index/`**(`evidence/` ではない) |
 
 ## 3. 論点 → どこにあるか(横断マップ)
 
