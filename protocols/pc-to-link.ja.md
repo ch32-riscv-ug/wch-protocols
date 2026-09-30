@@ -152,7 +152,7 @@ option bytes は通常の page と手順が違う(専用の unlock と OPTPG/OPT
 
 - **RDPR(halfword 0)を最初に書く**。手順 2 で保護が消えた状態が最短で済む。
 - 16 byte は **値 + 補数**の 8 組(`RDPR/nRDPR`、`USER/nUSER`、`DATA0/1`、`WRPR0..3`)。補数は書き手の責任(`0xFF ^ value`)。
-- **`OB_BASE` は family で違う**: 多くは `0x1FFFF800` だが **CH32M030 は `0x1FFFF300`**。全 family 共通と決め打つと M030 で別番地を叩く(`ch32-device-data` の `evidence/option_bytes.csv` / `register_blocks.csv` が family 別の base を持つ)。
+- **`OB_BASE` は family で違う**: 多くは `0x1FFFF800` だが **CH32M030 は `0x1FFFF300`**。全 family 共通と決め打つと M030 で別番地を叩く(`ch32-device-data` の `index/register_map.csv` が family 別の番地を持つ。`block=OB` の行)。
 - **`RDPR` を `0xA5`(保護解除)にする書込は、チップ側で flash 全消去を誘発する**。読み出し保護の解除 = 中身を捨てること、という保護仕様そのもの。復旧手順(unbrick)はこれを利用する。
 - 実機検証(L103): 現在値の round-trip 書込で不変・RDPR 維持・flash 無傷、USER の 1 bit 変更(`0xff`→`0xfd`、補数 `00`→`02`)が read-back に反映。
 

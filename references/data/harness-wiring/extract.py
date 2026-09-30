@@ -16,15 +16,20 @@
   routes.csv        series × pad × 役割(harness が関心を持つ class に絞る)
   pin_conflicts.csv 同一 pad に 2 つ以上の役割が来る組
   coverage.csv      series ごとの網羅状況
+  source.lock.csv   読んだ表の出所(ch32-device-data の commit と表ごとの sha256)
 
-使い方:
-  CH32_DEVICE_DATA=../../../../ch32-device-data python3 extract.py
+読むのは consumer 契約(`index/README.ja.md`「consumer の契約」)の内側だけ。
+各表は `index/manifest.csv` の sha256 と照合し、合わなければ止まる。
+
+使い方(ch32-device-data の置き場所は決め打ちしない。必ず指定する):
+  CH32_DEVICE_DATA=/path/to/ch32-device-data python3 extract.py
 """
-import csv, os, sys
+import csv, hashlib, os, subprocess, sys
 from collections import defaultdict
 
-SRC = os.environ.get("CH32_DEVICE_DATA",
-                     os.path.join(os.path.dirname(__file__), "../../../../ch32-device-data"))
+SRC = os.environ.get("CH32_DEVICE_DATA")
+if not SRC:
+    sys.exit("CH32_DEVICE_DATA に ch32-device-data の checkout を指定してください")
 IDX = os.path.join(SRC, "index")
 OUT = os.path.dirname(os.path.abspath(__file__))
 
@@ -48,12 +53,43 @@ def classify(periph, signal):
     return None
 
 
+def manifest():
+    path = os.path.join(IDX, "manifest.csv")
+    if not os.path.exists(path):
+        sys.exit(f"not found: {path}\nCH32_DEVICE_DATA が ch32-device-data の checkout か確認してください")
+    with open(path, newline="", encoding="utf-8") as f:
+        return {r["path"]: r["sha256"] for r in csv.DictReader(f)}
+
+
+READ = []   # (path, sha256) 読んだ順。source.lock.csv に書く
+
+
 def read(name):
     path = os.path.join(IDX, name)
-    if not os.path.exists(path):
-        sys.exit(f"not found: {path}\nCH32_DEVICE_DATA を指定してください")
+    want = manifest().get(name)
+    if want is None:
+        sys.exit(f"index/manifest.csv に {name} が無い(公開面の外は読まない)")
+    with open(path, "rb") as f:
+        got = hashlib.sha256(f.read()).hexdigest()
+    if got != want:
+        sys.exit(f"index/{name} の sha256 が manifest と違う\n  manifest {want}\n  file     {got}")
+    READ.append((f"index/{name}", got))
     with open(path, newline="", encoding="utf-8") as f:
         return list(csv.DictReader(f))
+
+
+def write_lock():
+    def git(*a):
+        r = subprocess.run(["git", "-C", SRC, *a], capture_output=True, text=True)
+        return r.stdout.strip() if r.returncode == 0 else ""
+    commit = git("rev-parse", "HEAD") or "unknown"
+    # 読んだ表に未 commit の変更があれば、commit だけでは再現できないので印を付ける
+    dirty = git("status", "--porcelain", "--", *(p for p, _ in READ))
+    with open(os.path.join(OUT, "source.lock.csv"), "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["path", "sha256", "commit"])
+        for p, h in READ:
+            w.writerow([p, h, commit + ("+dirty" if dirty else "")])
 
 
 def main():
@@ -147,6 +183,8 @@ def main():
     print(f"pin_conflicts.csv {len(crows)} rows "
           f"({sum(1 for c in crows if c['involves_debug']=='yes')} が debug 絡み)")
     print(f"coverage.csv      {len(cov)} series")
+    write_lock()
+    print(f"source.lock.csv   {len(READ)} tables")
 
 
 if __name__ == "__main__":
