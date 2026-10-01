@@ -23,7 +23,7 @@ WCH-LinkE の AttachChip は、線上で target の RCC を書き換えている
 | CH32X035C8T6(UID `1ff9abcd880ebc48`、OEP の P4 治具の X035F8U6 とは別基板) | `FC928F068181` | `/dev/serial/by-id/usb-wch.cn_WCH-Link_FC928F068181-if01` |
 | CH32V307VCT6 | `38EF8F06BDC2` | `/dev/serial/by-id/usb-wch.cn_WCH-Link_38EF8F06BDC2-if01` |
 
-1. [`clockwatch/clockwatch.ino`](clockwatch/clockwatch.ino) を ArduinoCore-CH32(`ch32-riscv-ug:ch32v`、xpack riscv-none-elf-gcc 14.3.0-1、既定の clock)で build し、`ch32rv flash --reset run` で書く。
+1. [`clockwatch/clockwatch.ino`](clockwatch/clockwatch.ino) を ArduinoCore-CH32RV(当時の FQBN `ch32-riscv-ug:ch32v`、現在は `ch32-riscv-ug:ch32rv`、xpack riscv-none-elf-gcc 14.3.0-1、既定の clock)で build し、`ch32rv flash --reset run` で書く。
    - sketch は 100 ms ごとに `CW <loop> CTLR=… CFGR0=… ACTLR=…` を 115200 baud で送る。baud は起動時の clock から決まる。
    - RCC_CTLR / CFGR0 / CFGR2 / FLASH_ACTLR のどれかが変わるたびに、RAM の `cw_log[]`(`0x20000030`〜)に記録する。
    - `-DCW_AHB_DIV2`(`--build-property "compiler.cpp.extra_flags=-DCW_AHB_DIV2"`)を付けると、起動時に HPRE を /2 にして BRR を合わせ直す(X035 用)。
