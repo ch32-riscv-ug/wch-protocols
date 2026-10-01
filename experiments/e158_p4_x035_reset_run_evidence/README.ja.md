@@ -61,6 +61,14 @@ CYCLE 行（上記）、SUMMARY 行、`cycles.json`。
 
 Phase A / B の SUMMARY と、banner 欠落回（あれば）の register 差分表。
 
+## 再実行(2026-10-01 追記)
+
+この script は core 側の `tests/manual/oep_smoke`(`build()` / `toolchain_bin()`)と `oep_client.v0` に依存する。
+`oep_smoke` は ArduinoCore-CH32RV の `5ce7fcd`(2026-09-30)で消え、architecture 名は `af19242`(2026-10-01)で
+`ch32v` → `ch32rv` に変わった。今の core では動かない。再実行するなら core を **`b3e1513`**(`oep_smoke` が残る最後の commit)で
+別に checkout して `TEST_ARDUINOCORE_CH32_DIR` で指し、その checkout を `ch32-riscv-ug/ch32v` として install する
+(script の FQBN は当時の `ch32-riscv-ug:ch32v:…` のまま)。この手順は試していない。
+
 ## 結果
 
 状態: 完了（2026-09-22）。run: `_runs/E158_20260922T025334Z_default/`（firmware = 確認を「PC が読めた」だけで通す版）、
