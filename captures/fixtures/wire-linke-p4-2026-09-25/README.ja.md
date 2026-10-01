@@ -82,7 +82,7 @@
 | `clock_flash`（`tools/clock_<target>.bin`）→ `clock_read_rcc_0` / `clock_read_actlr_0` → `clock_target_info` → `clock_read_rcc_1` → `clock_dbg_halt` → `clock_read_rcc_2` → `clock_dbg_resume` → `clock_reset` → `clock_read_rcc_3` / `clock_read_actlr_3` | 動いている target の RCC_CTLR / CFGR0（0x40021000+8）と FLASH_ACTLR（0x40022000+4）を各操作の前後で読む |
 | `connect_under_reset` | `--connect-under-reset target info`（NRST は配線していない） |
 
-- `tools/clock_sketch.ino` をビルドした image。V203 は `ch32-riscv-ug:ch32v:CH32V203:pnum=CH32V203C8T6`（PLL 96 MHz）、
+- `tools/clock_sketch.ino` をビルドした image。V203 は `ch32-riscv-ug:ch32v:CH32V203:pnum=CH32V203C8T6`（収録当時の FQBN。core の改名後は `ch32-riscv-ug:ch32rv:`）（PLL 96 MHz）、
   L103 は `CH32L103:pnum=CH32L103C8T6`（既定 8 MHz）、V003 は `CH32V003:pnum=ANY`（既定 24 MHz）。L103 96 MHz / V003 48 MHz は
   core が未対応でビルドできなかった。
 - RCC / ACTLR の読み値（`clock_read_*.bin`、little endian）は 3 target とも全時点で同じ:
