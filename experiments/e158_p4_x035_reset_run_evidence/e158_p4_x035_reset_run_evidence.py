@@ -17,7 +17,7 @@ import time
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, os.environ.get("TEST_OEP_CLIENT_SRC", str(HERE.parents[3] / "dev_oep" / "oep-client-python" / "src")))
-CORE = pathlib.Path(os.environ.get("TEST_ARDUINOCORE_CH32_DIR", str(HERE.parents[2] / "ArduinoCore-CH32")))
+CORE = pathlib.Path(os.environ.get("TEST_ARDUINOCORE_CH32_DIR", str(HERE.parents[2] / "ArduinoCore-CH32RV")))
 sys.path.insert(0, str(CORE / "tests" / "manual" / "oep_smoke"))
 
 from oep_client.v0 import Client, FrameTransport, codec  # noqa: E402
@@ -26,7 +26,7 @@ from oep_client.v0.services import FixtureUart  # noqa: E402
 import oep_smoke  # noqa: E402  (build(), toolchain_bin())
 
 SKETCH = "core_api"
-FQBN = "ch32-riscv-ug:ch32rv:CH32X035:pnum=ANY"
+FQBN = "ch32-riscv-ug:ch32v:CH32X035:pnum=ANY"  # core b3e1513 以前の architecture 名(README「再実行」)
 UART_RX, UART_TX, BAUD = 12, 6, 115200
 BANNER_WAIT_S = 0.6
 CSRS = {"dpc": 0x7B1, "mcause": 0x342, "mepc": 0x341, "mstatus": 0x300, "mtvec": 0x305}
