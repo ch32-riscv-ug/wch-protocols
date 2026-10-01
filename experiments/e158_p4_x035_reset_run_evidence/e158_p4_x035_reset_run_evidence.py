@@ -26,7 +26,7 @@ from oep_client.v0.services import FixtureUart  # noqa: E402
 import oep_smoke  # noqa: E402  (build(), toolchain_bin())
 
 SKETCH = "core_api"
-FQBN = "ch32-riscv-ug:ch32v:CH32X035:pnum=ANY"  # core b3e1513 以前の architecture 名(README「再実行」)
+FQBN = "ch32-riscv-ug:ch32v:CH32X035:pnum=ANY"  # 当時の architecture 名(README「経緯」)
 UART_RX, UART_TX, BAUD = 12, 6, 115200
 BANNER_WAIT_S = 0.6
 CSRS = {"dpc": 0x7B1, "mcause": 0x342, "mepc": 0x341, "mstatus": 0x300, "mtvec": 0x305}
