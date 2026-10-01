@@ -26,11 +26,11 @@ from oep_client.v0.services import FixtureUart  # noqa: E402
 import oep_smoke  # noqa: E402  (build(), toolchain_bin())
 
 SKETCH = "core_api"
-FQBN = "ch32-riscv-ug:ch32v:CH32X035:pnum=ANY"
+FQBN = "ch32-riscv-ug:ch32rv:CH32X035:pnum=ANY"
 UART_RX, UART_TX, BAUD = 12, 6, 115200
 BANNER_WAIT_S = 0.6
 CSRS = {"dpc": 0x7B1, "mcause": 0x342, "mepc": 0x341, "mstatus": 0x300, "mtvec": 0x305}
-# CH32X035: APB1 0x40000000, APB2 0x40010000, AHB 0x40020000 (ArduinoCore-CH32 ch32_registers.h)
+# CH32X035: APB1 0x40000000, APB2 0x40010000, AHB 0x40020000 (ArduinoCore-CH32RV ch32_registers.h)
 REGS = {"RCC_CTLR": 0x40021000, "RCC_CFGR0": 0x40021004, "RCC_APB2PCENR": 0x40021018, "RCC_APB1PCENR": 0x4002101C,
         "RCC_RSTSCKR": 0x40021024, "USART4_STATR": 0x40004C00, "USART4_BRR": 0x40004C08, "USART4_CTLR1": 0x40004C0C,
         "GPIOB_CFGLR": 0x40010C00, "FLASH_ACTLR": 0x40022000}

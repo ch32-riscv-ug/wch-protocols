@@ -30,7 +30,7 @@ X035F8U6 を reset したとき、
 probe firmware は oep-probe-arduino の `examples/Esp32P4X035Probe` そのもの（本 dir の `.ino` は include shim、`sketch.yaml` の `libraries: dir:` で
 隣の checkout を指す）。pytest-embedded-arduino-cli が **毎回 build して転送**してから測る。host 側は oep-client-python（`.env` の `TEST_OEP_CLIENT_SRC`）。
 
-1. DUT sketch は ArduinoCore-CH32 `tests/sketches/basic/core_api` を `CH32_SERIAL_DEFAULT=4` で build（`oep_smoke.build` を流用）。ELF から
+1. DUT sketch は ArduinoCore-CH32RV `tests/sketches/basic/core_api` を `CH32_SERIAL_DEFAULT=4` で build（`oep_smoke.build` を流用）。ELF から
    `ch32_millis_counter` の address を取る。`program_image` で転送・CRC 検証。
 2. fixture.uart を rx=12 / tx=6 で lease、115200。
 3. 1 cycle = `target.control reset(mode=0, confirm=C)` → banner を 600 ms 待つ → halt → dpc / mcause / mepc / mstatus / mtvec と
@@ -65,7 +65,7 @@ Phase A / B の SUMMARY と、banner 欠落回（あれば）の register 差分
 
 状態: 完了（2026-09-22）。run: `_runs/E158_20260922T025334Z_default/`（firmware = 確認を「PC が読めた」だけで通す版）、
 `_runs/E158_20260922T025541Z_default/`（確認を「PC ≠ 0」に締めた版。以降の oep-probe-arduino はこれ）。probe firmware は
-oep-probe-arduino `examples/Esp32P4X035Probe`（esp32 3.3.12 pin）、DUT は ArduinoCore-CH32 `core_api`（9,780 byte、`CH32_SERIAL_DEFAULT=4`）。
+oep-probe-arduino `examples/Esp32P4X035Probe`（esp32 3.3.12 pin）、DUT は ArduinoCore-CH32RV `core_api`（9,780 byte、`CH32_SERIAL_DEFAULT=4`）。
 attach 時の実測 SWCLK（`max_clock_hz`）は 6.29 / 6.42 MHz（half 0 ns）。
 
 | phase | run 1 banner | run 2 banner | 確認 | 「駐留」検出（flags bit2） | reset 所要 median |

@@ -27,11 +27,11 @@ OEP v0 probe（`esp32-d0wd-v3-0070070d9394`、oep-probe-arduino `examples/Esp32V
 - RAM payload を app 実行中から resume すると `mcause=2`（illegal instruction）で app の trap handler に落ちた。app の SysTick ISR が
   payload と同じ RAM 領域（.data/.bss）を書くため。`mstatus=0` を書いてから resume すれば payload は正常に完了する（E135 loader 経路は
   これをしていた）。
-- ArduinoCore-CH32 の `CH32.resetReason()` は初回読み出しで RMVF を書き、PINRSTF を含む全 flag を消す。これが「pin reset 無しの
+- ArduinoCore-CH32RV の `CH32.resetReason()` は初回読み出しで RMVF を書き、PINRSTF を含む全 flag を消す。これが「pin reset 無しの
   boot entry が動く時と動かない時がある」の少なくとも一因。
 
 ## 結論
 
 boot entry の必要条件は「PINRSTF が立っている」ことで、E129 payload はその上で動く。OEP probe には `target.control reset`
 mode 3（NRST pulse）を足し、client の `reset --mode boot` は pin reset → payload の順で行う。core の RMVF をどうするかは利用者判断
-（ArduinoCore-CH32 `docs/todo.ja.md`）。
+（ArduinoCore-CH32RV `docs/todo.ja.md`）。
