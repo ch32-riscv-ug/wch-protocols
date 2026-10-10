@@ -28,7 +28,7 @@
 | ファイル | 判定 | これで作れるもの | 不足(byte 単位で足りない点) |
 |---|---|---|---|
 | [pc-to-link](protocols/pc-to-link.ja.md) | **実装可** | attach/probe info/chip info/setspeed/DMI/**高速バルク read(§5b)**/flash(stub + 直接 FLASH controller)/**option byte 書込(§6b)**/erase/power/monitor/**RV↔ARM mode 切替(§4、両方向 verified)**、**probe firmware の更新・救出・脱出(§10b。ch32rv が実装し実機往復検証済み)** | error 応答 frame 形式(§3 todo)、IAP の異常時応答形式(§10b.5)、§12 の残る未解読 vendor cmd(**`armversion` のみ**。他 4 件は WCH OpenOCD ソースから verified 化)。**IAP entry・中断時の挙動は §10b、mode 切替は §4 で解決** |
-| [riscv-debug-module](protocols/riscv-debug-module.ja.md) | **実装可** | halt/resume/step/read_reg/write_reg/**read_mem32/write_mem32/write_mem16**/breakpoint/semihosting。DMCOMMAND encode の読み方も明記 | abstract autoexec 詳細(軽微) |
+| [riscv-debug-module](protocols/riscv-debug-module.ja.md) | **実装可** | halt/resume/step/read_reg/write_reg/**read_mem32/write_mem32/write_mem16**/breakpoint/semihosting。DMCOMMAND encode の読み方も明記。H417 / LinkE FW 2.22 の hartsel 0 / 1 選択・CSR 読み出しは限定 verified | abstract autoexec 詳細(軽微)、[H417 のコア制御](#h417-core-control) |
 | [pc-usb-driver](protocols/pc-usb-driver.ja.md) | **実装可** | 3 OS で device を開く。Windows 純正(CH375 IOCTL)含む | HID/CDC-GDB probe 系の driver 差(軽微) |
 | [wch-iap](protocols/wch-iap.ja.md) | **実装可** | **3 世代**(BOOT 常駐 / user 先頭 / 旧 V103)の配置・entry 極性・jump、**12 シリーズ表**(FLASH_Base / CalAddr / page / USART・pin・baud / USB ID)、UART・USB frame、コマンド意味(addr 不使用・VERIFY で flush)、派生(HOST/ETH/BLE) | WCHMcuIAP の実 capture、V103 の UART 末尾、V4 系 `SW_Handler` の実体(MRS テンプレート) |
 | [serial-and-print](protocols/serial-and-print.ja.md) | **実装可(USART / SDI target 側)** | USART printf、SDI printf(target・**dmdata 2 方式**)、host dmdata 対応 | — |
@@ -55,6 +55,10 @@
 - SDI/dmdata の **2 方式**(EVT=長さ / ch32fun=`0x80|(count+4)`)を [serial-and-print](protocols/serial-and-print.ja.md) §3 に明記。
 
 **P1 — 要 capture(実機・軽い)**
+
+<a id="h417-core-control"></a>
+
+- **H417 の選択コア制御**: [hartsel 0 / 1 と CSR 読み出し](protocols/riscv-debug-module.ja.md#h417-の単一コア選択と-csr-読み出し)は CH32H417QEU6 / LinkE FW 2.22 の受領 capture 2 セッションで確認(2026-10-10、[依頼 0009 の証拠](captures/fixtures/ch32h417-core-select-2026-10-10/README.ja.md))。残るのはコア 1 宛 haltreq の効果を含む halt / resume / step / reset、DetachChip・再 attach 時の両コア状態・選択保持、他 firmware / 他 H41x、必要なら物理 SWIO capture。実装側は全 DMCONTROL 書き込みで hartsel を保持する改修が必要。ch32rv の CLI 拒否解除だけでは足りない。
 
 1. **WCH-Link error 応答 frame 形式**([pc-to-link](protocols/pc-to-link.ja.md) §3 todo): 異常系(target 無し `0x55` 等)の capture 収集。
 2. **flash/erase/DMI の実 capture** を [captures/fixtures/](captures/fixtures/) に追加(ch32rv `--capture` 取得済み。annotate してコミット)。

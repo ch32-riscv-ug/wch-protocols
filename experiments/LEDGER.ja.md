@@ -13,6 +13,8 @@
 
 ## 1. 採番済み
 
+受領済み capture の収載記録: **ch32rv 依頼 0009(2026-10-10)** — [CH32H417 / LinkE FW 2.22 のコア選択](../captures/fixtures/ch32h417-core-select-2026-10-10/README.ja.md)。同一 attach 内の hartsel `1 → 0 → 1 → 0` と CSR 読み出しを 2 セッションで確認した資料を収載。今回は新規実機実験を行っていないため E 番号は付けず、依頼番号と fixture で参照する。事実・候補・未決は fixture README、残る調査先は [coverage: H417](../coverage.ja.md#h417-core-control)。
+
 機材が用意できることを確認したものだけがここに来る([README.ja.md §3.1](README.ja.md))。ID は再利用も再採番もしない。
 
 | ID | 問い | ベンチ | 影響する doc | 状態 |

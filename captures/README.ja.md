@@ -30,6 +30,10 @@
 
 ## 参照 fixture
 
+### `fixtures/ch32h417-core-select-2026-10-10/`（H417 のコア選択・USB 実測）
+
+[CH32H417QEU6 / LinkE FW 2.22](fixtures/ch32h417-core-select-2026-10-10/README.ja.md)。ch32rv 依頼 0009 の USB capture 2 セッション・出力・構造化結果・測定ソースを保存。hartsel 0 / 1 の選択と CSR 読み出しを確認した。オフライン照合 script を同梱し、halt / resume / step / reset と物理 SWIO は未確認。
+
 ### `fixtures/wire-flash-v003-x035-2026-09-11/`（SWIO/RVSWD 線上実測）
 
 [WCH-LinkE ↔ target 線上 capture](fixtures/wire-flash-v003-x035-2026-09-11/README.ja.md)。LA2016/PulseView 50 MHz の `.sr`、同時間帯の ch32rv USB NDJSON、既知の 4 KiB pattern を V003(SWIO) / X035(RVSWD) の対で保存した。[link-to-target.ja.md](../protocols/link-to-target.ja.md) §3/§5 の検証用。

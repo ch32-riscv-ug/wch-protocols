@@ -61,6 +61,18 @@ payload は「cmd の後」を示す。応答が生バイト(frame 無し)の場
 
 DmiOp が RISC-V Debug Module への窓口。その先の DM レジスタ操作は [riscv-debug-module.ja.md](riscv-debug-module.ja.md)。**この `[addr, data_be32, op]` は RVSWD 線上フレーム(addr7+data32+op2)を byte 詰めしたもの**で、WCH-Link は透過ブリッジ(→ [link-to-target.ja.md](link-to-target.ja.md) §3)。
 
+### 4a. H417 のコア選択を運ぶ DmiOp
+
+**verified の範囲**: WCH-LinkE FW 2.22(serial `49808F06CE30`、`1a86:8010`) → CH32H417QEU6(`0x4170053d` / family `0xc6`)、SWIO → PB9、speed low での hartsel 0 / 1 の選択と CSR 読み出し。専用 vendor コマンドを追加せず、`DmiOp` で標準 DMCONTROL を書く。同一 attach 内で `1 → 0 → 1 → 0`、独立した 2 セッションで確認。[capture と構造化結果](../captures/fixtures/ch32h417-core-select-2026-10-10/README.ja.md)。
+
+| 操作 | command OUT (`0x01`) | command IN (`0x81`) |
+|---|---|---|
+| hartsel 1 を選ぶ | `81 08 06 10 00 01 00 01 02` | `82 08 06 10 00 01 00 01 00` |
+| hartsel 0 を選ぶ | `81 08 06 10 00 00 00 01 02` | `82 08 06 10 00 00 00 01 00` |
+| DMCONTROL を read | `81 08 06 10 00 00 00 00 01` | hartsel 1: `82 08 06 10 00 01 00 01 00` / hartsel 0: `82 08 06 10 00 00 00 01 00` |
+
+末尾の要求 byte は op(`02`=write、`01`=read)、応答 byte は status(`00`=success)。GetProbeInfo は `82 0d 04 02 16 02 00`、AttachChip は `82 0d 05 c6 41 70 05 3d`。CSR 値・busy 完了後の選択・全 DMCONTROL 書き込みでの hartsel 保持要件は [riscv-debug-module](riscv-debug-module.ja.md#h417-の単一コア選択と-csr-読み出し)を参照。H417 の halt / resume / step / reset と attach / detach の内部副作用は、この capture により verified としない。
+
 ## 5. flash 書き込み経路
 
 **データ転送は command EP でなく data EP `0x02`/`0x82` を使う**。frame 化されず、生バイトを data_packet_size 単位(最終 packet は `0xff` pad)で送る。
