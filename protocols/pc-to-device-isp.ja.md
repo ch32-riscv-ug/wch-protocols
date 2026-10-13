@@ -16,7 +16,9 @@ app を bypass して system bootloader を起動させる:
 | 系列 | 選択方式 | 条件 | 備考 |
 |---|---|---|---|
 | **V103 / V20x / V30x / V31x / L103 / V407**(/ V205 / H417 は同族と見られる、未確認) | **BOOT0 / BOOT1 ピン**(reset・電源投入時にラッチ) | `BOOT0=0` → user flash / **`BOOT0=1, BOOT1=0` → system memory(factory ISP)** / `BOOT0=1, BOOT1=1` → SRAM | system memory から起動すると `0x00000000` に alias。STM32 と同じ作法 |
-| **V003 / V00X / X035 / X315** | **ソフトウェア選択のみ**(BOOT ピン無し)。`FLASH_STATR` bit14 `BOOT_MODE`(1 = BOOT 領域 / 0 = user)を `BOOT_MODEKEYR`(`0x40022028`)解錠後に書き、software reset | RM の memory map に「software configuration に依存」と明記(V003/V00X)。X035/X315 は bit13 `BOOT_STATUS`・bit12 `BOOT_AVA` も持つ | **app が協力しないと factory ISP に入れない**(V003 の `START_MODE` 問題の正体)。X035 の factory BL は起動後に **PC17(USB D+)** を button として見る(ch32fun の注記) |
+| **V003 / V00X** | **ソフトウェア選択のみ**(BOOT ピン無し)。`FLASH_STATR` bit14 `BOOT_MODE`(1 = BOOT 領域 / 0 = user)を `BOOT_MODEKEYR`(`0x40022028`)解錠後に書き、software reset | RM の memory map に「software configuration に依存」と明記 | **app が協力しないと factory ISP に入れない**(V003 の `START_MODE` 問題の正体) |
+| **X033 / X035** | **電源投入時の PC17(USB D+)= High**、または上と同じ `BOOT_MODE` + software reset | CH32X035 DS V2.3 ピン表 注 8:「PC17 is the BOOT detection pin. Upon power-up, PC17 is high, causing the chip to enter the BOOT area.」 | **app の協力なしで入れる**(BOOT0 ピンの代わりが PC17)。PC17 を抵抗で 3.3 V へ引く button を持つ板がある(WeAct CH32X035 CoreBoard V1.0 の DOWNLOAD KEY: VDD33 → 5.1 kΩ → PC17、回路図で確認)。button を離す時機の条件は未実測。bit13 `BOOT_STATUS`・bit12 `BOOT_AVA` も持つ |
+| **X305 / X315** | option byte の `START_MD`(既定 1: 電源投入時に BOOT 領域から起動)と `USBFSDLEN` / `USARTDLEN`(既定 1: BOOT の「keyless download」を有効)。ソフトウェアでは `BOOT_MODE` + software reset | CH32X315 RM の option byte 表 | 既定値のままなら **button 無しで電源投入時に factory ISP が応答する**と読めるが、待ち時間・条件は未実測 |
 | M030 | (BOOT 領域無し) | — | factory ISP 自体が無い |
 
 切替レジスタの詳細と自作 BL からの使い方: [custom-bootloader.ja.md](custom-bootloader.ja.md) §2a。
@@ -106,7 +108,7 @@ CH55x 系は device_type が違うため `key[7]` の値が変わるだけで式
 - **USB の実バイトを自前 capture で `verified` 化**(WCHISPTool の USB モードを USBPcap / usbmon で観察。特に ReadConfig の `P[0..1]`、config 12 B の補数位置、Program の `pad` byte の実値)。
 - **UART 経路**の framing(`57 AB` + checksum)と auto-baud、`0xC5` SetBaud の引数 — wchisp からの転記のみ。EVT / AN の「Serial」モード手順と突き合わせる。
 - Erase の `n` に上限(flash 容量超え)を与えたときの挙動、部分消去が実際に効くか(minichlink は「全消去のみ実装」と注記)。
-- chip 系列別の **BOOT pin / option byte による bootloader entry 条件**(RM の "Boot configuration")。V003 は `START_MODE` の設定が要る([wch-iap.ja.md](wch-iap.ja.md) §1 世代 A の切替レジスタと同じ `FLASH->STATR` bit14)。
+- chip 系列別の **BOOT pin / option byte による bootloader entry 条件**(RM の "Boot configuration")。X033 / X035 は DS の PC17 で確定(§1)、X305 / X315 の keyless download は実機未確認。V003 は `START_MODE` の設定が要る([wch-iap.ja.md](wch-iap.ja.md) §1 世代 A の切替レジスタと同じ `FLASH->STATR` bit14)。
 - **IAP(In-Application Programming)は別 protocol**: EVT の `0xAA 0x55` sync + `0x80..0x84` → [wch-iap.ja.md](wch-iap.ja.md)。
 
 ## 6. 調査の入口
