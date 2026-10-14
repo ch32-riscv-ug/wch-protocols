@@ -1,0 +1,270 @@
+[
+ {
+  "periph": "I2C1",
+  "value": 0,
+  "remap_ok": true,
+  "pins": {
+   "PC1": "ok",
+   "PC2": "ok"
+  }
+ },
+ {
+  "periph": "I2C1",
+  "value": 1,
+  "remap_ok": true,
+  "pins": {
+   "PD0": "ok",
+   "PD1": "skip"
+  }
+ },
+ {
+  "periph": "I2C1",
+  "value": 2,
+  "remap_ok": true,
+  "pins": {
+   "PC5": "ok",
+   "PC6": "ok"
+  }
+ },
+ {
+  "periph": "I2C1",
+  "value": 3,
+  "remap_ok": true,
+  "pins": {
+   "PB5": "ok",
+   "PB6": "ok"
+  }
+ },
+ {
+  "periph": "I2C1",
+  "value": 4,
+  "remap_ok": true,
+  "pins": {
+   "PB3": "ok",
+   "PD1": "skip"
+  }
+ },
+ {
+  "periph": "SPI1",
+  "value": 0,
+  "remap_ok": true,
+  "pins": {
+   "PC5": "ok",
+   "PC6": "ok",
+   "PC7": "ok"
+  }
+ },
+ {
+  "periph": "SPI1",
+  "value": 1,
+  "remap_ok": true,
+  "pins": {
+   "PC5": "ok",
+   "PC6": "ok",
+   "PC7": "ok"
+  }
+ },
+ {
+  "periph": "SPI1",
+  "value": 2,
+  "remap_ok": true,
+  "pins": {
+   "PB3": "ok",
+   "PD2": "ok",
+   "PD3": "ok"
+  }
+ },
+ {
+  "periph": "SPI1",
+  "value": 3,
+  "remap_ok": true,
+  "pins": {
+   "PB1": "ok",
+   "PB2": "ok",
+   "PC0": "ok"
+  }
+ },
+ {
+  "periph": "SPI1",
+  "value": 4,
+  "remap_ok": true,
+  "pins": {
+   "PD4": "ok",
+   "PD5": "ok",
+   "PD6": "ok"
+  }
+ },
+ {
+  "periph": "SPI1",
+  "value": 5,
+  "remap_ok": true,
+  "pins": {
+   "PA1": "ok",
+   "PA2": "ok",
+   "PB5": "ok"
+  }
+ },
+ {
+  "periph": "SPI1",
+  "value": 6,
+  "remap_ok": true,
+  "pins": {
+   "PB4": "ok",
+   "PB5": "ok",
+   "PC7": "ok"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 0,
+  "remap_ok": true,
+  "pins": {
+   "PD5": "ok",
+   "PD6": "ok"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 1,
+  "remap_ok": true,
+  "pins": {
+   "PD5": "ok",
+   "PD6": "ok"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 2,
+  "remap_ok": true,
+  "pins": {
+   "PD0": "ok",
+   "PD1": "skip"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 3,
+  "remap_ok": true,
+  "pins": {
+   "PC0": "ok",
+   "PC1": "ok"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 4,
+  "remap_ok": true,
+  "pins": {
+   "PB3": "ok",
+   "PD1": "skip"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 5,
+  "remap_ok": true,
+  "pins": {
+   "PB3": "ok",
+   "PD1": "skip"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 6,
+  "remap_ok": true,
+  "pins": {
+   "PC5": "ok",
+   "PC6": "ok"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 7,
+  "remap_ok": true,
+  "pins": {
+   "PB5": "ok",
+   "PB6": "ok"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 8,
+  "remap_ok": true,
+  "pins": {
+   "PA0": "ok",
+   "PA1": "ok"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 9,
+  "remap_ok": true,
+  "pins": {
+   "PA0": "ok",
+   "PC4": "ok"
+  }
+ },
+ {
+  "periph": "USART2",
+  "value": 0,
+  "remap_ok": true,
+  "pins": {
+   "PA7": "ok",
+   "PB3": "ok"
+  }
+ },
+ {
+  "periph": "USART2",
+  "value": 1,
+  "remap_ok": true,
+  "pins": {
+   "PA4": "ok",
+   "PA5": "ok"
+  }
+ },
+ {
+  "periph": "USART2",
+  "value": 2,
+  "remap_ok": true,
+  "pins": {
+   "PA2": "ok",
+   "PA3": "ok"
+  }
+ },
+ {
+  "periph": "USART2",
+  "value": 3,
+  "remap_ok": true,
+  "pins": {
+   "PD2": "ok",
+   "PD3": "ok"
+  }
+ },
+ {
+  "periph": "USART2",
+  "value": 4,
+  "remap_ok": true,
+  "pins": {
+   "PB0": "ok",
+   "PB1": "ok"
+  }
+ },
+ {
+  "periph": "USART2",
+  "value": 5,
+  "remap_ok": true,
+  "pins": {
+   "PC4": "ok",
+   "PD1": "skip"
+  }
+ },
+ {
+  "periph": "USART2",
+  "value": 6,
+  "remap_ok": true,
+  "pins": {
+   "PA5": "ok",
+   "PA6": "ok"
+  }
+ }
+]

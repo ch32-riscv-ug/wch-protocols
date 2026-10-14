@@ -1,0 +1,107 @@
+[
+ {
+  "periph": "I2C1",
+  "value": 0,
+  "remap_ok": true,
+  "pins": {
+   "PB6": "ok",
+   "PB7": "ok"
+  }
+ },
+ {
+  "periph": "I2C1",
+  "value": 1,
+  "remap_ok": true,
+  "pins": {
+   "PB8": "ok",
+   "PB9": "ok"
+  }
+ },
+ {
+  "periph": "SPI1",
+  "value": 0,
+  "remap_ok": true,
+  "pins": {
+   "PA5": "ok",
+   "PA6": "ok",
+   "PA7": "ok"
+  }
+ },
+ {
+  "periph": "SPI1",
+  "value": 1,
+  "remap_ok": true,
+  "pins": {
+   "PB3": "ok",
+   "PB4": "ok",
+   "PB5": "ok"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 0,
+  "remap_ok": true,
+  "pins": {
+   "PA10": "ok",
+   "PA9": "ok"
+  }
+ },
+ {
+  "periph": "USART1",
+  "value": 1,
+  "remap_ok": true,
+  "pins": {
+   "PB6": "ok",
+   "PB7": "ok"
+  }
+ },
+ {
+  "periph": "USART2",
+  "value": 0,
+  "remap_ok": true,
+  "pins": {
+   "PA2": "ok",
+   "PA3": "ok"
+  }
+ },
+ {
+  "periph": "USART3",
+  "value": 0,
+  "remap_ok": true,
+  "pins": {
+   "PB10": "ok",
+   "PB11": "ok"
+  }
+ },
+ {
+  "periph": "USART3",
+  "value": 1,
+  "remap_ok": false,
+  "pins": {
+   "PC10": "NG(0)",
+   "PC11": "NG(0)"
+  }
+ },
+ {
+  "periph": "USART4",
+  "value": 0,
+  "remap_ok": true,
+  "pins": {
+   "PB0": "ok",
+   "PB1": "ok",
+   "PC10": "NG(0)",
+   "PC11": "NG(0)"
+  }
+ },
+ {
+  "periph": "USART4",
+  "value": 1,
+  "remap_ok": true,
+  "pins": {
+   "PA5": "ok",
+   "PB0": "ok",
+   "PB1": "ok",
+   "PB5": "ok"
+  }
+ }
+]
