@@ -362,7 +362,7 @@ probe 自身の firmware を書き換える経路。**target とは無関係**�
 <!-- BEGIN generated:wchlink-commands section=10b -->
 | request frame(host → probe) | 名前 | 応答 | status | 受理 / 効果 | 範囲(probe fw · chip) | 根拠 | 説明 |
 |---|---|---|---|---|---|---|---|
-| `81 0f 01 01` | <a id="cmd-iap-entry"></a>**IAP entry** | (なし。probe は IAP mode で再列挙) | `verified` | yes / yes | LinkE 2.22 | usb-capture; WCH-LinkUtility V3.00 capture | §10b |
+| `81 0f 01 01` | <a id="cmd-iap-entry"></a>**IAP entry** | (なし。probe は IAP mode で再列挙) | `verified` | yes / yes | LinkE 2.12 2.13 2.22 | usb-capture; WCH-LinkUtility V3.00 capture | §10b。送った時点の probe の fw(2.12 / 2.13 / 2.22)で確認 |
 <!-- END generated:wchlink-commands section=10b -->
 
 <a id="iap-frame"></a>

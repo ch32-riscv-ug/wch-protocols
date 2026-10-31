@@ -32,7 +32,7 @@ cmd-arm-version,4,ArmVersion,,,,,,todo,source,,,,unknown,unknown,openocd=wlink_a
 cmd-mode-to-dap,4,モード切替 RISC-V → DAP,81 ff 01 41,0xff,0x41,,(なし。probe は PID 8012 で再列挙),verified,hw-log,linke,2.22,-,yes,yes,,wlink; cjacker/wchlinke-mode-switch,通常の command EP へ送る
 cmd-mode-to-riscv,4,モード切替 DAP → RISC-V,81 ff 01 52,0xff,0x52,,(なし。probe は PID 8010 で再列挙),verified,hw-log,linke,2.22,-,yes,yes,,wlink; cjacker/wchlinke-mode-switch,DAP device(PID 8012)の interface 0 の OUT EP `0x02` へ送る
 cmd-dmi-op,4,DmiOp,81 08 06 {addr} {data:be32} {op},0x08,,addr:u8 data:be32 op:u8,82 08 06 {addr} {data:be32} {status},verified,usb-capture; wire-capture,linke,2.22,V003 V103 V203 V307 X035 L103 H417,yes,yes,,wlink; probe-rs; RINS,op: 0 nop / 1 read / 2 write。status: 0 success / 2 failed / 3 busy(再試行)。1 件が線上の DMI 1 frame になる
-cmd-iap-entry,10b,IAP entry,81 0f 01 01,0x0f,0x01,,(なし。probe は IAP mode で再列挙),verified,usb-capture,linke,2.22,-,yes,yes,,WCH-LinkUtility V3.00 capture,§10b
+cmd-iap-entry,10b,IAP entry,81 0f 01 01,0x0f,0x01,,(なし。probe は IAP mode で再列挙),verified,usb-capture,linke,2.12 2.13 2.22,-,yes,yes,,WCH-LinkUtility V3.00 capture,§10b。送った時点の probe の fw(2.12 / 2.13 / 2.22)で確認
 cmd-erase-flash,5,EraseFlash(chip 全体),81 02 01 01,0x02,0x01,,,verified,usb-capture; wire-capture,linke,2.22,L103 V203 V003,yes,yes,,wlink,LinkE 自身が MER で消す(stub を使わない)。APB1PCENR = 0 のまま終わる。後に AttachChip を送る
 cmd-set-write-memory-region,5,SetWriteMemoryRegion,81 01 08 {addr:be32} {len:be32},0x01,,addr:be32 len:be32,,verified,usb-capture,linke,2.22,V003 V103 V203 V307 X035 L103,yes,yes,,wlink,
 cmd-write-flash-op,5,WriteFlashOP(stub を送る),81 02 01 05,0x02,0x05,,,verified,usb-capture; wire-capture,linke,2.22,V003 V103 V203 V307 X035 L103,yes,yes,,wlink,直後に data EP へ family の stub を data packet 単位で送る
