@@ -13,7 +13,7 @@ RISC-V は **Debug Spec**(External Debug Support)で、デバッガがチップ�
 
 標準が決めているのは「DMI で DM レジスタを読み書きできること」まで。**DMI を物理的にどう運ぶか**(JTAG か、独自 2 線か、独自 1 線か)はベンダ裁量。WCH はここを独自化した:
 
-- **WCH-Link ↔ target の線**(SWIO 1 線 / RVSWD 2 線)= WCH 独自の DMI 物理転送。→ [link-to-target.ja.md](../protocols/link-to-target.ja.md)(未解読)。
+- **WCH-Link ↔ target の線**(SWIO 1 線 / RVSWD 2 線)= WCH 独自の DMI 物理転送。→ [link-to-target.ja.md](../protocols/link-to-target.ja.md)(主要な frame は LinkE fw 2.22 の線で `verified`)。
 - **PC ↔ WCH-Link の USB**= その DMI トランザクションを USB に載せる WCH 独自プロトコル。`DmiOp`(cmd `0x08`)が 1 DMI トランザクション = `[addr, data_be32, op]` を運ぶ。→ [pc-to-link.ja.md](../protocols/pc-to-link.ja.md)(verified)。
 
 だから **PC 側から見ると、DM レジスタへの read/write を USB frame で送るだけ**で RISC-V 標準のデバッグが全部できる。DM の使い方(abstract command でレジスタを読む、program buffer でメモリを読む 等)は [riscv-debug-module.ja.md](../protocols/riscv-debug-module.ja.md) にまとめた。これは**ベンダ非依存**なので、他社 RISC-V にも通じる知識。
@@ -55,7 +55,7 @@ L2 の下、PC 側には「OS のドライバが device を握り、ツールが
 
 ## B. reverse engineering の方法論
 
-このプロジェクトの鉄則(原設計案 §3): **先行実装は「仕様書として読む」だけ**。wlink / minichlink / probe-rs / RINS / WCH OpenOCD の記述は出発点。**自分の実機 capture で裏を取ってから `verified`** にし、裏の取れないものは実装しない。
+**先行実装は「仕様書として読む」**。wlink / minichlink / probe-rs / RINS / WCH OpenOCD の記述は出発点で、**自分の実機 capture で裏を取ってから `verified`** にする。裏の取れていない項目も status を付けて載せる。
 
 ### B-1. capture の取り方
 
@@ -74,23 +74,17 @@ capture した NDJSON は **replay**(オフライン再生)できる: 記録さ�
 
 ### B-3. status の規律
 
-各プロトコル項目に status を付ける(この repo 共通語彙):
+各プロトコル項目に status を付ける。語彙と、受理・効果・範囲の扱いは [README の status 語彙](../README.md#status) が唯一の定義。
 
-- `verified` — **自前の実機 capture で確認**。最上位。根拠(どの capture / 実機)を併記する。
-- `attested` — 複数の独立した先行実装が一致。実機未確認。
-- `single-source` — 単一実装のみに存在。
-- `conflict` — 実装間で矛盾。**要 capture で解決**。
-- `todo` — 存在の証拠(関数名・文字列)のみ。中身不明。
-
-**裏が取れるまで実機に流す実装をしない**。特に破壊的操作(erase、option byte、power-off erase)は capture で受理と結果を両方確認してから。
+破壊的な操作(erase、option byte、power-off erase)は、受理(probe の応答)と結果(target の状態)の両方を capture で確かめてから `verified` にする。
 
 ## C. 実装で踏む落とし穴(実測)
 
 新しくツールを書く人が同じ穴に落ちないよう、実機で確認した罠を挙げる(詳細と family 差は [pc-to-link.ja.md](../protocols/pc-to-link.ja.md) §quirk)。
 
-- **消去済みセルの debug read 値が family で違う**: V20x/V30x は `0xe339e339`(LinkE の placeholder。実セルは 0xff)、X035/V003 は素直に `0xff`。→ **erase 成否は read 値でなく FLASH controller の STATR で判定**する。
+- **消去済みセルの debug read 値が family で違う**: V20x/V30x は `0xe339e339`、X035/V003 は `0xff`。どちらもチップ自身の値(RM に明記)。→ **erase 成否は read 値でなく FLASH controller の STATR で判定**する。
 - **LinkE の壊れ読み値**: 別ツールを使った後などに、family byte は正しいまま **chip ID と UUID が同一 word の繰り返し**になることがある。再 attach でも target 電源断でも直らない(**probe 側の状態**)。復旧は RedetectChip(`0x0d 0x03`)+ detach + 再 attach。
-- **速い bulk read 直後の stale データ**(CH549 で実測): stub 実行直後の高速 bulk read が **program 前の古い flash 像**(0xff やゴミ)を返すことがある。→ 照合は権威ある DMI 読みで再確認する。偽の verify-mismatch の原因。
+- **長い bulk read の残りが次の読みに混ざる**(CH549 で実測): 1 要求の転送が host の timeout を越えると、host が取り消した後も probe は残りを送り続け、それが次の data EP の読みに現れる。→ 1 要求を 16 KiB 程度に区切り、1 転送を timeout より十分短くする([pc-to-link.ja.md](../protocols/pc-to-link.ja.md) §5b)。
 - **CH32V103 の attach quirk**: AttachChip が生きた GPR `s1`/`x9` を chip id で上書きし復元しない。resume 後に program が s1 を使う瞬間 fault する(V103 固有)。→ **attach 後に soft-reset** してレジスタを再構築させる。
 - **大 image で probe が固まる**: 十数 KB の書込中に bulk timeout → probe 無応答化 → USB 再接続でのみ復旧(`USBDEVFS_RESET` 不可)。chunk 化とタイムアウト設計で回避。
 - **firmware 2.11(v31)は download --reset 後に走らない**(2.12 で解消)。版チェックは**正規化値**(`major*10+minor`)で比較(probe-rs は `v_major != 2 && v_minor < 7` の比較ミスがある — 真似しない)。

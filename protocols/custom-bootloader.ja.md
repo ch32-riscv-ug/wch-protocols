@@ -1,6 +1,6 @@
 # custom bootloader(経路 ③: DFU / UF2 / UART / HID / OTA)
 
-状態: **reference / attested**(実装事例は多数。§2a の BOOT 領域は RM から転記、§2b の HID bootloader protocol は rv003usb / ch32fun / minichlink のソースから byte 単位で転記 → **実装可**。自前 capture 未)。層は L3(各 bootloader protocol)。経路 ③ — user が自分で焼く bootloader。factory ISP([pc-to-device-isp.ja.md](pc-to-device-isp.ja.md))や WCH IAP([wch-iap.ja.md](wch-iap.ja.md))とは別で、DFU/UF2/UART/HID/network など transport が多彩。
+状態: **`attested`**(事例の節は解説。実装事例は多数。§2a の BOOT 領域は RM から転記、§2b の HID bootloader protocol は rv003usb / ch32fun / minichlink のソースから byte 単位で転記 → **実装可**。自前 capture 未)。層は L3(各 bootloader protocol)。経路 ③ — user が自分で焼く bootloader。factory ISP([pc-to-device-isp.ja.md](pc-to-device-isp.ja.md))や WCH IAP([wch-iap.ja.md](wch-iap.ja.md))とは別で、DFU/UF2/UART/HID/network など transport が多彩。
 
 ## 1. bootloader の種類(格納場所で分ける)
 

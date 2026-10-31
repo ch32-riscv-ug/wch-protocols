@@ -2,7 +2,7 @@
 
 PC と WCH-Link/WCH-LinkE 間の USB bulk protocol。この repo で最も裏取りが進んでいる領域(大半 `verified` = 実機 capture 済み)。層の位置づけは L2 転送(USB bulk)+ L3(WCH-Link コマンド)。DMI の中身(RISC-V Debug Module の使い方)は [riscv-debug-module.ja.md](riscv-debug-module.ja.md)。
 
-status 語彙: `verified`(自前 capture)/ `attested`(複数実装一致)/ `single-source` / `conflict` / `todo`。多くの項目は先行実装(wlink / probe-rs / minichlink / RINS / board-identify)から転記し、実機で確認して昇格した。
+status の語は [README の status 語彙](../README.md#status) のとおり。多くの項目は先行実装(wlink / probe-rs / minichlink / RINS / board-identify / WCH OpenOCD)から転記し、実機で確認したものを `verified` にしている。
 
 ## 1. USB 識別
 
@@ -186,7 +186,7 @@ option bytes は通常の page と手順が違う(専用の unlock と OPTPG/OPT
 |---|---|---|
 | SerialDMDATA | host が DMI で DMDATA0(`0x04`)/DMDATA1(`0x05`)を polling。target→host frame: data0 低 byte=`0x80\|(count+4)`、上位 3B+data1=payload。ACK は data0 に host 入力(bit7 クリア)を書く。**core は running のまま** | **verified**(V203 で連続受信) |
 | SDI enable/disable | **enable=`81 0d 02 ee 00`、disable=`ee 01`**(フラグは直感と逆)。応答 payload[0]=`0x00` 成功/`0xff` 非対応。LinkE 専用 | **verified** |
-| UART bridge | probe の CDC port を読むだけ(物理 UART 配線が要る) | 実装済み(未実機) |
+| UART bridge | probe の CDC port を読むだけ(物理 UART 配線が要る)。flash の直後に CDC の配送が止まることがあり、port を開き直すと戻る | `verified`(LinkE、ArduinoCore-CH32RV の実機ログ) |
 
 - **SDI enable 手順**: GetProbeInfo → SetSpeed(family=`0x01` placeholder)→ AttachChip → **SetSpeed(実 family)** → **SDI enable = `81 0d 02 ee 00`**。詰まりやすい点: enable のフラグが逆(`ee 01` は disable)、AttachChip 後に実 family で SetSpeed 再送が要る。
 
@@ -218,7 +218,8 @@ family byte(probe-rs より転記。状態: attested):
 | 表記の三重性 | raw `02 0c` = 正規化 `2.12` = WCH 表示 `v32`(`major*10+minor`) | attested |
 | 既知不良版 | **2.11(v31): download --reset 後に target が走らない**。2.12 で解消 | verified |
 | SDI print 要件 | firmware 2.10 以降 | single-source |
-| 版比較の罠 | probe-rs は `v_major != 2 && v_minor < 7` の比較ミス。**正規化値で比較**すること | 教訓 |
+
+- 版の比較は正規化した値(`major*10+minor`)で行う。probe-rs は `v_major != 2 && v_minor < 7` と書いていて、major が 2 の版を素通りさせる。
 
 ## 10b. probe firmware の更新(IAP)
 

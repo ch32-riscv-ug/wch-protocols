@@ -6,7 +6,7 @@
 
 WCH の CH32 RISC-V マイコンを**書き込み・デバッグする際の protocol** を、層ごとに解読・検証してためる知識ベース。特定言語のツールに依存しない仕様(byte レイアウト・レジスタ番地・手順)を置き、Python / Rust / C など任意の言語でツールを作るときの一次資料にする。
 
-一次実装([ch32rv](../ch32rv) を含む先行実装)は「仕様書として読む」対象。ここに載せる内容は**実機 capture で裏を取ってから** `verified` にし、裏の取れないものは status を明示する。
+先行実装(wlink / probe-rs / minichlink / WCH OpenOCD / [ch32rv](https://github.com/ch32-riscv-ug/ch32rv) など)は「仕様書として読む」対象。ここに載せる項目には、どこまで裏が取れているかを [status](#status) で明示する。`verified` は自前の実機での確認があるものだけに付ける。未確認の項目を使うかどうかは実装側が status を見て決める。
 
 ## この repo の位置づけ(運用)
 
@@ -39,21 +39,45 @@ target(チップ)に到達する経路は 4 つあり、通る層が違う。詳
 
 ## いまわかっていること(status)
 
-| 領域 | ファイル | 状態 |
+| 領域 | ファイル | status([語彙](#status)) |
 |---|---|---|
-| PC 側 USB ドライバ層(**Windows は 2 系統**) | [protocols/pc-usb-driver.ja.md](protocols/pc-usb-driver.ja.md) | Windows **verified** / 他 attested |
-| PC ↔ WCH-Link(USB) | [protocols/pc-to-link.ja.md](protocols/pc-to-link.ja.md) | **大半 verified**(実機 capture 済み) |
-| RISC-V Debug Module(DMI 上) | [protocols/riscv-debug-module.ja.md](protocols/riscv-debug-module.ja.md) | **大半 verified** |
-| WCH-Link ↔ target(SWIO/RVSWD 線) | [protocols/link-to-target.ja.md](protocols/link-to-target.ja.md) | **V003 SWIOはend-to-end verified** / RVSWD主要frame verified（許容限界は未測定） |
-| PC ↔ target(factory ISP、USB / UART シリアル) | [protocols/pc-to-device-isp.ja.md](protocols/pc-to-device-isp.ja.md) | **attested**(3 実装一致、USB 経路は byte 化・自前 capture 未) |
-| **WCH IAP**(EVT の app 内 bootloader、UART / USB 書込。3 世代・12 シリーズ) | [protocols/wch-iap.ja.md](protocols/wch-iap.ja.md) | **attested・実装可**(EVT 転記、自前 capture 未) |
-| target 側シリアル I/O(USART printf / SDI printf、全シリーズ表) | [protocols/serial-and-print.ja.md](protocols/serial-and-print.ja.md) | **attested**(WCH 公式 EVT ソース) |
-| custom bootloader(BOOT 領域表・切替レジスタ・HID scratchpad BL protocol、DFU/UF2/UART/OTA 事例) | [protocols/custom-bootloader.ja.md](protocols/custom-bootloader.ja.md) | **reference / attested**(BOOT 領域・HID BL は実装可) |
-| software USB(V003 系の bit-bang USB。hardware USB 無し chip) | [protocols/software-usb.ja.md](protocols/software-usb.ja.md) | **reference / attested** |
-| CMSIS-DAP(ARM mode) | [protocols/dap.ja.md](protocols/dap.ja.md) | **todo** |
-| 自作 probe / host ツール landscape(採用事例・言語・リンク) | [references/probe-ecosystem.ja.md](references/probe-ecosystem.ja.md) | **reference** |
+| PC 側 USB ドライバ層(**Windows は 2 系統**) | [protocols/pc-usb-driver.ja.md](protocols/pc-usb-driver.ja.md) | Windows `verified` / 他 `attested` |
+| PC ↔ WCH-Link(USB) | [protocols/pc-to-link.ja.md](protocols/pc-to-link.ja.md)(コマンド表の正本は [protocols/data/wchlink-commands.csv](protocols/data/wchlink-commands.csv)) | 大半 `verified`(LinkE fw 2.22 / CH549 fw 2.12)。一部 `single-source` / `refuted` |
+| RISC-V Debug Module(DMI 上) | [protocols/riscv-debug-module.ja.md](protocols/riscv-debug-module.ja.md) | 大半 `verified` |
+| WCH-Link ↔ target(SWIO/RVSWD 線) | [protocols/link-to-target.ja.md](protocols/link-to-target.ja.md) | V003 の SWIO は end-to-end `verified`、RVSWD の主要 frame は `verified`(LinkE fw 2.22)。電気的な許容限界は `todo` |
+| PC ↔ target(factory ISP、USB / UART シリアル) | [protocols/pc-to-device-isp.ja.md](protocols/pc-to-device-isp.ja.md) | USB は X035(BTVER 2.60)で `verified`、他の系列は `attested`。UART は `attested` |
+| **WCH IAP**(EVT の app 内 bootloader、UART / USB 書込。3 世代・12 シリーズ) | [protocols/wch-iap.ja.md](protocols/wch-iap.ja.md) | `attested`(EVT 転記、自前 capture なし) |
+| target 側シリアル I/O(USART printf / SDI printf、全シリーズ表) | [protocols/serial-and-print.ja.md](protocols/serial-and-print.ja.md) | `attested`(WCH 公式 EVT ソース)。SDI の線上の poll は `verified` |
+| custom bootloader(BOOT 領域表・切替レジスタ・HID scratchpad BL protocol、DFU/UF2/UART/OTA 事例) | [protocols/custom-bootloader.ja.md](protocols/custom-bootloader.ja.md) | `attested`(BOOT 領域・HID BL)。事例の節は解説 |
+| software USB(V003 系の bit-bang USB。hardware USB 無し chip) | [protocols/software-usb.ja.md](protocols/software-usb.ja.md) | `attested`(解説が主) |
+| CMSIS-DAP(ARM mode) | [protocols/dap.ja.md](protocols/dap.ja.md) | `todo`(mode 切替だけ `verified`) |
+| 自作 probe / host ツール landscape(採用事例・言語・リンク) | [references/probe-ecosystem.ja.md](references/probe-ecosystem.ja.md) | 索引(status の対象外) |
 
-status 語彙: `verified`(自前 capture で確認)/ `attested`(複数の先行実装が一致)/ `single-source`(単一実装のみ)/ `conflict`(実装間で矛盾。要 capture)/ `todo`(存在の証拠のみ) / `draft`(**解読ではなく自前設計**。実装・実測は未)。
+<a id="status"></a>
+
+## status 語彙(この repo の唯一の定義)
+
+仕様の各項目・各行に次のどれか 1 語を付ける。ほかの文書はこの節を参照し、定義を書き写さない。
+
+| 語 | 意味 | 必要な根拠 |
+|---|---|---|
+| `verified` | 自前の実機で確認した。**範囲(probe の variant と fw、chip)を併記する** | 自前の USB capture、線の capture、実機ログ、ADC などの計測。範囲の外には及ばない |
+| `refuted` | 自前の実機で、主張(byte 列、受理、効果)が成り立たないことを確認した。範囲を併記する | `verified` と同じ |
+| `attested` | 独立した複数の先行実装・資料が一致している。自前の実機では見ていない | 実装 2 つ以上(source の行を併記) |
+| `single-source` | 1 つの実装・資料にしか無い(例: WCH OpenOCD の source だけ) | その 1 つの出典 |
+| `conflict` | 実装・資料の間で食い違っている | 食い違う出典の両方 |
+| `todo` | 存在の証拠(関数名、文字列)しか無い | — |
+| `draft` | 解読ではなく自前の設計。実装・実測は未 | — |
+
+規則:
+
+- **「受理された」と「効果があった」は別に判定する。** probe が `82 …` で応答しても、target に効いたとは限らない(例: SetPower は LinkE fw 2.22 で受理されるが 3V3 は切れない)。機械可読の表([protocols/data/](protocols/data/README.md))は `accepted` と `effect` を別の列に持ち、人向けの 1 語は次の順で決める。
+  1. 範囲内で効果を測った: 効いた → `verified`、効かなかった → `refuted`。
+  2. 効果は測っていないが受理を測った: 受理されなかった(`ff` 応答など) → `refuted`。受理された → 効果についての出典の数で `attested` / `single-source` を付け、受理の実測は `accepted` 列と本文に書く。
+  3. 実機で何も測っていない: 出典の数で `attested` / `single-source` / `conflict` / `todo`。
+- 根拠の種類は `evidence` 列に書く: `usb-capture` / `wire-capture` / `hw-log` / `adc` / `impl-agree` / `source` / `binary`。source や binary を読んだだけのものは `verified` にしない。
+- 範囲の外(別の fw、別の chip)へは status を広げない。範囲ごとに行を分ける。
+- `references/data/bootloader-survey/` の CSV の `confidence` 列は、まだこの語彙に揃えていない(そこでの `verified` は「binary / source を機械的に照合した」の意味)。
 
 各ドキュメントの**実装可否判定と、穴・次に集める情報**は [coverage.ja.md](coverage.ja.md)。
 

@@ -40,7 +40,7 @@ python3 extract8.py   # U11: WCH 純正 OpenOCD の loader 目録(事実のみ)
 - すべての行に `source_file` + `source_line`(または `basis` に `(L…)`)を持たせる。
 - 数値は**式と評価値の両方**を残す(`64K-24K` と `40960`)。
 - 末尾 3 列は `#,confidence,basis`(姉妹 repo `ch32-device-data` と同じ)。
-  `confidence` の語彙は wch-protocols 側(`verified` / `attested` / `single-source` / `conflict` / `todo`)。
+  `confidence` の語は wch-protocols の status 語彙から取っているが、意味はまだ揃えていない。ここでの `verified` は「binary / source を機械的に照合した」の意味で、実機での確認ではない([README の status 語彙](../../../README.md#status))。
 
 ## テーブル
 

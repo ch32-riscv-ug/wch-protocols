@@ -1,6 +1,6 @@
 # software USB(V003 系: hardware USB を持たない chip の bit-bang USB)
 
-状態: **reference / attested**(一次 OSS = rv003usb / ch32fun から転記。自前 capture 未)。層は **L1 物理 + L2 転送を firmware で合成**する特殊な層。
+状態: **`attested`**(解説が主。一次 OSS = rv003usb / ch32fun から転記。自前 capture 未)。層は **L1 物理 + L2 転送を firmware で合成**する特殊な層。
 
 CH32V003(QingKe V2A)や CH32V00x・CH641 は **USB peripheral を持たない**。それでも USB 機器として振る舞うために、**2 本の GPIO を D+/D− に見立て、USB 1.1 low-speed を丸ごとソフトで叩く**のが software USB。代表実装は [rv003usb](https://github.com/cnlohr/rv003usb)(cnlohr)。これは:
 

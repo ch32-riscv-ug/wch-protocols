@@ -397,18 +397,18 @@ TEST_BANNER_GIT = "BANNER_GIT"
 
 ## 6. 証拠の水準 — 何をもって `verified` と呼ぶか
 
-status 語彙([../README.md](../README.md))と対応させる。**自己申告は `verified` にならない。**
+status 語彙は [../README.md の status 語彙](../README.md#status) が唯一の定義。ここでは、実験の種類ごとにどの根拠(`evidence` 列の値)を出せるかだけを決める。**自己申告は `verified` にならない。**
 
-| 主張の種類 | 必要な証拠 | 到達できる status |
-|---|---|---|
-| 線上の波形・パルス幅・クロック | **ロジックアナライザ / オシロ**での独立観測 | `verified` |
-| USB の byte 列 | usbmon / Wireshark の capture | `verified` |
-| protocol の往復・値・順序 | 実機ログ(銘板つき)+ **独立実装 2 つの一致** | `verified` |
-| 同上、実装 1 つのみ | 実機ログ | `attested` |
-| 性能・時間 | MCU 内で計測した数値(§7-2) | `attested`(条件を明記すれば実用上十分) |
-| firmware の自己申告のみ | — | **`attested` 止まり** |
-| **線の bit 列・符号化**(パルス幅を含まない) | host Arduino core での GPIO 遷移列 | `attested`(符号のみ。波形は §6 の 1 行目が要る) |
-| **時間・性能を host Arduino core で測った値** | — | **証拠にしない**(仮想時計) |
+| 主張の種類 | 必要な証拠 | `evidence` | 出せる status |
+|---|---|---|---|
+| 線上の波形・パルス幅・クロック | **ロジックアナライザ / オシロ**での独立観測 | `wire-capture` | `verified` / `refuted`(範囲つき) |
+| USB の byte 列 | usbmon / Wireshark / ch32rv `--capture` | `usb-capture` | `verified` / `refuted`(範囲つき) |
+| protocol の往復・値・順序 | 実機ログ(銘板つき) | `hw-log` | `verified` / `refuted`(範囲つき)。独立実装の一致があれば併記する |
+| 電圧・電流 | ADC / テスタ | `adc` | `verified` / `refuted`(範囲つき) |
+| 性能・時間 | MCU 内で計測した数値(§7-2) | `hw-log` | `verified`(条件を範囲として明記) |
+| firmware の自己申告のみ | — | — | status を上げない |
+| **線の bit 列・符号化**(パルス幅を含まない) | host Arduino core での GPIO 遷移列 | — | 符号の `attested` 止まり。波形は 1 行目が要る |
+| **時間・性能を host Arduino core で測った値** | — | — | **証拠にしない**(仮想時計) |
 
 線層(SWIO のパルス幅など)を firmware の自己申告で `verified` にしない。probe が「送ったつもり」の値と線に出た波形は別物で、[link-to-target.ja.md](../protocols/link-to-target.ja.md) の穴はまさにそこにある。
 
