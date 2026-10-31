@@ -64,11 +64,13 @@
 | misa (`CSR 0x301`) | `0x40901127` | `0x40901127` |
 | dpc (`CSR 0x7b1`) | `0x201003b0` | `0x00000000` |
 
-両コアは選択直後から anyhalted / allhalted が立っていた。コア 1 宛の haltreq は発行しておらず、その効果は未実測。コア 1 の dpc が 0 の理由も未確認。DMSTATUS の上位状態 bit はセッション間で変化し、ackhavereset は発行していないので、**DMSTATUS 全 word をコア識別値にしない**。選択の確認には DMCONTROL readback と mhartid / marchid / mimpid を使う。
+両コアは選択直後から anyhalted / allhalted が立っていた。コア 1 の dpc が 0 の理由は未確認。DMSTATUS の上位状態 bit はセッション間で変化し、ackhavereset は発行していないので、**DMSTATUS 全 word をコア識別値にしない**。選択の確認には DMCONTROL readback と mhartid / marchid / mimpid を使う。
 
-**実装上の要件(制御の実測とは別)**: 選択した hartsel を状態として保持し、halt / resume / reset / ack と要求クリア時を含む全 DMCONTROL 書き込みに反映する。上の基本操作のコア 0 固定値をそのまま書くと選択が 0 に戻る。ch32rv の現行実装に対する依頼書もこの点を指摘しており、CLI の拒否解除だけでは足りない。
+**コア 1 の実行制御**(`verified`、同じ chip / LinkE FW 2.22、ch32rv 2026-10-10 の実機 capture): hartsel 1 を保ったまま、step(PC が `0x000026c0` へ進む)、resume、halt ができる。同じ attach の中で、running の DMSTATUS `0x00430c82` からコア 1 宛の haltreq(DMCONTROL ← `0x80010001`)で halted の `0x004f0382` になり、前後の mhartid は 1、最後の DMCONTROL は `0x00010001` だった。コア 1 のメモリ読出しは DMI の abstract command で行った。
 
-**未確認**: 選択コアの halt / resume / step / reset、DetachChip・再 attach 時の両コア状態と選択保持、他 probe firmware・他 H41x、物理 SWIO capture。測定コードは Flash・option byte・一般メモリの書き込み、erase、reset を行っていない(DMCONTROL と abstract CSR 読み出し用 DM 作業レジスタは書く)。LinkE 内部の attach / detach 副作用は USB capture から保証しない。残る調査は [coverage の H417 項目](../coverage.ja.md#h417-core-control)に整理する。
+**実装上の要件**: 選択した hartsel を状態として保持し、halt / resume / reset / ack と要求クリア時を含む全 DMCONTROL 書き込みに反映する。上の基本操作のコア 0 固定値をそのまま書くと選択が 0 に戻る。
+
+**未確認**: 選択コアの reset、DetachChip・再 attach 時の両コア状態と選択保持、高速 bulk read([pc-to-link](pc-to-link.ja.md) §5b)が hartsel を保つか、他 probe firmware・他 H41x、物理 SWIO capture。測定では Flash・option byte の書き込み、erase、reset を行っていない。LinkE 内部の attach / detach 副作用は USB capture から保証しない。残る調査は [coverage の H417 項目](../coverage.ja.md#h417-core-control)に整理する。
 
 ## breakpoint の土台
 

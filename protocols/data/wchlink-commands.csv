@@ -1,0 +1,48 @@
+id,section,name,request_frame,cmd,sub,payload,response,status,evidence,scope_probe,scope_fw,scope_chip,accepted,effect,aliases,source,note
+cmd-get-probe-info,4,GetProbeInfo,81 0d 01 01,0x0d,0x01,,82 0d 04 {fw_major} {fw_minor} {variant} {fw_mode},verified,usb-capture,linke,2.22,-,yes,yes,,wlink; probe-rs; minichlink,"variant: 1=CH549 / 2,0x12=LinkE / 3=LinkS / 4=DAPLink / 5,0x85=LinkW。fw_mode: 0=RISC-V / 1=ARM。実測: LinkE `02 16 12 00`(2.22)、CH549 `02 0c 01 00`(2.12)"
+cmd-get-probe-info,4,GetProbeInfo,81 0d 01 01,0x0d,0x01,,82 0d 04 02 0c 01 00,verified,usb-capture,ch549,2.12,-,yes,yes,,ch32rv replay target-info-v103,
+cmd-get-probe-info-extra-bytes,4,GetProbeInfo(payload に余分な byte),81 0d 02 01 13,0x0d,0x01,13,82 0d 04 02 16 12 00,verified,usb-capture,linke,2.22,-,yes,yes,,,probe は payload の先頭 byte を sub と読み、残りを無視して GetProbeInfo として答える。RstOut のつもりでこの frame を送ると RST は動かず、続く DmiOp の read が busy(data `ffffffff`)になる
+cmd-get-probe-info-extra-bytes,4,GetProbeInfo(payload に余分な byte),81 0d 02 01 13,0x0d,0x01,13,82 0d 04 02 0c 01 00,verified,usb-capture,ch549,2.12,-,yes,yes,,,
+cmd-attach-chip,4,AttachChip,81 0d 01 02,0x0d,0x02,,82 0d 05 {family} {chip_id:be32},verified,usb-capture; wire-capture,linke,2.22,V003 V103 V203 V205 V307 V407 X035 X315 L103 M030 H417 V006,yes,yes,,wlink; probe-rs; board-identify,target が無いと 4 byte の応答、または `81 55 01 xx`。接続の間 hart を halt し、target の clock を組み直して戻さない(§11)
+cmd-attach-chip,4,AttachChip,81 0d 01 02,0x0d,0x02,,82 0d 05 {family} {chip_id:be32},verified,usb-capture,ch549,2.12,V103,yes,yes,,,
+cmd-redetect-chip,4,RedetectChip,81 0d 01 03,0x0d,0x03,,82 0d 01 03,verified,wire-capture,linke,2.22,L103,yes,yes,,board-identify,target を reset せずに probe に把握し直させる。線上では FLASH_KEYR / MODEKEYR に鍵を書く 4 件だけで clock に触らない。RedetectChip だけの状態では続く DmiOp は target に届かない(応答はデータ 0・状態 0)
+cmd-detach-chip,4,DetachChip,81 0d 01 ff,0x0d,0xff,,82 0d 01 ff,verified,usb-capture; wire-capture,linke,2.22,L103 V203 V003 X035,yes,yes,wlink=OptEnd,,線上は `W dmcontrol 0x40000001` → `R dmstatus` → `W dmcontrol 0x40000000`(dmactive = 0 で DM を reset)
+cmd-set-power-3v3,4,SetPower 3V3 on,81 0d 01 09,0x0d,0x09,,82 0d 01 …,attested,impl-agree,linke,2.22,-,yes,unknown,,minichlink pgm-wch-linke.c; wlink,3.3 V 出力を入れる
+cmd-set-power-3v3,4,SetPower 3V3 off,81 0d 01 0a,0x0d,0x0a,,,refuted,adc,linke,2.22,-,yes,no,,E167,受理されるが 3V3 は 3.24 V のまま(target なしで ADC 測定)
+cmd-set-power-3v3,4,SetPower 3V3 on,81 0d 01 09,0x0d,0x09,,,attested,impl-agree,ch549,2.12,V103(一体型ボード),yes,unknown,,,受理される
+cmd-set-power-3v3,4,SetPower 3V3 off,81 0d 01 0a,0x0d,0x0a,,,refuted,hw-log,ch549,2.12,V103(一体型ボード),yes,no,,,受理されるが target は走り続ける
+cmd-set-power-5v,4,SetPower 5V on,81 0d 01 0b,0x0d,0x0b,,82 0d 01 …,attested,impl-agree,linke,2.22,-,yes,unknown,,minichlink pgm-wch-linke.c; wlink,5 V 出力を入れる
+cmd-set-power-5v,4,SetPower 5V off,81 0d 01 0c,0x0d,0x0c,,,attested,impl-agree,linke,2.22,-,yes,unknown,,minichlink; wlink; E167,受理される。5V の線は未測定(3V3 は 3.24 V のまま)
+cmd-set-power-5v,4,SetPower 5V on,81 0d 01 0b,0x0d,0x0b,,,attested,impl-agree,ch549,2.12,V103(一体型ボード),yes,unknown,,,受理される
+cmd-set-power-5v,4,SetPower 5V off,81 0d 01 0c,0x0d,0x0c,,,refuted,hw-log,ch549,2.12,V103(一体型ボード),yes,no,,,受理されるが target は走り続ける
+cmd-chip-info,4,ChipInfo,81 11 01 05,0x11,0x05,,(frame なしの生 20 byte),verified,usb-capture,linke,2.22,V203 V205 V307 H417 M030,yes,yes,,board-identify; wlink,`[0:2]` 不明 / `[2:4]` flash KiB(BE)/ `[4:12]` UID / `[12:16]` 解釈未確立 / `[16:20]` chip_id(BE)。UID と `[12:16]` の読み方は §9
+cmd-check-flash-protection,4,CheckFlashProtection / UnprotectFlash,81 01 01 01,0x01,0x01,,,conflict,impl-agree,,,-,unknown,unknown,,probe-rs; wlink,sub `0x02` = UnprotectFlash。cmd `0x01` は §5 の SetWriteMemoryRegion と同じ番号で、実装は読出し保護に cmd `0x06` を使う。写し間違いの疑い
+cmd-check-read-protect,4,CheckReadProtect,81 06 01 01,0x06,0x01,,82 06 01 {01=保護 / 02=非保護},verified,hw-log,linke,2.22,V203 L103,yes,yes,,wlink; probe-rs,
+cmd-unprotect,4,Unprotect(読出し保護の解除),81 06 01 02,0x06,0x02,,,verified,hw-log,linke,2.22,V203,yes,yes,,wlink; probe-rs,option page を消して読出し保護を外す。チップは code flash を全消去する
+cmd-soft-reset,4,soft reset(Reset sub 0x01),81 0b 01 01,0x0b,0x01,,,verified,wire-capture; hw-log,linke,2.22,L103 V203 V003,yes,yes,,wlink; probe-rs,線上は haltreq ×2 → PFIC_CFGR `0xE000E048` ← `0xBEEF0080`(SYSRST)。haltreq を立てたまま reset するので hart は reset vector で止まって出てくる
+cmd-soft-reset,4,soft reset(Reset sub 0x01),81 0b 01 01,0x0b,0x01,,,verified,hw-log,ch549,2.12,V103,yes,yes,,,reset 後に hart は走り出していた(線は未取得)
+cmd-chip-reset,4,ChipReset(Reset sub 0x02),81 0b 01 02,0x0b,0x02,,,conflict,source,,,-,unknown,unknown,openocd=wlink_chip_reset,WCH OpenOCD wlinke.c L1057-1060,転記が 2 通りある(`81 0b 02` と、len を補った `81 0b 01 02`)。原文の再確認が要る
+cmd-set-speed,4,SetSpeed,81 0c 02 {family} {speed},0x0c,,family:u8 speed:u8,82 0c 01 01,verified,usb-capture; wire-capture,linke,2.22,L103 V203 V003,yes,yes,,wlink; probe-rs; E163,speed: high=`01` / medium=`02` / low=`03`(逆順)。attach 前は family に `01` を送る。範囲外の値も拒否されず応答は常に `82 0c 01 01`。線上の速さは link-to-target §5
+cmd-get-rom-ram,4,GetRomRam,81 0d 01 04,0x0d,0x04,,82 0d 04 …,single-source,source,,,-,unknown,unknown,openocd=wlink_getromram,WCH OpenOCD wlinke.c L758-772,CODE / RAM 分割の照会。応答 4 byte の `[3]` が構成番号で、意味は chip_type ごとに変わる
+cmd-rst-out,4,RstOut on,81 0d 01 13,0x0d,0x13,,82 0d 01 00,single-source,source; usb-capture,linke,2.22,-,yes,unknown,openocd=wlink_rstout,WCH OpenOCD wlinke.c L1394-1400; ch32rv 03e4e44,RST の線を low に駆動する(配線していれば target の NRST)。受理は実測、線の電気的な効果は未測定
+cmd-rst-out,4,RstOut off,81 0d 01 14,0x0d,0x14,,82 0d 01 00,single-source,source; usb-capture,linke,2.22,-,yes,unknown,openocd=wlink_rstout,WCH OpenOCD wlinke.c L1394-1400; ch32rv 03e4e44,RST の線を離す
+cmd-rst-out,4,RstOut on,81 0d 01 13,0x0d,0x13,,82 0d 01 ff,refuted,usb-capture,ch549,2.12,-,no,no,,ch32rv 03e4e44,`ff` = 対応していない
+cmd-disable-debug,4,DisableDebug,81 0e 01 01,0x0e,0x01,,,single-source,source,,,-,unknown,unknown,openocd=wlink_disabledebug,WCH OpenOCD wlinke.c L1781-1786,target の debug 機能を落とす
+cmd-arm-version,4,ArmVersion,,,,,,todo,source,,,,unknown,unknown,openocd=wlink_armversion,,名前だけがあり、byte 列は source にも無い
+cmd-mode-to-dap,4,モード切替 RISC-V → DAP,81 ff 01 41,0xff,0x41,,(なし。probe は PID 8012 で再列挙),verified,hw-log,linke,2.22,-,yes,yes,,wlink; cjacker/wchlinke-mode-switch,通常の command EP へ送る
+cmd-mode-to-riscv,4,モード切替 DAP → RISC-V,81 ff 01 52,0xff,0x52,,(なし。probe は PID 8010 で再列挙),verified,hw-log,linke,2.22,-,yes,yes,,wlink; cjacker/wchlinke-mode-switch,DAP device(PID 8012)の interface 0 の OUT EP `0x02` へ送る
+cmd-dmi-op,4,DmiOp,81 08 06 {addr} {data:be32} {op},0x08,,addr:u8 data:be32 op:u8,82 08 06 {addr} {data:be32} {status},verified,usb-capture; wire-capture,linke,2.22,V003 V103 V203 V307 X035 L103 H417,yes,yes,,wlink; probe-rs; RINS,op: 0 nop / 1 read / 2 write。status: 0 success / 2 failed / 3 busy(再試行)。1 件が線上の DMI 1 frame になる
+cmd-iap-entry,10b,IAP entry,81 0f 01 01,0x0f,0x01,,(なし。probe は IAP mode で再列挙),verified,usb-capture,linke,2.22,-,yes,yes,,WCH-LinkUtility V3.00 capture,§10b
+cmd-erase-flash,5,EraseFlash(chip 全体),81 02 01 01,0x02,0x01,,,verified,usb-capture; wire-capture,linke,2.22,L103 V203 V003,yes,yes,,wlink,LinkE 自身が MER で消す(stub を使わない)。APB1PCENR = 0 のまま終わる。後に AttachChip を送る
+cmd-set-write-memory-region,5,SetWriteMemoryRegion,81 01 08 {addr:be32} {len:be32},0x01,,addr:be32 len:be32,,verified,usb-capture,linke,2.22,V003 V103 V203 V307 X035 L103,yes,yes,,wlink,
+cmd-write-flash-op,5,WriteFlashOP(stub を送る),81 02 01 05,0x02,0x05,,,verified,usb-capture; wire-capture,linke,2.22,V003 V103 V203 V307 X035 L103,yes,yes,,wlink,直後に data EP へ family の stub を data packet 単位で送る
+cmd-write-flash-confirm,5,確認,81 02 01 07,0x02,0x07,,82 02 01 07,verified,usb-capture,linke,2.22,V003 V103 V203 V307 X035 L103,yes,yes,,wlink,
+cmd-write-flash,5,WriteFlash,81 02 01 02,0x02,0x02,,,verified,usb-capture,linke,2.22,V003 V103 V203 V307 X035 L103,yes,yes,,wlink,data EP へ write pack ごとに送り、各 pack の後に data EP から ack(`41 01 01 04`、byte 3 = `04` で成功)を 1 packet で読む
+cmd-write-flash-end,5,End,81 02 01 08,0x02,0x08,,,verified,usb-capture,linke,2.22,V003 V103 V203 V307 X035 L103,yes,yes,,wlink,
+cmd-set-read-memory-region,5b,SetReadMemoryRegion,81 03 08 {addr:be32} {len:be32},0x03,,addr:be32 len:be32,,verified,usb-capture,linke,2.22,V003 V103 V203 V307 L103,yes,yes,,,len は 4 の倍数
+cmd-read-memory,5b,ReadMemory,81 02 01 0c,0x02,0x0c,,,verified,usb-capture; wire-capture,linke,2.22,V003 V103 V203 V307 L103,yes,yes,,,data EP `0x82` から len byte を読む。word ごとに byte が反転している
+cmd-read-memory,5b,ReadMemory,81 02 01 0c,0x02,0x0c,,,verified,usb-capture,ch549,2.12,V103,yes,yes,,,
+cmd-erase-code-flash-power-off,7,EraseCodeFlash by power off,81 0d 02 0f {family},0x0d,0x0f,family:u8,82 0d 01 {0f=消去した / 00=消去していない},verified,usb-capture; wire-capture; adc,linke,2.22,X035,yes,yes,minichlink=unbrick(コメントアウト、family 09),wlink; probe-rs; E165; E167; E168,3V3 は切らない。RST に約 4 ms の low pulse を入れながら halt を取り、MER で消す。`00` は約 2.1 s で、halt を取れず消していない
+cmd-erase-code-flash-rst,7,EraseCodeFlash by RST pin,81 0d 02 08 {family},0x0d,0x08,family:u8,,attested,impl-agree,,,-,unknown,unknown,,wlink; probe-rs,NRST の配線が要る
+cmd-sdi-print-enable,8,SDI print enable,81 0d 02 ee 00,0x0d,0xee,00,82 0d 01 {00=成功 / ff=非対応},verified,usb-capture,linke,2.22,V203 L103,yes,yes,,wlink,flag は直感と逆(`00` = enable)。AttachChip の後に実 family で SetSpeed を送り直してから送る
+cmd-sdi-print-disable,8,SDI print disable,81 0d 02 ee 01,0x0d,0xee,01,82 0d 01 {00=成功 / ff=非対応},verified,usb-capture,linke,2.22,V203 L103,yes,yes,,wlink,

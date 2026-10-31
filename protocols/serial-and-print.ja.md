@@ -10,7 +10,7 @@
 
 | 名称 | bootloader | protocol | transport | PC ツール | 本書での扱い |
 |---|---|---|---|---|---|
-| **factory ISP** | chip 内蔵 system bootloader(工場書込済み) | `0xAx` 系 + UID XOR key | USB `4348:55e0` / UART | WCHISPTool | [pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) |
+| **factory ISP** | chip 内蔵 system bootloader(工場書込済み) | `0xAx` 系 + UID XOR key | USB `1a86:55e0`(X035 で実測)/ UART | WCHISPTool | [pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) |
 | **WCH IAP(EVT)** | ユーザが焼く app 内 bootloader(EVT `IAP/USB_UART` サンプル) | `0xAA 0x55` sync + `0x80..0x84`(V103 は `57 AB`) | USB / UART 両対応 | WCHMcuIAP_WinAPP.exe(EVT 同梱) | **[wch-iap.ja.md](wch-iap.ja.md)** |
 | **custom bootloader** | ユーザ自作(DFU/UF2/HID 等) | 各自 | USB/UART | dfu-util / minichlink 等 | [custom-bootloader.ja.md](custom-bootloader.ja.md) |
 

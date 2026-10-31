@@ -71,7 +71,7 @@ target(チップ)に到達する経路は 4 つあり、通る層が違う。詳
 
 規則:
 
-- **「受理された」と「効果があった」は別に判定する。** probe が `82 …` で応答しても、target に効いたとは限らない(例: SetPower は LinkE fw 2.22 で受理されるが 3V3 は切れない)。機械可読の表([protocols/data/](protocols/data/README.md))は `accepted` と `effect` を別の列に持ち、人向けの 1 語は次の順で決める。
+- **「受理された」と「効果があった」は別に判定する。** probe が `82 …` で応答しても、target に効いたとは限らない(例: SetPower は LinkE fw 2.22 で受理されるが 3V3 は切れない)。機械可読の表([protocols/data/](protocols/data/README.ja.md))は `accepted` と `effect` を別の列に持ち、人向けの 1 語は次の順で決める。
   1. 範囲内で効果を測った: 効いた → `verified`、効かなかった → `refuted`。
   2. 効果は測っていないが受理を測った: 受理されなかった(`ff` 応答など) → `refuted`。受理された → 効果についての出典の数で `attested` / `single-source` を付け、受理の実測は `accepted` 列と本文に書く。
   3. 実機で何も測っていない: 出典の数で `attested` / `single-source` / `conflict` / `todo`。

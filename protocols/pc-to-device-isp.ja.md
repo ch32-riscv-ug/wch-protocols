@@ -1,10 +1,10 @@
 # PC ↔ target(factory ISP / シリアル書き込み)
 
-状態: **attested(3 実装一致、USB 経路は byte 単位で転記済み・実装可)**。自前 capture 未 → `verified` 化が要る。ch32rv の isp crate は骨組みのみ。層は L3(ISP protocol)。経路 ② — WCH-Link を使わず、チップに元から入っている**書き込み専用 bootloader(system bootloader / factory ISP)**を PC から直接叩く。RISC-V debug(DMI)は無く、flash 焼き・option/config 設定・verify だけ。
+status([語彙](../README.md#status)): **USB 経路は CH32X035F8U6(BTVER 2.60)で `verified`**(ch32rv の実機往復。書いた内容を RVSWD の読出しで照合。replay fixture は ch32rv `tests/fixtures/replay/isp-{info,flash,config-set}-x035.ndjson`)。他の系列と UART 経路は `attested`(minichlink / wchisp / chprog の 3 実装一致)。層は L3(ISP protocol)。経路 ② — WCH-Link を使わず、チップに元から入っている**書き込み専用 bootloader(system bootloader / factory ISP)**を PC から直接叩く。RISC-V debug(DMI)は無く、flash 焼き・option/config 設定・verify だけ。
 
 同じ ISP protocol が **2 つの物理経路**で使える:
 
-- **USB**: チップの USB(`4348:55e0`)を PC に直結。
+- **USB**: チップの USB を PC に直結。CH32X035(BTVER 2.60)の factory ISP は **`1a86:55e0`**(bcdDevice `26.00`、class `0xff`、bulk `0x02` OUT / `0x82` IN の 1 組、64 B、string descriptor なし)。minichlink は VID `0x4348` と `0x1a86` の両方を探す。他の系列がどちらの VID を名乗るかは未測定。
 - **UART(シリアル)**: チップの特定 USART に PC の TTL シリアルをつなぐ。**WCH の EVT / AN でこの手順が提示されている**。
 
 ## 1. bootloader に入る
@@ -22,6 +22,29 @@ app を bypass して system bootloader を起動させる:
 | M030 | (BOOT 領域無し) | — | factory ISP 自体が無い |
 
 切替レジスタの詳細と自作 BL からの使い方: [custom-bootloader.ja.md](custom-bootloader.ja.md) §2a。
+
+<a id="x035-entry"></a>
+
+**CH32X035 で実測した入り方**(CH32X035F8U6 / C8T6、BTVER 2.60):
+
+| 方法 | 結果 |
+|---|---|
+| debug 線で `FLASH_KEYR` と `FLASH_BOOT_MODEKEYR`(`0x40022028`)にそれぞれ `0x45670123`, `0xCDEF89AB` → `FLASH_STATR` に bit14(`BOOT_MODE`)を足して書く → system reset | **入る**。reset 後 0.5 s 以内に `1a86:55e0` が列挙される。`STATR` は `0xF000`、PC は `0x680` 前後(BOOT 領域) |
+| 同じ手順を、hart が flash の中身を実行している状態で、別々の attach に分けて行う | 中身が正規の app なら入る。flash に実行できないデータが入っていると入れない(reset のたびにそのデータが命令として走り、FLASH をロックする) |
+| reset vector で hart を止めてから、上の手順を 1 回の attach で行う | flash の中身によらず入る |
+| 同じ手順を WCH-LinkE(fw 2.22)で: DMI の reset-halt → 鍵 → `BOOT_MODE` → LinkE の soft reset | 入る(`STATR` `0xF000`、PC `0x6c0`)。USB 未接続のままだと約 10 s で app へ戻る |
+| app から(EVT の `SystemReset_StartMode(Start_Mode_BOOT)` と同じ操作。ArduinoCore-CH32RV の DFU_DETACH / 1200 bps touch) | 入る。DETACH から `55e0` の出現まで 0.36〜0.8 s |
+
+`FLASH_STATR` の上位 4 bit の観測値: app 実行中 `0xB000`、鍵を外した後 `0x3000`、`BOOT_MODE` を書いた後 `0x5000`、bootloader 実行中 `0xF000`。PC17(BOOT キー)で入る方法と、キーを離す時機は未測定。
+
+**終わり方と時間**(X035、BTVER 2.60):
+
+- `IspEnd(01)` を送って**応答を読む**と、約 200 ms で bootloader は `BOOT_MODE` を解除して app へ reset する(`STATR` が `0xB000` に戻る)。
+- **応答を読まずに終えると、bootloader は応答の送信待ちのまま残る**。その後の session では Identify には答えるが、ReadConfig の OUT が stall する。
+- 最後の通信から**約 60 s** 何も来ないと、bootloader は `BOOT_MODE` を解除して app へ抜ける。現れてから**一度も**話しかけられないと、約 9.3〜9.7 s で抜ける。
+- bootloader 実行中に debug 線で hart を halt したままにすると、USB の OUT がすべて timeout する(USB は CPU が処理しているため)。
+
+**読み出し保護(RDPR)中は factory bootloader が走らない**(X035): WriteConfig で RDPR/nRDPR = `00 ff` を書くと option bytes にすぐ反映され、reset 後に `FLASH_OBR` の bit1(RDPRT)が立つ。その状態で `BOOT_MODE` を立てて reset すると、`STATR` は `0xF000` になるが PC は `0x0` で止まり、ISP device は現れない(debug 線から、app の DFU_DETACH から、の 2 通りで確認)。ISP 経由で保護を外すことはできないので、解除は debug 線で行う(code flash は消える)。BOOT キーで入った場合は未確認。
 - bootloader は **USB と UART の両方で応答を待つ**(chip による)。どちらか使う方につなぐ。
 
 ### factory bootloader の実体(系列差・entry の強さ)
@@ -36,14 +59,14 @@ ISP のコマンド本体(§3)は共通で、**外側の枠だけ transport で�
 
 | transport | request | response | 備考 |
 |---|---|---|---|
-| **USB**(`4348:55E0` / `1A86:55E0`) | bulk EP `0x02` OUT に `cmd(1) len(2 LE) payload…` を素で載せる | bulk EP `0x82` IN に `cmd(1) 00 len(2 LE) payload…` | sync 無し。**string descriptor / serial を持たない**(識別は topology / BTVER)。timeout は minichlink 5 s |
-| UART | `0x57 0xAB` sync + `cmd(1) len(2 LE) payload…` + `checksum(1)` | 同形 | checksum は payload の和(byte)。先頭で auto-baud(wchisp。**本書は USB のみ byte 確認**) |
+| **USB**(`1A86:55E0`、minichlink は `4348:55E0` も探す) | bulk EP `0x02` OUT に `cmd(1) len(2 LE) payload…` を素で載せる | bulk EP `0x82` IN に `cmd(1) 00 len(2 LE) payload…` | sync 無し。**string descriptor / serial を持たない**(識別は topology / BTVER)。timeout は minichlink 5 s。`verified`(X035) |
+| UART | `0x57 0xAB` sync + `cmd(1) len(2 LE) payload…` + `checksum(1)` | `0x55 0xAA` sync + 同形 + checksum | checksum は byte の和。先頭で auto-baud(wchisp)。`attested`(実機未確認) |
 
-- host は **VID `0x4348` または `0x1A86`、PID `0x55E0`** を探す(minichlink)。**WCH-Link の IAP mode と WCH IAP(EVT の app 内 BL)も同じ `55E0`** を名乗る([pc-to-link.ja.md](pc-to-link.ja.md) §10b / [wch-iap.ja.md](wch-iap.ja.md) §2)。BTVER / chip 種別、および「`0xA1` に答えるか」で判別する。
+- host は **VID `0x4348` または `0x1A86`、PID `0x55E0`** を探す(minichlink)。**WCH-Link の IAP mode(`4348:55e0`)と WCH IAP(EVT の app 内 BL、`1a86:55e0`)も同じ `55E0`** を名乗る([pc-to-link.ja.md](pc-to-link.ja.md) §10b / [wch-iap.ja.md](wch-iap.ja.md) §2)。X035 の factory ISP と WCH IAP は VID も同じなので、**VID では区別できない**。BTVER / chip 種別、および「`0xA1` に答えるか」で判別する。
 
 ## 3. コマンド一覧(WCH bootloader、`0xAx` 系)
 
-状態: **attested(3 実装一致: minichlink `pgm-wch-isp.c`(MIT)/ wchisp / wagiminator `chprog.py`)**。以下の byte は minichlink の実装をそのまま転記したもので、**USB 経路**。`P[n]` は response の payload(ヘッダ 4 byte の後)の n 番目。
+status: `attested`(3 実装一致: minichlink `pgm-wch-isp.c`(MIT)/ wchisp / wagiminator `chprog.py`)。`0xA1`〜`0xA8` と `0xA2` は X035(BTVER 2.60)の USB で `verified`(実測の byte は下の「X035 の実測」)。`P[n]` は response の payload(ヘッダ 4 byte の後)の n 番目。
 
 | cmd | 名称 | request(cmd len payload) | response | 備考 |
 |---|---|---|---|---|
@@ -52,14 +75,30 @@ ISP のコマンド本体(§3)は共通で、**外側の枠だけ transport で�
 | `0xA3` | **IspKey** | `A3 1E 00` + **30 B の seed** | `A3 00 02 00 chk 00` | device は `seed + UID` から 8 B の XOR key を作る。**`P[0]=chk` は key 8 B の和(byte)**。host が同じ計算で key を持てば一致を検証できる(§4) |
 | `0xA4` | **Erase** | `A4 04 00 n_lo n_hi 00 00` | `A4 00 02 00 status 00` | **`n` = 消去 sector 数(1 KB/sector)= ceil(len/1024)、最小 8**。`status=0` で成功。全消去は `n = flash_size/1024` |
 | `0xA5` | **Program** | `A5 3D 00` + `addr(4 LE)` + `pad(1)` + **`data 56 B ^ key[k % 8]`** | `A5 00 02 00 status 00` | `addr` は **flash 先頭を 0 とするオフセット**(`0x08000000` → `0`)。`pad` = 残り長の下位 byte。image は **256 B 境界まで `0xFF` で埋めて**送る。`status ∈ {0x00, 0xFE, 0xF5}` を成功扱い |
-| `0xA6` | Verify | Program と同形(データを XOR して送る) | 同 | minichlink は未実装(wchisp は実装) |
-| `0xA8` | **WriteConfig** | `A8 0E 00 07 00` + **config 12 B** | `A8 00 02 00 status 00` | mask `0x0007`。ReadConfig で得た 12 B を書き換えて送る |
-| `0xA2` | **IspEnd** | `A2 01 00 01` | (応答を待たず reset) | `01` = reset して user code へ |
+| `0xA6` | Verify | Program と同形(データを XOR して送る) | 同。一致 `00`、不一致は非 0 | minichlink は未実装(wchisp は実装) |
+| `0xA8` | **WriteConfig** | `A8 0E 00 07 00` + **config 12 B** | `A8 00 02 00 status 00` | mask `0x0007`。ReadConfig で得た 12 B を書き換えて送る。X035 では約 1 ms で応答し、直後の ReadConfig と option bytes(`0x1FFFF800`)に反映済み(reset 不要) |
+| `0xA2` | **IspEnd** | `A2 01 00 01` | `A2 00 02 00 00 00` | `01` = reset して user code へ。**応答を読むまで reset しない**(X035。§1) |
 | `0xA9` / `0xAA` / `0xAB` | DataErase / DataProgram / DataRead | — | — | data flash(EEPROM 相当。CH55x 系)|
 | `0xC3` / `0xC4` | WriteOTP / ReadOTP | — | — | |
 | `0xC5` | SetBaud | — | — | **UART 経路の baud 変更** |
 
 典型フロー: `Identify → ReadConfig(UID)→ IspKey → Erase → Program × N → (Verify × N)→ IspEnd`。
+
+<a id="x035-bytes"></a>
+
+**X035 の実測**(CH32X035F8U6、BTVER 2.60、USB):
+
+| cmd | request | response | 備考 |
+|---|---|---|---|
+| `0xA1` Identify | `a1 12 00` + `00 00` + `"MCU ISP & WCH.CN"` | `a1 00 02 00 5e 23` | chip `0x5e`(debug chip id の 2 byte 目と一致)、type `0x23` = CH32X03x |
+| `0xA7` ReadConfig | `a7 02 00 1f 00` | `a7 00 1a 00` + `1f 00` + config 12 B + BTVER 4 B + UID 8 B | 先頭 2 B は送った mask(`1f 00`)の返し |
+| `0xA3` IspKey | `a3 1e 00` + 30 B の 0 | `a3 00 02 00 c6 00` | `c6` = key 8 B の和(§4) |
+| `0xA4` Erase | `a4 04 00` + sector 数(4 B LE) | `a4 00 02 00 00 00` | 8 sector(8 KiB)で約 25 ms。全 62 sector も受理 |
+| `0xA5` Program | `a5 3d 00` + offset(4 B LE)+ `00` + 56 B(key で XOR) | `a5 00 02 00 00 00` | 最後に data 0 B の Program(offset = 末尾)を送り、これも `00` |
+| `0xA8` WriteConfig | `a8 0e 00 07 00` + config 12 B | `a8 00 02 00 00 00` | DATA0/1、USER(IWDG / STOP / STANDBY / RST_MODE)、WRPR0 を書いて戻した。RDPR は §1 |
+| `0xA2` IspEnd | `a2 01 00 01` | `a2 00 02 00 00 00` | |
+
+UID(ReadConfig の最後の 8 B)は ESIG の `0x1FFFF7E8` から読んだ 8 B と一致した。
 
 ### 3.1 ReadConfig の config 12 B(CH32V 系)
 
@@ -70,7 +109,7 @@ ISP のコマンド本体(§3)は共通で、**外側の枠だけ transport で�
 | `P[2]` `P[3]` | **RDPR / nRDPR**: `A5 5A` = **読出保護 無効**、それ以外(例 `00 00`)= 有効 | minichlink: `rbuff[6]==0xA5` → "disabled" |
 | `P[4]` | **USER**: bit0 `IWDG_SW`、bit1 `STOP_RST`(1=無効)、bit2 `STANDBY_RST`(1=無効)、X035: bits[4:3]=`11` で **reset pin を GPIO 化** | `P[5]` は補数 |
 | `P[6]` / `P[8]` | **DATA0 / DATA1** | `P[7]` / `P[9]` は補数 |
-| `P[10..13]` | **WRPR**(write protect、4 B) | minichlink は `rbuff[16],[15],[14],[13]` の順で表示(= `P[12..9]`)。**補数 byte の有無と WRPR の位置は 1 byte ずれの可能性があり capture で確定** |
+| `P[10..13]` | **WRPR0..3**(write protect、4 B。**補数 byte は含まない**) | X035 で実測: option bytes(`0x1FFFF800`)が `a5 5a 1f e0 ff 00 ff 00 \| ff 00 ff 00 ff 00 ff 00` のとき、config 12 B は `a5 5a 1f e0 ff 00 ff 00 ff ff ff ff`。minichlink は `rbuff[16],[15],[14],[13]` の順で表示する |
 
 読出保護の解除(minichlink `-u`)は `P[2]=A5, P[3]=5A, WRPR=FF FF FF FF` を書く → **chip が user 領域を全消去**する(RM の記述どおり)。有効化は `P[2]=P[3]=00`。
 
@@ -105,10 +144,11 @@ CH55x 系は device_type が違うため `key[7]` の値が変わるだけで式
 
 ## 5. 未解読 / 要 capture
 
-- **USB の実バイトを自前 capture で `verified` 化**(WCHISPTool の USB モードを USBPcap / usbmon で観察。特に ReadConfig の `P[0..1]`、config 12 B の補数位置、Program の `pad` byte の実値)。
-- **UART 経路**の framing(`57 AB` + checksum)と auto-baud、`0xC5` SetBaud の引数 — wchisp からの転記のみ。EVT / AN の「Serial」モード手順と突き合わせる。
+- X035 以外の系列の USB の実 byte(特に VID が `4348` か `1a86` か、ReadConfig の `P[0..1]`、IspEnd の振る舞い)。
+- **UART 経路**の framing(`57 AB` + checksum)と auto-baud、`0xC5` SetBaud の引数、各チップの bootloader USART のピン — wchisp からの転記のみ。EVT / AN の「Serial」モード手順と突き合わせる。
 - Erase の `n` に上限(flash 容量超え)を与えたときの挙動、部分消去が実際に効くか(minichlink は「全消去のみ実装」と注記)。
 - chip 系列別の **BOOT pin / option byte による bootloader entry 条件**(RM の "Boot configuration")。X033 / X035 は DS の PC17 で確定(§1)、X305 / X315 の keyless download は実機未確認。V003 は `START_MODE` の設定が要る([wch-iap.ja.md](wch-iap.ja.md) §1 世代 A の切替レジスタと同じ `FLASH->STATR` bit14)。
+- data flash(`0xA9`〜`0xAB`)、OTP(`0xC3` / `0xC4`)。
 - **IAP(In-Application Programming)は別 protocol**: EVT の `0xAA 0x55` sync + `0x80..0x84` → [wch-iap.ja.md](wch-iap.ja.md)。
 
 ## 6. 調査の入口
@@ -116,4 +156,4 @@ CH55x 系は device_type が違うため `key[7]` の値が変わるだけで式
 - WCH 純正 **WCHISPTool**(USB モード / Serial モード)の capture。
 - **EVT / AN**: system bootloader の入り方・UART ピン・手順が提示されている(RISC-V CH32V/CH32X の EVT パッケージ、WCH ISP のアプリケーションノート)。
 - 先行実装: `wchisp`(Rust、GPL-2.0)/ minichlink `pgm-wch-isp.c`(MIT)/ ch552tool 系。
-- capture で Identify → Erase → Program → Verify の 1 往復を記録 → 本書を `verified` へ昇格。
+- 実装: [ch32rv](https://github.com/ch32-riscv-ug/ch32rv) の `isp`(X035 の USB 経路を実機で往復。UART 経路は `57 ab` / `55 aa` + byte 和で実装したが実機未確認)。

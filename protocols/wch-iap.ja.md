@@ -63,7 +63,7 @@ IAP 起動直後の判定。`UPGRADE_MODE` で command 方式 / IO 方式を選�
 | CH32H417 | B | user 先頭 **24 KB** | **`0x08006000`** | `0x08077FFC` | 256 B / 4 KB erase(10 KB buffer) | USART1 | **PB6/PB7** | 460800 | USBFS + USBHS(V3F / V5F 別 core) | `1A86:55E0`(HID 版 `FE17`) |
 
 - USB descriptor は全世代 **vendor class(`FF/80/55`)、EP2 OUT/IN、64 B**、`bcdDevice = 0x0100`。`usb_desc.c` 系(V205/V407/L103/X315/H417)は HID descriptor(`PID 0xFE17`)も併載しているが、IAP 経路は vendor 側。
-- **`1A86:55E0` は factory ISP の `4348:55E0` と PID が同じ**。host は VID で区別できるが、[pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) §2 の「LinkE IAP mode も同 ID」問題と同族なので、正体判定は必ず protocol で行う(IAP に `0xA1` Identify を送っても応答しない、で見分けられる)。
+- **`1A86:55E0` は factory ISP と PID が同じで、CH32X035 の factory ISP は VID も同じ `1a86:55e0`**(BTVER 2.60 で実測。[pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) §1)。VID では区別できないので、正体判定は必ず protocol で行う(factory ISP は `0xA1` Identify に答える。WCH-Link の IAP mode `4348:55e0` も同じ問題を持つ)。
 - UART は **8N1、フロー制御なし**。世代 A は `BRR` 直書きなので**システムクロックを変えると baud がずれる**(24 MHz HSI 前提)。
 
 ## 3. frame

@@ -161,7 +161,7 @@ report:  [ID] [AA 00 00 00] [stub code …] [args …] [data …] … [CD AB 34 
 ## 5. 未解読 / 要調査
 
 - WCH IAP(UART / USB)は [wch-iap.ja.md](wch-iap.ja.md) で **12 シリーズ分 byte 確定**(EVT 転記)。残るは WCHMcuIAP の実 capture。
-- §2b の HID scratchpad protocol を **USB capture で verified 化**(feature report の実バイト、`0x1234ABCD` の位置、完了印 `0xFF`)。
+- §2b の HID scratchpad protocol を **USB capture で verified 化**(feature report の実バイト、`0x1234ABCD` の位置、完了印 `0xFF`)。材料: ch32rv の replay fixture `tests/fixtures/replay/hid-flash-v003.ndjson`(rv003usb の BL `1209:b803`、CH32V003、`boot hid flash` の全往復)。128 B の feature report の末尾 4 byte は `cd ab 34 12`(= `0x1234ABCD`)。注釈を付けて `captures/fixtures/` に取り込むのが残り。
 - wch-uf2 / Swindle DFU / PlumBL / tinyboot の header・CRC・entry の実バイト(手元にソース無し。転記待ち)。
 - V003 の option byte で BOOT 起動を選ぶ手順(rv003usb `configurebootloader` の `OPTER` の意味)を RM と突き合わせる。
 - V20x/V30x の 28 KB BOOT 領域に自作 BL を置く実例(ch32fun は「stub 追加で可」と注記、未検証)。
