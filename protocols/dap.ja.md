@@ -1,6 +1,10 @@
+<a id="dap"></a>
+
 # CMSIS-DAP(ARM mode)
 
 状態: **todo**。層は L3(CMSIS-DAP)。経路 ④ — WCH-Link を DAP モードに切り替え、業界標準の CMSIS-DAP デバッガとして ARM チップ(CH32F/CH57x 等の Cortex-M や他社 ARM)を SWD/JTAG で触る。RISC-V の DMI とは別系統。
+
+<a id="known"></a>
 
 ## わかっていること
 
@@ -11,10 +15,14 @@
 | プロトコル | **CMSIS-DAP は公開標準**(ARM 提供)。WCH 固有ではないので、標準仕様がそのまま使える見込み | attested |
 | version 照会の口 | DAP mode では version 照会(`81 0d 01 01`)が EP `0x02`/`0x83` で通るという実測あり | attested |
 
+<a id="open-questions"></a>
+
 ## 未解読(要調査)
 
 - WCH-Link の DAP 実装が CMSIS-DAP v1(HID)か v2(bulk)か、対応コマンドの範囲。
 - CDC との同居構成。
+
+<a id="investigation"></a>
 
 ## 調査の入口
 

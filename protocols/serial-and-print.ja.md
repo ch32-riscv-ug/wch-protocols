@@ -1,8 +1,12 @@
+<a id="serial-and-print"></a>
+
 # シリアル系まとめ(target 側の I/O と on-chip IAP)
 
 状態: **attested(WCH 公式 EVT ソースから転記)**。自前 capture / 実機で `verified` 化が要る。層は L3/L4(target firmware 側)。
 
 「シリアル経由の方法」は複数あり、**書き込み(programming)と実行時出力(print)**、さらに **transport(USB / UART / debug 線)**が絡む。ここは各シリーズの WCH 公式 **EVT**(`EVT/EXAM/...`)のサンプルから転記した target 側の事実をまとめる。host 側(PC がどう読むか)は [pc-to-link.ja.md](pc-to-link.ja.md) §monitor / [pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) / [riscv-debug-module.ja.md](riscv-debug-module.ja.md) §semihosting。
+
+<a id="three-protocols"></a>
 
 ## 0. 3 つの「シリアル書き込み」protocol は別物
 
@@ -16,6 +20,8 @@
 
 **factory ISP と WCH IAP は全くの別プロトコル**。ISP は工場 bootloader(BOOT ピンで入る)、IAP は自分で焼いた bootloader(領域 `0x08000000`〜、APP は後方)。
 
+<a id="wch-iap"></a>
+
 ## 1. WCH IAP(EVT の app 内 bootloader)→ [wch-iap.ja.md](wch-iap.ja.md)
 
 **独立した仕様書に移した**([wch-iap.ja.md](wch-iap.ja.md)、12 シリーズ分の byte・配置・entry を転記済み)。要点だけ:
@@ -25,6 +31,8 @@
 - コマンド `0x80 PROM / 0x81 ERASE / 0x82 VERIFY / 0x83 END / 0x84 JUMP_IAP`。**addr は device 側で使われず順次書込**、**PROM の端数は VERIFY で flush** される。
 - 派生: HOST_IAP(`/APP.BIN`)、ETH_IAP(TCP 1000、`WCHNET` header、A/B)、BLE OTA(同じ `0x80..0x84`)。
 
+<a id="usart-printf"></a>
+
 ## 2. USART printf(物理 UART への printf)
 
 EVT 共通の `SRC/Debug/debug.c`。`USART_Printf_Init(baud)` で TX を初期化し、`_write` を retarget して `printf` が UART へ出る。**単なる UART TX** なので、PC 側は任意のシリアル端末か WCH-Link の CDC bridge([pc-to-link.ja.md](pc-to-link.ja.md) §monitor の uart)で読む。
@@ -32,6 +40,8 @@ EVT 共通の `SRC/Debug/debug.c`。`USART_Printf_Init(baud)` で TX を初期�
 - 既定 baud: **115200**(EVT main の `USART_Printf_Init(115200)`)。
 - 既定は `DEBUG = DEBUG_UART1`(USART1)。`DEBUG_UART2`/`3` に切替可。
 - **TX ピンはシリアーズで違う**(§4 表)。V003/V006 は remap 前提。
+
+<a id="sdi-printf"></a>
 
 ## 3. SDI printf(WCH-Link 経由・物理 UART 不要)
 
@@ -49,6 +59,8 @@ EVT の `SDI_Printf` サンプル。**target が debug data レジスタ(memory-
   - **WCH EVT SDI_Printf**(本節・LinkE が CDC へ forward): 低 byte = **長さ(1..7)**、host は非 0 で読取。
   - **ch32fun/minichlink SerialDMDATA(`-T` terminal)**: 低 byte = **`0x80 | (count+4)`**、host は **bit7=1** で読取、`DATA0=0` 書きで ACK(host→target 入力も同載)。ch32rv の `dmdata` はこちら。
   - → host 側実装はどちらの target firmware かで読み分ける。
+
+<a id="series-table"></a>
 
 ## 4. 対応シリーズ表(EVT 実測)
 
@@ -70,6 +82,8 @@ EVT の `SDI_Printf` サンプル。**target が debug data レジスタ(memory-
 - **SDI DATA アドレスの 2 系統**: V2 系(V003/V006)は `0xE00000F4`、V4 系でも `0xE0000380`(V20x/V307/X035/L103/V103)と `0xE0000340`(V205/V407/X315/M030)に分かれる。debug module の data レジスタ配置差。
 - USART は `DEBUG_UART2`/`3` に変更可・remap 可。上表は EVT 既定(`DEBUG_UART1`)の TX ピン。
 
+<a id="print-paths"></a>
+
 ## 4b. print 経路の分類(「SDI print」は狭義に WCH 公式方式だけ)
 
 同じ debug 線を使っても protocol が違う。混同しないための一覧:
@@ -84,6 +98,8 @@ EVT の `SDI_Printf` サンプル。**target が debug data レジスタ(memory-
 
 「SDI print 対応」は狭義には WCH 公式方式(DMDATA 郵便受け)だけを指す。minichlink terminal は同じ線を使う**別 protocol**。
 
+<a id="host-side"></a>
+
 ## 5. host 側で読む(既存 doc へ)
 
 - **物理 UART printf** → WCH-Link CDC bridge か任意の端末: [pc-to-link.ja.md](pc-to-link.ja.md) §monitor(uart)。
@@ -91,11 +107,15 @@ EVT の `SDI_Printf` サンプル。**target が debug data レジスタ(memory-
 - **semihosting**(debug 経由の printf 相当): [riscv-debug-module.ja.md](riscv-debug-module.ja.md) §semihosting。
 - **RTT**(RAM リングバッファ): host 側 SerialRTT。
 
+<a id="capture-todo"></a>
+
 ## 6. 要 capture(verified 化)
 
 - WCH IAP: → [wch-iap.ja.md](wch-iap.ja.md) §7(WCHMcuIAP_WinAPP.exe の実 capture で `verified` へ)。
 - SDI printf: dmdata polling の実往復と EVT `_write`(§3、2 方式)をバイトで突き合わせ(host 側は一部 verified、target 郵便受け方式は本書で確定)。
 - 各シリーズの USART/IAP ピン・baud は EVT 既定。基板ごとの実配線は個別確認。
+
+<a id="references"></a>
 
 ## 参照
 

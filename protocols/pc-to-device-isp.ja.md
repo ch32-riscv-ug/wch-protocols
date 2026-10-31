@@ -1,3 +1,5 @@
+<a id="pc-to-device-isp"></a>
+
 # PC ↔ target(factory ISP / シリアル書き込み)
 
 status([語彙](../README.md#status)): **USB 経路は CH32X035F8U6(BTVER 2.60)で `verified`**(ch32rv の実機往復。書いた内容を RVSWD の読出しで照合。replay fixture は ch32rv `tests/fixtures/replay/isp-{info,flash,config-set}-x035.ndjson`)。他の系列と UART 経路は `attested`(minichlink / wchisp / chprog の 3 実装一致)。層は L3(ISP protocol)。経路 ② — WCH-Link を使わず、チップに元から入っている**書き込み専用 bootloader(system bootloader / factory ISP)**を PC から直接叩く。RISC-V debug(DMI)は無く、flash 焼き・option/config 設定・verify だけ。
@@ -6,6 +8,8 @@ status([語彙](../README.md#status)): **USB 経路は CH32X035F8U6(BTVER 2.60)�
 
 - **USB**: チップの USB を PC に直結。CH32X035(BTVER 2.60)の factory ISP は **`1a86:55e0`**(bcdDevice `26.00`、class `0xff`、bulk `0x02` OUT / `0x82` IN の 1 組、64 B、string descriptor なし)。minichlink は VID `0x4348` と `0x1a86` の両方を探す。他の系列がどちらの VID を名乗るかは未測定。
 - **UART(シリアル)**: チップの特定 USART に PC の TTL シリアルをつなぐ。**WCH の EVT / AN でこの手順が提示されている**。
+
+<a id="enter-bootloader"></a>
 
 ## 1. bootloader に入る
 
@@ -47,11 +51,15 @@ app を bypass して system bootloader を起動させる:
 **読み出し保護(RDPR)中は factory bootloader が走らない**(X035): WriteConfig で RDPR/nRDPR = `00 ff` を書くと option bytes にすぐ反映され、reset 後に `FLASH_OBR` の bit1(RDPRT)が立つ。その状態で `BOOT_MODE` を立てて reset すると、`STATR` は `0xF000` になるが PC は `0x0` で止まり、ISP device は現れない(debug 線から、app の DFU_DETACH から、の 2 通りで確認)。ISP 経由で保護を外すことはできないので、解除は debug 線で行う(code flash は消える)。BOOT キーで入った場合は未確認。
 - bootloader は **USB と UART の両方で応答を待つ**(chip による)。どちらか使う方につなぐ。
 
+<a id="factory-bootloader"></a>
+
 ### factory bootloader の実体(系列差・entry の強さ)
 
 - **CH32V003**: factory bootloader は `0x1FFFF000` からの **1,920 byte** system 領域にあり、UART **115200 bps** で動く。**外部 BOOT ピンだけでなく application が `START_MODE` を設定して reset する必要がある** → app が完全に壊れると入口として弱い(復旧は debug probe 経由が確実)。詳細は [CH32V003 factory bootloader missing manual](https://github.com/basilhussain/ch32v003-bootloader-docs)。V00X では system 領域サイズや一部 package の UART remap が異なる。
 - **USB 内蔵系列**: factory ISP は wchisp / WCHISPTool から使えるが、「USB peripheral がある」ことと「その SKU の factory bootloader が USB 経路を公開する」ことは**別**。正確な対応は **exact SKU × BOOT pin/option byte × bootloader version** で管理する。
 - **CH32M030**: 工場 ISP を持たず、外部 debug または導入済み custom IAP を使う。
+
+<a id="framing"></a>
 
 ## 2. transport ごとの framing
 
@@ -63,6 +71,8 @@ ISP のコマンド本体(§3)は共通で、**外側の枠だけ transport で�
 | UART | `0x57 0xAB` sync + `cmd(1) len(2 LE) payload…` + `checksum(1)` | `0x55 0xAA` sync + 同形 + checksum | checksum は byte の和。先頭で auto-baud(wchisp)。`attested`(実機未確認) |
 
 - host は **VID `0x4348` または `0x1A86`、PID `0x55E0`** を探す(minichlink)。**WCH-Link の IAP mode(`4348:55e0`)と WCH IAP(EVT の app 内 BL、`1a86:55e0`)も同じ `55E0`** を名乗る([pc-to-link.ja.md](pc-to-link.ja.md) §10b / [wch-iap.ja.md](wch-iap.ja.md) §2)。X035 の factory ISP と WCH IAP は VID も同じなので、**VID では区別できない**。BTVER / chip 種別、および「`0xA1` に答えるか」で判別する。
+
+<a id="commands"></a>
 
 ## 3. コマンド一覧(WCH bootloader、`0xAx` 系)
 
@@ -100,6 +110,8 @@ status: `attested`(3 実装一致: minichlink `pgm-wch-isp.c`(MIT)/ wchisp / wag
 
 UID(ReadConfig の最後の 8 B)は ESIG の `0x1FFFF7E8` から読んだ 8 B と一致した。
 
+<a id="read-config"></a>
+
 ### 3.1 ReadConfig の config 12 B(CH32V 系)
 
 `P[2..13]` = ReadConfig の rbuff[6..17]。minichlink の表示と STM32 互換 option byte の並びから:
@@ -113,6 +125,8 @@ UID(ReadConfig の最後の 8 B)は ESIG の `0x1FFFF7E8` から読んだ 8 B �
 
 読出保護の解除(minichlink `-u`)は `P[2]=A5, P[3]=5A, WRPR=FF FF FF FF` を書く → **chip が user 領域を全消去**する(RM の記述どおり)。有効化は `P[2]=P[3]=00`。
 
+<a id="flash-size"></a>
+
 ### 3.2 Identify から flash size を決める(minichlink の表)
 
 `chip_id`(`P[0]`)で SKU 内の flash 容量が変わる系列がある:
@@ -125,6 +139,8 @@ UID(ReadConfig の最後の 8 B)は ESIG の `0x1FFFF7E8` から読んだ 8 B �
 | X035 / L103 | `(chip_id & 0xF) == 7` → 48、他 → 64 KB |
 
 CH5xx 系(`0x70..0x93`)は別 protocol 分岐(読出保護の位置が `P[10] bit7`、CH570 は `P[12]==0x3A`)。
+
+<a id="xor-key"></a>
 
 ## 4. XOR 難読化 key(byte 確定・USB 経路)
 
@@ -142,6 +158,8 @@ key[7]    = sum + chip_id      (chip_id = Identify の P[0]、mod 256)
 
 CH55x 系は device_type が違うため `key[7]` の値が変わるだけで式は同じ(minichlink は共通実装)。
 
+<a id="open-questions"></a>
+
 ## 5. 未解読 / 要 capture
 
 - X035 以外の系列の USB の実 byte(特に VID が `4348` か `1a86` か、ReadConfig の `P[0..1]`、IspEnd の振る舞い)。
@@ -150,6 +168,8 @@ CH55x 系は device_type が違うため `key[7]` の値が変わるだけで式
 - chip 系列別の **BOOT pin / option byte による bootloader entry 条件**(RM の "Boot configuration")。X033 / X035 は DS の PC17 で確定(§1)、X305 / X315 の keyless download は実機未確認。V003 は `START_MODE` の設定が要る([wch-iap.ja.md](wch-iap.ja.md) §1 世代 A の切替レジスタと同じ `FLASH->STATR` bit14)。
 - data flash(`0xA9`〜`0xAB`)、OTP(`0xC3` / `0xC4`)。
 - **IAP(In-Application Programming)は別 protocol**: EVT の `0xAA 0x55` sync + `0x80..0x84` → [wch-iap.ja.md](wch-iap.ja.md)。
+
+<a id="investigation"></a>
 
 ## 6. 調査の入口
 

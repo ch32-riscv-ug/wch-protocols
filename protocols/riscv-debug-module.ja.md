@@ -1,10 +1,16 @@
+<a id="riscv-debug-module"></a>
+
 # RISC-V Debug Module(DMI 上の操作)
 
 [pc-to-link.ja.md](pc-to-link.ja.md) の `DmiOp`(cmd `0x08`)で DM レジスタを read/write できるようになった上で、その上に立つ **RISC-V Debug Module** の操作。これは **RISC-V External Debug Support(Debug Spec)準拠のベンダ非依存な層**で、WCH 固有ではない(他社 RISC-V にも概ね通じる)。CH32 実機(V003/V103/V203/V307/X035)で確認。状態: 大半 verified。
 
+<a id="dmi-transaction"></a>
+
 ## DMI トランザクション(下地)
 
 `DmiOp` 1 回 = DM レジスタ 1 個の read/write。`[addr(1B), data(be32), op(1B)]` を送り、`[addr, data(be32), status]` が返る(op: 1=read/2=write、status: 0=success/2=failed/3=busy、busy は再試行)。以下は「DM レジスタ addr にどんな値を書く/読むか」を並べたもの。
+
+<a id="dm-registers"></a>
 
 ## DM レジスタ番地
 
@@ -19,6 +25,8 @@
 | DMCOMMAND | `0x17` | abstract command 発行 |
 | DMPROGBUF0 | `0x20` | program buffer word 0 |
 | DMPROGBUF1 | `0x21` | program buffer word 1 |
+
+<a id="basic-operations"></a>
 
 ## 基本操作
 
@@ -39,6 +47,8 @@
 - **DMSTATUS**: allrunning=bit11 / anyrunning=bit10 / allhalted=bit9 / anyhalted=bit8。
 - **DMCOMMAND(abstract register access)の読み方**: `0x0027xxxx`=transfer+postexec、`0x0023xxxx`=write(transfer, write bit)、`0x0022xxxx`=read(transfer)。下位 16bit が regno(GPR=`0x1000+n`: x5=`0x1005`, x6=`0x1006`, x7=`0x1007`)。read_mem/write_mem は「addr/data を DMDATA0 経由で x5/x7 に載せ、progbuf の lw/sw/sh を postexec」で成立する。
 - **任意長 write/read**(`write_mem`/`read_mem`)は word 単位で write_mem32/read_mem32 を回し、端の word は read-modify-write で byte 粒度を保つ。
+
+<a id="h417-core-select"></a>
 
 ## H417 の単一コア選択と CSR 読み出し
 
@@ -72,6 +82,8 @@
 
 **未確認**: 選択コアの reset、DetachChip・再 attach 時の両コア状態と選択保持、高速 bulk read([pc-to-link](pc-to-link.ja.md) §5b)が hartsel を保つか、他 probe firmware・他 H41x、物理 SWIO capture。測定では Flash・option byte の書き込み、erase、reset を行っていない。LinkE 内部の attach / detach 副作用は USB capture から保証しない。残る調査は [coverage の H417 項目](../coverage.ja.md#h417-core-control)に整理する。
 
+<a id="breakpoints"></a>
+
 ## breakpoint の土台
 
 - **ebreak を halt にする**: dcsr(`0x7b0`)の ebreakm(bit15)/ebreaks(bit13)/ebreaku(bit12)を立てる。これで各特権 mode の `ebreak` が例外 trap でなく Debug Mode 突入(halt)になる。**SW breakpoint に必須**(未設定だと `continue` で止まらず暴走)。verified(V203、gdb `continue` が breakpoint で停止)。
@@ -90,6 +102,8 @@
 - **SW breakpoint**: 対象番地を `ebreak`(4B `0x00100073`)/ `c.ebreak`(2B `0x9002`)で上書きし read-back で着弾確認。着弾しても上記 dcsr.ebreak* を立てていないと trap して halt しない。SW(Z0)要求の break は「RAM patch → 空き HW trigger → flash SW breakpoint([pc-to-link.ja.md](pc-to-link.ja.md) §6 の直接 FLASH controller で page 書換)」の順にフォールバック。
 - **flash SW breakpoint の要点**: code は低位 alias(`0x0000_0000`)で走るが、**FLASH controller には物理 flash 番地(`0x0800_0000+off`)を渡す**(alias 番地で erase/program すると効かない)。read は alias/物理どちらでも鏡。
 
+<a id="semihosting"></a>
+
 ## semihosting(RISC-V)
 
 target が halt 状態で host に syscall を頼む機構。マジック命令列で識別する:
@@ -97,6 +111,8 @@ target が halt 状態で host に syscall を頼む機構。マジック命令�
 - 命令列: `slli`(`0x01f01013`)/ `ebreak`(`0x00100073`)/ `srai`(`0x40705013`)。PC がこの列にかかって halt したら semihosting call。
 - syscall 番号(a0): `SYS_WRITE0`=`0x04`(NUL 終端文字列出力)/ `SYS_WRITEC`=`0x03`(1 文字)/ `SYS_EXIT`=`0x18` / `SYS_EXIT_EXTENDED`=`0x20`。exit の a1 は `ADP_Stopped_ApplicationExit`=`0x20026`。
 - 引数は a1(GPR)経由でメモリブロックを指す。host が read_mem で読む。
+
+<a id="references"></a>
 
 ## 参照
 

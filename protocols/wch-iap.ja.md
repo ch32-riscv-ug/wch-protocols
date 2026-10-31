@@ -1,8 +1,12 @@
+<a id="wch-iap"></a>
+
 # WCH IAP(EVT 同梱の app 内 bootloader)— UART / USB からの書込 protocol
 
 状態: **attested(WCH 公式 EVT ソース 12 シリーズ分から転記。実装可)**。自前 capture は未 → `verified` 化には WCHMcuIAP_WinAPP.exe の実 capture が要る。層は L3(IAP protocol)+ L4(target 側 flash 手順)。
 
 WCH の各シリーズ EVT に入っている `IAP/`(`USB_UART` / `UART_USB_IAP` / `USART_IAP`)は、**ユーザーが自分で焼く bootloader**(IAP)と、それに対応した APP の 2 プロジェクト構成。一度 IAP を焼けば、以後は WCH-Link 無しで UART または USB から APP を更新できる。factory ISP([pc-to-device-isp.ja.md](pc-to-device-isp.ja.md)、`0xAx` 系)とは**全くの別 protocol**。host 側は EVT 同梱の `WCHMcuIAP_WinAPP.exe`(Windows)のみで、他 OS の実装は存在しない — 本書はそれを書けるようにするための仕様。
+
+<a id="generations"></a>
 
 ## 0. 3 つの世代がある(ここを混ぜると実装が壊れる)
 
@@ -15,6 +19,8 @@ WCH の各シリーズ EVT に入っている `IAP/`(`USB_UART` / `UART_USB_IAP`
 | **C: 旧式** | V103 | user flash 先頭 | `0x08005000` | **フラグ無し**(pin のみ) | **`57 AB`** | **`4348:55E0`**(CH372 driver 要) |
 
 **極性が A と B で逆**なのが最大の罠。A では END が CheckNum を**書き**、APP からの JUMP_IAP が CheckNum を**消す**。B では END が CheckNum を**消し**、APP からの JUMP_IAP が CheckNum を**書く**。
+
+<a id="entry"></a>
 
 ## 1. entry(IAP に留まるか APP へ行くか)
 
@@ -37,6 +43,8 @@ IAP 起動直後の判定。`UPGRADE_MODE` で command 方式 / IO 方式を選�
 - IO 方式の pin: **PA0**(V4 系・V103、13 例)、**PC0**(V003 / V00X)、**PB4**(M030)。10 回読んで 7 回以上 LOW なら APP。
 - **APP から IAP へ戻る**: APP が `CMD_JUMP_IAP`(`0x84`)を受けたら、世代 A は `CalAddr` の page を消去、世代 B は `CalAddr` の page を読み出し・当該 word だけ CheckNum に差し替えて再書込(`Program_Buf_Modify` → erase → fast program)。その後 APP 側が `NVIC_SystemReset()`。
 
+<a id="jump-to-app"></a>
+
 ### APP への制御移行
 
 | 世代 | 方法 |
@@ -44,6 +52,8 @@ IAP 起動直後の判定。`UPGRADE_MODE` で command 方式 / IO 方式を選�
 | A | `FLASH->BOOT_MODEKEYR = 0x45670123, 0xCDEF89AB; FLASH->STATR bit14(MODE) = 0(user); NVIC_SystemReset()` — **software reset で BOOT 領域から user 領域へ切替**([custom-bootloader.ja.md](custom-bootloader.ja.md) §2a) |
 | B | USB / USART / AFIO clock を無効化 → `NVIC_EnableIRQ(Software_IRQn); NVIC_SetPendingIRQ(Software_IRQn)`。**`SW_Handler` が APP 先頭へ jump する**。⚠ この `SW_Handler` は MounRiver のプロジェクトテンプレート側 startup(`.cproject` が参照する `startup_ch32x035_3.3v.S` / `startup_ch32v20x_D6.S` 等)にあり、**EVT 同梱の共有 startup では既定の無限ループ**。自作 BL では「周辺 de-init → `FLASH_Base` へ jump(先頭は `jal _start`)」を自前で書く |
 | C | 同 B(`Software_IRQn`)。加えて USB を `RB_UC_RESET_SIE` で止め、GPIOA/B・USART3 を DeInit |
+
+<a id="series-parameters"></a>
 
 ## 2. シリーズ別パラメータ(EVT から転記)
 
@@ -66,7 +76,11 @@ IAP 起動直後の判定。`UPGRADE_MODE` で command 方式 / IO 方式を選�
 - **`1A86:55E0` は factory ISP と PID が同じで、CH32X035 の factory ISP は VID も同じ `1a86:55e0`**(BTVER 2.60 で実測。[pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) §1)。VID では区別できないので、正体判定は必ず protocol で行う(factory ISP は `0xA1` Identify に答える。WCH-Link の IAP mode `4348:55e0` も同じ問題を持つ)。
 - UART は **8N1、フロー制御なし**。世代 A は `BRR` 直書きなので**システムクロックを変えると baud がずれる**(24 MHz HSI 前提)。
 
+<a id="frames"></a>
+
 ## 3. frame
+
+<a id="frame-uart-ab"></a>
 
 ### 3.1 UART(世代 A / B)
 
@@ -83,6 +97,8 @@ response(END 以外):
 - **END には応答が無い**(device は即 APP へ jump する準備に入る)。
 - `Len` は最大 64(V003 は `data[64]`)。実用上 host は 56〜60 byte 単位で送る。
 
+<a id="frame-uart-c"></a>
+
 ### 3.2 UART(世代 C: V103)
 
 ```
@@ -91,6 +107,8 @@ response: 00 | status                                          ※ sync 無し
 ```
 
 frame の末尾処理は EVT の該当 `UART_Rx_Deal` を実機で確認すること(本書は構造体定義と送信側から転記)。
+
+<a id="frame-usb"></a>
 
 ### 3.3 USB(世代 B / C)
 
@@ -104,6 +122,8 @@ response(EP2 IN、END 以外): 00 | status     (2 byte)
 ```
 
 世代 C(V103)は `Cmd | Len | Rev[2] | data[60]` の 4 byte ヘッダ。
+
+<a id="commands"></a>
 
 ## 4. コマンドの意味(device 側の実装から)
 
@@ -123,6 +143,8 @@ response(EP2 IN、END 以外): 00 | status     (2 byte)
 4. 応答は各 frame ごとに 1 つ。**END だけ応答なし**。device は `End_Flag` を見て 10 ms 後に APP へ。
 5. `Len` が 0 の PROM は無害(何も貯まらない)。
 
+<a id="host-sequence"></a>
+
 ### 典型的な host シーケンス
 
 ```
@@ -135,12 +157,16 @@ END(0x83)                                → 応答なし。~10 ms 後に APP �
 
 WCHMcuIAP(V1.50 以降)は `.hex` / `.bin` 両対応、UART 既定 460800(変更可)。USB は driver 不要(vendor bulk。V103 の `4348:55E0` のみ CH372 driver)。
 
+<a id="app-contract"></a>
+
 ## 5. APP 側に要る実装(IAP 対応 APP の契約)
 
 - **link origin を `FLASH_Base`(`0x00005000`)にする**(世代 A は `0`)。vector table は APP 先頭。
 - **`CalAddr` の page を使わない**(最終 page。データ保存に流用しない)。
 - IAP へ戻す経路として、UART / USB の受信で `0x84` を受けたら §1 の手順で flag を操作して `NVIC_SystemReset()`。EVT の APP サンプルはこの受信部(`RecData_Deal` の `CMD_JUMP_IAP` 分岐)だけを持つ。
 - 世代 A では APP 側からの reset に `SystemReset_StartMode(Start_Mode_BOOT)`(`STATR` bit14 = 1)を併用して **BOOT 領域から再起動**させる。
+
+<a id="derived-iap"></a>
 
 ## 6. 派生 IAP(同じ EVT にある別経路)— 何ができるか
 
@@ -152,6 +178,8 @@ WCHMcuIAP(V1.50 以降)は `.hex` / `.bin` 両対応、UART 既定 460800(変更
 
 → 「WCH の IAP コマンド体系(`0x80..0x84`)は transport を替えて再利用されている」。自作 BL でこの体系を踏襲すれば、WCHMcuIAP 互換の host が流用できる可能性がある(要 capture)。
 
+<a id="capture-todo"></a>
+
 ## 7. verified 化に要る capture / 実機確認
 
 1. **WCHMcuIAP_WinAPP.exe の UART capture**(460800)で §3.1 の frame と §4 の順序(ERASE→PROM→VERIFY→END、VERIFY の addr 値、END 後の待ち)を照合。
@@ -159,6 +187,8 @@ WCHMcuIAP(V1.50 以降)は `.hex` / `.bin` 両対応、UART 既定 460800(変更
 3. 世代 C(V103)の UART 末尾(checksum の有無)を実機で確認。
 4. 世代 B の `SW_Handler` の実体(MRS テンプレート startup)を入手して jump 手順を確定。
 5. 世代 A で ERASE 後に END が書く CheckNum と、APP 側 JUMP_IAP の page 消去が **同じ page** を指すこと(`CalAddr & 0xFFFFFFC0` = V003 の 64 B 境界)を実機確認。
+
+<a id="references"></a>
 
 ## 参照
 

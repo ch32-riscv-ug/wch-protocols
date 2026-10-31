@@ -1,6 +1,10 @@
+<a id="protocols-index"></a>
+
 # protocols — 実プロトコル仕様(索引)
 
-領域ごとの byte レベル仕様。status 語彙は [../README.md](../README.md#status) 参照。WCH-Link のコマンド表の正本は [data/wchlink-commands.csv](data/wchlink-commands.csv)([列の意味](data/README.ja.md))。層の位置づけは [../guides/overview.ja.md](../guides/overview.ja.md) / [../guides/advanced.ja.md](../guides/advanced.ja.md)。
+領域ごとの byte レベル仕様。status 語彙は [../README.md](../README.md#status) 参照。WCH-Link のコマンド表の正本は [data/wchlink-commands.csv](data/wchlink-commands.csv)([列の意味](data/README.ja.md))。
+
+各文書の見出しと各コマンドには明示した ASCII のアンカー(`<a id="…"></a>`)があり、見出しの文字を直しても変わらない。外から引くときはこのアンカーを使う(`pc-to-link.ja.md#cmd-rst-out` の形)。§ 番号や、見出しから自動で作られるアンカーは使わない。層の位置づけは [../guides/overview.ja.md](../guides/overview.ja.md) / [../guides/advanced.ja.md](../guides/advanced.ja.md)。
 
 | ファイル | 領域 | 層 | 状態 |
 |---|---|---|---|
@@ -16,6 +20,8 @@
 | [dap.ja.md](dap.ja.md) | CMSIS-DAP(ARM mode) | L3 DAP | `todo`(mode 切替は `verified`) |
 
 線上・自作 probe・host ツールの landscape(採用事例・言語・license・リンク): [../references/probe-ecosystem.ja.md](../references/probe-ecosystem.ja.md)。
+
+<a id="dependencies"></a>
 
 ## 依存関係
 

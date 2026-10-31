@@ -94,7 +94,7 @@ target(チップ)に到達する経路は 4 つあり、通る層が違う。詳
   - 自作 probe / DUT harness の検討(OEP の前身。論点の索引は [harness-index](references/harness-index.ja.md)): harness-* 、[generic-probe-design](references/generic-probe-design.ja.md)、[ecosystem-any-hardware](references/ecosystem-any-hardware.ja.md)、[dut-harness-design](references/dut-harness-design.ja.md) ほか
   - ESP32-P4 の USB HS と logic capture: [p4-usb-hs-summary](references/p4-usb-hs-summary.ja.md)、[p4-probe-roadmap](references/p4-probe-roadmap.ja.md)、[p4-sample-rate-selection](references/p4-sample-rate-selection.ja.md)、[p4-profiling-methods](references/p4-profiling-methods.ja.md)、[capture-compression](references/capture-compression.ja.md)、[pin-discovery](references/pin-discovery.ja.md)
   - USB の識別子と driver: [windows-winusb-binding](references/windows-winusb-binding.ja.md)、[usb-host-descriptor-persistence](references/usb-host-descriptor-persistence.ja.md)、[pid-acquisition-roadmap](references/pid-acquisition-roadmap.ja.md)
-- [`tools/`](tools/) — repo の保守用 script([gen_command_tables.py](tools/gen_command_tables.py): コマンド表を CSV から作る)
+- [`tools/`](tools/) — repo の保守用 script([gen_command_tables.py](tools/gen_command_tables.py): コマンド表を CSV から作る / [check_anchors.py](tools/check_anchors.py): 見出しの明示アンカーと、アンカーへのリンクを確かめる)
 - [`CHANGELOG.md`](CHANGELOG.md) — 版ごとの変更
 
 ## 言語

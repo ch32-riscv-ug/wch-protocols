@@ -1,8 +1,12 @@
+<a id="link-to-target"></a>
+
 # WCH-Link ↔ target(SWIO 1 線 / RVSWD 2 線)
 
 status([語彙](../README.md#status)): **V003 の SWIO は ESP32 実装で end-to-end `verified`、RVSWD の主要な frame は LinkE fw 2.22 の線で `verified`。電気的な許容限界は `todo`**。層は L1 物理 + L2 線上 DMI。WCH 自身は QingKe core の debug を「1-wire / 2-wire DTM」と説明する。
 
 PC 側からは [pc-to-link.ja.md](pc-to-link.ja.md) の `DmiOp` を送るだけで、線上の toggling は WCH-Link firmware が担う。**PC ツールを作るだけならこの層は不要**(DMI 抽象で足りる)。この層が要るのは、WCH-Link 無しで直結する自作 probe(minichlink 系)を作る場合。運ぶ中身は RISC-V の **DMI トランザクション**([riscv-debug-module.ja.md](riscv-debug-module.ja.md))。
+
+<a id="physical-forms"></a>
 
 ## 1. 2 つの物理形態
 
@@ -15,6 +19,8 @@ PC 側からは [pc-to-link.ja.md](pc-to-link.ja.md) の `DmiOp` を送るだけ
 - 「CMSIS-DAP 対応」「ARM SWD 対応」は **CH32 RISC-V の 2 線 RVSWD 対応を意味しない**(別 protocol)。**なぜ別 protocol になったのかは §3b**。
 - core 世代と線の対応: V2A/V2C = 1 線、V3/V4 = 2 線([serial-and-print.ja.md](serial-and-print.ja.md) の core 表と一致)。
 
+<a id="not-in-usb"></a>
+
 ## 2. USB protocol 層には現れない
 
 attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線差は WCH-LinkE firmware が吸収する。ただし:
@@ -22,20 +28,28 @@ attach/DMI/flash の WCH-Link コマンドは 1 線/2 線で**同一**。配線�
 - 1 線 target は **LinkE/LinkW のみ**(旧 CH549 Link は不可)。
 - 実運用の非対称は [pc-to-link.ja.md](pc-to-link.ja.md) の family パラメータ(stub・data packet・write pack)に出る。
 
+<a id="rvswd-frames"></a>
+
 ## 3. RVSWD 2 線の線上フレーム(具体)
 
 status: 形式ごとに違う。**52-bit short 形式**は WCH-LinkE fw 2.22 + X035 / L103 / V203 の線と、複数の実機動作実装で `verified`。**84-bit long 形式**は CH549 Link fw 2.12 → V103 の線と LinkE の接続時の問い合わせで `verified`(target が答えるのは CH549 → V103 だけ)。**bulk burst**(15 + 38N clock)は LinkE 2.22 + X035 / L103 で構造を `verified`。根拠: [2026-09-11 V003/X035](../captures/fixtures/wire-flash-v003-x035-2026-09-11/README.ja.md) / [2026-09-25 L103/V203/V003](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md) / [E165](../experiments/e165_linke_x035_v103_wire/README.ja.md)。
 
 **要点: RVSWD は DMI の address / data / operation / status を運ぶが、線上形式は一つではない。** USB の `DmiOp`(cmd `0x08`)1 件は線上の DMI 1 frame になり、LinkE はその間に自分のアクセスを挟まない(LinkE 2.22 + L103)。一方、どの形式(short / long / burst)で送るか、AttachChip・flash・高速 read の中でどんな DMI 列を流すかは LinkE の firmware が決める。USB の byte 列がそのまま線に出る透過ブリッジではない。
 
+<a id="rvswd-signals"></a>
+
 ### 信号とアイドル
 
 - 2 線: **SWDIO(data)/ SWCLK(clock)**。無トランザクション時のレベルは **target で違う**。WCH-LinkE fw 2.22 は、X035 では**両方 HIGH**、L103 / V203 では **SWCLK LOW・SWDIO HIGH** で休ませる([E171](../experiments/e171_linke_rvswd_idle_level/README.ja.md))。L103 は両方 HIGH で約 1 ms 置くと link を失う。X035 は frame の間を SWCLK LOW で休ませると接続できない(oep-probe-arduino の実測)。
 - pin 名は ARM SWD に似るが**別 protocol**(RISC-V Debug 0.13、designer=WCH)。
 
+<a id="rvswd-start"></a>
+
 ### start / reset
 
 - RISC-V mode で起動時、SWDIO/SWCLK を HIGH にし、**IO を HIGH のまま 100 クロック(100 個の 1)を送り、STOP 条件**を出す(初期化。`attested`)。
+
+<a id="rvswd-bit-timing"></a>
 
 ### bit の駆動と sample
 
@@ -121,11 +135,15 @@ clock の空き時間ではなく、START / STOP で区切る。
 - (RVSWD)7bit addr が RISC-V 標準 DTM(abits 可変)とどう対応するか。WCH の線上は 7 bit と観測。Swindle は `dmi->address_width = 8U` と宣言し、probe 側の responder は `address as u8` で受けている(`blackmagic_addon/hosted/remote_rv_protocol.c` / `rs_swindle/src/native/rpc_target/mod.rs`)ので、8 bit で上位が未使用なのか、Swindle が余裕を取っているのかは分からない。
 - (SWIO)LOW パルス幅の 0/1 の**許容閾値**、pull-up/open-drain 条件の限界、33 パルスの fast-read 応答の先頭 bit の意味。
 
+<a id="why-not-swd"></a>
+
 ## 3b. なぜ ARM SWD と別 protocol なのか
 
 状態: **解説**(一次資料は ARM ADI/SWD 仕様と RISC-V Debug Spec = どちらも公開標準。RVSWD 側は §3 の観測。**「JTAG scan の時間多重」という読みは本書の解釈**)。
 
 **動機は同じ(ピン数削減)だが、載せている上位アーキテクチャが違う。**
+
+<a id="what-is-serialized"></a>
 
 ### 何をシリアライズしているか
 
@@ -141,11 +159,15 @@ clock の空き時間ではなく、START / STOP で区切る。
 
 > **読み**: JTAG は TDI と TDO が別線なので押し込みと吐き出しが同時に起きる。**RVSWD は線が 1 本なので、それを前後に時間分割しただけ**。つまり **SWD は「ADI のバスアクセスを 2 線に詰めた packet protocol」、RVSWD は「JTAG の dmi スキャンを 2 線に時間多重した shift protocol」**。
 
+<a id="why-wch-invented"></a>
+
 ### なぜ WCH が自分で作る必要があったか
 
 **RISC-V Debug Spec は DM と DMI の"インタフェース"は標準化したが、DTM(transport)は JTAG しか具体的に規定していない。** 「2 線でやりたい」なら**各ベンダが発明するしかない**。ARM は SWD を ADI の一部として自分で規定したので全社共通 — **ここが非対称**。
 
 ピン数が動機なのは共通で、**ARM は 4→2(SWD)、WCH は 4→2(RVSWD)と 4→1(SWIO)**で解いた。8〜20 ピンの chip に JTAG の 4〜5 本は重い。
+
+<a id="swd-requirements"></a>
 
 ### SWD が背負っている要件は RVSWD には要らない
 
@@ -154,6 +176,8 @@ clock の空き時間ではなく、START / STOP で区切る。
 | **multi-drop**(SWD v2 の `TARGETSEL`) | 1 バスに複数 target | **不要** |
 | **JTAG↔SWD 切替シーケンス**(`0xE79E`) | 既存 JTAG との後方互換・両対応パッド | **不要**(§3 の初期化は「IO HIGH で 100 クロック + STOP」だけ) |
 | **3 状態 ACK**(OK / WAIT / FAULT) | AP の先が AHB/APB ブリッジで stall しうるので、**待ちを framing に持つ**必要がある | **不要。** DMI の **`busy`(status=3)** が **RISC-V DMI のセマンティクスに元から入っている = payload 側にある** |
+
+<a id="turnaround"></a>
 
 ### これが §3 末尾の「turnaround が文書化されていない」を説明する
 
@@ -164,9 +188,13 @@ clock の空き時間ではなく、START / STOP で区切る。
 
 ⚠ ただし**その 1 箇所の電気的な振る舞い**(どちらがいつ線を放すか)は**未測定**(§3「まだ不明」)。
 
+<a id="pin-names"></a>
+
 ### pin 名だけ借りている
 
 `SWDIO` / `SWCLK` という名前とコネクタ配置は ARM から借りている。**基板設計者とプローブのヘッダが既にその形を知っているので便利**で、実際 WCH-Link の 4 ピンは SWD ヘッダに見える。→ **§1 の警告(pin 名が似るが非互換)はこのため。名前が一番の罠。**
+
+<a id="probe-implications"></a>
 
 ### 実装上の帰結(自作 probe に効く)
 
@@ -176,9 +204,13 @@ clock の空き時間ではなく、START / STOP で区切る。
 | **効率は悪い** | long 形式では nop でも 42 + 42 bit、short 形式でも 52 bit 流れる。SWD は 8 bit の request で「読むだけ」が済む |
 | **PIO / PIOC 向き** | 「N bit 押し込んで N bit 読む」だけなので状態機械が小さい。**CH32X035 の PIOC が「2 ピンのプロトコル制御」用に作られている**のと噛み合う(→ [../references/harness-board-survey.ja.md](../references/harness-board-survey.ja.md) §2.1) |
 
+<a id="third-party"></a>
+
 ## 4. 第三者実装(解読の一次資料)
 
 WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数あり**、線上を解読するならこれらが出発点。
+
+<a id="third-party-swio"></a>
 
 ### 1 線 SWIO
 
@@ -190,6 +222,8 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 | [rvswdio_programmer](https://github.com/cnlohr/rv003usb/tree/master/rvswdio_programmer) | CH32V003 | `opmode=1`=SWIO / `opmode=2`=RVSWD を自動判別 |
 
 - SWIO は pulse 幅符号化。minichlink 系の bit-bang GPIO 実装が実際の timing の一次資料。
+
+<a id="third-party-rvswd"></a>
 
 ### 2 線 RVSWD
 
@@ -207,6 +241,8 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 | [ch32-tapioca-probe](https://github.com/pierrejay/ch32-tapioca-probe) | CH32X035 PIOC | LinkE→V307 captureで52-bitを復号し、X035/V203/V307で実機試験。turnaround/statusまで文書化 |
 | [pico-rvswd](https://github.com/i-infra/pico-rvswd) | RP2350 PIO | X035で52-bit frameを実機試験。400 kHz–4 MHzでparity error 0を報告 |
 | [rvswdog](https://github.com/coocoscoocos/rvswdog) | STM8 | ESP32実装と同じ52-clock bit-bang。target検証範囲はREADME上不明 |
+
+<a id="linke-wire-behavior"></a>
 
 ## 5. WCH-LinkE の線上の動作(実測)
 
@@ -272,11 +308,15 @@ L103、`more/l103/monitor_sdi`(25 MHz 収録)。LinkE は DMDATA0 を約 29 µs 
 - 1/2 線切替 target の判定と entry シーケンス(debug mode 突入の初期化)。
 - 1 個目の long frame(op `00`、data `0x19`)の目的、0x7c〜0x7f の各 bit の意味、V003 の接続前の 32 パルス。
 
+<a id="investigation"></a>
+
 ## 6. 調査の入口
 
 1. 単独 `DmiOp` ごとに GPIO marker を併記して LinkE ↔ target を収録し、USB request と線上の変換・再試行・内部 polling を 1:1 で時刻対応させる。
 2. SWIO(1 線)は PicoRVD PIO / cnlohr minichlink の bit-bang を読み、pulse 幅規則を抽出。
 3. RINS の論理層記述と fxsheep 解析で裏を取り、status を上げる。
+
+<a id="references"></a>
 
 ## 参照
 

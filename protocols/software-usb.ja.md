@@ -1,3 +1,5 @@
+<a id="software-usb"></a>
+
 # software USB(V003 系: hardware USB を持たない chip の bit-bang USB)
 
 状態: **`attested`**(解説が主。一次 OSS = rv003usb / ch32fun から転記。自前 capture 未)。層は **L1 物理 + L2 転送を firmware で合成**する特殊な層。
@@ -10,6 +12,8 @@ CH32V003(QingKe V2A)や CH32V00x・CH641 は **USB peripheral を持たない**�
 
 の土台になっている。**hardware USB を持つ chip(下記)では不要**。
 
+<a id="why"></a>
+
 ## 1. なぜ必要か / どの chip か
 
 | USB の持ち方 | 該当(例) | USB の出し方 |
@@ -21,6 +25,8 @@ CH32V003(QingKe V2A)や CH32V00x・CH641 は **USB peripheral を持たない**�
 
 hardware USB 側は WCH peripheral driver / ch32fun の USBFS/USBHS 例が担うので本書の対象外。本書は **peripheral 無し chip の software USB** に絞る。
 
+<a id="physical"></a>
+
 ## 2. 物理・電気(rv003usb 実測)
 
 - **D+/D− は GPIO 0〜4 に限定**(`c.andi` 命令の 5bit 即値制約による)。**PC5–PC7 / PD5–PD7 は不可**。
@@ -28,6 +34,8 @@ hardware USB 側は WCH peripheral driver / ch32fun の USBFS/USBHS 例が担う
 - 任意で **33–47Ω** の直列保護抵抗を D+/D−。
 - speed: **USB low-speed(1.5 Mbps)**。
 - CPU は bit を追うため高クロックで回す(V003 を 48 MHz 付近で駆動する構成が一般的。正確値は実装で確認)。
+
+<a id="timing"></a>
 
 ## 3. どう動くか(タイミングが全て)
 
@@ -38,12 +46,16 @@ hardware USB 側は WCH peripheral driver / ch32fun の USBFS/USBHS 例が担う
 
 → この timing 制約が software USB の本質的な難所。移植時は clock・割込み優先度・critical section 長が最重要。
 
+<a id="device-class"></a>
+
 ## 4. device class と host
 
 - **driver 不要の HID**(low-speed の max packet = **8 byte**)。
 - デモ: HID(gamepad / mouse+keyboard / custom message)、概念実証で MIDI・CDC serial・Ethernet(RNDIS)。
 - host は HID(直接叩くなら custom HIDAPI)。専用 driver は要らない。
 - code size: 基本 HID ~2 kB、bootloader **1,920 byte**。
+
+<a id="usb-bootloader"></a>
 
 ## 5. software USB bootloader(rv003usb bootloader)
 
@@ -55,6 +67,8 @@ peripheral 無しの V003 を **USB 端子だけで更新**できる custom boot
 - bootloader 自身は自己更新しない(recovery は別 programmer)。
 - V006 系は別実装(`rv003usb/bootloader_v006`)。
 
+<a id="stub-execution"></a>
+
 ### stub 実行型という設計(ch32fun 版で明確化)
 
 ch32fun の [`examples_usb/bootloader`](https://github.com/cnlohr/ch32fun/tree/master/examples_usb/bootloader) は rv003usb bootloader の移植・発展で、**hardware USB を持つ chip(X035/CH5xx で確認、他は WIP)**向け。設計思想が明快:
@@ -64,12 +78,16 @@ ch32fun の [`examples_usb/bootloader`](https://github.com/cnlohr/ch32fun/tree/m
 - minichlink の全操作(gdb 以外)に対応、任意アドレス read-back。
 - I2C/UART/iSLER 等へ transport 追加も可能。CH32V103 は 2 分割 boot partition のため未対応見込み。
 
+<a id="open-questions"></a>
+
 ## 6. 未解読 / 要調査
 
 - bootloader の stub protocol(feature report ID `0xAA` 128 B、scratchpad `0x20000100`、末尾 `0x1234ABCD` で実行、完了印 `0xFF`、`runwordpad` の 3 状態、stub 一覧)は [custom-bootloader.ja.md](custom-bootloader.ja.md) §2b。残るのは USB capture での `verified` 化。
 - rv003usb の USB frame(setup / HID report)の実バイトを capture で確定。
 - V003 の駆動クロック実値(BL は `SYSTEM_CORE_CLOCK 48000000`)と割込みタイミングの余裕(移植の要点)。
 - **BOOT 領域の起動選択**(option byte、`configurebootloader`)と `FLASH_STATR` bit14 切替 → [custom-bootloader.ja.md](custom-bootloader.ja.md) §2a。
+
+<a id="references"></a>
 
 ## 7. 参照
 

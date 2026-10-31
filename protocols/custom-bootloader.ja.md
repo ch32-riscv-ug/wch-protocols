@@ -1,6 +1,10 @@
+<a id="custom-bootloader"></a>
+
 # custom bootloader(経路 ③: DFU / UF2 / UART / HID / OTA)
 
 状態: **`attested`**(事例の節は解説。実装事例は多数。§2a の BOOT 領域は RM から転記、§2b の HID bootloader protocol は rv003usb / ch32fun / minichlink のソースから byte 単位で転記 → **実装可**。自前 capture 未)。層は L3(各 bootloader protocol)。経路 ③ — user が自分で焼く bootloader。factory ISP([pc-to-device-isp.ja.md](pc-to-device-isp.ja.md))や WCH IAP([wch-iap.ja.md](wch-iap.ja.md))とは別で、DFU/UF2/UART/HID/network など transport が多彩。
+
+<a id="bootloader-kinds"></a>
 
 ## 1. bootloader の種類(格納場所で分ける)
 
@@ -10,6 +14,8 @@
 | custom system bootloader | 書換可 system/BOOT 領域 | 最初に debug probe 等で導入 | factory ISP 置換、user flash 全量確保 | system 領域を壊すと probe 救出要 |
 | custom user-flash bootloader | code flash 先頭等 | debug probe/factory ISP で導入 | DFU/UF2/UART/OTA | mass erase で消える。APP の link offset 要 |
 | application IAP | application 内 | app と同時 | 稼働中に自己更新 | app 破損時は入れない。recovery stub 併用推奨 |
+
+<a id="implementations"></a>
 
 ## 2. 実装事例(OSS / WCH 公式)
 
@@ -27,6 +33,8 @@
 | [wch-uf2](https://github.com/ArcaneNibble/wch-uf2) | CH32V2xx の USBD | 先頭 **4 KiB** 予約、APP `0x08001000` | OS の MSC + **UF2 copy** | C | double reset、flash/RAM download。V3xx 非対応、hardcoded 値の family 化要 |
 | [Swindle CH32V3x DFU BL](https://github.com/mean00/swindle_bootloader_ch32v3x) | CH32V3x hardware USB | 先頭 **16 KiB** 予約(実 ~6 KiB)、APP `0x4000` | `dfu-util` | C | RAM marker/button/invalid CRC で DFU。12-byte header + **CRC32** |
 | [PlumBL](https://github.com/HaiMianBBao/PlumBL) | CH32V30x ほか、CherryUSB **DFU/U2F** | user flash 予約 | `dfu-util`/U2F tool | C | multi-platform port 例 |
+
+<a id="boot-area"></a>
 
 ## 2a. BOOT 領域(system memory)— 自作 BL を「user flash を 1 byte も食わずに」置ける場所
 
@@ -46,6 +54,8 @@ factory ISP が入っている information block は、**多くの系列でユ�
 | CH32H417 | `0x1FFF0000`–`0x1FFFDFFF`(56 KB)or `–0x1FFF6FFF`(28 KB) | 56 / 28 KB(構成 2 種) | 256 B | — | |
 | CH32M030 | (information store 512 B のみ) | **無し** | 128 B | — | → factory ISP を持たない([pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) §1) |
 
+<a id="boot-area-placement"></a>
+
 ### BOOT 領域に置く方法(EVT `BootAsUser` の手順)
 
 1. linker に `BFLASH` 領域を足す(`ORIGIN = 0x1FFFF000, LENGTH = 1920` / `0x1FFF0000, 3328`)。**IAP を丸ごと置くなら `FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 1920` と書く**(WCH IAP 世代 A の Link.ld。BOOT 領域は実行時 `0x00000000` にエイリアスされる)。
@@ -53,6 +63,8 @@ factory ISP が入っている information block は、**多くの系列でユ�
 3. **書込は debug probe(WCH-LinkUtility ≥ V1.80、X035 は ≥ V2.40)で、download address を `0x1FFFF000` / `0x1FFF0000` に指定、hex のみ**。factory ISP や自分自身からは書けない(ISP won't work — ch32fun README も同旨)。
 4. EVT の注記「BOOT FLASH は user code から消去できない」は **BootAsUser(BOOT 領域に置いたコードがデータ領域として使えない)の文脈**。**`BOOT_MODEKEYR` を解錠すれば user code から BOOT 領域を erase / program できる**(V003 で実証: [`ch32_user_bootloader_flasher`](https://github.com/monte-monte/ch32_user_bootloader_flasher) は `KEYR` + `BOOT_MODEKEYR` + `MODEKEYR` の 3 組を解錠したあと、通常の fast `PAGE_ER` / `PAGE_PG`(64 B)を `0x1FFFF000` に対して実行する)。→ **BL の自己更新は「app 側 updater」の形で可能**。同ツールは書く前に **user flash 末尾 `0x08003800` に 1,920 B の backup** を取り、失敗時に復元する。V00X / X035 / X315 も同じレジスタを持つが未検証。
 5. **上書きすると factory ISP は失われる**。戻すには `0x1FFFF000` に元の Boot code を焼き直す(WCH の配布物か GitHub 上の dump)。
+
+<a id="boot-mode-switch"></a>
 
 ### boot mode の切替レジスタ(BOOT 領域 ↔ user 領域)
 
@@ -76,11 +88,15 @@ PFIC->CFGR = 0xBEEF0080;          // system reset(key 付き)
 - minichlink は **`FLASH_STATR` bit13 で「いま BOOT 領域で走っているか」**を判定する(`B003DetermineIfInBoot`)。
 - V003 で BOOT 領域から起動させるには option byte 側の設定も要る(rv003usb `configurebootloader`: `OBKEYR`/`KEYR`/`MODEKEYR` 解錠 → `OPTER` → 再書込)。**出荷状態の多くは BOOT 起動になっている**が、要確認。
 
+<a id="hid-bootloader"></a>
+
 ## 2b. HID scratchpad bootloader の protocol(rv003usb / ch32fun、host = minichlink)
 
 状態: **attested(BL 側 = rv003usb `bootloader.c` / ch32fun `examples_usb/bootloader/bootloader.c`、host 側 = minichlink `pgm-b003fun.c`。同一作者の対実装なので独立実装ではない)**。
 
 BL は **HID の feature report だけ**で動く(class request `SET_REPORT 0x21/0x09` = 書込、`GET_REPORT 0xA1/0x01` = 読出)。コマンドは無く、**host が RISC-V の機械語(stub)を scratchpad に送り、BL がそれを実行する**。BL 本体は小さいまま、機能は host 側の stub で増える。
+
+<a id="hid-usb"></a>
 
 ### USB
 
@@ -92,6 +108,8 @@ BL は **HID の feature report だけ**で動く(class request `SET_REPORT 0x21
 | feature report ID | **`0xAA`**: 127 B(+ID = 128 B) | **`0xA8`**: 7 B / **`0xAA`**: 127 / **`0xAB`**: 1,024+127 / **`0xAC`**: 2,048+127 / **`0xAD`**: 3,072+127 / **`0xAE`**: 4,095(Windows/macOS の上限)/ **`0xAF`**: 5,120+127 / **`0xB0`**: 6,144+127 B(ID = `0xAA + ⌈size/1024⌉`。host は `0xAD`/`0xB0` を GET して実サイズを探る) |
 | scratchpad | RAM `0x20000100`、**128 B**。`runwordpad` = `0x20000180` | RAM `.scratchpad`、**6,144 + 128 B** |
 
+<a id="hid-hosts"></a>
+
 ### host 実装(3 つ)
 
 | host | 言語 / API | 対象 PID | 備考 |
@@ -101,6 +119,8 @@ BL は **HID の feature report だけ**で動く(class request `SET_REPORT 0x21
 | [WebLink_USB](https://github.com/monte-monte/WebLink_USB)(monte-monte) | **JS / WebHID** | `1209:B803`(BL)/ `1209:D803`(app) | flasher + terminal。`ch32_user_bootloader_flasher` の UI にも使う |
 
 **同じ protocol を C と JS の別作者が実装して動いている**ので、protocol の形は「独立実装 2 つ以上の一致」を満たす(byte の verified 化には capture が要る)。**ブラウザ側は 2 実装とも UIAPduino fork の PID(`B803`)を既定にしている** — upstream `B003` の BL を使うなら filter を変える。
+
+<a id="hid-scratchpad"></a>
 
 ### scratchpad の構造と実行
 
@@ -114,6 +134,8 @@ report:  [ID] [AA 00 00 00] [stub code …] [args …] [data …] … [CD AB 34 
 3. stub は結果を scratchpad に書き、**完了印として `scratchpad[0..3] = 0xFFFFFFFF`** を書いて `ret`。
 4. host は `GET_REPORT` を繰り返し、**report byte[1] == 0xFF** で完了と判定(byte[0] は report ID)。
 5. `runwordpad` の意味: **負 = 起動までのカウントダウン**(timeout)、**0 = 何もしない**(halt)、**正 = N 周後に stub 実行**。
+
+<a id="hid-stubs"></a>
 
 ### minichlink の stub 一覧(何ができるか)
 
@@ -133,6 +155,8 @@ report:  [ID] [AA 00 00 00] [stub code …] [args …] [data …] … [CD AB 34 
 - **app から BL へ戻す hook**(rv003usb demo、PID `D003`): app の HID に feature report **`FD 12 34 AA BB CC DD`**(ID `0xFD`)を送ると app が §2a のシーケンスで BL へ再起動する。minichlink は `B003` が無ければ `D003` を探してこれを送る。
 - rv003usb BL の flash 配置: `FLASH LENGTH = 1916`、`SECRET @0x77C LENGTH 4`(`boot_usercode` の offset を XOR で保存)。**GPIO pin や機能の組合せでサイズが 1,920 B を超える**ため、timeout / button / host 検出は択一に近い。
 
+<a id="transport-comparison"></a>
+
 ## 3. transport 比較
 
 | transport | driver/host 依存 | 速度目安 | 長所 | 短所 |
@@ -146,6 +170,8 @@ report:  [ID] [AA 00 00 00] [stub code …] [args …] [data …] … [CD AB 34 
 | Ethernet/Wi-Fi/BLE | network stack | 可変 | 遠隔更新 | 認証・暗号・再送・rollback 必須 |
 | USB host/SD/SPI flash | 外部媒体 | 可変 | PC なし更新 | 媒体破損・image 選択・電源断対策 |
 
+<a id="common-items"></a>
+
 ## 4. bootloader 実装に共通の仕様項目
 
 新規に設計/解読するとき繰り返し現れる:
@@ -158,6 +184,8 @@ report:  [ID] [AA 00 00 00] [stub code …] [args …] [data …] … [CD AB 34 
 - **app への jump 時**: vector table/interrupt・clock・USB pull-up・peripheral・stack・`.data/.bss` の状態。
 - **識別情報**: USB=VID/PID・serial・DFU alt setting・UF2 family ID / UART=port・node ID。
 
+<a id="open-questions"></a>
+
 ## 5. 未解読 / 要調査
 
 - WCH IAP(UART / USB)は [wch-iap.ja.md](wch-iap.ja.md) で **12 シリーズ分 byte 確定**(EVT 転記)。残るは WCHMcuIAP の実 capture。
@@ -165,6 +193,8 @@ report:  [ID] [AA 00 00 00] [stub code …] [args …] [data …] … [CD AB 34 
 - wch-uf2 / Swindle DFU / PlumBL / tinyboot の header・CRC・entry の実バイト(手元にソース無し。転記待ち)。
 - V003 の option byte で BOOT 起動を選ぶ手順(rv003usb `configurebootloader` の `OPTER` の意味)を RM と突き合わせる。
 - V20x/V30x の 28 KB BOOT 領域に自作 BL を置く実例(ch32fun は「stub 追加で可」と注記、未検証)。
+
+<a id="references"></a>
 
 ## 参照
 

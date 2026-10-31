@@ -14,7 +14,7 @@ ch32rv の [収載依頼 0009](request-0009.ja.md)から受領した実測資料
 
 ## 事実
 
-同一 attach 内で DMCONTROL(`0x10`)へ `0x00010001` / `0x00000001` を書くと、readback と mhartid / marchid / mimpid がコア 1 / 0 に対応して切り替わる。両セッションで再現した。詳細な結果表と手順は [DM 仕様](../../../protocols/riscv-debug-module.ja.md#h417-の単一コア選択と-csr-読み出し)、要求・応答 byte は [PC↔Link §4a](../../../protocols/pc-to-link.ja.md#4a-h417-のコア選択を運ぶ-dmiop)に収載。
+同一 attach 内で DMCONTROL(`0x10`)へ `0x00010001` / `0x00000001` を書くと、readback と mhartid / marchid / mimpid がコア 1 / 0 に対応して切り替わる。両セッションで再現した。詳細な結果表と手順は [DM 仕様](../../../protocols/riscv-debug-module.ja.md#h417-core-select)、要求・応答 byte は [PC↔Link §4a](../../../protocols/pc-to-link.ja.md#h417-core-select)に収載。
 
 照合はリポジトリ直下で実行する(標準 Python のみ、実機不要):
 

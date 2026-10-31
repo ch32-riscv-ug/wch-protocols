@@ -1,8 +1,12 @@
+<a id="pc-usb-driver"></a>
+
 # PC 側 USB ドライバ層(host からデバイスを開く)
 
 状態: **Windows は verified**(実機で両系統を確認)/ Linux・macOS は attested。層は L1/L2 の PC 側境界 — 「OS のドライバが USB device を握り、ユーザー空間のツールがどの API でそこへ届くか」。ここは**どのプロトコルを喋るかの手前**の問題で、[pc-to-link.ja.md](pc-to-link.ja.md)(probe)・[pc-to-device-isp.ja.md](pc-to-device-isp.ja.md)(ISP USB)・[dap.ja.md](dap.ja.md) の**全 USB 経路に共通**して効く。
 
 まずここを通せないと 1 byte も送れない。特に **Windows は WCH-Link へのアクセス経路が 2 系統**あり、片方しか知らないと「列挙はできるのに開けない」で詰まる。
+
+<a id="why-driver-layer"></a>
 
 ## 0. なぜドライバ層が問題になるか
 
@@ -18,6 +22,8 @@ WCH-Link は composite device で、通常 2 interface を持つ:
 | **MI_00**(vendor bulk) | WCH-Link コマンド(この repo の主対象) | Windows: **WinUSB か WCH 純正**(下記 2 系統)/ Linux/macOS: usbfs |
 | MI_01(CDC-ACM) | 仮想 COM(UART bridge / print) | Windows: `usbser`=COM ポート / Linux: `/dev/ttyACM*` |
 
+<a id="linux"></a>
+
 ## 1. Linux
 
 - MI_00 は特定ドライバに握られない。**usbfs(libusb/nusb)で直接開ける**。特別なドライバ導入は不要。
@@ -26,10 +32,14 @@ WCH-Link は composite device で、通常 2 interface を持つ:
 - **WSL** は USB を直接見られないため **usbipd-win** で Windows から attach(`usbipd attach --wsl --busid <X>`)する。attach 中は Windows 側の CH375 経路は握れない(排他)。
 - MI_01 は `cdc_acm` が `/dev/ttyACM*` を生やす。
 
+<a id="macos"></a>
+
 ## 2. macOS
 
 - vendor interface は IOKit 経由で開ける。**nusb/libusb がそのまま動く**。専用ドライバ導入は不要。
 - CDC は標準の CDC ドライバで `/dev/cu.usbmodem*`。
+
+<a id="windows"></a>
 
 ## 3. Windows — 2 系統(ここが要注意)
 
@@ -49,19 +59,27 @@ WCH-Link の MI_00 を握るドライバが 2 通りあり、**両者は排他**
 - ドライバ: `WCHLinkW64.SYS`(class `WCH`、INF `wchlinkwdm.inf` / `oem*.inf`、表示名 `WCHLink_A64`)。CH375 汎用 USB ドライバ系。
 - クリーンな Windows(WCH ドライバ未導入)では LinkE が **MS OS descriptor で WinUSB に自動 bind** されることがあり、その場合は系統 A で普通に動く。系統 B は「純正ドライバが先に入っている環境」向けの共存策。
 
+<a id="windows-winusb"></a>
+
 ### 3A. WinUSB 系統(Zadig / 自動 bind)
 
 - Zadig で MI_00 を WinUSB(または libusbK)へ置換 → `nusb`/`libusb`/probe-rs がそのまま開ける。
 - 欠点: **WCH-LinkUtility が使えなくなる**(純正ドライバを上書きするため)。ユーザーによっては受け入れ不可。
 
+<a id="windows-wch-driver"></a>
+
 ### 3B. WCH 純正ドライバ系統(Zadig 不要)
 
 純正ドライバのまま喋る道は 2 つ。**ch32rv は B-2(IOCTL 直叩き)を採用**している(64bit のまま動くため)。
+
+<a id="windows-wchlinkdll"></a>
 
 #### B-1. `WCHLinkDLL.dll` 経由(WCH 提供 API)
 
 - `CH375*` stdcall API を持つ WCH の DLL。`CH375OpenDevice`/`CH375CloseDevice`/`CH375GetDeviceDescr`/`CH375ReadEndP(idx, ep, buf, len)`/`CH375WriteEndP(...)`/`CH375SetTimeoutEx` 等。EP 番号ベースなので EP 0x01/0x81/0x02/0x82 にほぼ 1:1。
 - **制約: DLL は 32bit(x86 stdcall)のみ。64bit プロセスからロード不可**(実機確認: amd64 パッケージでも DLL は 32bit のまま、64bit 版は存在しない。64bit は kernel の `WCHLinkW64.SYS` だけ)。→ 使うには 32bit ビルドが要る。wlink(Rust)はこの経路を `cfg(target_arch="x86")` 限定で実装。
+
+<a id="windows-ioctl"></a>
 
 #### B-2. IOCTL 直叩き(`DeviceIoControl`、DLL 不要・64bit 可)★ch32rv 採用
 
@@ -106,6 +124,8 @@ DLL を介さず、純正ドライバの IOCTL を直接叩く。**arch 非依�
 
 **特性**: 1 IOCTL=64B 駆動なので DMI 読みの往復回数がそのまま効き、**転送は遅い**(read ~2.3 KiB/s)。まず動くこと優先。
 
+<a id="windows-coexistence"></a>
+
 ### 3C. 共存戦略(ランタイム選択)
 
 系統 A/B のどちらが当たっているかは環境依存なので、**両対応**にしておくのが親切:
@@ -116,9 +136,13 @@ DLL を介さず、純正ドライバの IOCTL を直接叩く。**arch 非依�
 
 Linux/macOS は系統が 1 つなので常に usbfs(nusb)。
 
+<a id="capture"></a>
+
 ## 4. capture との関係
 
 capture([../captures/README.ja.md](../captures/README.ja.md))はこのドライバ層の**上**で取る。ch32rv の `--capture` は backend(nusb / CH375)の外側で記録するので、どちらの系統でも同じ NDJSON が残る。純正ツールの観察は usbmon(Linux で usbipd 共有)や Windows の USB キャプチャで行う。
+
+<a id="references"></a>
 
 ## 参照
 
