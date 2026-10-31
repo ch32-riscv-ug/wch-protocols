@@ -1,15 +1,15 @@
-# カバレッジと実装可否(セッション棚卸し)
+# カバレッジと実装可否
 
-各ドキュメントを「**これだけで実装できるか**」で判定し、穴と次に集める情報をまとめる。判定語: **実装可**(byte 単位で足りる)/ **部分的**(コアは足りるが一部要追加)/ **reference**(理解と参照実装への索引。byte 仕様は含まない)/ **todo**(未着手)。
+各ドキュメントを「**これだけで実装できるか**」で判定し、穴と次に集める情報をまとめる。ここの判定語は実装できるかどうかの軸で、項目ごとの裏付けの status([README の status 語彙](README.md#status))とは別: **実装可**(byte 単位で足りる)/ **部分的**(コアは足りるが一部要追加)/ **解説**(理解と参照実装への索引。byte 仕様は含まない)/ **未着手**。
 
 ## 1. 層 × 経路のカバレッジ
 
 | | L1 物理 | PC ドライバ | L2 転送 | L3 protocol | L4 アプリ |
 |---|---|---|---|---|---|
-| ① probe | SWIO/RVSWD([link-to-target] V003 SWIO=end-to-end verified/RVSWD=主要frame verified) | [pc-usb-driver] **実装可** | USB bulk([pc-to-link] **実装可**) | WCH-Link cmd + DMI([pc-to-link]/[riscv-debug-module] **実装可**) | flash/mem/reg/halt/print([pc-to-link]/[riscv-debug-module] **実装可**、print target 側=[serial-and-print]) |
-| ② factory ISP | USB / UART | [pc-usb-driver] **実装可** | USB bulk / UART | ISP `0xAx`([pc-to-device-isp] **部分的**) | flash/option |
-| ③ custom BL | USB / UART / software USB | [pc-usb-driver] / [software-usb] | 各 | WCH IAP([serial-and-print] UART=**実装可** / USB=部分)、DFU/UF2/HID([custom-bootloader] **reference**) | flash/OTA |
-| ④ DAP | SWD/JTAG | [pc-usb-driver] | USB bulk | CMSIS-DAP([dap] **todo**、標準へ委譲) | ARM debug |
+| ① probe | SWIO/RVSWD([link-to-target] V003 SWIO = end-to-end `verified` / RVSWD = 主要 frame `verified`) | [pc-usb-driver] **実装可** | USB bulk([pc-to-link] **実装可**) | WCH-Link cmd + DMI([pc-to-link]/[riscv-debug-module] **実装可**) | flash/mem/reg/halt/print([pc-to-link]/[riscv-debug-module] **実装可**、print target 側=[serial-and-print]) |
+| ② factory ISP | USB / UART | [pc-usb-driver] **実装可** | USB bulk / UART | ISP `0xAx`([pc-to-device-isp] USB **実装可**、UART **部分的**) | flash/option |
+| ③ custom BL | USB / UART / software USB | [pc-usb-driver] / [software-usb] | 各 | WCH IAP([wch-iap] **実装可**)、DFU/UF2/HID([custom-bootloader] HID は **実装可**、他は **解説**) | flash/OTA |
+| ④ DAP | SWD/JTAG | [pc-usb-driver] | USB bulk | CMSIS-DAP([dap] **未着手**、標準へ委譲) | ARM debug |
 
 [link-to-target]: protocols/link-to-target.ja.md
 [pc-usb-driver]: protocols/pc-usb-driver.ja.md
@@ -20,64 +20,58 @@
 [custom-bootloader]: protocols/custom-bootloader.ja.md
 [software-usb]: protocols/software-usb.ja.md
 [dap]: protocols/dap.ja.md
+[wch-iap]: protocols/wch-iap.ja.md
 
-**結論**: **① probe 経路(flash/read/debug/print)は byte 単位で実装可能**(ch32rv が実証済み)。② ISP・③ IAP-USB・④ DAP は capture 待ち。
+**結論**: **① probe 経路(flash/read/debug/print)と ② factory ISP の USB 経路は byte 単位で実装可能**(ch32rv が実機で往復)。② の UART 経路、③ の WCH IAP の往復順序、④ DAP は capture 待ち。
 
 ## 2. ファイル別 実装可否判定
 
 | ファイル | 判定 | これで作れるもの | 不足(byte 単位で足りない点) |
 |---|---|---|---|
-| [pc-to-link](protocols/pc-to-link.ja.md) | **実装可** | attach/probe info/chip info/setspeed/DMI/**高速バルク read(§5b)**/flash(stub + 直接 FLASH controller)/**option byte 書込(§6b)**/erase/power/monitor/**RV↔ARM mode 切替(§4、両方向 verified)**、**probe firmware の更新・救出・脱出(§10b。ch32rv が実装し実機往復検証済み)** | error 応答 frame 形式(§3 todo)、IAP の異常時応答形式(§10b.5)、§12 の残る未解読 vendor cmd(**`armversion` のみ**。他 4 件は WCH OpenOCD ソースから verified 化)。**IAP entry・中断時の挙動は §10b、mode 切替は §4 で解決** |
-| [riscv-debug-module](protocols/riscv-debug-module.ja.md) | **実装可** | halt/resume/step/read_reg/write_reg/**read_mem32/write_mem32/write_mem16**/breakpoint/semihosting。DMCOMMAND encode の読み方も明記。H417 / LinkE FW 2.22 の hartsel 0 / 1 選択・CSR 読み出しは限定 verified | abstract autoexec 詳細(軽微)、[H417 のコア制御](#h417-core-control) |
+| [pc-to-link](protocols/pc-to-link.ja.md) | **実装可** | attach/probe info/chip info/setspeed/DMI/**高速バルク read(§5b)**/flash(stub + 直接 FLASH controller)/**option byte 書込(§6b)**/erase/power/monitor/**RV↔ARM mode 切替(§4、両方向 verified)**、**probe firmware の更新・救出・脱出(§10b。ch32rv が実装し実機往復検証済み)** | error 応答 frame 形式(§3)、IAP の異常時応答形式(§10b.5)、§12 の未解読(`armversion`、ChipReset の frame、RstOut の効果、GetRomRam / DisableDebug の実機) |
+| [riscv-debug-module](protocols/riscv-debug-module.ja.md) | **実装可** | halt/resume/step/read_reg/write_reg/**read_mem32/write_mem32/write_mem16**/breakpoint/semihosting。DMCOMMAND encode の読み方も明記。H417 / LinkE FW 2.22 の hartsel 0 / 1 選択・CSR 読み出し・コア 1 の halt / resume / step は限定 `verified` | abstract autoexec 詳細(軽微)、[H417 のコア制御](#h417-core-control) |
 | [pc-usb-driver](protocols/pc-usb-driver.ja.md) | **実装可** | 3 OS で device を開く。Windows 純正(CH375 IOCTL)含む | HID/CDC-GDB probe 系の driver 差(軽微) |
 | [wch-iap](protocols/wch-iap.ja.md) | **実装可** | **3 世代**(BOOT 常駐 / user 先頭 / 旧 V103)の配置・entry 極性・jump、**12 シリーズ表**(FLASH_Base / CalAddr / page / USART・pin・baud / USB ID)、UART・USB frame、コマンド意味(addr 不使用・VERIFY で flush)、派生(HOST/ETH/BLE) | WCHMcuIAP の実 capture、V103 の UART 末尾、V4 系 `SW_Handler` の実体(MRS テンプレート) |
 | [serial-and-print](protocols/serial-and-print.ja.md) | **実装可(USART / SDI target 側)** | USART printf、SDI printf(target・**dmdata 2 方式**)、host dmdata 対応 | — |
-| [pc-to-device-isp](protocols/pc-to-device-isp.ja.md) | **実装可(USB)/ 部分的(UART)** | Identify / ReadConfig(config 12 B・BTVER・UID)/ IspKey(**XOR key = ΣUID、seed 0**)/ Erase(**sector 数 = ceil(len/1K)、最小 8**)/ Program(**56 B chunk、addr は 0 起点、256 B pad**)/ WriteConfig / IspEnd — minichlink・wchisp・chprog の 3 実装一致 | UART 枠(`57 AB` + checksum、`0xC5` SetBaud)、config 12 B の補数位置の 1 byte ずれ疑い。**BOOT 選択は RM から転記済み**(V103/V2x/V3x/L103/V407 = BOOT0/BOOT1 ピン、V003/V00X/X035/X315 = `STATR` bit14 のソフト選択のみ)。**自前 capture で verified 化** |
-| [custom-bootloader](protocols/custom-bootloader.ja.md) | **§2a/§2b 実装可、他 reference** | **BOOT 領域の番地・サイズ(全 family、RM 転記)、`BOOT_MODEKEYR`/`STATR` bit14 切替、BootAsUser 手順**、**HID scratchpad BL の protocol**(report ID・scratchpad 構造・`0x1234ABCD`・完了印・stub 一覧・app→BL hook)、**user code からの BOOT 領域書換(V003 実証、app 側 updater で BL 自己更新可)**、**ブラウザ(WebHID)host 2 実装** | wch-uf2 / Swindle DFU / PlumBL / tinyboot の実 byte(ソース未入手)、HID BL の USB capture、V00X/X035 での BOOT 領域 self-write(V003 は実証済み) |
-| [software-usb](protocols/software-usb.ja.md) | **reference** | rv003usb の仕組み理解、移植の要点(pin/clock/割込)。BL の stub protocol は custom-bootloader §2b へ | USB descriptor / HID report の実 byte(capture) |
-| [link-to-target](protocols/link-to-target.ja.md) | **V003 SWIO=実装可・end-to-end verified / RVSWD=概ね実装可** | SWIOでDMI・memory・CPU制御・flash・boot切替（E123〜E131）、RVSWDの主要bit frame | RVSWDの選択規則、**SWIOのpulse幅・電気条件の許容限界**（既知の動作点は実証済み） |
-| [dap](protocols/dap.ja.md) | **todo** | **mode 切替(両方向 verified)** | CMSIS-DAP v1/v2 判定。DAP mode の capture |
+| [pc-to-device-isp](protocols/pc-to-device-isp.ja.md) | **実装可(USB)/ 部分的(UART)** | Identify / ReadConfig(config 12 B・BTVER・UID)/ IspKey(**XOR key = ΣUID、seed 0**)/ Erase(**sector 数 = ceil(len/1K)、最小 8**)/ Program(**56 B chunk、addr は 0 起点、256 B pad**)/ WriteConfig / IspEnd。X035(BTVER 2.60)の USB で `verified`、入り方・終わり方・RDPR の振る舞いも実測。**BOOT 選択は RM から転記済み** | UART 枠(`57 AB` + checksum、`0xC5` SetBaud)、X035 以外の系列の USB の実 byte(VID が `4348` か `1a86` か) |
+| [custom-bootloader](protocols/custom-bootloader.ja.md) | **§2a/§2b 実装可、他は解説** | **BOOT 領域の番地・サイズ(全 family、RM 転記)、`BOOT_MODEKEYR`/`STATR` bit14 切替、BootAsUser 手順**、**HID scratchpad BL の protocol**(report ID・scratchpad 構造・`0x1234ABCD`・完了印・stub 一覧・app→BL hook)、**user code からの BOOT 領域書換(V003 実証、app 側 updater で BL 自己更新可)**、**ブラウザ(WebHID)host 2 実装** | wch-uf2 / Swindle DFU / PlumBL / tinyboot の実 byte(ソース未入手)、HID BL の USB capture、V00X/X035 での BOOT 領域 self-write(V003 は実証済み) |
+| [software-usb](protocols/software-usb.ja.md) | **解説** | rv003usb の仕組み理解、移植の要点(pin/clock/割込)。BL の stub protocol は custom-bootloader §2b へ | USB descriptor / HID report の実 byte(capture) |
+| [link-to-target](protocols/link-to-target.ja.md) | **V003 SWIO = 実装可 / RVSWD = 概ね実装可** | SWIO で DMI・memory・CPU 制御・flash・boot 切替(E123〜E131)、RVSWD の short / long / burst の frame | RVSWD の形式の選択規則、**SWIO の pulse 幅・電気条件の許容限界**(既知の動作点は実証済み) |
+| [dap](protocols/dap.ja.md) | **未着手** | **mode 切替(両方向 `verified`)** | CMSIS-DAP v1/v2 判定。DAP mode の capture |
 | [captures](captures/README.ja.md) | (方法論 + 実例) | capture の取り方・replay 検証・**注釈付き実 fixture(target-info-v307)** | flash/erase/DMI/ISP/DAP の実 capture は今後追加 |
-| [references/probe-ecosystem](references/probe-ecosystem.ja.md) | (reference) | probe/host ツール選定、参照実装・言語の索引 | — |
+| [references/probe-ecosystem](references/probe-ecosystem.ja.md) | (索引) | probe/host ツール選定、参照実装・言語の索引 | — |
 | guides([overview](guides/overview.ja.md)/[advanced](guides/advanced.ja.md)) | (ガイド) | 全体像・層モデル・RE 方法論 | — |
 
 ## 3. 穴と、次に集める情報(優先順)
 
 各項目の実測は [experiments/LEDGER.ja.md](experiments/LEDGER.ja.md) に ID(`E01`… / `C11`…)として登録し、[experiments/README.ja.md](experiments/README.ja.md) の規則(計画を先に commit、証拠の水準、未測定と合格の区別)に従って実行する。
 
-**済(このセッションでローカルソースから充填)**
-
-- ~~write_mem32/8 の一般手順~~ → [riscv-debug-module](protocols/riscv-debug-module.ja.md) に転記済み(ch32rv-dmi、DMCOMMAND 実値 + encode の読み方)。
-- ~~WCH IAP の USB frame~~ → [serial-and-print](protocols/serial-and-print.ja.md) §1 に確定(EP2 out/in 64B、`isp_cmd` 直載せ、`1A86:55E0`、256B page 自動前進。EVT `ch32x035_usbfs_device.c`)。
-- ~~capture fixture~~ → [captures/fixtures/target-info-v307.ndjson](captures/fixtures/target-info-v307.ndjson) を注釈付きでコミット。
-- **WCH 純正 OpenOCD から確定**(2026-09-06): 未解読 vendor cmd 4 件(`GetRomRam` = `81 0d 01 04` / `RstOut` = `81 0d 01 13`・`14` / `DisableDebug` = `81 0e 01 01` / `ChipReset` = `81 0b 02`)を [pc-to-link](protocols/pc-to-link.ja.md) §4 へ。**flash loader は 18 種**あり family byte → loader の dispatch(21 分岐)も確定(→ [bootloader-survey](references/bootloader-survey.ja.md) §6b.12)
-- **ch32rv 固有だった protocol 事実を移管**(2026-09-06): 高速バルク memory read(§5b)、option byte 書込手順(§6b)、flash stub の family 表に X035/CH643・L103 を追加(§5)、RV↔ARM mode 切替の verified 化(§4 / [dap](protocols/dap.ja.md))。**消去済みセルの `0xe339e339` を「LinkE placeholder」とする誤読を訂正**(チップ自身の値。[bootloader-survey](references/bootloader-survey.ja.md) §2.3)。
-- SDI/dmdata の **2 方式**(EVT=長さ / ch32fun=`0x80|(count+4)`)を [serial-and-print](protocols/serial-and-print.ja.md) §3 に明記。
-
 **P1 — 要 capture(実機・軽い)**
 
 <a id="h417-core-control"></a>
 
-- **H417 の選択コア制御**: [hartsel 0 / 1 と CSR 読み出し](protocols/riscv-debug-module.ja.md#h417-の単一コア選択と-csr-読み出し)は CH32H417QEU6 / LinkE FW 2.22 の受領 capture 2 セッションで確認(2026-10-10、[依頼 0009 の証拠](captures/fixtures/ch32h417-core-select-2026-10-10/README.ja.md))。残るのはコア 1 宛 haltreq の効果を含む halt / resume / step / reset、DetachChip・再 attach 時の両コア状態・選択保持、他 firmware / 他 H41x、必要なら物理 SWIO capture。実装側は全 DMCONTROL 書き込みで hartsel を保持する改修が必要。ch32rv の CLI 拒否解除だけでは足りない。
+- **H417 の選択コア制御**: [hartsel 0 / 1 と CSR 読み出し、コア 1 の halt / resume / step](protocols/riscv-debug-module.ja.md#h417-core-select) は CH32H417QEU6 / LinkE FW 2.22 で確認済み([依頼 0009 の証拠](captures/fixtures/ch32h417-core-select-2026-10-10/README.ja.md)、ch32rv の実機 capture)。残るのは選択コアの reset、DetachChip・再 attach 時の両コア状態・選択保持、高速 bulk read が hartsel を保つか、他 firmware / 他 H41x、必要なら物理 SWIO capture。
 
-1. **WCH-Link error 応答 frame 形式**([pc-to-link](protocols/pc-to-link.ja.md) §3 todo): 異常系(target 無し `0x55` 等)の capture 収集。
-2. **flash/erase/DMI の実 capture** を [captures/fixtures/](captures/fixtures/) に追加(ch32rv `--capture` 取得済み。annotate してコミット)。
+- **RstOut の電気的な効果**([pc-to-link](protocols/pc-to-link.ja.md#cmd-rst-out)): LinkE 2.22 は `81 0d 01 13` を受理する。RST を NRST につないだ target で、USB と NRST の線を同時に収録する。ChipReset の frame(`81 0b 02` / `81 0b 01 02`)も WCH OpenOCD の原文で確かめる。
+
+1. **WCH-Link error 応答 frame 形式**([pc-to-link](protocols/pc-to-link.ja.md) §3): 異常系(target 無し `0x55` 等)の capture 収集。
+2. **flash/erase/DMI・ISP・HID BL の実 capture** を [captures/fixtures/](captures/fixtures/) に注釈付きで追加(ch32rv の replay fixture にある)。
 
 **P2 — 要 capture(純正ツール)**
 
-3. **factory ISP を capture で verified 化**([pc-to-device-isp](protocols/pc-to-device-isp.ja.md)): **byte 単位は minichlink 転記で埋まった(XOR key・Erase 符号化・Program chunk)**。残るは WCHISPTool の USB / Serial capture での照合と、UART 枠・config 12 B の補数位置。**「最大の穴」は解消、確認待ちに格下げ**。
+3. **factory ISP の残り**([pc-to-device-isp](protocols/pc-to-device-isp.ja.md)): X035 の USB は `verified`。残るは他の系列の USB と、WCHISPTool の UART capture(UART 枠、`0xC5` SetBaud)。
 4. **WCH IAP の往復順序照合**([wch-iap](protocols/wch-iap.ja.md) §7): frame・配置・entry は **12 シリーズ分 EVT から確定済み**。WCHMcuIAP の capture で host↔device 順序を照合し `verified` 化。
-5. **DAP mode**([dap](protocols/dap.ja.md)): ~~mode 切替 byte~~ は **verified**(§4)。残るは DAP mode に切替えた後の CMSIS-DAP のやり取りの capture と v1/v2 判定。
+5. **DAP mode**([dap](protocols/dap.ja.md)): mode 切替 byte は `verified`([pc-to-link](protocols/pc-to-link.ja.md) §4)。残るは DAP mode に切替えた後の CMSIS-DAP のやり取りの capture と v1/v2 判定。
 
 **P3 — 自作 probe/線を作る場合のみ**
 
 6. **SWIO の物理的な許容限界**([link-to-target](protocols/link-to-target.ja.md) §3): 既知の動作点ではV003の全書込み・実行まで実証済み。残るのはpulse幅の受理範囲、pull-up/open-drain条件、温度・個体差のmargin測定。
-7. **RVSWD の bit フレームをロジアナで verify**([link-to-target](protocols/link-to-target.ja.md) §3): attested → verified。STOP 波形・クロックも実測。→ **2026-09-25 に大半を実測**(L103/V203、[fixture](captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md)): read/write とも 53 clock、START/STOP による frame の区切り方、接続時の long 形式(85 clock)の問い合わせ、burst の条件(15+38N clock)、LinkE の clock 周期、V203 高速区間と V003 SWIO の復号。残りは速度設定と clock の対応表、非標準 DMI 番地 0x7c〜0x7f の意味、long 形式に応答する target での挙動。
+7. **RVSWD の残り**([link-to-target](protocols/link-to-target.ja.md) §3 / §5): short / long / burst の frame、区切り方、接続時の問い合わせ、速度設定と clock は LinkE 2.22 の線で `verified`。残りは非標準 DMI 番地 0x7c〜0x7f の意味、long / short の選択規則、LinkE が long 形式に答える target に接続したときの続き、host → target の切り替わりの電気的な振る舞い。
 8. custom BL 各実装(wch-uf2 / Swindle DFU / PlumBL)の header/CRC/entry を source から転記([custom-bootloader](protocols/custom-bootloader.ja.md))。
 
 ## 4. 現況
 
-**① probe 経路は byte 単位で実装可能**(driver / USB / DMI / flash / debug / print が揃った)。残る主な穴は capture 依存: **P2-3(factory ISP の XOR key・実 frame)が最大**、次いで P1-1(error frame)/ P2-5(DAP)/ P3(自作 probe 用の線タイミング)。ローカルソースで埋められるものはこのセッションで概ね充填済み。
+**① probe 経路は byte 単位で実装可能**(driver / USB / DMI / flash / debug / print が揃った)。② factory ISP は X035 の USB 経路まで実装可能。残る主な穴は capture 依存: P1-1(error frame)、P1 の RstOut の効果、P2-3(ISP の UART と他系列)、P2-5(DAP)、P3(自作 probe 用の線タイミング)。
 
 ## 5. protocol の外側 — ツール側の穴(別軸)
 

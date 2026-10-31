@@ -66,7 +66,7 @@ ch32fun の [`examples_usb/bootloader`](https://github.com/cnlohr/ch32fun/tree/m
 
 ## 6. 未解読 / 要調査
 
-- ~~bootloader の stub protocol(minichlink 側)~~ → **[custom-bootloader.ja.md](custom-bootloader.ja.md) §2b に byte 単位で転記**(feature report ID `0xAA` 128 B、scratchpad `0x20000100`、末尾 `0x1234ABCD` で実行、完了印 `0xFF`、`runwordpad` の 3 状態、stub 一覧)。残るは USB capture での verified 化。
+- bootloader の stub protocol(feature report ID `0xAA` 128 B、scratchpad `0x20000100`、末尾 `0x1234ABCD` で実行、完了印 `0xFF`、`runwordpad` の 3 状態、stub 一覧)は [custom-bootloader.ja.md](custom-bootloader.ja.md) §2b。残るのは USB capture での `verified` 化。
 - rv003usb の USB frame(setup / HID report)の実バイトを capture で確定。
 - V003 の駆動クロック実値(BL は `SYSTEM_CORE_CLOCK 48000000`)と割込みタイミングの余裕(移植の要点)。
 - **BOOT 領域の起動選択**(option byte、`configurebootloader`)と `FLASH_STATR` bit14 切替 → [custom-bootloader.ja.md](custom-bootloader.ja.md) §2a。
