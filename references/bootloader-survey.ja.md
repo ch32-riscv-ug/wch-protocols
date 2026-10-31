@@ -530,7 +530,7 @@ loader がシンボル名付きで並んでいた。
 #### 副産物 — `pc-to-link.ja.md` §12 の未解読 4 件が確定
 
 `GetRomRam` = `81 0d 01 04` / `RstOut` = `81 0d 01 13`・`14` / `DisableDebug` = `81 0e 01 01` /
-`ChipReset` = `81 0b 02`。残る todo は `armversion`(ソースにも無い)と frame エラー応答の体系のみ。
+`ChipReset` = `81 0b 01 02`([pc-to-link](../protocols/pc-to-link.ja.md#cmd-chip-reset))。残る todo は `armversion`(ソースにも無い)と frame エラー応答の体系のみ。
 
 
 ---

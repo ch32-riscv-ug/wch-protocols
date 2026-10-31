@@ -28,7 +28,7 @@
 
 | ファイル | 判定 | これで作れるもの | 不足(byte 単位で足りない点) |
 |---|---|---|---|
-| [pc-to-link](protocols/pc-to-link.ja.md) | **実装可** | attach/probe info/chip info/setspeed/DMI/**高速バルク read(§5b)**/flash(stub + 直接 FLASH controller)/**option byte 書込(§6b)**/erase/power/monitor/**RV↔ARM mode 切替(§4、両方向 verified)**、**probe firmware の更新・救出・脱出(§10b。ch32rv が実装し実機往復検証済み)** | error 応答 frame 形式(§3)、IAP の異常時応答形式(§10b.5)、§12 の未解読(`armversion`、ChipReset の frame、RstOut の効果、GetRomRam / DisableDebug の実機) |
+| [pc-to-link](protocols/pc-to-link.ja.md) | **実装可** | attach/probe info/chip info/setspeed/DMI/**高速バルク read(§5b)**/flash(stub + 直接 FLASH controller)/**option byte 書込(§6b)**/erase/power/monitor/**RV↔ARM mode 切替(§4、両方向 verified)**、**probe firmware の更新・救出・脱出(§10b。ch32rv が実装し実機往復検証済み)** | error 応答 frame 形式(§3)、IAP の異常時応答形式(§10b.5)、§12 の未解読(`armversion`、RstOut の効果、ChipReset / GetRomRam / DisableDebug の実機) |
 | [riscv-debug-module](protocols/riscv-debug-module.ja.md) | **実装可** | halt/resume/step/read_reg/write_reg/**read_mem32/write_mem32/write_mem16**/breakpoint/semihosting。DMCOMMAND encode の読み方も明記。H417 / LinkE FW 2.22 の hartsel 0 / 1 選択・CSR 読み出し・コア 1 の halt / resume / step は限定 `verified` | abstract autoexec 詳細(軽微)、[H417 のコア制御](#h417-core-control) |
 | [pc-usb-driver](protocols/pc-usb-driver.ja.md) | **実装可** | 3 OS で device を開く。Windows 純正(CH375 IOCTL)含む | HID/CDC-GDB probe 系の driver 差(軽微) |
 | [wch-iap](protocols/wch-iap.ja.md) | **実装可** | **3 世代**(BOOT 常駐 / user 先頭 / 旧 V103)の配置・entry 極性・jump、**12 シリーズ表**(FLASH_Base / CalAddr / page / USART・pin・baud / USB ID)、UART・USB frame、コマンド意味(addr 不使用・VERIFY で flush)、派生(HOST/ETH/BLE) | WCHMcuIAP の実 capture、V103 の UART 末尾、V4 系 `SW_Handler` の実体(MRS テンプレート) |
@@ -56,7 +56,7 @@
 
 - **AttachChip の chip ID とメモリの device ID が同じ値か**: 11 chip(V003 / V103 / V203 / V307 / L103 / X035 / V205 / X315 / V407 / H417 / M030)で一致を確認済み([pc-to-link](protocols/pc-to-link.ja.md#chip-id-vs-memory))。残るのは V006(AttachChip の値 `0x00600620` だけ測った)と、手元に無い V467 / X305 / M103。AttachChip と、その family の device ID の番地の `read` を同じ session で取る。
 
-- **RstOut の電気的な効果**([pc-to-link](protocols/pc-to-link.ja.md#cmd-rst-out)): LinkE 2.22 は `81 0d 01 13` を受理する。RST を NRST につないだ target で、USB と NRST の線を同時に収録する。ChipReset の frame(`81 0b 02` / `81 0b 01 02`)も WCH OpenOCD の原文で確かめる。
+- **RstOut の電気的な効果**([pc-to-link](protocols/pc-to-link.ja.md#cmd-rst-out)): LinkE 2.22 は `81 0d 01 13` を受理する。RST を NRST につないだ target で、USB と NRST の線を同時に収録する。
 
 1. **WCH-Link error 応答 frame 形式**([pc-to-link](protocols/pc-to-link.ja.md) §3): 異常系(target 無し `0x55` 等)の capture 収集。
 2. **flash/erase/DMI・ISP・HID BL の実 capture** を [captures/fixtures/](captures/fixtures/) に注釈付きで追加(ch32rv の replay fixture にある)。

@@ -151,7 +151,7 @@ report:  [ID] [AA 00 00 00] [stub code …] [args …] [data …] … [CD AB 34 
 | `run_app_new_blob`(HW USB) | — | `lw a3,-4(a0); jr a3` — scratchpad 直前に置かれた `boot_usercode_address` へ jump |
 | ch5xx 系 stubs | — | CH5xx の flash controller(`0x40001800`)用 |
 
-- **chip 判別**は stub の read で `0x1FFFF7C4`(V2/V3/X03x/L103 の chip id)/ `0x1FFFF704`(V00X 系)/ `0x1FFFF884`(V103)/ `0x40001041`(CH5xx)を読む。読出保護は `FLASH_OBR`(`0x4002201C` bit1)と `FLASH_WPR`(`0x40022020`)で判定。
+- **chip 判別**は stub の read で行う。順に `0x40001041`(0 でなければ CH5xx)→ `0x1FFFF7C4` を読み、`0xFFFFFFFF` / `0xE339E339`(消去値)なら `0x1FFFF704` を読み直して上位 12 bit で V002/V004/V005/V006/V007・X033/X035・L103・V20x/V30x・V317・CH643 を見分け、0 なら `0x1FFFF884` を読んで V103、それ以外は V003 とする(minichlink `pgm-b003fun.c` [b28d285](https://github.com/cnlohr/ch32fun/blob/b28d285460ce052a179dba8f4a22c6f73ff8e328/minichlink/pgm-b003fun.c#L721-L783))。chip id の番地は **V003 = `0x1FFFF7C4`、V103 = `0x1FFFF884`、M030 = `0x1FFFF384`、ほか(V002/V004/V005/V006/V007、V20x/V30x、X035、L103、H41x など)= `0x1FFFF704`**(実機での照合は [pc-to-link](pc-to-link.ja.md#chip-id-vs-memory)、型番ごとの番地は ch32-device-data の [`index/device_ids.csv`](https://github.com/ch32-riscv-ug/ch32-device-data/blob/main/index/device_ids.csv) の `id_addr` 列)。読出保護は `FLASH_OBR`(`0x4002201C` bit1)と `FLASH_WPR`(`0x40022020`)で判定。
 - **app から BL へ戻す hook**(rv003usb demo、PID `D003`): app の HID に feature report **`FD 12 34 AA BB CC DD`**(ID `0xFD`)を送ると app が §2a のシーケンスで BL へ再起動する。minichlink は `B003` が無ければ `D003` を探してこれを送る。
 - rv003usb BL の flash 配置: `FLASH LENGTH = 1916`、`SECRET @0x77C LENGTH 4`(`boot_usercode` の offset を XOR で保存)。**GPIO pin や機能の組合せでサイズが 1,920 B を超える**ため、timeout / button / host 検出は択一に近い。
 

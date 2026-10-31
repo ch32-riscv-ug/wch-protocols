@@ -34,6 +34,19 @@
 | `scope_chip` | 範囲の target(空白区切り)。`-` = target に関係しない、または target なしで測った |
 | `accepted` | probe が受理したか(成功の応答を返したか): `yes` / `no` / `unknown` / `n/a` |
 | `effect` | 主張どおりの効果が target / 線に出たか: `yes` / `no` / `unknown` / `n/a` |
-| `aliases` | 他の実装での名前。`impl=name` を `;` で区切る(`wlink=` / `openocd=` / `minichlink=` / `probe-rs=`)。空 = 未調査 |
+| `aliases` | 他の実装での名前。`impl=name` を `;` で区切る(`wlink=` / `openocd=` / `minichlink=` / `probe-rs=`)。wlink と probe-rs は型・関数の名前、WCH OpenOCD と minichlink は名前の付いた型が無いのでその frame を送る関数の名前。byte 列が違うものは括弧で frame を添える。`-` = 下の 4 実装のどれにも無い。同じ `id` で同じ `request_frame` の 2 行目以降は空(1 行目を見る) |
 | `source` | 出典(先行実装の file と行、実験の E 番号、capture)。`;` 区切り |
 | `note` | 説明(日本語) |
+
+<a id="alias-sources"></a>
+
+## `aliases` を引いた source の版
+
+| 実装 | 読んだ版 | file |
+|---|---|---|
+| wlink | [ch32-rs/wlink](https://github.com/ch32-rs/wlink) tag `v0.1.3`(`7ed4b99`。2026-10-24 の main `019741b` と同じ内容) | `src/commands/mod.rs`、`src/commands/control.rs`、`src/probe.rs`、`src/operations.rs` |
+| WCH OpenOCD | [Seneral/riscv-openocd-wch](https://github.com/Seneral/riscv-openocd-wch) `13c6f14`(commit 名 "Fifth public snapshot"。WCH が公開した source の 5 回目の取込みで、2023-10-13 より前の版。[hathach/riscv-openocd-wch](https://github.com/hathach/riscv-openocd-wch) から) | `src/jtag/drivers/wlinke.c` |
+| minichlink | [cnlohr/ch32fun](https://github.com/cnlohr/ch32fun) `b28d285`(2026-10-31 の master) | `minichlink/pgm-wch-linke.c` |
+| probe-rs | [probe-rs/probe-rs](https://github.com/probe-rs/probe-rs) tag `v0.32.0` | `probe-rs/src/probe/wlink/commands.rs`、`mod.rs` |
+
+`source` 列の `WCH OpenOCD wlinke.c 13c6f14 L…` の行番号はこの版のもの。

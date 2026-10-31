@@ -57,39 +57,39 @@ probe → host:  0x81 | reason | len | ...       (エラー。観測した形)
 <!-- BEGIN generated:wchlink-commands section=4 -->
 | request frame(host → probe) | 名前 | 応答 | status | 受理 / 効果 | 範囲(probe fw · chip) | 根拠 | 説明 |
 |---|---|---|---|---|---|---|---|
-| `81 0d 01 01` | <a id="cmd-get-probe-info"></a>**GetProbeInfo** | `82 0d 04 {fw_major} {fw_minor} {variant} {fw_mode}` | `verified` | yes / yes | LinkE 2.22 | usb-capture; wlink; probe-rs; minichlink | variant: 1=CH549 / 2,0x12=LinkE / 3=LinkS / 4=DAPLink / 5,0x85=LinkW。fw_mode: 0=RISC-V / 1=ARM。実測: LinkE `02 16 12 00`(2.22)、CH549 `02 0c 01 00`(2.12) |
+| `81 0d 01 01` | <a id="cmd-get-probe-info"></a>**GetProbeInfo** | `82 0d 04 {fw_major} {fw_minor} {variant} {fw_mode}` | `verified` | yes / yes | LinkE 2.22 | usb-capture; wlink; probe-rs; minichlink | variant: 1=CH549 / 2,0x12=LinkE / 3=LinkS / 4=DAPLink / 5,0x85=LinkW。fw_mode: 0=RISC-V / 1=ARM。実測: LinkE `02 16 12 00`(2.22)、CH549 `02 0c 01 00`(2.12) 別名: wlink=GetProbeInfo; openocd=wlink_init / wlink_clean; minichlink=LESetupInterface / LEResetInterface; probe-rs=GetProbeInfo |
 | `81 0d 01 01` | GetProbeInfo | `82 0d 04 02 0c 01 00` | `verified` | yes / yes | CH549 Link 2.12 | usb-capture; ch32rv replay target-info-v103 |  |
-| `81 0d 02 01 13` | <a id="cmd-get-probe-info-extra-bytes"></a>**GetProbeInfo(payload に余分な byte)** | `82 0d 04 02 16 12 00` | `verified` | yes / yes | LinkE 2.22 | usb-capture | probe は payload の先頭 byte を sub と読み、残りを無視して GetProbeInfo として答える。RstOut のつもりでこの frame を送ると RST は動かず、続く DmiOp の read が busy(data `ffffffff`)になる |
+| `81 0d 02 01 13` | <a id="cmd-get-probe-info-extra-bytes"></a>**GetProbeInfo(payload に余分な byte)** | `82 0d 04 02 16 12 00` | `verified` | yes / yes | LinkE 2.22 | usb-capture | probe は payload の先頭 byte を sub と読み、残りを無視して GetProbeInfo として答える。RstOut のつもりでこの frame を送ると RST は動かず、続く DmiOp の read が busy(data `ffffffff`)になる 別名: - |
 | `81 0d 02 01 13` | GetProbeInfo(payload に余分な byte) | `82 0d 04 02 0c 01 00` | `verified` | yes / yes | CH549 Link 2.12 | usb-capture |  |
-| `81 0d 01 02` | <a id="cmd-attach-chip"></a>**AttachChip** | `82 0d 05 {family} {chip_id:be32}` | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V205 V307 V407 X035 X315 L103 M030 H417 V006 | usb-capture; wire-capture; wlink; probe-rs; board-identify | target が無いと 4 byte の応答、または `81 55 01 xx`。接続の間 hart を halt し、target の clock を組み直して戻さない(§11) |
+| `81 0d 01 02` | <a id="cmd-attach-chip"></a>**AttachChip** | `82 0d 05 {family} {chip_id:be32}` | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V205 V307 V407 X035 X315 L103 M030 H417 V006 | usb-capture; wire-capture; wlink; probe-rs; board-identify | target が無いと 4 byte の応答、または `81 55 01 xx`。接続の間 hart を halt し、target の clock を組み直して戻さない(§11) 別名: wlink=AttachChip; openocd=wlink_init / wlink_clean; minichlink=LESetupInterface / InternalLinkEHaltMode; probe-rs=AttachChip |
 | `81 0d 01 02` | AttachChip | `82 0d 05 {family} {chip_id:be32}` | `verified` | yes / yes | CH549 Link 2.12 · V103 | usb-capture |  |
-| `81 0d 01 03` | <a id="cmd-redetect-chip"></a>**RedetectChip** | `82 0d 01 03` | `verified` | yes / yes | LinkE 2.22 · L103 | wire-capture; board-identify | target を reset せずに probe に把握し直させる。線上では FLASH_KEYR / MODEKEYR に鍵を書く 4 件だけで clock に触らない。RedetectChip だけの状態では続く DmiOp は target に届かない(応答はデータ 0・状態 0) |
-| `81 0d 01 ff` | <a id="cmd-detach-chip"></a>**DetachChip** | `82 0d 01 ff` | `verified` | yes / yes | LinkE 2.22 · L103 V203 V003 X035 | usb-capture; wire-capture | 線上は `W dmcontrol 0x40000001` → `R dmstatus` → `W dmcontrol 0x40000000`(dmactive = 0 で DM を reset) 別名: wlink=OptEnd |
-| `81 0d 01 09` | <a id="cmd-set-power-3v3"></a>**SetPower 3V3 on** | `82 0d 01 …` | `attested` | yes / unknown | LinkE 2.22 | impl-agree; minichlink pgm-wch-linke.c; wlink | 3.3 V 出力を入れる |
-| `81 0d 01 0a` | SetPower 3V3 off | — | `refuted` | yes / no | LinkE 2.22 | adc; E167 | 受理されるが 3V3 は 3.24 V のまま(target なしで ADC 測定) |
+| `81 0d 01 03` | <a id="cmd-redetect-chip"></a>**RedetectChip** | `82 0d 01 03` | `verified` | yes / yes | LinkE 2.22 · L103 | wire-capture; board-identify | target を reset せずに probe に把握し直させる。線上では FLASH_KEYR / MODEKEYR に鍵を書く 4 件だけで clock に触らない。RedetectChip だけの状態では続く DmiOp は target に届かない(応答はデータ 0・状態 0) 別名: openocd=wlink_init; minichlink=LESetupInterface |
+| `81 0d 01 ff` | <a id="cmd-detach-chip"></a>**DetachChip** | `82 0d 01 ff` | `verified` | yes / yes | LinkE 2.22 · L103 V203 V003 X035 | usb-capture; wire-capture | 線上は `W dmcontrol 0x40000001` → `R dmstatus` → `W dmcontrol 0x40000000`(dmactive = 0 で DM を reset) 別名: wlink=OptEnd; openocd=wlink_endprocess; minichlink=LEExit / LEResetInterface; probe-rs=DetachChip |
+| `81 0d 01 09` | <a id="cmd-set-power-3v3"></a>**SetPower 3V3 on** | `82 0d 01 …` | `attested` | yes / unknown | LinkE 2.22 | impl-agree; minichlink pgm-wch-linke.c; wlink | 3.3 V 出力を入れる 別名: wlink=SetPower::Enable3v3; openocd=wlink_pow3v3(true); minichlink=LEControl3v3 |
+| `81 0d 01 0a` | SetPower 3V3 off | — | `refuted` | yes / no | LinkE 2.22 | adc; E167 | 受理されるが 3V3 は 3.24 V のまま(target なしで ADC 測定) 別名: wlink=SetPower::Disable3v3; openocd=wlink_pow3v3(false); minichlink=LEControl3v3 |
 | `81 0d 01 09` | SetPower 3V3 on | — | `attested` | yes / unknown | CH549 Link 2.12 · V103(一体型ボード) | impl-agree | 受理される |
 | `81 0d 01 0a` | SetPower 3V3 off | — | `refuted` | yes / no | CH549 Link 2.12 · V103(一体型ボード) | hw-log | 受理されるが target は走り続ける |
-| `81 0d 01 0b` | <a id="cmd-set-power-5v"></a>**SetPower 5V on** | `82 0d 01 …` | `attested` | yes / unknown | LinkE 2.22 | impl-agree; minichlink pgm-wch-linke.c; wlink | 5 V 出力を入れる |
-| `81 0d 01 0c` | SetPower 5V off | — | `attested` | yes / unknown | LinkE 2.22 | impl-agree; minichlink; wlink; E167 | 受理される。5V の線は未測定(3V3 は 3.24 V のまま) |
+| `81 0d 01 0b` | <a id="cmd-set-power-5v"></a>**SetPower 5V on** | `82 0d 01 …` | `attested` | yes / unknown | LinkE 2.22 | impl-agree; minichlink pgm-wch-linke.c; wlink | 5 V 出力を入れる 別名: wlink=SetPower::Enable5v; openocd=wlink_pow5v(true); minichlink=LEControl5v |
+| `81 0d 01 0c` | SetPower 5V off | — | `attested` | yes / unknown | LinkE 2.22 | impl-agree; minichlink; wlink; E167 | 受理される。5V の線は未測定(3V3 は 3.24 V のまま) 別名: wlink=SetPower::Disable5v; openocd=wlink_pow5v(false); minichlink=LEControl5v |
 | `81 0d 01 0b` | SetPower 5V on | — | `attested` | yes / unknown | CH549 Link 2.12 · V103(一体型ボード) | impl-agree | 受理される |
 | `81 0d 01 0c` | SetPower 5V off | — | `refuted` | yes / no | CH549 Link 2.12 · V103(一体型ボード) | hw-log | 受理されるが target は走り続ける |
-| `81 11 01 05` | <a id="cmd-chip-info"></a>**ChipInfo** | (frame なしの生 20 byte) | `verified` | yes / yes | LinkE 2.22 · V203 V205 V307 H417 M030 | usb-capture; board-identify; wlink | `[0:2]` 不明 / `[2:4]` flash KiB(BE)/ `[4:12]` UID / `[12:16]` 解釈未確立 / `[16:20]` chip_id(BE)。UID と `[12:16]` の読み方は §9 |
-| `81 01 01 01` | <a id="cmd-check-flash-protection"></a>**CheckFlashProtection / UnprotectFlash** | — | `conflict` | unknown / unknown | — | impl-agree; probe-rs; wlink | sub `0x02` = UnprotectFlash。cmd `0x01` は §5 の SetWriteMemoryRegion と同じ番号で、実装は読出し保護に cmd `0x06` を使う。写し間違いの疑い |
-| `81 06 01 01` | <a id="cmd-check-read-protect"></a>**CheckReadProtect** | `82 06 01 {01=保護 / 02=非保護}` | `verified` | yes / yes | LinkE 2.22 · V203 L103 | hw-log; wlink; probe-rs |  |
-| `81 06 01 02` | <a id="cmd-unprotect"></a>**Unprotect(読出し保護の解除)** | — | `verified` | yes / yes | LinkE 2.22 · V203 | hw-log; wlink; probe-rs | option page を消して読出し保護を外す。チップは code flash を全消去する |
-| `81 0b 01 01` | <a id="cmd-soft-reset"></a>**soft reset(Reset sub 0x01)** | — | `verified` | yes / yes | LinkE 2.22 · L103 V203 V003 | wire-capture; hw-log; wlink; probe-rs | 線上は haltreq ×2 → PFIC_CFGR `0xE000E048` ← `0xBEEF0080`(SYSRST)。haltreq を立てたまま reset するので hart は reset vector で止まって出てくる |
+| `81 11 01 05` | <a id="cmd-chip-info"></a>**ChipInfo** | (frame なしの生 20 byte) | `verified` | yes / yes | LinkE 2.22 · V203 V205 V307 H417 M030 | usb-capture; board-identify; wlink | `[0:2]` 不明 / `[2:4]` flash KiB(BE)/ `[4:12]` UID / `[12:16]` 解釈未確立 / `[16:20]` chip_id(BE)。UID と `[12:16]` の読み方は §9 別名: minichlink=LESetupInterface; wlink=GetChipInfo(sub は `06` / `09`) |
+| `81 01 01 01` | <a id="cmd-check-flash-protection"></a>**CheckFlashProtection / UnprotectFlash** | — | `single-source` | unknown / unknown | — | source; probe-rs v0.32.0 probe-rs/src/probe/wlink/commands.rs L11 L301-319 | probe-rs だけが cmd `0x01`(`CommandId::ConfigChip = 0x01`)で送る。同じ sub `01` / `02` を WCH OpenOCD(`wlnik_protect_check` / `wlink_flash_protect`)、wlink(`ConfigChip`)、minichlink は cmd `0x06` で送り、それが CheckReadProtect / Unprotect(実機で確認済み)。WCH OpenOCD が cmd `0x01` で送るのは len 8 の SetWriteMemoryRegion(§5)だけ。probe-rs の番号の取り違えと見られる。送らない 別名: probe-rs=CheckFlashProtection / UnprotectFlash |
+| `81 06 01 01` | <a id="cmd-check-read-protect"></a>**CheckReadProtect** | `82 06 01 {01=保護 / 02=非保護}` | `verified` | yes / yes | LinkE 2.22 · V203 L103 | hw-log; wlink; probe-rs | 別名: wlink=ConfigChip::CheckReadProtect; openocd=wlnik_protect_check; minichlink=LESetupInterface / LEWriteBinaryBlob |
+| `81 06 01 02` | <a id="cmd-unprotect"></a>**Unprotect(読出し保護の解除)** | — | `verified` | yes / yes | LinkE 2.22 · V203 | hw-log; wlink; probe-rs | option page を消して読出し保護を外す。チップは code flash を全消去する 別名: wlink=ConfigChip::Unprotect; openocd=wlink_flash_protect(false) |
+| `81 0b 01 01` | <a id="cmd-soft-reset"></a>**soft reset(Reset sub 0x01)** | — | `verified` | yes / yes | LinkE 2.22 · L103 V203 V003 | wire-capture; hw-log; wlink; probe-rs | 線上は haltreq ×2 → PFIC_CFGR `0xE000E048` ← `0xBEEF0080`(SYSRST)。haltreq を立てたまま reset するので hart は reset vector で止まって出てくる 別名: wlink=Reset::Soft; openocd=wlink_quitreset / wlink_softreset; minichlink=InternalLinkEHaltMode / LEConfigureNRSTAsGPIO; probe-rs=ResetTarget |
 | `81 0b 01 01` | soft reset(Reset sub 0x01) | — | `verified` | yes / yes | CH549 Link 2.12 · V103 | hw-log | reset 後に hart は走り出していた(線は未取得) |
-| `81 0b 01 02` | <a id="cmd-chip-reset"></a>**ChipReset(Reset sub 0x02)** | — | `conflict` | unknown / unknown | — | source; WCH OpenOCD wlinke.c L1057-1060 | 転記が 2 通りある(`81 0b 02` と、len を補った `81 0b 01 02`)。原文の再確認が要る 別名: openocd=wlink_chip_reset |
-| `81 0c 02 {family} {speed}` | <a id="cmd-set-speed"></a>**SetSpeed** | `82 0c 01 01` | `verified` | yes / yes | LinkE 2.22 · L103 V203 V003 | usb-capture; wire-capture; wlink; probe-rs; E163 | speed: high=`01` / medium=`02` / low=`03`(逆順)。attach 前は family に `01` を送る。範囲外の値も拒否されず応答は常に `82 0c 01 01`。線上の速さは link-to-target §5 |
-| `81 0d 01 04` | <a id="cmd-get-rom-ram"></a>**GetRomRam** | `82 0d 04 …` | `single-source` | unknown / unknown | — | source; WCH OpenOCD wlinke.c L758-772 | CODE / RAM 分割の照会。応答 4 byte の `[3]` が構成番号で、意味は chip_type ごとに変わる 別名: openocd=wlink_getromram |
-| `81 0d 01 13` | <a id="cmd-rst-out"></a>**RstOut on** | `82 0d 01 00` | `single-source` | yes / unknown | LinkE 2.22 | source; usb-capture; WCH OpenOCD wlinke.c L1394-1400; ch32rv 03e4e44 | RST の線を low に駆動する(配線していれば target の NRST)。受理は実測、線の電気的な効果は未測定 別名: openocd=wlink_rstout |
-| `81 0d 01 14` | RstOut off | `82 0d 01 00` | `single-source` | yes / unknown | LinkE 2.22 | source; usb-capture; WCH OpenOCD wlinke.c L1394-1400; ch32rv 03e4e44 | RST の線を離す 別名: openocd=wlink_rstout |
+| `81 0b 01 02` | <a id="cmd-chip-reset"></a>**ChipReset(Reset sub 0x02)** | — | `single-source` | unknown / unknown | — | source; WCH OpenOCD wlinke.c 13c6f14 L1054-1078 | 原文は `txbuf = 81 0b 01 02`(4 byte)で、`81 0b 02` は転記の誤り。送る前に DmiOp で dmcontrol ← `0x80000001`(haltreq)を書き、約 1 ms 後に dmstatus を読む。応答は 4 byte 読むが中身を見ない。wlink の `Reset::Chip` も同じ byte 列だが、注釈に `wlink_chip_reset` とあり OpenOCD から取ったもので独立した出典ではない(wlink の中では使っていない)。実機では未測定 別名: openocd=wlink_chip_reset; wlink=Reset::Chip |
+| `81 0c 02 {family} {speed}` | <a id="cmd-set-speed"></a>**SetSpeed** | `82 0c 01 01` | `verified` | yes / yes | LinkE 2.22 · L103 V203 V003 | usb-capture; wire-capture; wlink; probe-rs; E163 | speed: high=`01` / medium=`02` / low=`03`(逆順)。attach 前は family に `01` を送る。範囲外の値も拒否されず応答は常に `82 0c 01 01`。線上の速さは link-to-target §5 別名: wlink=SetSpeed; openocd=wlink_speed / wlink_init; minichlink=LESetupInterface; probe-rs=SetSpeed |
+| `81 0d 01 04` | <a id="cmd-get-rom-ram"></a>**GetRomRam** | `82 0d 04 …` | `single-source` | unknown / unknown | — | source; WCH OpenOCD wlinke.c 13c6f14 L752-888 | CODE / RAM 分割の照会。応答 4 byte の `[3]` が構成番号で、意味は chip_type ごとに変わる 別名: openocd=wlink_getromram; wlink=GetChipRomRamSplit |
+| `81 0d 01 13` | <a id="cmd-rst-out"></a>**RstOut on** | `82 0d 01 00` | `attested` | yes / unknown | LinkE 2.22 | impl-agree; usb-capture; WCH OpenOCD wlinke.c 13c6f14 L1391-1418; ch32rv 03e4e44; minichlink pgm-wch-linke.c b28d285 L447 | RST の線を low に駆動する(配線していれば target の NRST)。受理は実測、線の電気的な効果は未測定 別名: openocd=wlink_rstout(0); minichlink=LESetupInterface; wlink=SetRSTPin::Low(frame は `81 0d 02 0e 13`) |
+| `81 0d 01 14` | RstOut off | `82 0d 01 00` | `single-source` | yes / unknown | LinkE 2.22 | source; usb-capture; WCH OpenOCD wlinke.c 13c6f14 L1391-1418; ch32rv 03e4e44 | RST の線を離す 別名: openocd=wlink_rstout(1); wlink=SetRSTPin::High(frame は `81 0d 02 0e 14`) |
 | `81 0d 01 13` | RstOut on | `82 0d 01 ff` | `refuted` | no / no | CH549 Link 2.12 | usb-capture; ch32rv 03e4e44 | `ff` = 対応していない |
-| `81 0e 01 01` | <a id="cmd-disable-debug"></a>**DisableDebug** | — | `single-source` | unknown / unknown | — | source; WCH OpenOCD wlinke.c L1781-1786 | target の debug 機能を落とす 別名: openocd=wlink_disabledebug |
+| `81 0e 01 01` | <a id="cmd-disable-debug"></a>**DisableDebug** | — | `single-source` | unknown / unknown | — | source; WCH OpenOCD wlinke.c 13c6f14 L1776-1791 | target の debug 機能を落とす。WCH OpenOCD は family `0x02` / `0x03` / `0x07` / `0x0b`(CH5xx)のときだけ送る 別名: openocd=wlink_disabledebug; wlink=DisableDebug |
 | — | <a id="cmd-arm-version"></a>**ArmVersion** | — | `todo` | unknown / unknown | — | source | 名前だけがあり、byte 列は source にも無い 別名: openocd=wlink_armversion |
-| `81 ff 01 41` | <a id="cmd-mode-to-dap"></a>**モード切替 RISC-V → DAP** | (なし。probe は PID 8012 で再列挙) | `verified` | yes / yes | LinkE 2.22 | hw-log; wlink; cjacker/wchlinke-mode-switch | 通常の command EP へ送る |
-| `81 ff 01 52` | <a id="cmd-mode-to-riscv"></a>**モード切替 DAP → RISC-V** | (なし。probe は PID 8010 で再列挙) | `verified` | yes / yes | LinkE 2.22 | hw-log; wlink; cjacker/wchlinke-mode-switch | DAP device(PID 8012)の interface 0 の OUT EP `0x02` へ送る |
-| `81 08 06 {addr} {data:be32} {op}` | <a id="cmd-dmi-op"></a>**DmiOp** | `82 08 06 {addr} {data:be32} {status}` | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 H417 | usb-capture; wire-capture; wlink; probe-rs; RINS | op: 0 nop / 1 read / 2 write。status: 0 success / 2 failed / 3 busy(再試行)。1 件が線上の DMI 1 frame になる |
+| `81 ff 01 41` | <a id="cmd-mode-to-dap"></a>**モード切替 RISC-V → DAP** | (なし。probe は PID 8012 で再列挙) | `verified` | yes / yes | LinkE 2.22 | hw-log; wlink; cjacker/wchlinke-mode-switch | 通常の command EP へ送る 別名: wlink=WchLink::switch_from_rv_to_dap |
+| `81 ff 01 52` | <a id="cmd-mode-to-riscv"></a>**モード切替 DAP → RISC-V** | (なし。probe は PID 8010 で再列挙) | `verified` | yes / yes | LinkE 2.22 | hw-log; wlink; cjacker/wchlinke-mode-switch | DAP device(PID 8012)の interface 0 の OUT EP `0x02` へ送る 別名: wlink=WchLink::switch_from_dap_to_rv; minichlink=wch_link_base_setup |
+| `81 08 06 {addr} {data:be32} {op}` | <a id="cmd-dmi-op"></a>**DmiOp** | `82 08 06 {addr} {data:be32} {status}` | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 H417 | usb-capture; wire-capture; wlink; probe-rs; RINS | op: 0 nop / 1 read / 2 write。status: 0 success / 2 failed / 3 busy(再試行)。1 件が線上の DMI 1 frame になる 別名: wlink=DmiOp; openocd=DMI_OP; minichlink=LEReadReg32 / LEWriteReg32; probe-rs=DmiOp |
 <!-- END generated:wchlink-commands section=4 -->
 
 - **GetProbeInfo の応答 payload** = `[fw_major, fw_minor, variant, fw_mode]`。variant: 1=CH549 / 2,0x12=LinkE / 3=LinkS / 4=DAPLink / 5,0x85=LinkW。fw_mode: 0=RISC-V / 1=ARM(RV/ARM で firmware が分かれているのは CH549 だけ)。版の読み方は §10。
@@ -122,12 +122,12 @@ probe → host:  0x81 | reason | len | ...       (エラー。観測した形)
 <!-- BEGIN generated:wchlink-commands section=5 -->
 | request frame(host → probe) | 名前 | 応答 | status | 受理 / 効果 | 範囲(probe fw · chip) | 根拠 | 説明 |
 |---|---|---|---|---|---|---|---|
-| `81 02 01 01` | <a id="cmd-erase-flash"></a>**EraseFlash(chip 全体)** | — | `verified` | yes / yes | LinkE 2.22 · L103 V203 V003 | usb-capture; wire-capture; wlink | LinkE 自身が MER で消す(stub を使わない)。APB1PCENR = 0 のまま終わる。後に AttachChip を送る |
-| `81 01 08 {addr:be32} {len:be32}` | <a id="cmd-set-write-memory-region"></a>**SetWriteMemoryRegion** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 | usb-capture; wlink |  |
-| `81 02 01 05` | <a id="cmd-write-flash-op"></a>**WriteFlashOP(stub を送る)** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 | usb-capture; wire-capture; wlink | 直後に data EP へ family の stub を data packet 単位で送る |
-| `81 02 01 07` | <a id="cmd-write-flash-confirm"></a>**確認** | `82 02 01 07` | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 | usb-capture; wlink |  |
-| `81 02 01 02` | <a id="cmd-write-flash"></a>**WriteFlash** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 | usb-capture; wlink | data EP へ write pack ごとに送り、各 pack の後に data EP から ack(`41 01 01 04`、byte 3 = `04` で成功)を 1 packet で読む |
-| `81 02 01 08` | <a id="cmd-write-flash-end"></a>**End** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 | usb-capture; wlink |  |
+| `81 02 01 01` | <a id="cmd-erase-flash"></a>**EraseFlash(chip 全体)** | — | `verified` | yes / yes | LinkE 2.22 · L103 V203 V003 | usb-capture; wire-capture; wlink | LinkE 自身が MER で消す(stub を使わない)。APB1PCENR = 0 のまま終わる。後に AttachChip を送る 別名: wlink=Program::EraseFlash; openocd=wlink_erase |
+| `81 01 08 {addr:be32} {len:be32}` | <a id="cmd-set-write-memory-region"></a>**SetWriteMemoryRegion** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 | usb-capture; wlink | 別名: wlink=SetWriteMemoryRegion; openocd=wlink_ready_write; minichlink=LEWriteBinaryBlob |
+| `81 02 01 05` | <a id="cmd-write-flash-op"></a>**WriteFlashOP(stub を送る)** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 | usb-capture; wire-capture; wlink | 直後に data EP へ family の stub を data packet 単位で送る 別名: wlink=Program::WriteFlashOP; openocd=wlink_ready_write; minichlink=LEWriteBinaryBlob |
+| `81 02 01 07` | <a id="cmd-write-flash-confirm"></a>**確認** | `82 02 01 07` | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 | usb-capture; wlink | 別名: wlink=Program::Unknown07AfterFlashOPWritten; openocd=wlink_ready_write; minichlink=LEWriteBinaryBlob |
+| `81 02 01 02` | <a id="cmd-write-flash"></a>**WriteFlash** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 | usb-capture; wlink | data EP へ write pack ごとに送り、各 pack の後に data EP から ack(`41 01 01 04`、byte 3 = `04` で成功)を 1 packet で読む 別名: wlink=Program::WriteFlash; minichlink=LEWriteBinaryBlob |
+| `81 02 01 08` | <a id="cmd-write-flash-end"></a>**End** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 X035 L103 | usb-capture; wlink | 別名: wlink=Program::End; openocd=wlink_endprogram |
 <!-- END generated:wchlink-commands section=5 -->
 
 family 別パラメータ(実機確認。code flash 先頭は共通 `0x08000000`):
@@ -159,8 +159,8 @@ family 別パラメータ(実機確認。code flash 先頭は共通 `0x08000000`
 <!-- BEGIN generated:wchlink-commands section=5b -->
 | request frame(host → probe) | 名前 | 応答 | status | 受理 / 効果 | 範囲(probe fw · chip) | 根拠 | 説明 |
 |---|---|---|---|---|---|---|---|
-| `81 03 08 {addr:be32} {len:be32}` | <a id="cmd-set-read-memory-region"></a>**SetReadMemoryRegion** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 L103 | usb-capture | len は 4 の倍数 |
-| `81 02 01 0c` | <a id="cmd-read-memory"></a>**ReadMemory** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 L103 | usb-capture; wire-capture | data EP `0x82` から len byte を読む。word ごとに byte が反転している |
+| `81 03 08 {addr:be32} {len:be32}` | <a id="cmd-set-read-memory-region"></a>**SetReadMemoryRegion** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 L103 | usb-capture | len は 4 の倍数 別名: wlink=SetReadMemoryRegion |
+| `81 02 01 0c` | <a id="cmd-read-memory"></a>**ReadMemory** | — | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V307 L103 | usb-capture; wire-capture | data EP `0x82` から len byte を読む。word ごとに byte が反転している 別名: wlink=Program::ReadMemory |
 | `81 02 01 0c` | ReadMemory | — | `verified` | yes / yes | CH549 Link 2.12 · V103 | usb-capture |  |
 <!-- END generated:wchlink-commands section=5b -->
 
@@ -236,8 +236,8 @@ option bytes は通常の page と手順が違う(専用の unlock と OPTPG/OPT
 <!-- BEGIN generated:wchlink-commands section=7 -->
 | request frame(host → probe) | 名前 | 応答 | status | 受理 / 効果 | 範囲(probe fw · chip) | 根拠 | 説明 |
 |---|---|---|---|---|---|---|---|
-| `81 0d 02 0f {family}` | <a id="cmd-erase-code-flash-power-off"></a>**EraseCodeFlash by power off** | `82 0d 01 {0f=消去した / 00=消去していない}` | `verified` | yes / yes | LinkE 2.22 · X035 | usb-capture; wire-capture; adc; wlink; probe-rs; E165; E167; E168 | 3V3 は切らない。RST に約 4 ms の low pulse を入れながら halt を取り、MER で消す。`00` は約 2.1 s で、halt を取れず消していない 別名: minichlink=unbrick(コメントアウト、family 09) |
-| `81 0d 02 08 {family}` | <a id="cmd-erase-code-flash-rst"></a>**EraseCodeFlash by RST pin** | — | `attested` | unknown / unknown | — | impl-agree; wlink; probe-rs | NRST の配線が要る |
+| `81 0d 02 0f {family}` | <a id="cmd-erase-code-flash-power-off"></a>**EraseCodeFlash by power off** | `82 0d 01 {0f=消去した / 00=消去していない}` | `verified` | yes / yes | LinkE 2.22 · X035 | usb-capture; wire-capture; adc; wlink; probe-rs; E165; E167; E168 | 3V3 は切らない。RST に約 4 ms の low pulse を入れながら halt を取り、MER で消す。`00` は約 2.1 s で、halt を取れず消していない 別名: wlink=EraseCodeFlash::ByPowerOff; minichlink=LEUnbrick(コメントアウト、frame は `81 0d 01 0f 09`) |
+| `81 0d 02 08 {family}` | <a id="cmd-erase-code-flash-rst"></a>**EraseCodeFlash by RST pin** | — | `attested` | unknown / unknown | — | impl-agree; wlink; probe-rs | NRST の配線が要る 別名: wlink=EraseCodeFlash::ByPinRST |
 <!-- END generated:wchlink-commands section=7 -->
 
 先に SetSpeed(§4)を送る。
@@ -260,8 +260,8 @@ option bytes は通常の page と手順が違う(専用の unlock と OPTPG/OPT
 <!-- BEGIN generated:wchlink-commands section=8 -->
 | request frame(host → probe) | 名前 | 応答 | status | 受理 / 効果 | 範囲(probe fw · chip) | 根拠 | 説明 |
 |---|---|---|---|---|---|---|---|
-| `81 0d 02 ee 00` | <a id="cmd-sdi-print-enable"></a>**SDI print enable** | `82 0d 01 {00=成功 / ff=非対応}` | `verified` | yes / yes | LinkE 2.22 · V203 L103 | usb-capture; wlink | flag は直感と逆(`00` = enable)。AttachChip の後に実 family で SetSpeed を送り直してから送る |
-| `81 0d 02 ee 01` | <a id="cmd-sdi-print-disable"></a>**SDI print disable** | `82 0d 01 {00=成功 / ff=非対応}` | `verified` | yes / yes | LinkE 2.22 · V203 L103 | usb-capture; wlink |  |
+| `81 0d 02 ee 00` | <a id="cmd-sdi-print-enable"></a>**SDI print enable** | `82 0d 01 {00=成功 / ff=非対応}` | `verified` | yes / yes | LinkE 2.22 · V203 L103 | usb-capture; wlink | flag は直感と逆(`00` = enable)。AttachChip の後に実 family で SetSpeed を送り直してから送る 別名: wlink=SetSdiPrintEnabled(true) |
+| `81 0d 02 ee 01` | <a id="cmd-sdi-print-disable"></a>**SDI print disable** | `82 0d 01 {00=成功 / ff=非対応}` | `verified` | yes / yes | LinkE 2.22 · V203 L103 | usb-capture; wlink | 別名: wlink=SetSdiPrintEnabled(false) |
 <!-- END generated:wchlink-commands section=8 -->
 
 - **SDI enable 手順**: GetProbeInfo → SetSpeed(family=`0x01`)→ AttachChip → **SetSpeed(実 family)** → **`81 0d 02 ee 00`**。詰まりやすい点は 2 つ: enable の flag が逆(`ee 01` は disable)、AttachChip の後に実 family で SetSpeed を送り直す(LinkE が forward する DM data の番地がこれで決まると見られる)。wlink の `sdi-print enable` の usbmon capture と一致。enable の後は vendor interface を解放してよい。
@@ -368,7 +368,7 @@ probe 自身の firmware を書き換える経路。**target とは無関係**�
 <!-- BEGIN generated:wchlink-commands section=10b -->
 | request frame(host → probe) | 名前 | 応答 | status | 受理 / 効果 | 範囲(probe fw · chip) | 根拠 | 説明 |
 |---|---|---|---|---|---|---|---|
-| `81 0f 01 01` | <a id="cmd-iap-entry"></a>**IAP entry** | (なし。probe は IAP mode で再列挙) | `verified` | yes / yes | LinkE 2.12 2.13 2.22 | usb-capture; WCH-LinkUtility V3.00 capture | §10b。送った時点の probe の fw(2.12 / 2.13 / 2.22)で確認 |
+| `81 0f 01 01` | <a id="cmd-iap-entry"></a>**IAP entry** | (なし。probe は IAP mode で再列挙) | `verified` | yes / yes | LinkE 2.12 2.13 2.22 | usb-capture; WCH-LinkUtility V3.00 capture | §10b。送った時点の probe の fw(2.12 / 2.13 / 2.22)で確認 別名: - |
 <!-- END generated:wchlink-commands section=10b -->
 
 <a id="iap-frame"></a>
@@ -558,9 +558,8 @@ WCH-LinkUtility の `Firmware_Link/` に平文で入っている。**全ファ�
 
 - **エラー応答 frame の体系**(§3)。観測したのは `81 55 01 xx` の形だけ。
 - `wlink_armversion`(名前だけで、byte 列は source にも無い)。
-- **ChipReset の frame**(`81 0b 02` と `81 0b 01 02` の 2 通りの転記)と、cmd `0x01` の CheckFlashProtection / UnprotectFlash が実在するか(§4 の `conflict` の行)。WCH OpenOCD `wlinke.c` の原文での再確認が要る。
 - **RstOut の電気的な効果**(LinkE 2.22 は受理する。RST の線を NRST につないだ target で測る)。
-- GetRomRam / DisableDebug の実機での振る舞い。
+- ChipReset(`81 0b 01 02`)/ GetRomRam / DisableDebug の実機での振る舞い(byte 列は WCH OpenOCD の source にある)。
 - **IAP(§10b)の残り**: 異常時の応答形式、`81 02 0000` が消去を含むか、**壊れた app のまま終了 frame を送った場合**(§10b.5)。
 - ChipInfo `[0:2]` と `[12:16]` の意味(§9)。
 - stub の 2 系統(wlink の blob と minichlink の LinkE loader)と、WCH OpenOCD の loader 18 種の照合(§5)。
@@ -569,6 +568,6 @@ WCH-LinkUtility の `Firmware_Link/` に平文で入っている。**全ファ�
 
 ## 参照
 
-- [wlink protocol.md](https://github.com/ch32-rs/wlink/blob/main/protocol.md) / [RINS: WCH-Link](https://perigoso.github.io/rins/wch-link/index.html) / minichlink `pgm-wch-linke.c` / probe-rs `probe/wlink/` / WCH OpenOCD `riscv-openocd-wch` の `src/jtag/drivers/wlinke.c`(版は記録していない)
+- [wlink protocol.md](https://github.com/ch32-rs/wlink/blob/main/protocol.md) / [RINS: WCH-Link](https://perigoso.github.io/rins/wch-link/index.html) / minichlink `pgm-wch-linke.c` / probe-rs `probe/wlink/` / WCH OpenOCD `riscv-openocd-wch` の `src/jtag/drivers/wlinke.c`。読んだ版は [data/README の表](data/README.ja.md#alias-sources)
 - DMI の先: [riscv-debug-module.ja.md](riscv-debug-module.ja.md)
 - 実装: [ch32rv](https://github.com/ch32-riscv-ug/ch32rv)(`crates/wchlink`)
