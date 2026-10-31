@@ -27,6 +27,7 @@ v1 に向けた組み直し。protocol の事実の正本をこの repo に一�
 - 高速 read の窓(16 KiB)と word 境界、取り消した転送の残り。1 セッション 1 回の書込み、LinkE が host の stub をそのまま走らせる規約、buffer load の幅、option byte の注意、エラー応答の形。
 - factory ISP: CH32X035(BTVER 2.60)の USB は `1a86:55e0` で `verified`。入り方、IspEnd の応答を読むまで reset しないこと、待ち時間、WRPR に補数 byte が無いこと、RDPR 中は bootloader が走らないこと。wch-iap / serial-and-print の VID の記述を直した。
 - H417 のコア 1 の halt / resume / step。
+- ch32rv の旧 protocol 文書にだけあった事実: CH32V00x の DM が ackhavereset まで DMSTATUS を reset 時の値で固着させること、RV32E(V003)の GPR が x0-x15 だけなこと、HW trigger の mcontrol の設定と V307 / X035 での発火([riscv-debug-module](protocols/riscv-debug-module.ja.md#basic-operations))。CH643 版 stub の `c.ebreak` が `+0x158` にあること、V103 attach quirk の症状(`0x110` の default handler、halt → resume だけでも壊れる)、minichlink が公式 unbrick を X 系列で不安定としてコメントアウトしていること、firmware image と版の対応表(`ch32-device-data` の `index/link_firmware.csv`)、AttachChip の chip ID とメモリの device ID が 11 chip で一致すること([pc-to-link](protocols/pc-to-link.ja.md#chip-id-vs-memory))。X035 の読み出し保護の詳細(`FLASH_OBR` `0x03ffff7e`、RVSWD の読み出し fault、`ra` `0x684`)、保護中の app が数秒で止まること、debug chip ID `0x035e0611`、実行できないデータで FLASH の LOCK が外れなくなること、WeAct X035 板の電源の事情([pc-to-device-isp](protocols/pc-to-device-isp.ja.md#x035-read-protect))。
 
 ### 文書
 

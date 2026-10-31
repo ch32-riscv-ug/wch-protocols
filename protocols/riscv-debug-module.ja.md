@@ -36,6 +36,7 @@
 |---|---|---|
 | **halt** | DMCONTROL=`0x80000001`(haltreq+dmactive)→ DMSTATUS の all/any-halted を待つ → DMCONTROL=`0x00000001`(haltreq クリア) | verified |
 | **resume** | DMCONTROL=`0x40000001`(resumereq+dmactive)。**直後に ~10ms sleep が要る**(quirk) | verified |
+| **reset の ack** | DMCONTROL=`0x10000001`(ackhavereset+dmactive)。**CH32V00x の DM は、havereset を ack するまで DMSTATUS の halt / running の bit を reset 時の値のまま固着させる**(V006: 走行中でも `0x004c0382` = halted + havereset、ack の後は `0x00430c82` = allrunning)。soft reset([pc-to-link](pc-to-link.ja.md#cmd-soft-reset))の後は ack → DMSTATUS を読む → halt なら resume、の順で走行を確かめる。V307 は ack なしでも正しい状態を返す | verified(WCH-LinkE、V006 / V307、ch32rv の実機、2026-09-16) |
 | **read_reg**(GPR/CSR/PC) | DMDATA0=0 → DMCOMMAND=`0x00220000 \| regno`(GPR=`0x1000+n`, PC=dpc=`0x7b1`)→ ABSTRACTCS busy 待ち → DMDATA0 読み | verified |
 | **write_reg** | DMDATA0=value → DMCOMMAND=`0x00230000 \| regno` → busy 待ち | verified |
 | **step**(1 命令) | dcsr(CSR `0x7b0`)の step(bit2)を立てて write_reg → resume → 再 halt を待つ → step クリア | verified(V203 で PC 前進を確認) |
@@ -45,6 +46,7 @@
 
 - **DMABSTRACTCS**: busy=bit12、cmderr=bits[10:8](書き戻しでクリア)。
 - **DMSTATUS**: allrunning=bit11 / anyrunning=bit10 / allhalted=bit9 / anyhalted=bit8。
+- **RV32E の GPR は x0-x15 だけ**(CH32V003、misa の E = bit4 が立つ。misa `0x40800014`): abstract register access で x16-x31(regno `0x1010`〜`0x101f`)を読むと cmderr になる。GPR を一括で読む host は misa を見て x0-x15 に絞る。verified(WCH-LinkE、V003、ch32rv の実機、2026-09-01)
 - **DMCOMMAND(abstract register access)の読み方**: `0x0027xxxx`=transfer+postexec、`0x0023xxxx`=write(transfer, write bit)、`0x0022xxxx`=read(transfer)。下位 16bit が regno(GPR=`0x1000+n`: x5=`0x1005`, x6=`0x1006`, x7=`0x1007`)。read_mem/write_mem は「addr/data を DMDATA0 経由で x5/x7 に載せ、progbuf の lw/sw/sh を postexec」で成立する。
 - **任意長 write/read**(`write_mem`/`read_mem`)は word 単位で write_mem32/read_mem32 を回し、端の word は read-modify-write で byte 粒度を保つ。
 
@@ -91,13 +93,17 @@
 
 実測(5 core):
 
-| core | family | misa | marchid | HW trigger 数 |
-|---|---|---|---|---|
-| CH32V307 | 0x06 | `0x40901125` | `…d881` | **4** |
-| CH32X035 | 0x0d | `0x40901105` | `…d883` | **4** |
-| CH32V203 | 0x05 | `0x40901105` | `…d882` | **0** |
-| CH32V003 | 0x09 | `0x40800014` | `…d841` | **0** |
-| CH32V103 | 0x01 | `0x40101105` | `0` | **0** |
+| core | family | misa | marchid | HW trigger 数 | 実発火(execute breakpoint) |
+|---|---|---|---|---|---|
+| CH32V307 | 0x06 | `0x40901125` | `…d881` | **4** | 発火(pc = `0x520` で halt) |
+| CH32X035 | 0x0d | `0x40901105` | `…d883` | **4** | 発火(pc = `0x416` で halt) |
+| CH32V203 | 0x05 | `0x40901105` | `…d882` | **0** | — |
+| CH32V003 | 0x09 | `0x40800014` | `…d841` | **0** | — |
+| CH32V103 | 0x01 | `0x40101105` | `0` | **0** | — |
+
+verified(WCH-Link(LinkE fw 2.22。V103 は CH549 Link fw 2.12)、上の 5 core、ch32rv の実機、2026-09-01)。V203 と X035 は misa が同じ(`0x40901105`)なのに trigger の有無が逆で、marchid の下位だけが違う。
+
+- **HW trigger の execute breakpoint**: 空いた slot を tselect で選び、tdata1 に mcontrol(type = 2、dmode = 1、action = 1(Debug Mode に入る)、m / s / u、execute)を書き、tdata2 = 番地。flash 上のコードで発火することを V307 / X035 で確認した(上表)。verified(範囲は上表と同じ)
 
 - **SW breakpoint**: 対象番地を `ebreak`(4B `0x00100073`)/ `c.ebreak`(2B `0x9002`)で上書きし read-back で着弾確認。着弾しても上記 dcsr.ebreak* を立てていないと trap して halt しない。SW(Z0)要求の break は「RAM patch → 空き HW trigger → flash SW breakpoint([pc-to-link.ja.md](pc-to-link.ja.md) §6 の直接 FLASH controller で page 書換)」の順にフォールバック。
 - **flash SW breakpoint の要点**: code は低位 alias(`0x0000_0000`)で走るが、**FLASH controller には物理 flash 番地(`0x0800_0000+off`)を渡す**(alias 番地で erase/program すると効かない)。read は alias/物理どちらでも鏡。

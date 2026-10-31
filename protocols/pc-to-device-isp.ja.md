@@ -29,12 +29,12 @@ app を bypass して system bootloader を起動させる:
 
 <a id="x035-entry"></a>
 
-**CH32X035 で実測した入り方**(CH32X035F8U6 / C8T6、BTVER 2.60):
+**CH32X035 で実測した入り方**(CH32X035F8U6 / C8T6、BTVER 2.60。F8U6 は WeAct CH32X035 CoreBoard、debug chip ID `0x035e0611`。debug 線は OEP probe(ESP32-P4)の RVSWD と WCH-LinkE fw 2.22):
 
 | 方法 | 結果 |
 |---|---|
 | debug 線で `FLASH_KEYR` と `FLASH_BOOT_MODEKEYR`(`0x40022028`)にそれぞれ `0x45670123`, `0xCDEF89AB` → `FLASH_STATR` に bit14(`BOOT_MODE`)を足して書く → system reset | **入る**。reset 後 0.5 s 以内に `1a86:55e0` が列挙される。`STATR` は `0xF000`、PC は `0x680` 前後(BOOT 領域) |
-| 同じ手順を、hart が flash の中身を実行している状態で、別々の attach に分けて行う | 中身が正規の app なら入る。flash に実行できないデータが入っていると入れない(reset のたびにそのデータが命令として走り、FLASH をロックする) |
+| 同じ手順を、hart が flash の中身を実行している状態で、別々の attach に分けて行う | 中身が正規の app なら入る。flash に実行できないデータ(試験用の pattern)が入っていると入れない: reset のたびにそのデータが命令として走って鍵を触り、FLASH をロックする。以後 `FLASH_CTLR` の LOCK を外せない |
 | reset vector で hart を止めてから、上の手順を 1 回の attach で行う | flash の中身によらず入る |
 | 同じ手順を WCH-LinkE(fw 2.22)で: DMI の reset-halt → 鍵 → `BOOT_MODE` → LinkE の soft reset | 入る(`STATR` `0xF000`、PC `0x6c0`)。USB 未接続のままだと約 10 s で app へ戻る |
 | app から(EVT の `SystemReset_StartMode(Start_Mode_BOOT)` と同じ操作。ArduinoCore-CH32RV の DFU_DETACH / 1200 bps touch) | 入る。DETACH から `55e0` の出現まで 0.36〜0.8 s |
@@ -48,7 +48,15 @@ app を bypass して system bootloader を起動させる:
 - 最後の通信から**約 60 s** 何も来ないと、bootloader は `BOOT_MODE` を解除して app へ抜ける。現れてから**一度も**話しかけられないと、約 9.3〜9.7 s で抜ける。
 - bootloader 実行中に debug 線で hart を halt したままにすると、USB の OUT がすべて timeout する(USB は CPU が処理しているため)。
 
-**読み出し保護(RDPR)中は factory bootloader が走らない**(X035): WriteConfig で RDPR/nRDPR = `00 ff` を書くと option bytes にすぐ反映され、reset 後に `FLASH_OBR` の bit1(RDPRT)が立つ。その状態で `BOOT_MODE` を立てて reset すると、`STATR` は `0xF000` になるが PC は `0x0` で止まり、ISP device は現れない(debug 線から、app の DFU_DETACH から、の 2 通りで確認)。ISP 経由で保護を外すことはできないので、解除は debug 線で行う(code flash は消える)。BOOT キーで入った場合は未確認。
+<a id="x035-read-protect"></a>
+
+**読み出し保護(RDPR)中は factory bootloader が走らない**(`verified`、CH32X035F8U6、BTVER 2.60、debug 線は OEP probe の RVSWD、2026-10-14): WriteConfig で RDPR/nRDPR = `00 ff` を書くと option bytes にすぐ反映され、reset 後に `FLASH_OBR` の bit1(RDPRT)が立つ(`FLASH_OBR` = `0x03ffff7e`)。この状態では RVSWD の flash 読み出しが fault(`0x03`)になる。`BOOT_MODE` を立てて reset すると、`STATR` は `0xF000` になるが PC は `0x0`(`ra` = `0x684`)で止まり、ISP device は現れない。確かめた入り方は 2 通り: (1) debug 線で `BOOT_MODE` を立てて reset、(2) debugger の電源を落とし(OEP probe の hub port を off)、X035 の USB port だけ電源を入れ直してから app に DFU_DETACH(app は `BOOT_MODE` を立てて reset するが、bootloader は同じく PC `0x0` で止まり一度も列挙されない)。ISP 経由で保護を外すことはできないので、解除は debug 線で行う(code flash は消える)。BOOT キーで入った場合は未確認。
+
+- **保護中の app は数秒で止まる**(`verified`、同じ範囲): debugger なしで電源を入れると app は起動するが、約 4〜5 s で USB を切って止まった。debugger(OEP probe)が起動して約 1 s で止まった例もある(probe が起動時に線を触るためと見られる。推定)。保護を外すと同じ image は止まらない。止まる原因は未調査。
+
+<a id="weact-x035-power"></a>
+
+**板の事情: WeAct CH32X035 CoreBoard の電源**(この板に固有、chip の性質ではない): この板は USB と debug 線の両方から給電される。OEP probe をつないだ構成では、X035 の USB port だけ電源を切っても電源投入 reset にならず、OEP probe の port も切ると reset される(uhubctl で port 電源を切った。hub `1a86:8094` は port ごとの電源制御(PPPS)を持つ)。電源投入 reset を前提にする試験(PC17 の BOOT 判定、保護中の起動)では、debug 線側の給電も切る。
 - bootloader は **USB と UART の両方で応答を待つ**(chip による)。どちらか使う方につなぐ。
 
 <a id="factory-bootloader"></a>

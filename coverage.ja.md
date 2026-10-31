@@ -52,6 +52,10 @@
 
 - **H417 の選択コア制御**: [hartsel 0 / 1 と CSR 読み出し、コア 1 の halt / resume / step](protocols/riscv-debug-module.ja.md#h417-core-select) は CH32H417QEU6 / LinkE FW 2.22 で確認済み([依頼 0009 の証拠](captures/fixtures/ch32h417-core-select-2026-10-10/README.ja.md)、ch32rv の実機 capture)。残るのは選択コアの reset、DetachChip・再 attach 時の両コア状態・選択保持、高速 bulk read が hartsel を保つか、他 firmware / 他 H41x、必要なら物理 SWIO capture。
 
+<a id="chip-id-vs-memory"></a>
+
+- **AttachChip の chip ID とメモリの device ID が同じ値か**: 11 chip(V003 / V103 / V203 / V307 / L103 / X035 / V205 / X315 / V407 / H417 / M030)で一致を確認済み([pc-to-link](protocols/pc-to-link.ja.md#chip-id-vs-memory))。残るのは V006(AttachChip の値 `0x00600620` だけ測った)と、手元に無い V467 / X305 / M103。AttachChip と、その family の device ID の番地の `read` を同じ session で取る。
+
 - **RstOut の電気的な効果**([pc-to-link](protocols/pc-to-link.ja.md#cmd-rst-out)): LinkE 2.22 は `81 0d 01 13` を受理する。RST を NRST につないだ target で、USB と NRST の線を同時に収録する。ChipReset の frame(`81 0b 02` / `81 0b 01 02`)も WCH OpenOCD の原文で確かめる。
 
 1. **WCH-Link error 応答 frame 形式**([pc-to-link](protocols/pc-to-link.ja.md) §3): 異常系(target 無し `0x55` 等)の capture 収集。
