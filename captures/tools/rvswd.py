@@ -43,27 +43,34 @@ def load(path):
 
 
 def hold(x, k):
-    """A level change counts only once the new level holds k samples; shorter runs keep the old level."""
-    if k <= 1:
+    """A level change counts only once the new level holds k samples; shorter runs keep the old level.
+    Vectorised: each run of equal samples takes the level of the latest run (itself included) that lasts >= k."""
+    if k <= 1 or len(x) == 0:
         return x
     e = np.flatnonzero(np.diff(x.astype(np.int8))) + 1
-    bounds = np.concatenate(([0], e, [len(x)]))
-    out = np.empty_like(x)
-    level = int(x[0]); pos = 0
-    for a, b in zip(bounds[:-1], bounds[1:]):
-        if int(x[a]) != level and b - a >= k:
-            out[pos:a] = level; pos = a; level = int(x[a])
-    out[pos:] = level
-    return out
+    if len(e) == 0:
+        return x
+    starts = np.concatenate(([0], e))
+    lengths = np.diff(np.concatenate((starts, [len(x)])))
+    strong = np.where(lengths >= k, np.arange(len(starts)), -1)
+    np.maximum.accumulate(strong, out=strong)
+    level = np.where(strong >= 0, x[starts[np.maximum(strong, 0)]], x[0]).astype(x.dtype)
+    return np.repeat(level, lengths)
 
 
 def frames(path, k=3, clk_bit=0, dio_bit=1, k_frame=None):
-    """[(start_sample, end_sample, rising_edges, bits, 'stop' | 'open')], samplerate.
+    """[(start_sample, end_sample, rising_edges, bits, 'stop' | 'open')], samplerate. Loads the whole file;
+    rvswd_stream.py feeds frames_from_samples() a window at a time instead."""
+    d, rate = load(path)
+    return frames_from_samples(d, rate, k, clk_bit, dio_bit, k_frame), rate
+
+
+def frames_from_samples(d, rate, k=3, clk_bit=0, dio_bit=1, k_frame=None):
+    """frames() on samples already in memory (sample indices relative to d).
 
     `k` is the hold filter for the bit clock. `k_frame` (default = k) is a stronger filter used only to find
     START / STOP, whose SWCLK-high intervals are long: with it a 1-sample glitch on an idle-high SWCLK does not
     hide a STOP even when the bit clock has to be read unfiltered (V203 at 100 MHz: SWCLK high is 2-3 samples)."""
-    d, rate = load(path)
     clk, dio = hold((d >> clk_bit) & 1, k), hold((d >> dio_bit) & 1, k)
     clkf = clk if not k_frame or k_frame == k else hold((d >> clk_bit) & 1, k_frame)
     dc = np.diff(clk.astype(np.int8))
@@ -108,7 +115,7 @@ def frames(path, k=3, clk_bit=0, dio_bit=1, k_frame=None):
             emit(start, pos, "stop"); start = None
     if start is not None:
         emit(start, len(clk), "open")
-    return out, rate
+    return out
 
 
 def parity_ok(bits):

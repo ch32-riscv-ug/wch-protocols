@@ -1,0 +1,2076 @@
+# monitor_sdi.sr: RVSWD decoded by captures/tools/rvswd_sdi_monitor.py (captures/tools/rvswd_stream.py, hold filter 1 sample(s) on the bit clock, 3 for START / STOP)
+# samplerate 25 MHz, 1281852 frames. Times are ms from the start of the capture.
+
+## frames by clock count (clocks end: count)
+   0 stop          2
+  13 stop          4
+  14 stop          1
+  39 stop          5
+  53 stop          1281061
+  85 stop          202
+ 107 stop          2
+ 108 stop          54
+ 109 stop          168
+ 110 stop          218
+ 111 stop          108
+ 112 stop          21
+ 113 stop          5
+ 114 stop          1
+
+## frames that are no known frame (clocks, what, decode: count)
+(107, 'two frames, STOP not seen', "('R', 'data0') + ('R', 'data0')"): 1
+(107, 'two frames, STOP not seen', "('R', 'data0') + ('R', 'data1')"): 1
+(108, 'two frames, STOP not seen', "('R', 'data0') + ('R', 'data0')"): 54
+(109, 'two frames, STOP not seen', "('R', 'data0') + ('R', 'data0')"): 167
+(109, 'two frames, STOP not seen', "('R', 'data1') + ('W', 'data0')"): 1
+(110, 'two frames, STOP not seen', "('R', 'data0') + ('R', 'data0')"): 218
+(111, 'two frames, STOP not seen', "('R', 'data0') + ('R', 'data0')"): 107
+(111, 'two frames, STOP not seen', "('R', 'data1') + ('W', 'data0')"): 1
+(112, 'two frames, STOP not seen', "('R', 'data0') + ('R', 'data0')"): 21
+(113, 'two frames, STOP not seen', "('R', 'data0') + ('R', 'data0')"): 5
+(114, 'two frames, STOP not seen', "('R', 'data0') + ('R', 'data0')"): 1
+
+## polling phase
+from 125.8069 ms to 37959.4808 ms: 1282109 frames, all R data0 / R data1 / W data0 except 12 of no known length
+DMDATA0 reads: 1279392, of which data 0: 1278040, nonzero: 1352, not decoded (clocks lost): 0
+interval between consecutive DMDATA0 reads (us): median 29.52, p1 28.80, p99 30.40, min 27.11, max 96.72
+histogram, 1 us bins (100 = 100 or more): 27:492, 28:62034, 29:1127175, 30:87359, 31:907, 32:63, 33:4, 60:2, 61:2, 62:1, 89:4, 90:79, 91:372, 92:391, 93:253, 94:183, 95:64, 96:6
+
+## mailbox sequence: what follows each nonzero DMDATA0 read in the polling phase, up to the next DMDATA0 read
+(n = DATA0 low byte = character count; EVT SDI_Printf puts characters 3-6 in DATA1)
+n=1: R data1 ; W data0 00000000: 9
+n=2: R data1 ; W data0 00000000: 766
+n=3: R data1 ; W data0 00000000: 239
+n=7: R data1 ; W data0 00000000: 338
+
+## text carried by the mailbox (reassembled from the polling phase; \r and \n escaped)
+  uptime 1 s\r\n
+  uptime 2 s\r\n
+  uptime 3 s\r\n
+  uptime 4 s\r\n
+  uptime 5 s\r\n
+  uptime 6 s\r\n
+  uptime 7 s\r\n
+  uptime 8 s\r\n
+  uptime 9 s\r\n
+  uptime 10 s\r\n
+  uptime 11 s\r\n
+  uptime 12 s\r\n
+  uptime 13 s\r\n
+  uptime 14 s\r\n
+  uptime 15 s\r\n
+  uptime 16 s\r\n
+  uptime 17 s\r\n
+  uptime 18 s\r\n
+  uptime 19 s\r\n
+  uptime 20 s\r\n
+  uptime 21 s\r\n
+  uptime 22 s\r\n
+  uptime 23 s\r\n
+  uptime 24 s\r\n
+  uptime 25 s\r\n
+  uptime 26 s\r\n
+  uptime 27 s\r\n
+  uptime 28 s\r\n
+  uptime 29 s\r\n
+  uptime 30 s\r\n
+  uptime 31 s\r\n
+  uptime 32 s\r\n
+  uptime 33 s\r\n
+  uptime 34 s\r\n
+  uptime 35 s\r\n
+  uptime 36 s\r\n
+  uptime 37 s\r\n
+  uptime 38 s\r\n
+  uptime 39 s\r\n
+  uptime 40 s\r\n
+  uptime 41 s\r\n
+  uptime 42 s\r\n
+  uptime 43 s\r\n
+  uptime 44 s\r\n
+  uptime 45 s\r\n
+  uptime 46 s\r\n
+  uptime 47 s\r\n
+  uptime 48 s\r\n
+  uptime 49 s\r\n
+  uptime 50 s\r\n
+  uptime 51 s\r\n
+  uptime 52 s\r\n
+  uptime 53 s\r\n
+  uptime 54 s\r\n
+  uptime 55 s\r\n
+  uptime 56 s\r\n
+  uptime 57 s\r\n
+  uptime 58 s\r\n
+  uptime 59 s\r\n
+  uptime 60 s\r\n
+  uptime 61 s\r\n
+  uptime 62 s\r\n
+  uptime 63 s\r\n
+  uptime 64 s\r\n
+  uptime 65 s\r\n
+  uptime 66 s\r\n
+  uptime 67 s\r\n
+  uptime 68 s\r\n
+  uptime 69 s\r\n
+  uptime 70 s\r\n
+  uptime 71 s\r\n
+  uptime 72 s\r\n
+  uptime 73 s\r\n
+  uptime 74 s\r\n
+  uptime 75 s\r\n
+  uptime 76 s\r\n
+  uptime 77 s\r\n
+  uptime 78 s\r\n
+  uptime 79 s\r\n
+  uptime 80 s\r\n
+  uptime 81 s\r\n
+  uptime 82 s\r\n
+  uptime 83 s\r\n
+  uptime 84 s\r\n
+  uptime 85 s\r\n
+  uptime 86 s\r\n
+  uptime 87 s\r\n
+  uptime 88 s\r\n
+  uptime 89 s\r\n
+  uptime 90 s\r\n
+  uptime 91 s\r\n
+  uptime 92 s\r\n
+  uptime 93 s\r\n
+  uptime 94 s\r\n
+  uptime 95 s\r\n
+  uptime 96 s\r\n
+  uptime 97 s\r\n
+  uptime 98 s\r\n
+  uptime 99 s\r\n
+  uptime 100 s\r\n
+  uptime 101 s\r\n
+  uptime 102 s\r\n
+  uptime 103 s\r\n
+  uptime 104 s\r\n
+  uptime 105 s\r\n
+  uptime 106 s\r\n
+  uptime 107 s\r\n
+  uptime 108 s\r\n
+  uptime 109 s\r\n
+  uptime 110 s\r\n
+  uptime 111 s\r\n
+  uptime 112 s\r\n
+  uptime 113 s\r\n
+  uptime 114 s\r\n
+  uptime 115 s\r\n
+  uptime 116 s\r\n
+  uptime 117 s\r\n
+  uptime 118 s\r\n
+  uptime 119 s\r\n
+  uptime 120 s\r\n
+  uptime 121 s\r\n
+  uptime 122 s\r\n
+  uptime 123 s\r\n
+  uptime 124 s\r\n
+  uptime 125 s\r\n
+  uptime 126 s\r\n
+  uptime 127 s\r\n
+  uptime 128 s\r\n
+  uptime 129 s\r\n
+  uptime 130 s\r\n
+  uptime 131 s\r\n
+  uptime 132 s\r\n
+  uptime 133 s\r\n
+  uptime 134 s\r\n
+  uptime 135 s\r\n
+  uptime 136 s\r\n
+  uptime 137 s\r\n
+  uptime 138 s\r\n
+  uptime 139 s\r\n
+  uptime 140 s\r\n
+  uptime 141 s\r\n
+  uptime 142 s\r\n
+  uptime 143 s\r\n
+  uptime 144 s\r\n
+  uptime 145 s\r\n
+  uptime 146 s\r\n
+  uptime 147 s\r\n
+  uptime 148 s\r\n
+  uptime 149 s\r\n
+  uptime 150 s\r\n
+  uptime 151 s\r\n
+  uptime 152 s\r\n
+  uptime 153 s\r\n
+  uptime 154 s\r\n
+  uptime 155 s\r\n
+  uptime 156 s\r\n
+  uptime 157 s\r\n
+  uptime 158 s\r\n
+  uptime 159 s\r\n
+  uptime 160 s\r\n
+  uptime 161 s\r\n
+  uptime 162 s\r\n
+  uptime 163 s\r\n
+  uptime 164 s\r\n
+  uptime 165 s\r\n
+  uptime 166 s\r\n
+  uptime 167 s\r\n
+  uptime 168 s\r\n
+  uptime 169 s\r\n
+  uptime 170 s\r\n
+  uptime 171 s\r\n
+  uptime 172 s\r\n
+  uptime 173 s\r\n
+  uptime 174 s\r\n
+  uptime 175 s\r\n
+  uptime 176 s\r\n
+  uptime 177 s\r\n
+  uptime 178 s\r\n
+  uptime 179 s\r\n
+  uptime 180 s\r\n
+  uptime 181 s\r\n
+  uptime 182 s\r\n
+  uptime 183 s\r\n
+  uptime 184 s\r\n
+  uptime 185 s\r\n
+  uptime 186 s\r\n
+  uptime 187 s\r\n
+  uptime 188 s\r\n
+  uptime 189 s\r\n
+  uptime 190 s\r\n
+  uptime 191 s\r\n
+  uptime 192 s\r\n
+  uptime 193 s\r\n
+  uptime 194 s\r\n
+  uptime 195 s\r\n
+  uptime 196 s\r\n
+  uptime 197 s\r\n
+  uptime 198 s\r\n
+  uptime 199 s\r\n
+  uptime 200 s\r\n
+  uptime 201 s\r\n
+  uptime 202 s\r\n
+  uptime 203 s\r\n
+  uptime 204 s\r\n
+  uptime 205 s\r\n
+  uptime 206 s\r\n
+  uptime 207 s\r\n
+  uptime 208 s\r\n
+  uptime 209 s\r\n
+  uptime 210 s\r\n
+  uptime 211 s\r\n
+  uptime 212 s\r\n
+  uptime 213 s\r\n
+  uptime 214 s\r\n
+  uptime 215 s\r\n
+  uptime 216 s\r\n
+  uptime 217 s\r\n
+  uptime 218 s\r\n
+  uptime 219 s\r\n
+  uptime 220 s\r\n
+  uptime 221 s\r\n
+  uptime 222 s\r\n
+  uptime 223 s\r\n
+  uptime 224 s\r\n
+  uptime 225 s\r\n
+  uptime 226 s\r\n
+  uptime 227 s\r\n
+  uptime 228 s\r\n
+  uptime 229 s\r\n
+  uptime 230 s\r\n
+  uptime 231 s\r\n
+  uptime 232 s\r\n
+  uptime 233 s\r\n
+  uptime 234 s\r\n
+  uptime 235 s\r\n
+  uptime 236 s\r\n
+  uptime 237 s\r\n
+  uptime 238 s\r\n
+  uptime 239 s\r\n
+  uptime 240 s\r\n
+  uptime 241 s\r\n
+  uptime 242 s\r\n
+  uptime 243 s\r\n
+  uptime 244 s\r\n
+  uptime 245 s\r\n
+  uptime 246 s\r\n
+  uptime 247 s\r\n
+  uptime 248 s\r\n
+  uptime 249 s\r\n
+  uptime 250 s\r\n
+  uptime 251 s\r\n
+  uptime 252 s\r\n
+  uptime 253 s\r\n
+  uptime 254 s\r\n
+  uptime 255 s\r\n
+  uptime 256 s\r\n
+  uptime 257 s\r\n
+  uptime 258 s\r\n
+  uptime 259 s\r\n
+  uptime 260 s\r\n
+  uptime 261 s\r\n
+  uptime 262 s\r\n
+  uptime 263 s\r\n
+  uptime 264 s\r\n
+  uptime 265 s\r\n
+  uptime 266 s\r\n
+  uptime 267 s\r\n
+  uptime 268 s\r\n
+  uptime 269 s\r\n
+  uptime 270 s\r\n
+  uptime 271 s\r\n
+  uptime 272 s\r\n
+  uptime 273 s\r\n
+  uptime 274 s\r\n
+  uptime 275 s\r\n
+  uptime 276 s\r\n
+  uptime 277 s\r\n
+  uptime 278 s\r\n
+  uptime 279 s\r\n
+  uptime 280 s\r\n
+  uptime 281 s\r\n
+  uptime 282 s\r\n
+  uptime 283 s\r\n
+  uptime 284 s\r\n
+  uptime 285 s\r\n
+  uptime 286 s\r\n
+  uptime 287 s\r\n
+  uptime 288 s\r\n
+  uptime 289 s\r\n
+  uptime 290 s\r\n
+  uptime 291 s\r\n
+  uptime 292 s\r\n
+  uptime 293 s\r\n
+  uptime 294 s\r\n
+  uptime 295 s\r\n
+  uptime 296 s\r\n
+  uptime 297 s\r\n
+  uptime 298 s\r\n
+  uptime 299 s\r\n
+  uptime 300 s\r\n
+  uptime 301 s\r\n
+  uptime 302 s\r\n
+  uptime 303 s\r\n
+  uptime 304 s\r\n
+  uptime 305 s\r\n
+  uptime 306 s\r\n
+  uptime 307 s\r\n
+  uptime 308 s\r\n
+  uptime 309 s\r\n
+  uptime 310 s\r\n
+  uptime 311 s\r\n
+  uptime 312 s\r\n
+  uptime 313 s\r\n
+  uptime 314 s\r\n
+  uptime 315 s\r\n
+  uptime 316 s\r\n
+  uptime 317 s\r\n
+  uptime 318 s\r\n
+  uptime 319 s\r\n
+  uptime 320 s\r\n
+  uptime 321 s\r\n
+  uptime 322 s\r\n
+  uptime 323 s\r\n
+  uptime 324 s\r\n
+  uptime 325 s\r\n
+  uptime 326 s\r\n
+  uptime 327 s\r\n
+  uptime 328 s\r\n
+  uptime 329 s\r\n
+  uptime 330 s\r\n
+  uptime 331 s\r\n
+  uptime 332 s\r\n
+  uptime 333 s\r\n
+  uptime 334 s\r\n
+  uptime 335 s\r\n
+  uptime 336 s\r\n
+  uptime 337 s\r\n
+  uptime 338 s\r\n
+
+## before the polling phase: every frame (320)
+   64.5806 LONG dmstatus data 00000009 op 00 | target 0010010 ffffffff 11
+   64.8093 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   65.0376 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   65.2658 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   65.4942 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   65.7226 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   65.9509 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   66.1793 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   66.4076 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   66.6359 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   66.8642 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   67.0925 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   67.3208 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   67.5491 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   67.7774 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   68.0057 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   68.2341 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   68.4624 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   68.6907 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   68.9190 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   69.1473 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   69.3756 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   69.6039 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   69.8322 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   70.0606 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   70.2889 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   70.5172 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   70.7455 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   70.9738 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   71.2022 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   71.4305 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   71.6589 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   71.8872 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   72.1155 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   72.3439 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   72.5723 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   72.8006 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   73.0289 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   73.2572 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   73.4855 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   73.7138 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   73.9422 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   74.1705 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   74.3988 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   74.6271 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   74.8554 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   75.0837 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   75.3121 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   75.5404 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   75.7687 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   75.9970 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   76.2253 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   76.4536 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   76.6819 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   76.9102 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   77.1386 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   77.3669 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   77.5953 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   77.8236 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   78.0519 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   78.2802 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   78.5086 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   78.7369 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   78.9652 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   79.1936 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   79.4219 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   79.6502 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   79.8785 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   80.1068 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   80.3351 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   80.5634 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   80.7919 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   81.0204 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   81.2489 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   81.4774 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   81.7059 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   81.9343 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   82.1627 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   82.3910 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   82.6194 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   82.8478 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   83.0762 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   83.3047 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   83.5331 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   83.7615 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   83.9898 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   84.2181 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   84.4464 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   84.6747 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   84.9030 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   85.1314 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   85.3596 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   85.5880 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   85.8163 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   86.0446 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   86.2729 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   86.5012 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   86.7295 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   86.9579 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   87.1864 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   87.4148 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   87.6433 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   87.8717 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   88.1001 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   88.3285 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   88.5570 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   88.7855 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   89.0139 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   89.2422 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   89.4705 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   89.6988 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   89.9272 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   90.1555 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   90.3838 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   90.6121 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   90.8404 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   91.0688 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   91.2971 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   91.5254 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   91.7537 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   91.9820 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   92.2104 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   92.4387 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   92.6670 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   92.8954 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   93.1236 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   93.3519 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   93.5803 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   93.8086 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   94.0369 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   94.2652 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   94.4935 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   94.7218 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   94.9501 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   95.1784 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   95.4067 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   95.6350 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   95.8633 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   96.0916 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   96.3198 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   96.5482 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   96.7765 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   97.0048 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   97.2332 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   97.4616 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   97.6901 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   97.9185 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   98.1468 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   98.3752 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   98.6036 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   98.8319 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   99.0603 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   99.2886 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   99.5169 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   99.7453 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+   99.9736 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  100.2020 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  100.4303 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  100.6586 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  100.8870 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  101.1154 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  101.3438 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  101.5722 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  101.8006 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  102.0289 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  102.2573 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  102.4856 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  102.7140 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  102.9422 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  103.1706 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  103.3989 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  103.6272 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  103.8555 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  104.0838 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  104.3121 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  104.5405 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  104.7688 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  104.9973 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  105.2256 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  105.4539 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  105.6822 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  105.9106 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  106.1390 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  106.3673 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  106.5956 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  106.8239 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  107.0522 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  107.2806 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  107.5089 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  107.7372 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  107.9656 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  108.1940 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  108.4224 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  108.6507 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  108.8791 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  109.1075 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  109.3358 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  109.5641 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  109.7925 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  110.0208 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  110.2491 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  110.4774 LONG dmstatus data 00000000 op 01 | target 1111101 ffffffff 11
+  110.9137 W 0x7e         5aa50400
+  111.0382 W 0x7d         5aa50400
+  111.1600 R dmstatus     00000c82
+  111.2845 W dmcontrol    80000001
+  111.4090 W dmcontrol    80000001
+  111.5308 R dmstatus     00000382
+  111.6530 R 0x7f         10310710
+  111.7790 W data1        1ffff704
+  111.9034 W command      02200000
+  112.0250 R data0        10310710
+  112.1500 W data0        00000300
+  112.2749 W command      002307c0
+  112.4006 W data1        40021000
+  112.5252 W command      02200000
+  112.6468 R data0        00107f83
+  112.7716 W data1        40021000
+  112.8959 W data0        00107f83
+  113.0206 W command      02210000
+  113.1457 W data1        40021004
+  113.2702 W command      02200000
+  113.3920 R data0        00000000
+  113.5170 W data1        40021004
+  113.6416 W data0        00000000
+  113.7661 W command      02210000
+  113.8909 W data1        40021000
+  114.0155 W command      02200000
+  114.1374 R data0        00107f83
+  114.2622 W data1        40021000
+  114.3865 W data0        00107f83
+  114.5112 W command      02210000
+  114.6363 W data1        40021000
+  114.7609 W command      02200000
+  114.8828 R data0        00107f83
+  115.0076 W data1        40021000
+  115.1319 W data0        00107f83
+  115.2566 W command      02210000
+  115.3816 W data1        40021004
+  115.5061 W command      02200000
+  115.6280 R data0        00000000
+  115.7529 W data1        40021004
+  115.8773 W data0        00000000
+  116.0016 W command      02210000
+  116.1264 W data1        40021008
+  116.2509 W data0        009f0000
+  116.3753 W command      02210000
+  116.5001 W data1        40023800
+  116.6248 W command      02200000
+  116.7466 R data0        00002440
+  116.8713 W data1        40023800
+  116.9956 W data0        00002450
+  117.1199 W command      02210000
+  117.2447 W data1        40022000
+  117.3693 W command      02200000
+  117.4911 R data0        00000000
+  117.6160 W data1        40022000
+  117.7402 W data0        00000010
+  117.8650 W command      02210000
+  117.9900 W data1        40022000
+  118.1146 W command      02200000
+  118.2364 R data0        00000000
+  118.3614 W data1        40022000
+  118.4859 W data0        00000001
+  118.6106 W command      02210000
+  118.7354 W data1        40021004
+  118.8597 W command      02200000
+  118.9816 R data0        00000000
+  119.1063 W data1        40021004
+  119.2308 W data0        00000400
+  119.3554 W command      02210000
+  119.4802 W data1        40021004
+  119.6046 W command      02200000
+  119.7265 R data0        00000400
+  119.8513 W data1        40021004
+  119.9758 W data0        00000400
+  120.1005 W command      02210000
+  120.2255 W data1        40021004
+  120.3500 W command      02200000
+  120.4718 R data0        00000400
+  120.5967 W data1        40021004
+  120.7212 W data0        001c0400
+  120.8455 W command      02210000
+  120.9704 W data1        40021000
+  121.0949 W command      02200000
+  121.2168 R data0        00107f83
+  121.3415 W data1        40021000
+  121.4659 W data0        01107f83
+  121.5902 W command      02210000
+  121.7150 W data1        40021000
+  121.8397 W command      02200000
+  121.9616 R data0        01107f83
+  122.0866 W data1        40021000
+  122.2112 W command      02200000
+  122.3330 R data0        03107f83
+  122.4579 W data1        40021004
+  122.5825 W command      02200000
+  122.7044 R data0        001c0400
+  122.8291 W data1        40021004
+  122.9536 W data0        001c0400
+  123.0781 W command      02210000
+  123.2029 W data1        40021004
+  123.3274 W command      02200000
+  123.4493 R data0        001c0400
+  123.5740 W data1        40021004
+  123.6986 W data0        001c0402
+  123.8232 W command      02210000
+  123.9482 W data1        40021004
+  124.0727 W command      02200000
+  124.1946 R data0        001c040a
+  124.3183 W data1        40022010
+  124.3500 W data0        00008080
+  124.3812 W command      02210000
+  124.4132 W data1        4002200c
+  124.4440 W data0        0000b020
+  124.4754 W command      02210000
+  125.6802 W dmcontrol    40000001
+  125.7095 R dmstatus     00030c82
+  125.7432 W dmcontrol    40000000
+  125.7754 W dmcontrol    00000001
+
+## polling phase: one line per nonzero DMDATA0 read with the ops that follow it (time from the read), and every
+## other frame except DMDATA0 reads that returned 0 (two-frame halves that read 0 are only counted above)
+  125.8069 W data0        00000000
+  130.4161 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +62.9 us W data0 00000000
+  130.5109 R data0 00003101 n=1 b'1' | +29.5 us R data1 00000000 | +62.0 us W data0 00000000
+  130.6040 R data0 00732002 n=2 b' s' | +28.8 us R data1 00000000 | +60.5 us W data0 00000000
+  130.6949 R data0 000a0d02 n=2 b'\r\n' | +30.1 us R data1 00000000 | +62.4 us W data0 00000000
+  242.3820 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.7 us W data0 00000000
+  242.4763 R data0 00003201 n=1 b'2' | +29.6 us R data1 00000000 | +60.9 us W data0 00000000
+  242.5672 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+  242.6587 R data0 000a0d02 n=2 b'\r\n' | +29.0 us R data1 00000000 | +60.6 us W data0 00000000
+  327.7900 RAW14 stop 00001000110000
+  327.7977 RAW39 stop 000000000000000000000000000000000000110
+  354.4077 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +62.8 us W data0 00000000
+  354.5026 R data0 00003301 n=1 b'3' | +29.6 us R data1 00000000 | +60.8 us W data0 00000000
+  354.5941 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +61.2 us W data0 00000000
+  354.6864 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.3 us W data0 00000000
+  466.4299 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.3 us W data0 00000000
+  466.5238 R data0 00003401 n=1 b'4' | +30.3 us R data1 00000000 | +62.0 us W data0 00000000
+  466.6162 R data0 00732002 n=2 b' s' | +30.5 us R data1 00000000 | +62.3 us W data0 00000000
+  466.7089 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.3 us W data0 00000000
+  578.4672 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +62.7 us W data0 00000000
+  578.5617 R data0 00003501 n=1 b'5' | +31.3 us R data1 00000000 | +63.5 us W data0 00000000
+  578.6550 R data0 00732002 n=2 b' s' | +31.2 us R data1 00000000 | +63.0 us W data0 00000000
+  578.7484 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.5 us W data0 00000000
+  580.2686 RAW13 stop 0000100011000
+  580.2760 RAW39 stop 000000000000000000000000000000000000110
+  690.4626 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.9 us W data0 00000000
+  690.5572 R data0 00003601 n=1 b'6' | +29.5 us R data1 00000000 | +61.7 us W data0 00000000
+  690.6500 R data0 00732002 n=2 b' s' | +29.1 us R data1 00000000 | +60.2 us W data0 00000000
+  690.7404 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +61.8 us W data0 00000000
+  802.5228 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.4 us W data0 00000000
+  802.6175 R data0 00003701 n=1 b'7' | +29.7 us R data1 00000000 | +61.0 us W data0 00000000
+  802.7089 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +60.4 us W data0 00000000
+  802.8001 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +62.0 us W data0 00000000
+  914.5864 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.2 us W data0 00000000
+  914.6808 R data0 00003801 n=1 b'8' | +29.6 us R data1 00000000 | +61.1 us W data0 00000000
+  914.7728 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.0 us W data0 00000000
+  914.8641 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.0 us W data0 00000000
+ 1026.5867 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.6 us W data0 00000000
+ 1026.6809 R data0 00003901 n=1 b'9' | +29.7 us R data1 00000000 | +61.7 us W data0 00000000
+ 1026.7734 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +60.4 us W data0 00000000
+ 1026.8652 R data0 000a0d02 n=2 b'\r\n' | +31.2 us R data1 00000000 | +63.5 us W data0 00000000
+ 1027.2020 RAW13 stop 0000100011000
+ 1027.2096 RAW0 stop 
+ 1027.2097 RAW39 stop 000000000000000000000000000000000000110
+ 1027.9432 RAW13 stop 0000100011000
+ 1027.9509 RAW39 stop 000000000000000000000000000000000000110
+ 1138.5792 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.7 us W data0 00000000
+ 1138.6736 R data0 00303102 n=2 b'10' | +29.6 us R data1 00000000 | +62.0 us W data0 00000000
+ 1138.7654 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.4 us W data0 00000000
+ 1138.8573 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.0 us W data0 00000000
+ 1250.6354 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.8 us W data0 00000000
+ 1250.7296 R data0 00313102 n=2 b'11' | +29.8 us R data1 00000000 | +61.6 us W data0 00000000
+ 1250.8212 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.2 us W data0 00000000
+ 1250.9131 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +60.6 us W data0 00000000
+ 1362.6863 R data0 74707507 n=7 b'uptime ' | +29.3 us R data1 20656d69 | +61.5 us W data0 00000000
+ 1362.7802 R data0 00323102 n=2 b'12' | +30.4 us R data1 00000000 | +63.3 us W data0 00000000
+ 1362.8742 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.4 us W data0 00000000
+ 1362.9662 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.8 us W data0 00000000
+ 1474.7041 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.4 us W data0 00000000
+ 1474.7979 R data0 00333102 n=2 b'13' | +30.8 us R data1 00000000 | +63.0 us W data0 00000000
+ 1474.8917 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.4 us W data0 00000000
+ 1474.9835 R data0 000a0d02 n=2 b'\r\n' | +30.8 us R data1 00000000 | +62.5 us W data0 00000000
+ 1586.6926 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.7 us W data0 00000000
+ 1586.7866 R data0 00343102 n=2 b'14' | +30.0 us R data1 00000000 | +62.2 us W data0 00000000
+ 1586.8795 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.6 us W data0 00000000
+ 1586.9718 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +62.1 us W data0 00000000
+ 1698.6721 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +61.7 us W data0 00000000
+ 1698.7658 R data0 00353102 n=2 b'15' | +30.8 us R data1 00000000 | +63.8 us W data0 00000000
+ 1698.8605 R data0 00732002 n=2 b' s' | +28.7 us R data1 00000000 | +60.0 us W data0 00000000
+ 1698.9508 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +60.3 us W data0 00000000
+ 1810.6862 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.1 us W data0 00000000
+ 1810.7799 R data0 00363102 n=2 b'16' | +30.4 us R data1 00000000 | +62.0 us W data0 00000000
+ 1810.8720 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +60.3 us W data0 00000000
+ 1810.9621 R data0 000a0d02 n=2 b'\r\n' | +29.1 us R data1 00000000 | +61.3 us W data0 00000000
+ 1922.6844 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +63.0 us W data0 00000000
+ 1922.7791 R data0 00373102 n=2 b'17' | +30.8 us R data1 00000000 | +62.9 us W data0 00000000
+ 1922.8720 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.4 us W data0 00000000
+ 1922.9644 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.2 us W data0 00000000
+ 2034.7024 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +64.1 us W data0 00000000
+ 2034.7982 R data0 00383102 n=2 b'18' | +30.5 us R data1 00000000 | +62.5 us W data0 00000000
+ 2034.8913 R data0 00732002 n=2 b' s' | +30.3 us R data1 00000000 | +62.5 us W data0 00000000
+ 2034.9841 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +60.8 us W data0 00000000
+ 2146.6881 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +63.1 us W data0 00000000
+ 2146.7825 R data0 00393102 n=2 b'19' | +29.9 us R data1 00000000 | +61.6 us W data0 00000000
+ 2146.8746 R data0 00732002 n=2 b' s' | +30.3 us R data1 00000000 | +62.4 us W data0 00000000
+ 2146.9672 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +61.6 us W data0 00000000
+ 2258.6579 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.2 us W data0 00000000
+ 2258.7516 R data0 00303202 n=2 b'20' | +30.2 us R data1 00000000 | +62.3 us W data0 00000000
+ 2258.8449 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.6 us W data0 00000000
+ 2258.9368 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+ 2370.6178 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.8 us W data0 00000000
+ 2370.7123 R data0 00313202 n=2 b'21' | +29.2 us R data1 00000000 | +61.0 us W data0 00000000
+ 2370.8039 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.9 us W data0 00000000
+ 2370.8968 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.1 us W data0 00000000
+ 2482.6031 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.4 us W data0 00000000
+ 2482.6972 R data0 00323202 n=2 b'22' | +29.4 us R data1 00000000 | +61.7 us W data0 00000000
+ 2482.7892 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.2 us W data0 00000000
+ 2482.8815 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +60.9 us W data0 00000000
+ 2594.6110 R data0 74707507 n=7 b'uptime ' | +30.5 us R data1 20656d69 | +62.9 us W data0 00000000
+ 2594.7061 R data0 00333202 n=2 b'23' | +30.0 us R data1 00000000 | +62.6 us W data0 00000000
+ 2594.7989 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.0 us W data0 00000000
+ 2594.8898 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +61.0 us W data0 00000000
+ 2706.6468 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.0 us W data0 00000000
+ 2706.7406 R data0 00343202 n=2 b'24' | +28.9 us R data1 00000000 | +61.5 us W data0 00000000
+ 2706.8322 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.4 us W data0 00000000
+ 2706.9237 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.6 us W data0 00000000
+ 2818.6800 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.2 us W data0 00000000
+ 2818.7750 R data0 00353202 n=2 b'25' | +29.8 us R data1 00000000 | +62.4 us W data0 00000000
+ 2818.8674 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.6 us W data0 00000000
+ 2818.9594 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +62.8 us W data0 00000000
+ 2930.6955 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +63.0 us W data0 00000000
+ 2930.7902 R data0 00363202 n=2 b'26' | +30.6 us R data1 00000000 | +62.1 us W data0 00000000
+ 2930.8830 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.3 us W data0 00000000
+ 2930.9744 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.4 us W data0 00000000
+ 2931.2447 RAW13 stop 0000100011000
+ 2931.2520 RAW0 stop 
+ 2931.2521 RAW39 stop 000000000000000000000000000000000000110
+ 3042.6909 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +61.4 us W data0 00000000
+ 3042.7850 R data0 00373202 n=2 b'27' | +29.6 us R data1 00000000 | +61.7 us W data0 00000000
+ 3042.8771 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +62.2 us W data0 00000000
+ 3042.9697 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.3 us W data0 00000000
+ 3154.6920 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +61.6 us W data0 00000000
+ 3154.7845 R data0 00383202 n=2 b'28' | +30.3 us R data1 00000000 | +62.7 us W data0 00000000
+ 3154.8776 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.0 us W data0 00000000
+ 3154.9692 R data0 000a0d02 n=2 b'\r\n' | +30.5 us R data1 00000000 | +62.1 us W data0 00000000
+ 3266.7080 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.3 us W data0 00000000
+ 3266.8024 R data0 00393202 n=2 b'29' | +29.3 us R data1 00000000 | +61.0 us W data0 00000000
+ 3266.8938 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.3 us W data0 00000000
+ 3266.9858 R data0 000a0d02 n=2 b'\r\n' | +31.0 us R data1 00000000 | +62.8 us W data0 00000000
+ 3378.7303 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.0 us W data0 00000000
+ 3378.8240 R data0 00303302 n=2 b'30' | +30.4 us R data1 00000000 | +62.6 us W data0 00000000
+ 3378.9170 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.0 us W data0 00000000
+ 3379.0083 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+ 3490.7264 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +63.2 us W data0 00000000
+ 3490.8212 R data0 00313302 n=2 b'31' | +30.0 us R data1 00000000 | +62.3 us W data0 00000000
+ 3490.9142 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.4 us W data0 00000000
+ 3491.0058 R data0 000a0d02 n=2 b'\r\n' | +28.7 us R data1 00000000 | +60.4 us W data0 00000000
+ 3602.7525 R data0 74707507 n=7 b'uptime ' | +29.3 us R data1 20656d69 | +61.6 us W data0 00000000
+ 3602.8461 R data0 00323302 n=2 b'32' | +29.5 us R data1 00000000 | +61.2 us W data0 00000000
+ 3602.9377 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +60.8 us W data0 00000000
+ 3603.0294 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +60.7 us W data0 00000000
+ 3714.7405 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +61.7 us W data0 00000000
+ 3714.8339 R data0 00333302 n=2 b'33' | +30.4 us R data1 00000000 | +65.4 us W data0 00000000
+ 3714.9298 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +62.4 us W data0 00000000
+ 3715.0226 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.0 us W data0 00000000
+ 3826.7496 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +63.2 us W data0 00000000
+ 3826.8449 R data0 00343302 n=2 b'34' | +31.1 us R data1 00000000 | +63.9 us W data0 00000000
+ 3826.9390 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +62.0 us W data0 00000000
+ 3827.0318 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.1 us W data0 00000000
+ 3938.7807 R data0 74707507 n=7 b'uptime ' | +29.3 us R data1 20656d69 | +62.3 us W data0 00000000
+ 3938.8748 R data0 00353302 n=2 b'35' | +31.0 us R data1 00000000 | +62.6 us W data0 00000000
+ 3938.9687 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.3 us W data0 00000000
+ 3939.0611 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.9 us W data0 00000000
+ 4050.8032 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.1 us W data0 00000000
+ 4050.8969 R data0 00363302 n=2 b'36' | +31.0 us R data1 00000000 | +62.6 us W data0 00000000
+ 4050.9898 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.1 us W data0 00000000
+ 4051.0815 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +62.1 us W data0 00000000
+ 4162.8993 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.5 us W data0 00000000
+ 4162.9933 R data0 00373302 n=2 b'37' | +30.1 us R data1 00000000 | +62.1 us W data0 00000000
+ 4163.0860 R data0 00732002 n=2 b' s' | +30.5 us R data1 00000000 | +64.5 us W data0 00000000
+ 4163.1805 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +61.9 us W data0 00000000
+ 4274.9359 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.2 us W data0 00000000
+ 4275.0305 R data0 00383302 n=2 b'38' | +30.4 us R data1 00000000 | +62.4 us W data0 00000000
+ 4275.1239 R data0 00732002 n=2 b' s' | +29.1 us R data1 00000000 | +61.0 us W data0 00000000
+ 4275.2156 R data0 000a0d02 n=2 b'\r\n' | +30.7 us R data1 00000000 | +64.2 us W data0 00000000
+ 4386.9255 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.0 us W data0 00000000
+ 4387.0189 R data0 00393302 n=2 b'39' | +29.6 us R data1 00000000 | +61.7 us W data0 00000000
+ 4387.1118 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.6 us W data0 00000000
+ 4387.2039 R data0 000a0d02 n=2 b'\r\n' | +30.3 us R data1 00000000 | +62.3 us W data0 00000000
+ 4498.9026 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.4 us W data0 00000000
+ 4498.9964 R data0 00303402 n=2 b'40' | +30.3 us R data1 00000000 | +62.5 us W data0 00000000
+ 4499.0891 R data0 00732002 n=2 b' s' | +28.7 us R data1 00000000 | +60.8 us W data0 00000000
+ 4499.1801 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.6 us W data0 00000000
+ 4610.9322 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.1 us W data0 00000000
+ 4611.0256 R data0 00313402 n=2 b'41' | +30.2 us R data1 00000000 | +61.4 us W data0 00000000
+ 4611.1173 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.4 us W data0 00000000
+ 4611.2098 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.3 us W data0 00000000
+ 4722.9445 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +62.2 us W data0 00000000
+ 4723.0386 R data0 00323402 n=2 b'42' | +29.9 us R data1 00000000 | +62.0 us W data0 00000000
+ 4723.1310 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.8 us W data0 00000000
+ 4723.2236 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.4 us W data0 00000000
+ 4834.9440 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +62.2 us W data0 00000000
+ 4835.0380 R data0 00333402 n=2 b'43' | +30.7 us R data1 00000000 | +61.6 us W data0 00000000
+ 4835.1308 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +64.0 us W data0 00000000
+ 4835.2253 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.9 us W data0 00000000
+ 4946.9887 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +62.9 us W data0 00000000
+ 4947.0831 R data0 00343402 n=2 b'44' | +29.7 us R data1 00000000 | +61.4 us W data0 00000000
+ 4947.1742 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+ 4947.2655 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +62.0 us W data0 00000000
+ 5058.9867 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.3 us W data0 00000000
+ 5059.0802 R data0 00353402 n=2 b'45' | +30.0 us R data1 00000000 | +62.3 us W data0 00000000
+ 5059.1728 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+ 5059.2643 R data0 000a0d02 n=2 b'\r\n' | +30.7 us R data1 00000000 | +62.1 us W data0 00000000
+ 5170.9852 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.0 us W data0 00000000
+ 5171.0792 R data0 00363402 n=2 b'46' | +31.1 us R data1 00000000 | +63.9 us W data0 00000000
+ 5171.1733 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.2 us W data0 00000000
+ 5171.2651 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.4 us W data0 00000000
+ 5282.9920 R data0 74707507 n=7 b'uptime ' | +30.5 us R data1 20656d69 | +62.9 us W data0 00000000
+ 5283.0865 R data0 00373402 n=2 b'47' | +30.2 us R data1 00000000 | +62.9 us W data0 00000000
+ 5283.1798 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +60.8 us W data0 00000000
+ 5283.2706 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.4 us W data0 00000000
+ 5395.0105 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.5 us W data0 00000000
+ 5395.1039 R data0 00383402 n=2 b'48' | +30.1 us R data1 00000000 | +62.4 us W data0 00000000
+ 5395.1965 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+ 5395.2876 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.1 us W data0 00000000
+ 5507.0533 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +61.5 us W data0 00000000
+ 5507.1460 R data0 00393402 n=2 b'49' | +30.6 us R data1 00000000 | +63.2 us W data0 00000000
+ 5507.2402 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.4 us W data0 00000000
+ 5507.3319 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +59.1 us W data0 00000000
+ 5619.0625 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.4 us W data0 00000000
+ 5619.1565 R data0 00303502 n=2 b'50' | +30.2 us R data1 00000000 | +62.5 us W data0 00000000
+ 5619.2498 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.4 us W data0 00000000
+ 5619.3412 R data0 000a0d02 n=2 b'\r\n' | +31.2 us R data1 00000000 | +63.5 us W data0 00000000
+ 5731.0684 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +63.4 us W data0 00000000
+ 5731.1630 R data0 00313502 n=2 b'51' | +29.5 us R data1 00000000 | +61.7 us W data0 00000000
+ 5731.2550 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +60.7 us W data0 00000000
+ 5731.3454 R data0 000a0d02 n=2 b'\r\n' | +29.1 us R data1 00000000 | +60.8 us W data0 00000000
+ 5843.0964 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +61.9 us W data0 00000000
+ 5843.1906 R data0 00323502 n=2 b'52' | +30.5 us R data1 00000000 | +62.4 us W data0 00000000
+ 5843.2842 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.6 us W data0 00000000
+ 5843.3762 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.4 us W data0 00000000
+ 5955.0883 R data0 74707507 n=7 b'uptime ' | +29.2 us R data1 20656d69 | +61.4 us W data0 00000000
+ 5955.1817 R data0 00333502 n=2 b'53' | +30.4 us R data1 00000000 | +61.8 us W data0 00000000
+ 5955.2736 R data0 00732002 n=2 b' s' | +29.1 us R data1 00000000 | +60.7 us W data0 00000000
+ 5955.3652 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+ 6067.1317 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.2 us W data0 00000000
+ 6067.2267 R data0 00343502 n=2 b'54' | +29.8 us R data1 00000000 | +62.3 us W data0 00000000
+ 6067.3196 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.3 us W data0 00000000
+ 6067.4107 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.7 us W data0 00000000
+ 6179.1179 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.6 us W data0 00000000
+ 6179.2118 R data0 00353502 n=2 b'55' | +29.8 us R data1 00000000 | +62.6 us W data0 00000000
+ 6179.3055 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +62.2 us W data0 00000000
+ 6179.3988 R data0 000a0d02 n=2 b'\r\n' | +31.0 us R data1 00000000 | +62.5 us W data0 00000000
+ 6291.1226 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +61.6 us W data0 00000000
+ 6291.2160 R data0 00363502 n=2 b'56' | +30.8 us R data1 00000000 | +64.7 us W data0 00000000
+ 6291.3114 R data0 00732002 n=2 b' s' | +30.3 us R data1 00000000 | +62.3 us W data0 00000000
+ 6291.4043 R data0 000a0d02 n=2 b'\r\n' | +30.6 us R data1 00000000 | +62.4 us W data0 00000000
+ 6403.1466 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.1 us W data0 00000000
+ 6403.2400 R data0 00373502 n=2 b'57' | +31.2 us R data1 00000000 | +62.7 us W data0 00000000
+ 6403.3340 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.3 us W data0 00000000
+ 6403.4259 R data0 000a0d02 n=2 b'\r\n' | +30.5 us R data1 00000000 | +62.4 us W data0 00000000
+ 6515.1815 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.6 us W data0 00000000
+ 6515.2755 R data0 00383502 n=2 b'58' | +29.9 us R data1 00000000 | +62.1 us W data0 00000000
+ 6515.3682 R data0 00732002 n=2 b' s' | +29.1 us R data1 00000000 | +61.5 us W data0 00000000
+ 6515.4597 R data0 000a0d02 n=2 b'\r\n' | +31.0 us R data1 00000000 | +63.0 us W data0 00000000
+ 6627.1966 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +62.6 us W data0 00000000
+ 6627.2919 R data0 00393502 n=2 b'59' | +29.3 us R data1 00000000 | +61.6 us W data0 00000000
+ 6627.3837 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.9 us W data0 00000000
+ 6627.4766 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +60.6 us W data0 00000000
+ 6739.1798 R data0 74707507 n=7 b'uptime ' | +29.0 us R data1 20656d69 | +62.2 us W data0 00000000
+ 6739.2741 R data0 00303602 n=2 b'60' | +30.6 us R data1 00000000 | +62.6 us W data0 00000000
+ 6739.3670 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +60.7 us W data0 00000000
+ 6739.4580 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.6 us W data0 00000000
+ 6851.1952 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.4 us W data0 00000000
+ 6851.2890 R data0 00313602 n=2 b'61' | +30.3 us R data1 00000000 | +62.7 us W data0 00000000
+ 6851.3822 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.9 us W data0 00000000
+ 6851.4747 R data0 000a0d02 n=2 b'\r\n' | +30.1 us R data1 00000000 | +62.6 us W data0 00000000
+ 6963.2122 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +63.2 us W data0 00000000
+ 6963.3077 R data0 00323602 n=2 b'62' | +29.8 us R data1 00000000 | +61.5 us W data0 00000000
+ 6963.4002 R data0 00732002 n=2 b' s' | +31.5 us R data1 00000000 | +63.6 us W data0 00000000
+ 6963.4938 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +62.4 us W data0 00000000
+ 7075.2450 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.4 us W data0 00000000
+ 7075.3398 R data0 00333602 n=2 b'63' | +31.0 us R data1 00000000 | +62.6 us W data0 00000000
+ 7075.4333 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +60.8 us W data0 00000000
+ 7075.5247 R data0 000a0d02 n=2 b'\r\n' | +30.5 us R data1 00000000 | +62.3 us W data0 00000000
+ 7187.2464 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.7 us W data0 00000000
+ 7187.3410 R data0 00343602 n=2 b'64' | +30.1 us R data1 00000000 | +62.6 us W data0 00000000
+ 7187.4339 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.4 us W data0 00000000
+ 7187.5254 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.1 us W data0 00000000
+ 7299.3079 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.2 us W data0 00000000
+ 7299.4020 R data0 00353602 n=2 b'65' | +29.3 us R data1 00000000 | +62.0 us W data0 00000000
+ 7299.4941 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +62.0 us W data0 00000000
+ 7299.5864 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +61.2 us W data0 00000000
+ 7411.3258 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +62.7 us W data0 00000000
+ 7411.4205 R data0 00363602 n=2 b'66' | +27.2 us R data1 00000000 | +60.7 us W data0 00000000
+ 7411.5116 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +60.9 us W data0 00000000
+ 7411.6024 R data0 000a0d02 n=2 b'\r\n' | +28.8 us R data1 00000000 | +60.0 us W data0 00000000
+ 7523.3325 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +63.1 us W data0 00000000
+ 7523.4271 R data0 00373602 n=2 b'67' | +31.4 us R data1 00000000 | +63.6 us W data0 00000000
+ 7523.5207 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +60.8 us W data0 00000000
+ 7523.6119 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.6 us W data0 00000000
+ 7635.3445 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +63.2 us W data0 00000000
+ 7635.4397 R data0 00383602 n=2 b'68' | +30.7 us R data1 00000000 | +62.2 us W data0 00000000
+ 7635.5325 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.1 us W data0 00000000
+ 7635.6246 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.4 us W data0 00000000
+ 7747.3294 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +61.9 us W data0 00000000
+ 7747.4230 R data0 00393602 n=2 b'69' | +30.1 us R data1 00000000 | +61.4 us W data0 00000000
+ 7747.5146 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.5 us W data0 00000000
+ 7747.6067 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +60.6 us W data0 00000000
+ 7859.3311 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +62.5 us W data0 00000000
+ 7859.4254 R data0 00303702 n=2 b'70' | +30.9 us R data1 00000000 | +62.7 us W data0 00000000
+ 7859.5182 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +62.3 us W data0 00000000
+ 7859.6114 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.4 us W data0 00000000
+ 7971.3167 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.5 us W data0 00000000
+ 7971.4114 R data0 00313702 n=2 b'71' | +30.4 us R data1 00000000 | +64.3 us W data0 00000000
+ 7971.5062 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.0 us W data0 00000000
+ 7971.5979 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.6 us W data0 00000000
+ 8083.3733 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.6 us W data0 00000000
+ 8083.4680 R data0 00323702 n=2 b'72' | +30.3 us R data1 00000000 | +63.4 us W data0 00000000
+ 8083.5616 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.2 us W data0 00000000
+ 8083.6542 R data0 000a0d02 n=2 b'\r\n' | +30.3 us R data1 00000000 | +61.9 us W data0 00000000
+ 8195.4134 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.4 us W data0 00000000
+ 8195.5077 R data0 00333702 n=2 b'73' | +30.0 us R data1 00000000 | +62.7 us W data0 00000000
+ 8195.6012 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.3 us W data0 00000000
+ 8195.6923 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.3 us W data0 00000000
+ 8307.4200 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +63.4 us W data0 00000000
+ 8307.5158 R data0 00343702 n=2 b'74' | +30.2 us R data1 00000000 | +62.3 us W data0 00000000
+ 8307.6090 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +63.0 us W data0 00000000
+ 8307.7025 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.4 us W data0 00000000
+ 8419.4257 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +61.7 us W data0 00000000
+ 8419.5199 R data0 00353702 n=2 b'75' | +29.5 us R data1 00000000 | +60.6 us W data0 00000000
+ 8419.6113 R data0 00732002 n=2 b' s' | +30.6 us R data1 00000000 | +61.8 us W data0 00000000
+ 8419.7041 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +62.2 us W data0 00000000
+ 8531.4209 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +63.5 us W data0 00000000
+ 8531.5166 R data0 00363702 n=2 b'76' | +30.7 us R data1 00000000 | +63.0 us W data0 00000000
+ 8531.6098 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.0 us W data0 00000000
+ 8531.7013 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.3 us W data0 00000000
+ 8643.4116 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +63.2 us W data0 00000000
+ 8643.5065 R data0 00373702 n=2 b'77' | +29.4 us R data1 00000000 | +60.6 us W data0 00000000
+ 8643.5974 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.1 us W data0 00000000
+ 8643.6891 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +62.0 us W data0 00000000
+ 8755.4108 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +63.2 us W data0 00000000
+ 8755.5061 R data0 00383702 n=2 b'78' | +29.9 us R data1 00000000 | +61.4 us W data0 00000000
+ 8755.5978 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.7 us W data0 00000000
+ 8755.6904 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.1 us W data0 00000000
+ 8867.4011 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +61.8 us W data0 00000000
+ 8867.4942 R data0 00393702 n=2 b'79' | +29.8 us R data1 00000000 | +61.8 us W data0 00000000
+ 8867.5865 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +62.0 us W data0 00000000
+ 8867.6790 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +60.6 us W data0 00000000
+ 8979.4500 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.3 us W data0 00000000
+ 8979.5443 R data0 00303802 n=2 b'80' | +30.3 us R data1 00000000 | +62.1 us W data0 00000000
+ 8979.6380 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.6 us W data0 00000000
+ 8979.7302 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.8 us W data0 00000000
+ 9091.4718 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +63.1 us W data0 00000000
+ 9091.5666 R data0 00313802 n=2 b'81' | +30.3 us R data1 00000000 | +62.5 us W data0 00000000
+ 9091.6590 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +62.4 us W data0 00000000
+ 9091.7521 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.1 us W data0 00000000
+ 9203.4806 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.0 us W data0 00000000
+ 9203.5745 R data0 00323802 n=2 b'82' | +30.0 us R data1 00000000 | +62.6 us W data0 00000000
+ 9203.6673 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +60.6 us W data0 00000000
+ 9203.7579 R data0 000a0d02 n=2 b'\r\n' | +30.1 us R data1 00000000 | +61.9 us W data0 00000000
+ 9315.4961 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.7 us W data0 00000000
+ 9315.5903 R data0 00333802 n=2 b'83' | +30.4 us R data1 00000000 | +62.9 us W data0 00000000
+ 9315.6833 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +62.4 us W data0 00000000
+ 9315.7764 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.0 us W data0 00000000
+ 9427.4871 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +62.9 us W data0 00000000
+ 9427.5818 R data0 00343802 n=2 b'84' | +29.7 us R data1 00000000 | +62.6 us W data0 00000000
+ 9427.6753 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.1 us W data0 00000000
+ 9427.7680 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +61.6 us W data0 00000000
+ 9539.5455 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +63.6 us W data0 00000000
+ 9539.6411 R data0 00353802 n=2 b'85' | +30.4 us R data1 00000000 | +62.0 us W data0 00000000
+ 9539.7333 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.0 us W data0 00000000
+ 9539.8245 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.9 us W data0 00000000
+ 9651.5231 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.9 us W data0 00000000
+ 9651.6175 R data0 00363802 n=2 b'86' | +30.2 us R data1 00000000 | +62.4 us W data0 00000000
+ 9651.7104 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.0 us W data0 00000000
+ 9651.8023 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+ 9763.5416 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.0 us W data0 00000000
+ 9763.6354 R data0 00373802 n=2 b'87' | +29.9 us R data1 00000000 | +61.9 us W data0 00000000
+ 9763.7273 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +60.6 us W data0 00000000
+ 9763.8180 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.3 us W data0 00000000
+ 9875.5544 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +63.6 us W data0 00000000
+ 9875.6496 R data0 00383802 n=2 b'88' | +31.2 us R data1 00000000 | +62.7 us W data0 00000000
+ 9875.7424 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +60.8 us W data0 00000000
+ 9875.8332 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.6 us W data0 00000000
+ 9987.6482 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.1 us W data0 00000000
+ 9987.7421 R data0 00393802 n=2 b'89' | +30.0 us R data1 00000000 | +61.7 us W data0 00000000
+ 9987.8339 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.1 us W data0 00000000
+ 9987.9257 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +60.8 us W data0 00000000
+10099.7343 R data0 74707507 n=7 b'uptime ' | +29.2 us R data1 20656d69 | +62.0 us W data0 00000000
+10099.8285 R data0 00303902 n=2 b'90' | +30.8 us R data1 00000000 | +62.7 us W data0 00000000
+10099.9217 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.7 us W data0 00000000
+10100.0139 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.2 us W data0 00000000
+10211.8425 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.1 us W data0 00000000
+10211.9375 R data0 00313902 n=2 b'91' | +30.3 us R data1 00000000 | +62.3 us W data0 00000000
+10212.0306 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +61.3 us W data0 00000000
+10212.1222 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.5 us W data0 00000000
+10323.9431 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.0 us W data0 00000000
+10324.0366 R data0 00323902 n=2 b'92' | +30.4 us R data1 00000000 | +62.3 us W data0 00000000
+10324.1294 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +60.3 us W data0 00000000
+10324.2205 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +60.8 us W data0 00000000
+10436.0530 R data0 74707507 n=7 b'uptime ' | +31.2 us R data1 20656d69 | +64.5 us W data0 00000000
+10436.1492 R data0 00333902 n=2 b'93' | +30.0 us R data1 00000000 | +62.5 us W data0 00000000
+10436.2416 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.2 us W data0 00000000
+10436.3338 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.5 us W data0 00000000
+10548.1578 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.8 us W data0 00000000
+10548.2529 R data0 00343902 n=2 b'94' | +29.9 us R data1 00000000 | +61.3 us W data0 00000000
+10548.3448 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.9 us W data0 00000000
+10548.4373 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +60.3 us W data0 00000000
+10660.1986 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +61.7 us W data0 00000000
+10660.2924 R data0 00353902 n=2 b'95' | +31.4 us R data1 00000000 | +63.5 us W data0 00000000
+10660.3863 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.3 us W data0 00000000
+10660.4791 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.2 us W data0 00000000
+10772.2042 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.7 us W data0 00000000
+10772.2984 R data0 00363902 n=2 b'96' | +30.1 us R data1 00000000 | +62.0 us W data0 00000000
+10772.3914 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+10772.4827 R data0 000a0d02 n=2 b'\r\n' | +29.0 us R data1 00000000 | +60.7 us W data0 00000000
+10884.2125 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.9 us W data0 00000000
+10884.3065 R data0 00373902 n=2 b'97' | +30.6 us R data1 00000000 | +63.0 us W data0 00000000
+10884.3997 R data0 00732002 n=2 b' s' | +30.3 us R data1 00000000 | +62.2 us W data0 00000000
+10884.4924 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.2 us W data0 00000000
+10996.2315 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +61.6 us W data0 00000000
+10996.3250 R data0 00383902 n=2 b'98' | +29.7 us R data1 00000000 | +61.6 us W data0 00000000
+10996.4167 R data0 00732002 n=2 b' s' | +31.0 us R data1 00000000 | +62.4 us W data0 00000000
+10996.5097 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +60.8 us W data0 00000000
+11108.2570 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.9 us W data0 00000000
+11108.3516 R data0 00393902 n=2 b'99' | +29.8 us R data1 00000000 | +61.8 us W data0 00000000
+11108.4442 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +60.7 us W data0 00000000
+11108.5357 R data0 000a0d02 n=2 b'\r\n' | +29.0 us R data1 00000000 | +60.4 us W data0 00000000
+11220.2840 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +61.5 us W data0 00000000
+11220.3768 R data0 30303103 n=3 b'100' | +30.4 us R data1 00000000 | +61.9 us W data0 00000000
+11220.4686 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +62.1 us W data0 00000000
+11220.5610 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +62.0 us W data0 00000000
+11332.2954 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.0 us W data0 00000000
+11332.3888 R data0 31303103 n=3 b'101' | +30.4 us R data1 00000000 | +62.4 us W data0 00000000
+11332.4815 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.6 us W data0 00000000
+11332.5730 R data0 000a0d02 n=2 b'\r\n' | +28.9 us R data1 00000000 | +60.6 us W data0 00000000
+11444.3107 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +62.8 us W data0 00000000
+11444.4046 R data0 32303103 n=3 b'102' | +29.3 us R data1 00000000 | +61.8 us W data0 00000000
+11444.4969 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.1 us W data0 00000000
+11444.5887 R data0 000a0d02 n=2 b'\r\n' | +30.7 us R data1 00000000 | +62.4 us W data0 00000000
+11556.3717 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.5 us W data0 00000000
+11556.4671 R data0 33303103 n=3 b'103' | +30.6 us R data1 00000000 | +62.1 us W data0 00000000
+11556.5596 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +62.1 us W data0 00000000
+11556.6516 R data0 000a0d02 n=2 b'\r\n' | +30.6 us R data1 00000000 | +61.8 us W data0 00000000
+11668.4429 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +62.8 us W data0 00000000
+11668.5377 R data0 34303103 n=3 b'104' | +29.2 us R data1 00000000 | +60.7 us W data0 00000000
+11668.6296 R data0 00732002 n=2 b' s' | +28.6 us R data1 00000000 | +60.2 us W data0 00000000
+11668.7200 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +60.8 us W data0 00000000
+11780.5361 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.4 us W data0 00000000
+11780.6300 R data0 35303103 n=3 b'105' | +29.3 us R data1 00000000 | +61.7 us W data0 00000000
+11780.7216 R data0 00732002 n=2 b' s' | +30.3 us R data1 00000000 | +61.7 us W data0 00000000
+11780.8135 R data0 000a0d02 n=2 b'\r\n' | +31.0 us R data1 00000000 | +63.1 us W data0 00000000
+11892.5317 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.8 us W data0 00000000
+11892.6256 R data0 36303103 n=3 b'106' | +29.8 us R data1 00000000 | +62.8 us W data0 00000000
+11892.7190 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.4 us W data0 00000000
+11892.8109 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.7 us W data0 00000000
+12004.5480 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.1 us W data0 00000000
+12004.6416 R data0 37303103 n=3 b'107' | +30.5 us R data1 00000000 | +63.1 us W data0 00000000
+12004.7354 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.4 us W data0 00000000
+12004.8282 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.2 us W data0 00000000
+12116.5370 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +61.8 us W data0 00000000
+12116.6304 R data0 38303103 n=3 b'108' | +29.8 us R data1 00000000 | +62.3 us W data0 00000000
+12116.7225 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +60.8 us W data0 00000000
+12116.8136 R data0 000a0d02 n=2 b'\r\n' | +29.1 us R data1 00000000 | +60.6 us W data0 00000000
+12228.4920 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +62.8 us W data0 00000000
+12228.5867 R data0 39303103 n=3 b'109' | +29.2 us R data1 00000000 | +61.4 us W data0 00000000
+12228.6788 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.7 us W data0 00000000
+12228.7705 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +61.6 us W data0 00000000
+12340.4743 R data0 74707507 n=7 b'uptime ' | +29.3 us R data1 20656d69 | +61.5 us W data0 00000000
+12340.5682 R data0 30313103 n=3 b'110' | +30.3 us R data1 00000000 | +62.7 us W data0 00000000
+12340.6611 R data0 00732002 n=2 b' s' | +30.6 us R data1 00000000 | +62.1 us W data0 00000000
+12340.7538 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+12452.4759 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.8 us W data0 00000000
+12452.5702 R data0 31313103 n=3 b'111' | +29.3 us R data1 00000000 | +62.1 us W data0 00000000
+12452.6628 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.0 us W data0 00000000
+12452.7553 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.4 us W data0 00000000
+12564.5126 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +63.2 us W data0 00000000
+12564.6078 R data0 32313103 n=3 b'112' | +30.8 us R data1 00000000 | +63.0 us W data0 00000000
+12564.7015 R data0 00732002 n=2 b' s' | +28.8 us R data1 00000000 | +60.5 us W data0 00000000
+12564.7919 R data0 000a0d02 n=2 b'\r\n' | +30.3 us R data1 00000000 | +62.1 us W data0 00000000
+12676.5628 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +63.2 us W data0 00000000
+12676.6571 R data0 33313103 n=3 b'113' | +30.9 us R data1 00000000 | +63.3 us W data0 00000000
+12676.7502 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.8 us W data0 00000000
+12676.8420 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +62.0 us W data0 00000000
+12788.5812 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +64.2 us W data0 00000000
+12788.6771 R data0 34313103 n=3 b'114' | +30.6 us R data1 00000000 | +63.6 us W data0 00000000
+12788.7706 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +62.6 us W data0 00000000
+12788.8637 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.1 us W data0 00000000
+12900.6070 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +63.1 us W data0 00000000
+12900.7024 R data0 35313103 n=3 b'115' | +29.5 us R data1 00000000 | +62.4 us W data0 00000000
+12900.7952 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +60.8 us W data0 00000000
+12900.8864 R data0 000a0d02 n=2 b'\r\n' | +30.6 us R data1 00000000 | +66.4 us W data0 00000000
+13012.5967 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +61.5 us W data0 00000000
+13012.6895 R data0 36313103 n=3 b'116' | +29.6 us R data1 00000000 | +62.4 us W data0 00000000
+13012.7821 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.0 us W data0 00000000
+13012.8747 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +60.8 us W data0 00000000
+13124.6163 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +63.1 us W data0 00000000
+13124.7117 R data0 37313103 n=3 b'117' | +29.2 us R data1 00000000 | +61.1 us W data0 00000000
+13124.8029 R data0 00732002 n=2 b' s' | +30.3 us R data1 00000000 | +61.6 us W data0 00000000
+13124.8947 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.8 us W data0 00000000
+13236.6320 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +62.2 us W data0 00000000
+13236.7259 R data0 38313103 n=3 b'118' | +29.8 us R data1 00000000 | +61.7 us W data0 00000000
+13236.8181 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.8 us W data0 00000000
+13236.9107 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +61.6 us W data0 00000000
+13348.6381 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.5 us W data0 00000000
+13348.7321 R data0 39313103 n=3 b'119' | +29.8 us R data1 00000000 | +62.6 us W data0 00000000
+13348.8249 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.3 us W data0 00000000
+13348.9167 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.3 us W data0 00000000
+13460.6800 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +63.9 us W data0 00000000
+13460.7754 R data0 30323103 n=3 b'120' | +30.4 us R data1 00000000 | +63.6 us W data0 00000000
+13460.8690 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +61.9 us W data0 00000000
+13460.9610 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.5 us W data0 00000000
+13572.7318 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.6 us W data0 00000000
+13572.8258 R data0 31323103 n=3 b'121' | +29.5 us R data1 00000000 | +61.8 us W data0 00000000
+13572.9178 R data0 00732002 n=2 b' s' | +30.1 us R data1 00000000 | +61.4 us W data0 00000000
+13573.0096 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.3 us W data0 00000000
+13684.6927 R data0 74707507 n=7 b'uptime ' | +29.2 us R data1 20656d69 | +61.8 us W data0 00000000
+13684.7861 R data0 32323103 n=3 b'122' | +29.3 us R data1 00000000 | +61.8 us W data0 00000000
+13684.8788 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +61.7 us W data0 00000000
+13684.9712 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.3 us W data0 00000000
+13796.7121 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.6 us W data0 00000000
+13796.8069 R data0 33323103 n=3 b'123' | +30.4 us R data1 00000000 | +62.2 us W data0 00000000
+13796.8994 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +62.2 us W data0 00000000
+13796.9916 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.4 us W data0 00000000
+13908.7273 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +62.7 us W data0 00000000
+13908.8216 R data0 34323103 n=3 b'124' | +31.3 us R data1 00000000 | +63.3 us W data0 00000000
+13908.9150 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +62.0 us W data0 00000000
+13909.0074 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +61.0 us W data0 00000000
+14020.7296 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +63.2 us W data0 00000000
+14020.8252 R data0 35323103 n=3 b'125' | +29.6 us R data1 00000000 | +62.2 us W data0 00000000
+14020.9178 R data0 00732002 n=2 b' s' | +30.8 us R data1 00000000 | +62.7 us W data0 00000000
+14021.0106 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.4 us W data0 00000000
+14132.7602 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.1 us W data0 00000000
+14132.8540 R data0 36323103 n=3 b'126' | +30.8 us R data1 00000000 | +63.1 us W data0 00000000
+14132.9478 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +60.6 us W data0 00000000
+14133.0384 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.1 us W data0 00000000
+14244.7882 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.0 us W data0 00000000
+14244.8819 R data0 37323103 n=3 b'127' | +30.3 us R data1 00000000 | +62.9 us W data0 00000000
+14244.9750 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.1 us W data0 00000000
+14245.0666 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +61.5 us W data0 00000000
+14356.8041 R data0 74707507 n=7 b'uptime ' | +30.9 us R data1 20656d69 | +63.5 us W data0 00000000
+14356.8986 R data0 38323103 n=3 b'128' | +30.2 us R data1 00000000 | +61.3 us W data0 00000000
+14356.9898 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.4 us W data0 00000000
+14357.0811 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.8 us W data0 00000000
+14468.7826 R data0 74707507 n=7 b'uptime ' | +30.7 us R data1 20656d69 | +63.2 us W data0 00000000
+14468.8779 R data0 39323103 n=3 b'129' | +30.8 us R data1 00000000 | +63.4 us W data0 00000000
+14468.9715 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.1 us W data0 00000000
+14469.0640 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +62.1 us W data0 00000000
+14580.7709 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +63.3 us W data0 00000000
+14580.8661 R data0 30333103 n=3 b'130' | +29.4 us R data1 00000000 | +62.2 us W data0 00000000
+14580.9595 R data0 00732002 n=2 b' s' | +30.8 us R data1 00000000 | +62.4 us W data0 00000000
+14581.0523 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +62.2 us W data0 00000000
+14692.7577 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +61.5 us W data0 00000000
+14692.8508 R data0 31333103 n=3 b'131' | +30.6 us R data1 00000000 | +62.2 us W data0 00000000
+14692.9424 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +60.8 us W data0 00000000
+14693.0334 R data0 000a0d02 n=2 b'\r\n' | +28.8 us R data1 00000000 | +60.2 us W data0 00000000
+14804.7410 R data0 74707507 n=7 b'uptime ' | +30.8 us R data1 20656d69 | +63.5 us W data0 00000000
+14804.8361 R data0 32333103 n=3 b'132' | +29.6 us R data1 00000000 | +61.6 us W data0 00000000
+14804.9283 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.8 us W data0 00000000
+14805.0216 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +60.8 us W data0 00000000
+14916.6987 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.5 us W data0 00000000
+14916.7929 R data0 33333103 n=3 b'133' | +31.2 us R data1 00000000 | +62.9 us W data0 00000000
+14916.8858 R data0 00732002 n=2 b' s' | +30.6 us R data1 00000000 | +62.8 us W data0 00000000
+14916.9789 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.4 us W data0 00000000
+15028.6777 R data0 74707507 n=7 b'uptime ' | +30.5 us R data1 20656d69 | +62.7 us W data0 00000000
+15028.7722 R data0 34333103 n=3 b'134' | +30.2 us R data1 00000000 | +62.0 us W data0 00000000
+15028.8644 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +62.0 us W data0 00000000
+15028.9571 R data0 000a0d02 n=2 b'\r\n' | +30.9 us R data1 00000000 | +62.0 us W data0 00000000
+15140.6976 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +63.2 us W data0 00000000
+15140.7929 R data0 35333103 n=3 b'135' | +30.8 us R data1 00000000 | +63.2 us W data0 00000000
+15140.8857 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+15140.9773 R data0 000a0d02 n=2 b'\r\n' | +30.6 us R data1 00000000 | +62.8 us W data0 00000000
+15252.6990 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +63.0 us W data0 00000000
+15252.7933 R data0 36333103 n=3 b'136' | +28.6 us R data1 00000000 | +60.3 us W data0 00000000
+15252.8840 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.6 us W data0 00000000
+15252.9761 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +62.2 us W data0 00000000
+15364.6925 R data0 74707507 n=7 b'uptime ' | +29.3 us R data1 20656d69 | +61.6 us W data0 00000000
+15364.7858 R data0 37333103 n=3 b'137' | +29.6 us R data1 00000000 | +61.8 us W data0 00000000
+15364.8783 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.8 us W data0 00000000
+15364.9709 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +62.3 us W data0 00000000
+15476.6891 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +61.9 us W data0 00000000
+15476.7827 R data0 38333103 n=3 b'138' | +29.9 us R data1 00000000 | +62.4 us W data0 00000000
+15476.8759 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.5 us W data0 00000000
+15476.9682 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.9 us W data0 00000000
+15588.6994 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +63.7 us W data0 00000000
+15588.7949 R data0 39333103 n=3 b'139' | +30.3 us R data1 00000000 | +62.4 us W data0 00000000
+15588.8879 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +62.0 us W data0 00000000
+15588.9795 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+15700.7192 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +61.8 us W data0 00000000
+15700.8125 R data0 30343103 n=3 b'140' | +30.0 us R data1 00000000 | +62.6 us W data0 00000000
+15700.9055 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +61.5 us W data0 00000000
+15700.9971 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +60.8 us W data0 00000000
+15812.7381 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.4 us W data0 00000000
+15812.8322 R data0 31343103 n=3 b'141' | +30.6 us R data1 00000000 | +62.4 us W data0 00000000
+15812.9246 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +60.8 us W data0 00000000
+15813.0148 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +64.2 us W data0 00000000
+15924.7439 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +63.0 us W data0 00000000
+15924.8386 R data0 32343103 n=3 b'142' | +30.1 us R data1 00000000 | +63.2 us W data0 00000000
+15924.9318 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +60.9 us W data0 00000000
+15925.0237 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+16036.8159 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.7 us W data0 00000000
+16036.9101 R data0 33343103 n=3 b'143' | +30.3 us R data1 00000000 | +62.6 us W data0 00000000
+16037.0034 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +62.0 us W data0 00000000
+16037.0954 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +62.2 us W data0 00000000
+16148.8906 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +61.5 us W data0 00000000
+16148.9840 R data0 34343103 n=3 b'144' | +29.8 us R data1 00000000 | +62.1 us W data0 00000000
+16149.0767 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +61.8 us W data0 00000000
+16149.1687 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.2 us W data0 00000000
+16261.0069 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.1 us W data0 00000000
+16261.1009 R data0 35343103 n=3 b'145' | +31.2 us R data1 00000000 | +62.3 us W data0 00000000
+16261.1942 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +61.8 us W data0 00000000
+16261.2866 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.2 us W data0 00000000
+16373.0325 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +63.2 us W data0 00000000
+16373.1274 R data0 36343103 n=3 b'146' | +29.6 us R data1 00000000 | +62.0 us W data0 00000000
+16373.2206 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.3 us W data0 00000000
+16373.3122 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +62.6 us W data0 00000000
+16485.0295 R data0 74707507 n=7 b'uptime ' | +30.6 us R data1 20656d69 | +63.6 us W data0 00000000
+16485.1249 R data0 37343103 n=3 b'147' | +30.0 us R data1 00000000 | +62.9 us W data0 00000000
+16485.2181 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +61.9 us W data0 00000000
+16485.3101 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +62.2 us W data0 00000000
+16597.0180 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.7 us W data0 00000000
+16597.1130 R data0 38343103 n=3 b'148' | +30.9 us R data1 00000000 | +62.4 us W data0 00000000
+16597.2059 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.4 us W data0 00000000
+16597.2981 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.1 us W data0 00000000
+16709.0224 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +62.8 us W data0 00000000
+16709.1170 R data0 39343103 n=3 b'149' | +29.8 us R data1 00000000 | +62.2 us W data0 00000000
+16709.2096 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.9 us W data0 00000000
+16709.3015 R data0 000a0d02 n=2 b'\r\n' | +30.7 us R data1 00000000 | +61.9 us W data0 00000000
+16821.0126 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +63.2 us W data0 00000000
+16821.1082 R data0 30353103 n=3 b'150' | +30.4 us R data1 00000000 | +62.1 us W data0 00000000
+16821.2012 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.1 us W data0 00000000
+16821.2937 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +62.4 us W data0 00000000
+16932.9647 R data0 74707507 n=7 b'uptime ' | +29.1 us R data1 20656d69 | +61.6 us W data0 00000000
+16933.0576 R data0 31353103 n=3 b'151' | +30.5 us R data1 00000000 | +62.0 us W data0 00000000
+16933.1500 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +60.9 us W data0 00000000
+16933.2414 R data0 000a0d02 n=2 b'\r\n' | +30.3 us R data1 00000000 | +62.3 us W data0 00000000
+17044.9752 R data0 74707507 n=7 b'uptime ' | +29.0 us R data1 20656d69 | +61.4 us W data0 00000000
+17045.0683 R data0 32353103 n=3 b'152' | +31.3 us R data1 00000000 | +63.3 us W data0 00000000
+17045.1614 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.8 us W data0 00000000
+17045.2534 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +60.4 us W data0 00000000
+17156.9560 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +63.4 us W data0 00000000
+17157.0504 R data0 33353103 n=3 b'153' | +30.2 us R data1 00000000 | +62.3 us W data0 00000000
+17157.1426 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +60.6 us W data0 00000000
+17157.2334 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.8 us W data0 00000000
+17268.9305 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.4 us W data0 00000000
+17269.0246 R data0 34353103 n=3 b'154' | +30.1 us R data1 00000000 | +62.6 us W data0 00000000
+17269.1182 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.0 us W data0 00000000
+17269.2097 R data0 000a0d02 n=2 b'\r\n' | +28.7 us R data1 00000000 | +59.4 us W data0 00000000
+17380.9418 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.6 us W data0 00000000
+17381.0355 R data0 35353103 n=3 b'155' | +30.8 us R data1 00000000 | +63.0 us W data0 00000000
+17381.1299 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +60.8 us W data0 00000000
+17381.2208 R data0 000a0d02 n=2 b'\r\n' | +29.0 us R data1 00000000 | +60.2 us W data0 00000000
+17492.9591 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.6 us W data0 00000000
+17493.0533 R data0 36353103 n=3 b'156' | +29.3 us R data1 00000000 | +61.0 us W data0 00000000
+17493.1454 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.4 us W data0 00000000
+17493.2370 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.0 us W data0 00000000
+17604.9663 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +61.8 us W data0 00000000
+17605.0600 R data0 37353103 n=3 b'157' | +30.8 us R data1 00000000 | +63.0 us W data0 00000000
+17605.1540 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.4 us W data0 00000000
+17605.2458 R data0 000a0d02 n=2 b'\r\n' | +28.8 us R data1 00000000 | +60.4 us W data0 00000000
+17716.9683 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +63.0 us W data0 00000000
+17717.0628 R data0 38353103 n=3 b'158' | +30.2 us R data1 00000000 | +61.9 us W data0 00000000
+17717.1550 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.6 us W data0 00000000
+17717.2470 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +61.0 us W data0 00000000
+17829.0004 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +61.6 us W data0 00000000
+17829.0940 R data0 39353103 n=3 b'159' | +31.0 us R data1 00000000 | +62.9 us W data0 00000000
+17829.1878 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +62.2 us W data0 00000000
+17829.2808 R data0 000a0d02 n=2 b'\r\n' | +31.2 us R data1 00000000 | +63.1 us W data0 00000000
+17940.9608 R data0 74707507 n=7 b'uptime ' | +31.0 us R data1 20656d69 | +63.8 us W data0 00000000
+17941.0569 R data0 30363103 n=3 b'160' | +30.9 us R data1 00000000 | +63.0 us W data0 00000000
+17941.1518 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.1 us W data0 00000000
+17941.2444 R data0 000a0d02 n=2 b'\r\n' | +30.8 us R data1 00000000 | +62.7 us W data0 00000000
+18052.9459 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.2 us W data0 00000000
+18053.0400 R data0 31363103 n=3 b'161' | +30.4 us R data1 00000000 | +62.8 us W data0 00000000
+18053.1331 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +61.9 us W data0 00000000
+18053.2251 R data0 000a0d02 n=2 b'\r\n' | +30.1 us R data1 00000000 | +62.4 us W data0 00000000
+18164.9523 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +61.6 us W data0 00000000
+18165.0451 R data0 32363103 n=3 b'162' | +30.4 us R data1 00000000 | +62.9 us W data0 00000000
+18165.1385 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.7 us W data0 00000000
+18165.2308 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.4 us W data0 00000000
+18276.9429 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +63.4 us W data0 00000000
+18277.0373 R data0 33363103 n=3 b'163' | +30.1 us R data1 00000000 | +62.2 us W data0 00000000
+18277.1294 R data0 00732002 n=2 b' s' | +30.1 us R data1 00000000 | +61.8 us W data0 00000000
+18277.2214 R data0 000a0d02 n=2 b'\r\n' | +30.6 us R data1 00000000 | +61.9 us W data0 00000000
+18388.9148 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.4 us W data0 00000000
+18389.0092 R data0 34363103 n=3 b'164' | +30.7 us R data1 00000000 | +62.4 us W data0 00000000
+18389.1024 R data0 00732002 n=2 b' s' | +30.1 us R data1 00000000 | +62.4 us W data0 00000000
+18389.1953 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.6 us W data0 00000000
+18500.8980 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.4 us W data0 00000000
+18500.9919 R data0 35363103 n=3 b'165' | +29.6 us R data1 00000000 | +62.3 us W data0 00000000
+18501.0842 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.2 us W data0 00000000
+18501.1754 R data0 000a0d02 n=2 b'\r\n' | +28.9 us R data1 00000000 | +60.4 us W data0 00000000
+18612.8950 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +62.2 us W data0 00000000
+18612.9886 R data0 36363103 n=3 b'166' | +30.3 us R data1 00000000 | +63.3 us W data0 00000000
+18613.0825 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.7 us W data0 00000000
+18613.1746 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.6 us W data0 00000000
+18724.8791 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.9 us W data0 00000000
+18724.9736 R data0 37363103 n=3 b'167' | +28.9 us R data1 00000000 | +61.0 us W data0 00000000
+18725.0652 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.8 us W data0 00000000
+18725.1575 R data0 000a0d02 n=2 b'\r\n' | +30.5 us R data1 00000000 | +63.9 us W data0 00000000
+18836.8978 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +62.6 us W data0 00000000
+18836.9921 R data0 38363103 n=3 b'168' | +30.0 us R data1 00000000 | +62.2 us W data0 00000000
+18837.0850 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.3 us W data0 00000000
+18837.1774 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.0 us W data0 00000000
+18948.8679 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.1 us W data0 00000000
+18948.9624 R data0 39363103 n=3 b'169' | +32.2 us R data1 00000000 | +64.1 us W data0 00000000
+18949.0561 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +60.8 us W data0 00000000
+18949.1474 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.8 us W data0 00000000
+19060.8938 R data0 74707507 n=7 b'uptime ' | +30.6 us R data1 20656d69 | +63.7 us W data0 00000000
+19060.9886 R data0 30373103 n=3 b'170' | +30.0 us R data1 00000000 | +61.8 us W data0 00000000
+19061.0816 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.1 us W data0 00000000
+19061.1728 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +60.8 us W data0 00000000
+19172.8886 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.4 us W data0 00000000
+19172.9829 R data0 31373103 n=3 b'171' | +30.7 us R data1 00000000 | +62.9 us W data0 00000000
+19173.0763 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.3 us W data0 00000000
+19173.1679 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +60.6 us W data0 00000000
+19284.9078 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +63.3 us W data0 00000000
+19285.0029 R data0 32373103 n=3 b'172' | +29.3 us R data1 00000000 | +61.2 us W data0 00000000
+19285.0949 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.3 us W data0 00000000
+19285.1870 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.8 us W data0 00000000
+19396.9032 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +64.1 us W data0 00000000
+19396.9997 R data0 33373103 n=3 b'173' | +29.3 us R data1 00000000 | +61.4 us W data0 00000000
+19397.0919 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.5 us W data0 00000000
+19397.1833 R data0 000a0d02 n=2 b'\r\n' | +30.9 us R data1 00000000 | +62.5 us W data0 00000000
+19508.9060 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.4 us W data0 00000000
+19509.0000 R data0 34373103 n=3 b'174' | +31.3 us R data1 00000000 | +62.7 us W data0 00000000
+19509.0923 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.1 us W data0 00000000
+19509.1840 R data0 000a0d02 n=2 b'\r\n' | +29.0 us R data1 00000000 | +61.0 us W data0 00000000
+19620.9072 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.2 us W data0 00000000
+19621.0011 R data0 35373103 n=3 b'175' | +30.2 us R data1 00000000 | +64.4 us W data0 00000000
+19621.0963 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +62.7 us W data0 00000000
+19621.1902 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.9 us W data0 00000000
+19732.9024 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.6 us W data0 00000000
+19732.9960 R data0 36373103 n=3 b'176' | +29.5 us R data1 00000000 | +61.4 us W data0 00000000
+19733.0884 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +59.7 us W data0 00000000
+19733.1787 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.2 us W data0 00000000
+19844.9262 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.9 us W data0 00000000
+19845.0204 R data0 37373103 n=3 b'177' | +30.5 us R data1 00000000 | +63.9 us W data0 00000000
+19845.1149 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.8 us W data0 00000000
+19845.2074 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.3 us W data0 00000000
+19956.9274 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.2 us W data0 00000000
+19957.0217 R data0 38373103 n=3 b'178' | +29.2 us R data1 00000000 | +61.6 us W data0 00000000
+19957.1137 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.4 us W data0 00000000
+19957.2052 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +62.2 us W data0 00000000
+20068.9513 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.6 us W data0 00000000
+20069.0453 R data0 39373103 n=3 b'179' | +30.2 us R data1 00000000 | +62.8 us W data0 00000000
+20069.1386 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.2 us W data0 00000000
+20069.2307 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +60.8 us W data0 00000000
+20180.9421 R data0 74707507 n=7 b'uptime ' | +28.9 us R data1 20656d69 | +61.5 us W data0 00000000
+20181.0347 R data0 30383103 n=3 b'180' | +29.6 us R data1 00000000 | +61.2 us W data0 00000000
+20181.1261 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.7 us W data0 00000000
+20181.2181 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.1 us W data0 00000000
+20292.9222 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.6 us W data0 00000000
+20293.0162 R data0 31383103 n=3 b'181' | +29.5 us R data1 00000000 | +61.9 us W data0 00000000
+20293.1077 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +61.8 us W data0 00000000
+20293.2004 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.3 us W data0 00000000
+20404.9322 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.4 us W data0 00000000
+20405.0264 R data0 32383103 n=3 b'182' | +31.0 us R data1 00000000 | +63.6 us W data0 00000000
+20405.1211 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +62.1 us W data0 00000000
+20405.2135 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +62.0 us W data0 00000000
+20516.9301 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +63.0 us W data0 00000000
+20517.0247 R data0 33383103 n=3 b'183' | +30.2 us R data1 00000000 | +62.2 us W data0 00000000
+20517.1174 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.6 us W data0 00000000
+20517.2096 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+20628.9165 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.1 us W data0 00000000
+20629.0108 R data0 34383103 n=3 b'184' | +30.5 us R data1 00000000 | +62.5 us W data0 00000000
+20629.1042 R data0 00732002 n=2 b' s' | +30.3 us R data1 00000000 | +61.7 us W data0 00000000
+20629.1961 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +61.7 us W data0 00000000
+20740.8830 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.9 us W data0 00000000
+20740.9775 R data0 35383103 n=3 b'185' | +30.5 us R data1 00000000 | +60.8 us W data0 00000000
+20741.0706 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +60.8 us W data0 00000000
+20741.1621 R data0 000a0d02 n=2 b'\r\n' | +29.0 us R data1 00000000 | +60.4 us W data0 00000000
+20852.9090 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.5 us W data0 00000000
+20853.0034 R data0 36383103 n=3 b'186' | +30.2 us R data1 00000000 | +62.0 us W data0 00000000
+20853.0960 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +62.3 us W data0 00000000
+20853.1895 R data0 000a0d02 n=2 b'\r\n' | +30.3 us R data1 00000000 | +62.3 us W data0 00000000
+20964.9356 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +61.8 us W data0 00000000
+20965.0295 R data0 37383103 n=3 b'187' | +30.6 us R data1 00000000 | +62.3 us W data0 00000000
+20965.1221 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +60.7 us W data0 00000000
+20965.2132 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +62.0 us W data0 00000000
+21076.9559 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +63.0 us W data0 00000000
+21077.0500 R data0 38383103 n=3 b'188' | +30.6 us R data1 00000000 | +62.4 us W data0 00000000
+21077.1432 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.3 us W data0 00000000
+21077.2354 R data0 000a0d02 n=2 b'\r\n' | +29.1 us R data1 00000000 | +61.1 us W data0 00000000
+21188.9398 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +62.3 us W data0 00000000
+21189.0330 R data0 39383103 n=3 b'189' | +29.7 us R data1 00000000 | +62.3 us W data0 00000000
+21189.1266 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +60.8 us W data0 00000000
+21189.2176 R data0 000a0d02 n=2 b'\r\n' | +30.6 us R data1 00000000 | +62.3 us W data0 00000000
+21300.9393 R data0 74707507 n=7 b'uptime ' | +30.8 us R data1 20656d69 | +63.7 us W data0 00000000
+21301.0342 R data0 30393103 n=3 b'190' | +31.3 us R data1 00000000 | +62.9 us W data0 00000000
+21301.1275 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.0 us W data0 00000000
+21301.2189 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.4 us W data0 00000000
+21412.9177 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +63.4 us W data0 00000000
+21413.0126 R data0 31393103 n=3 b'191' | +30.6 us R data1 00000000 | +62.2 us W data0 00000000
+21413.1052 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +61.1 us W data0 00000000
+21413.1966 R data0 000a0d02 n=2 b'\r\n' | +30.3 us R data1 00000000 | +62.7 us W data0 00000000
+21524.9389 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.9 us W data0 00000000
+21525.0334 R data0 32393103 n=3 b'192' | +29.8 us R data1 00000000 | +62.3 us W data0 00000000
+21525.1264 R data0 00732002 n=2 b' s' | +30.5 us R data1 00000000 | +62.5 us W data0 00000000
+21525.2198 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +62.0 us W data0 00000000
+21636.9390 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.2 us W data0 00000000
+21637.0332 R data0 33393103 n=3 b'193' | +31.2 us R data1 00000000 | +63.2 us W data0 00000000
+21637.1277 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +60.7 us W data0 00000000
+21637.2181 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +62.0 us W data0 00000000
+21748.8874 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +63.2 us W data0 00000000
+21748.9822 R data0 34393103 n=3 b'194' | +30.0 us R data1 00000000 | +62.0 us W data0 00000000
+21749.0746 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +60.4 us W data0 00000000
+21749.1657 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.0 us W data0 00000000
+21860.9059 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +63.9 us W data0 00000000
+21861.0015 R data0 35393103 n=3 b'195' | +29.9 us R data1 00000000 | +61.7 us W data0 00000000
+21861.0940 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.2 us W data0 00000000
+21861.1864 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +60.6 us W data0 00000000
+21972.9056 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +61.8 us W data0 00000000
+21972.9992 R data0 36393103 n=3 b'196' | +29.7 us R data1 00000000 | +61.6 us W data0 00000000
+21973.0912 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +60.7 us W data0 00000000
+21973.1825 R data0 000a0d02 n=2 b'\r\n' | +30.1 us R data1 00000000 | +62.1 us W data0 00000000
+22084.8918 R data0 74707507 n=7 b'uptime ' | +28.9 us R data1 20656d69 | +60.8 us W data0 00000000
+22084.9846 R data0 37393103 n=3 b'197' | +29.9 us R data1 00000000 | +61.3 us W data0 00000000
+22085.0765 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +60.8 us W data0 00000000
+22085.1678 R data0 000a0d02 n=2 b'\r\n' | +29.0 us R data1 00000000 | +61.2 us W data0 00000000
+22196.8950 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +61.6 us W data0 00000000
+22196.9892 R data0 38393103 n=3 b'198' | +30.0 us R data1 00000000 | +62.1 us W data0 00000000
+22197.0819 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.4 us W data0 00000000
+22197.1743 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +60.5 us W data0 00000000
+22308.9194 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.8 us W data0 00000000
+22309.0137 R data0 39393103 n=3 b'199' | +30.0 us R data1 00000000 | +62.7 us W data0 00000000
+22309.1070 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.3 us W data0 00000000
+22309.1985 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+22420.8970 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +63.3 us W data0 00000000
+22420.9918 R data0 30303203 n=3 b'200' | +30.4 us R data1 00000000 | +62.6 us W data0 00000000
+22421.0843 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.0 us W data0 00000000
+22421.1762 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +60.9 us W data0 00000000
+22532.9007 R data0 74707507 n=7 b'uptime ' | +30.7 us R data1 20656d69 | +64.0 us W data0 00000000
+22532.9962 R data0 31303203 n=3 b'201' | +30.0 us R data1 00000000 | +62.8 us W data0 00000000
+22533.0894 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +60.4 us W data0 00000000
+22533.1801 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.4 us W data0 00000000
+22644.9036 R data0 74707507 n=7 b'uptime ' | +29.0 us R data1 20656d69 | +61.8 us W data0 00000000
+22644.9980 R data0 32303203 n=3 b'202' | +29.1 us R data1 00000000 | +62.1 us W data0 00000000
+22645.0912 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.0 us W data0 00000000
+22645.1834 R data0 000a0d02 n=2 b'\r\n' | +30.1 us R data1 00000000 | +61.4 us W data0 00000000
+22756.9002 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +64.0 us W data0 00000000
+22756.9959 R data0 33303203 n=3 b'203' | +29.8 us R data1 00000000 | +62.4 us W data0 00000000
+22757.0895 R data0 00732002 n=2 b' s' | +30.7 us R data1 00000000 | +62.3 us W data0 00000000
+22757.1821 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +62.1 us W data0 00000000
+22868.9255 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.4 us W data0 00000000
+22869.0193 R data0 34303203 n=3 b'204' | +31.2 us R data1 00000000 | +62.9 us W data0 00000000
+22869.1124 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.4 us W data0 00000000
+22869.2037 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +60.7 us W data0 00000000
+22980.8996 R data0 74707507 n=7 b'uptime ' | +30.6 us R data1 20656d69 | +63.1 us W data0 00000000
+22980.9943 R data0 35303203 n=3 b'205' | +30.4 us R data1 00000000 | +63.4 us W data0 00000000
+22981.0876 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+22981.1786 R data0 000a0d02 n=2 b'\r\n' | +28.4 us R data1 00000000 | +59.3 us W data0 00000000
+23092.8698 R data0 74707507 n=7 b'uptime ' | +30.5 us R data1 20656d69 | +64.5 us W data0 00000000
+23092.9656 R data0 36303203 n=3 b'206' | +31.4 us R data1 00000000 | +63.2 us W data0 00000000
+23093.0591 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.8 us W data0 00000000
+23093.1527 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.4 us W data0 00000000
+23204.8453 R data0 74707507 n=7 b'uptime ' | +30.5 us R data1 20656d69 | +63.3 us W data0 00000000
+23204.9402 R data0 37303203 n=3 b'207' | +29.5 us R data1 00000000 | +61.8 us W data0 00000000
+23205.0326 R data0 00732002 n=2 b' s' | +30.1 us R data1 00000000 | +61.4 us W data0 00000000
+23205.1243 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +62.0 us W data0 00000000
+23316.8691 R data0 74707507 n=7 b'uptime ' | +30.6 us R data1 20656d69 | +62.1 us W data0 00000000
+23316.9632 R data0 38303203 n=3 b'208' | +29.8 us R data1 00000000 | +61.6 us W data0 00000000
+23317.0551 R data0 00732002 n=2 b' s' | +28.4 us R data1 00000000 | +60.2 us W data0 00000000
+23317.1455 R data0 000a0d02 n=2 b'\r\n' | +30.7 us R data1 00000000 | +62.2 us W data0 00000000
+23428.8780 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +63.6 us W data0 00000000
+23428.9742 R data0 39303203 n=3 b'209' | +31.2 us R data1 00000000 | +62.9 us W data0 00000000
+23429.0669 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.5 us W data0 00000000
+23429.1590 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.1 us W data0 00000000
+23540.9031 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.2 us W data0 00000000
+23540.9982 R data0 30313203 n=3 b'210' | +30.8 us R data1 00000000 | +64.0 us W data0 00000000
+23541.0932 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.1 us W data0 00000000
+23541.1847 R data0 000a0d02 n=2 b'\r\n' | +30.5 us R data1 00000000 | +62.5 us W data0 00000000
+23652.8990 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.0 us W data0 00000000
+23652.9928 R data0 31313203 n=3 b'211' | +31.1 us R data1 00000000 | +63.7 us W data0 00000000
+23653.0863 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.4 us W data0 00000000
+23653.1776 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +62.0 us W data0 00000000
+23764.9140 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.6 us W data0 00000000
+23765.0094 R data0 32313203 n=3 b'212' | +29.8 us R data1 00000000 | +61.7 us W data0 00000000
+23765.1021 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.6 us W data0 00000000
+23765.1937 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +62.0 us W data0 00000000
+23876.9100 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.2 us W data0 00000000
+23877.0037 R data0 33313203 n=3 b'213' | +29.1 us R data1 00000000 | +61.0 us W data0 00000000
+23877.0952 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.1 us W data0 00000000
+23877.1864 R data0 000a0d02 n=2 b'\r\n' | +28.9 us R data1 00000000 | +60.6 us W data0 00000000
+23988.9390 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.4 us W data0 00000000
+23989.0334 R data0 34313203 n=3 b'214' | +29.3 us R data1 00000000 | +60.8 us W data0 00000000
+23989.1243 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.2 us W data0 00000000
+23989.2160 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +61.3 us W data0 00000000
+24100.9115 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +61.5 us W data0 00000000
+24101.0046 R data0 35313203 n=3 b'215' | +30.4 us R data1 00000000 | +62.3 us W data0 00000000
+24101.0974 R data0 00732002 n=2 b' s' | +30.1 us R data1 00000000 | +61.8 us W data0 00000000
+24101.1904 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +62.0 us W data0 00000000
+24212.9150 R data0 74707507 n=7 b'uptime ' | +29.2 us R data1 20656d69 | +61.6 us W data0 00000000
+24213.0084 R data0 36313203 n=3 b'216' | +30.6 us R data1 00000000 | +63.5 us W data0 00000000
+24213.1024 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.6 us W data0 00000000
+24213.1945 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.6 us W data0 00000000
+24324.9541 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.9 us W data0 00000000
+24325.0492 R data0 37313203 n=3 b'217' | +29.6 us R data1 00000000 | +62.6 us W data0 00000000
+24325.1419 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +60.2 us W data0 00000000
+24325.2322 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.5 us W data0 00000000
+24436.9566 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +63.3 us W data0 00000000
+24437.0514 R data0 38313203 n=3 b'218' | +30.4 us R data1 00000000 | +62.0 us W data0 00000000
+24437.1438 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.9 us W data0 00000000
+24437.2356 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.6 us W data0 00000000
+24548.9714 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +63.4 us W data0 00000000
+24549.0668 R data0 39313203 n=3 b'219' | +30.4 us R data1 00000000 | +62.1 us W data0 00000000
+24549.1594 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +60.8 us W data0 00000000
+24549.2507 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +60.7 us W data0 00000000
+24660.9574 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.9 us W data0 00000000
+24661.0516 R data0 30323203 n=3 b'220' | +30.4 us R data1 00000000 | +63.5 us W data0 00000000
+24661.1452 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.2 us W data0 00000000
+24661.2371 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +60.8 us W data0 00000000
+24773.0063 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.6 us W data0 00000000
+24773.1005 R data0 31323203 n=3 b'221' | +29.6 us R data1 00000000 | +61.8 us W data0 00000000
+24773.1922 R data0 00732002 n=2 b' s' | +30.3 us R data1 00000000 | +61.7 us W data0 00000000
+24773.2844 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +60.8 us W data0 00000000
+24884.9977 R data0 74707507 n=7 b'uptime ' | +29.3 us R data1 20656d69 | +61.2 us W data0 00000000
+24885.0907 R data0 32323203 n=3 b'222' | +29.6 us R data1 00000000 | +61.5 us W data0 00000000
+24885.1829 R data0 00732002 n=2 b' s' | +28.8 us R data1 00000000 | +60.0 us W data0 00000000
+24885.2726 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.6 us W data0 00000000
+24996.9466 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.4 us W data0 00000000
+24997.0410 R data0 33323203 n=3 b'223' | +30.0 us R data1 00000000 | +62.4 us W data0 00000000
+24997.1332 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.0 us W data0 00000000
+24997.2248 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.0 us W data0 00000000
+25108.9224 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.1 us W data0 00000000
+25109.0167 R data0 34323203 n=3 b'224' | +30.2 us R data1 00000000 | +62.6 us W data0 00000000
+25109.1092 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.1 us W data0 00000000
+25109.2008 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +60.8 us W data0 00000000
+25220.9307 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +63.1 us W data0 00000000
+25221.0255 R data0 35323203 n=3 b'225' | +30.8 us R data1 00000000 | +62.4 us W data0 00000000
+25221.1182 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.5 us W data0 00000000
+25221.2104 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.3 us W data0 00000000
+25332.9438 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.5 us W data0 00000000
+25333.0384 R data0 36323203 n=3 b'226' | +30.1 us R data1 00000000 | +62.2 us W data0 00000000
+25333.1311 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.6 us W data0 00000000
+25333.2232 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +62.5 us W data0 00000000
+25444.9740 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +62.5 us W data0 00000000
+25445.0684 R data0 37323203 n=3 b'227' | +30.3 us R data1 00000000 | +62.0 us W data0 00000000
+25445.1604 R data0 00732002 n=2 b' s' | +29.1 us R data1 00000000 | +61.0 us W data0 00000000
+25445.2518 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.7 us W data0 00000000
+25556.9767 R data0 74707507 n=7 b'uptime ' | +29.0 us R data1 20656d69 | +60.7 us W data0 00000000
+25557.0687 R data0 38323203 n=3 b'228' | +30.6 us R data1 00000000 | +62.4 us W data0 00000000
+25557.1613 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.7 us W data0 00000000
+25557.2531 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.8 us W data0 00000000
+25668.9925 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.5 us W data0 00000000
+25669.0866 R data0 39323203 n=3 b'229' | +30.4 us R data1 00000000 | +63.1 us W data0 00000000
+25669.1808 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.2 us W data0 00000000
+25669.2720 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +61.0 us W data0 00000000
+25780.9842 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.3 us W data0 00000000
+25781.0783 R data0 30333203 n=3 b'230' | +30.0 us R data1 00000000 | +62.4 us W data0 00000000
+25781.1711 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+25781.2621 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +60.4 us W data0 00000000
+25892.9275 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +61.6 us W data0 00000000
+25893.0211 R data0 31333203 n=3 b'231' | +30.3 us R data1 00000000 | +61.8 us W data0 00000000
+25893.1131 R data0 00732002 n=2 b' s' | +28.8 us R data1 00000000 | +60.3 us W data0 00000000
+25893.2038 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.1 us W data0 00000000
+26004.9003 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.3 us W data0 00000000
+26004.9940 R data0 32333203 n=3 b'232' | +30.8 us R data1 00000000 | +63.2 us W data0 00000000
+26005.0873 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +62.1 us W data0 00000000
+26005.1792 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.4 us W data0 00000000
+26116.9190 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +62.1 us W data0 00000000
+26117.0126 R data0 33333203 n=3 b'233' | +29.2 us R data1 00000000 | +61.6 us W data0 00000000
+26117.1038 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.4 us W data0 00000000
+26117.1949 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.9 us W data0 00000000
+26228.9092 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.1 us W data0 00000000
+26229.0032 R data0 34333203 n=3 b'234' | +30.7 us R data1 00000000 | +62.6 us W data0 00000000
+26229.0960 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.5 us W data0 00000000
+26229.1878 R data0 000a0d02 n=2 b'\r\n' | +29.1 us R data1 00000000 | +61.0 us W data0 00000000
+26340.9118 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +62.4 us W data0 00000000
+26341.0062 R data0 35333203 n=3 b'235' | +29.5 us R data1 00000000 | +60.8 us W data0 00000000
+26341.0973 R data0 00732002 n=2 b' s' | +28.9 us R data1 00000000 | +60.0 us W data0 00000000
+26341.1883 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+26452.8674 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.8 us W data0 00000000
+26452.9619 R data0 36333203 n=3 b'236' | +29.5 us R data1 00000000 | +62.2 us W data0 00000000
+26453.0540 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.4 us W data0 00000000
+26453.1462 R data0 000a0d02 n=2 b'\r\n' | +30.5 us R data1 00000000 | +61.9 us W data0 00000000
+26564.8874 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.3 us W data0 00000000
+26564.9815 R data0 37333203 n=3 b'237' | +30.8 us R data1 00000000 | +62.2 us W data0 00000000
+26565.0745 R data0 00732002 n=2 b' s' | +28.7 us R data1 00000000 | +60.4 us W data0 00000000
+26565.1652 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +60.9 us W data0 00000000
+26676.8598 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +63.2 us W data0 00000000
+26676.9546 R data0 38333203 n=3 b'238' | +30.2 us R data1 00000000 | +62.3 us W data0 00000000
+26677.0473 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.4 us W data0 00000000
+26677.1387 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.4 us W data0 00000000
+26788.8191 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +63.1 us W data0 00000000
+26788.9144 R data0 39333203 n=3 b'239' | +30.2 us R data1 00000000 | +62.1 us W data0 00000000
+26789.0075 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.8 us W data0 00000000
+26789.0996 R data0 000a0d02 n=2 b'\r\n' | +30.3 us R data1 00000000 | +62.4 us W data0 00000000
+26900.8220 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +63.1 us W data0 00000000
+26900.9164 R data0 30343203 n=3 b'240' | +30.7 us R data1 00000000 | +62.2 us W data0 00000000
+26901.0088 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +62.2 us W data0 00000000
+26901.1019 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.1 us W data0 00000000
+27012.8345 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.2 us W data0 00000000
+27012.9286 R data0 31343203 n=3 b'241' | +29.8 us R data1 00000000 | +61.9 us W data0 00000000
+27013.0212 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.6 us W data0 00000000
+27013.1135 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.2 us W data0 00000000
+27124.8261 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +62.6 us W data0 00000000
+27124.9202 R data0 32343203 n=3 b'242' | +30.3 us R data1 00000000 | +62.2 us W data0 00000000
+27125.0129 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +60.7 us W data0 00000000
+27125.1042 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +60.7 us W data0 00000000
+27236.8275 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +62.4 us W data0 00000000
+27236.9217 R data0 33343203 n=3 b'243' | +30.7 us R data1 00000000 | +62.5 us W data0 00000000
+27237.0140 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +60.7 us W data0 00000000
+27237.1057 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +61.7 us W data0 00000000
+27348.8415 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.5 us W data0 00000000
+27348.9356 R data0 34343203 n=3 b'244' | +29.9 us R data1 00000000 | +61.4 us W data0 00000000
+27349.0267 R data0 00732002 n=2 b' s' | +29.1 us R data1 00000000 | +60.8 us W data0 00000000
+27349.1180 R data0 000a0d02 n=2 b'\r\n' | +28.8 us R data1 00000000 | +60.8 us W data0 00000000
+27460.8761 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +61.5 us W data0 00000000
+27460.9696 R data0 35343203 n=3 b'245' | +30.0 us R data1 00000000 | +61.8 us W data0 00000000
+27461.0618 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +60.6 us W data0 00000000
+27461.1531 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +61.6 us W data0 00000000
+27572.8948 R data0 74707507 n=7 b'uptime ' | +28.9 us R data1 20656d69 | +61.2 us W data0 00000000
+27572.9870 R data0 36343203 n=3 b'246' | +30.2 us R data1 00000000 | +62.5 us W data0 00000000
+27573.0798 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+27573.1716 R data0 000a0d02 n=2 b'\r\n' | +30.1 us R data1 00000000 | +62.0 us W data0 00000000
+27684.9277 R data0 74707507 n=7 b'uptime ' | +30.8 us R data1 20656d69 | +62.2 us W data0 00000000
+27685.0214 R data0 37343203 n=3 b'247' | +29.6 us R data1 00000000 | +61.8 us W data0 00000000
+27685.1142 R data0 00732002 n=2 b' s' | +30.3 us R data1 00000000 | +62.4 us W data0 00000000
+27685.2072 R data0 000a0d02 n=2 b'\r\n' | +30.5 us R data1 00000000 | +62.2 us W data0 00000000
+27796.9660 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.1 us W data0 00000000
+27797.0605 R data0 38343203 n=3 b'248' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+27797.1523 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +60.7 us W data0 00000000
+27797.2436 R data0 000a0d02 n=2 b'\r\n' | +30.1 us R data1 00000000 | +61.7 us W data0 00000000
+27908.9687 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +63.6 us W data0 00000000
+27909.0643 R data0 39343203 n=3 b'249' | +29.9 us R data1 00000000 | +61.2 us W data0 00000000
+27909.1558 R data0 00732002 n=2 b' s' | +29.0 us R data1 00000000 | +61.0 us W data0 00000000
+27909.2469 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +62.6 us W data0 00000000
+28020.9749 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +62.8 us W data0 00000000
+28021.0682 R data0 30353203 n=3 b'250' | +30.3 us R data1 00000000 | +61.7 us W data0 00000000
+28021.1600 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +60.9 us W data0 00000000
+28021.2516 R data0 000a0d02 n=2 b'\r\n' | +28.9 us R data1 00000000 | +60.8 us W data0 00000000
+28132.9426 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +63.3 us W data0 00000000
+28133.0380 R data0 31353203 n=3 b'251' | +30.4 us R data1 00000000 | +62.1 us W data0 00000000
+28133.1307 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +60.9 us W data0 00000000
+28133.2219 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.4 us W data0 00000000
+28244.9233 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.8 us W data0 00000000
+28245.0179 R data0 32353203 n=3 b'252' | +29.7 us R data1 00000000 | +61.6 us W data0 00000000
+28245.1103 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.8 us W data0 00000000
+28245.2032 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.0 us W data0 00000000
+28356.9122 R data0 74707507 n=7 b'uptime ' | +30.6 us R data1 20656d69 | +63.6 us W data0 00000000
+28357.0080 R data0 33353203 n=3 b'253' | +29.6 us R data1 00000000 | +62.3 us W data0 00000000
+28357.1010 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.3 us W data0 00000000
+28357.1924 R data0 000a0d02 n=2 b'\r\n' | +28.8 us R data1 00000000 | +60.9 us W data0 00000000
+28468.8794 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +62.8 us W data0 00000000
+28468.9746 R data0 34353203 n=3 b'254' | +30.4 us R data1 00000000 | +62.2 us W data0 00000000
+28469.0677 R data0 00732002 n=2 b' s' | +30.8 us R data1 00000000 | +63.2 us W data0 00000000
+28469.1619 R data0 000a0d02 n=2 b'\r\n' | +30.6 us R data1 00000000 | +62.0 us W data0 00000000
+28580.8878 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +60.8 us W data0 00000000
+28580.9800 R data0 35353203 n=3 b'255' | +29.5 us R data1 00000000 | +62.7 us W data0 00000000
+28581.0731 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.8 us W data0 00000000
+28581.1651 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.6 us W data0 00000000
+28692.8812 R data0 74707507 n=7 b'uptime ' | +30.5 us R data1 20656d69 | +63.3 us W data0 00000000
+28692.9760 R data0 36353203 n=3 b'256' | +29.9 us R data1 00000000 | +62.0 us W data0 00000000
+28693.0685 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.1 us W data0 00000000
+28693.1606 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.1 us W data0 00000000
+28804.8852 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.5 us W data0 00000000
+28804.9798 R data0 37353203 n=3 b'257' | +29.7 us R data1 00000000 | +62.0 us W data0 00000000
+28805.0716 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +60.9 us W data0 00000000
+28805.1638 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.4 us W data0 00000000
+28916.9136 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +61.8 us W data0 00000000
+28917.0072 R data0 38353203 n=3 b'258' | +30.6 us R data1 00000000 | +62.3 us W data0 00000000
+28917.0996 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+28917.1910 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.8 us W data0 00000000
+29028.8732 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +62.5 us W data0 00000000
+29028.9672 R data0 39353203 n=3 b'259' | +30.9 us R data1 00000000 | +63.2 us W data0 00000000
+29029.0605 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.4 us W data0 00000000
+29029.1520 R data0 000a0d02 n=2 b'\r\n' | +30.5 us R data1 00000000 | +62.2 us W data0 00000000
+29140.8624 R data0 74707507 n=7 b'uptime ' | +30.6 us R data1 20656d69 | +63.9 us W data0 00000000
+29140.9584 R data0 30363203 n=3 b'260' | +30.3 us R data1 00000000 | +63.6 us W data0 00000000
+29141.0523 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +62.0 us W data0 00000000
+29141.1446 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +62.1 us W data0 00000000
+29252.8169 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +63.1 us W data0 00000000
+29252.9120 R data0 31363203 n=3 b'261' | +30.6 us R data1 00000000 | +63.0 us W data0 00000000
+29253.0057 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.3 us W data0 00000000
+29253.0974 R data0 000a0d02 n=2 b'\r\n' | +30.1 us R data1 00000000 | +61.8 us W data0 00000000
+29364.8457 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +63.6 us W data0 00000000
+29364.9410 R data0 32363203 n=3 b'262' | +30.3 us R data1 00000000 | +62.8 us W data0 00000000
+29365.0336 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.4 us W data0 00000000
+29365.1254 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.2 us W data0 00000000
+29476.8538 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.3 us W data0 00000000
+29476.9476 R data0 33363203 n=3 b'263' | +30.2 us R data1 00000000 | +62.5 us W data0 00000000
+29477.0398 R data0 00732002 n=2 b' s' | +29.1 us R data1 00000000 | +60.5 us W data0 00000000
+29477.1310 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.4 us W data0 00000000
+29588.8656 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.1 us W data0 00000000
+29588.9606 R data0 34363203 n=3 b'264' | +30.8 us R data1 00000000 | +63.5 us W data0 00000000
+29589.0543 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +62.1 us W data0 00000000
+29589.1474 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.4 us W data0 00000000
+29700.8957 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.2 us W data0 00000000
+29700.9907 R data0 35363203 n=3 b'265' | +30.4 us R data1 00000000 | +63.0 us W data0 00000000
+29701.0842 R data0 00732002 n=2 b' s' | +28.9 us R data1 00000000 | +60.5 us W data0 00000000
+29701.1750 R data0 000a0d02 n=2 b'\r\n' | +30.6 us R data1 00000000 | +61.8 us W data0 00000000
+29812.8670 R data0 74707507 n=7 b'uptime ' | +30.5 us R data1 20656d69 | +63.8 us W data0 00000000
+29812.9624 R data0 36363203 n=3 b'266' | +30.5 us R data1 00000000 | +62.8 us W data0 00000000
+29813.0554 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.0 us W data0 00000000
+29813.1470 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +60.8 us W data0 00000000
+29924.8116 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +62.9 us W data0 00000000
+29924.9066 R data0 37363203 n=3 b'267' | +30.6 us R data1 00000000 | +63.6 us W data0 00000000
+29925.0009 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +62.0 us W data0 00000000
+29925.0927 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +62.4 us W data0 00000000
+30036.8288 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.6 us W data0 00000000
+30036.9231 R data0 38363203 n=3 b'268' | +30.0 us R data1 00000000 | +62.5 us W data0 00000000
+30037.0162 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +62.9 us W data0 00000000
+30037.1096 R data0 000a0d02 n=2 b'\r\n' | +30.6 us R data1 00000000 | +63.0 us W data0 00000000
+30148.8199 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +63.4 us W data0 00000000
+30148.9152 R data0 39363203 n=3 b'269' | +31.3 us R data1 00000000 | +63.4 us W data0 00000000
+30149.0084 R data0 00732002 n=2 b' s' | +30.1 us R data1 00000000 | +61.8 us W data0 00000000
+30149.1009 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +60.8 us W data0 00000000
+30260.8300 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.6 us W data0 00000000
+30260.9243 R data0 30373203 n=3 b'270' | +29.8 us R data1 00000000 | +61.6 us W data0 00000000
+30261.0160 R data0 00732002 n=2 b' s' | +28.7 us R data1 00000000 | +60.5 us W data0 00000000
+30261.1061 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.3 us W data0 00000000
+30372.7920 R data0 74707507 n=7 b'uptime ' | +29.2 us R data1 20656d69 | +61.5 us W data0 00000000
+30372.8856 R data0 31373203 n=3 b'271' | +30.7 us R data1 00000000 | +62.7 us W data0 00000000
+30372.9782 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.8 us W data0 00000000
+30373.0702 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +60.7 us W data0 00000000
+30484.7864 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.8 us W data0 00000000
+30484.8806 R data0 32373203 n=3 b'272' | +30.3 us R data1 00000000 | +62.8 us W data0 00000000
+30484.9734 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.2 us W data0 00000000
+30485.0651 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.5 us W data0 00000000
+30596.8371 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +62.6 us W data0 00000000
+30596.9317 R data0 33373203 n=3 b'273' | +30.1 us R data1 00000000 | +61.8 us W data0 00000000
+30597.0240 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.7 us W data0 00000000
+30597.1159 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +60.9 us W data0 00000000
+30708.8360 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +62.1 us W data0 00000000
+30708.9298 R data0 34373203 n=3 b'274' | +29.5 us R data1 00000000 | +62.0 us W data0 00000000
+30709.0223 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.8 us W data0 00000000
+30709.1153 R data0 000a0d02 n=2 b'\r\n' | +30.6 us R data1 00000000 | +62.8 us W data0 00000000
+30820.8468 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +64.2 us W data0 00000000
+30820.9424 R data0 35373203 n=3 b'275' | +30.6 us R data1 00000000 | +63.4 us W data0 00000000
+30821.0362 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +61.4 us W data0 00000000
+30821.1278 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +60.9 us W data0 00000000
+30932.8761 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.6 us W data0 00000000
+30932.9705 R data0 36373203 n=3 b'276' | +30.1 us R data1 00000000 | +62.9 us W data0 00000000
+30933.0638 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.1 us W data0 00000000
+30933.1555 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +61.4 us W data0 00000000
+31044.8774 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +61.4 us W data0 00000000
+31044.9705 R data0 37373203 n=3 b'277' | +29.8 us R data1 00000000 | +62.0 us W data0 00000000
+31045.0631 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.6 us W data0 00000000
+31045.1544 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.5 us W data0 00000000
+31156.8725 R data0 74707507 n=7 b'uptime ' | +29.5 us R data1 20656d69 | +61.7 us W data0 00000000
+31156.9658 R data0 38373203 n=3 b'278' | +29.6 us R data1 00000000 | +61.9 us W data0 00000000
+31157.0578 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.6 us W data0 00000000
+31157.1504 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.6 us W data0 00000000
+31268.8960 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.7 us W data0 00000000
+31268.9906 R data0 39373203 n=3 b'279' | +30.9 us R data1 00000000 | +63.0 us W data0 00000000
+31269.0842 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+31269.1756 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.4 us W data0 00000000
+31380.9002 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +62.3 us W data0 00000000
+31380.9944 R data0 30383203 n=3 b'280' | +29.9 us R data1 00000000 | +62.2 us W data0 00000000
+31381.0871 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.2 us W data0 00000000
+31381.1788 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.6 us W data0 00000000
+31492.9014 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +61.4 us W data0 00000000
+31492.9949 R data0 31383203 n=3 b'281' | +30.3 us R data1 00000000 | +61.8 us W data0 00000000
+31493.0869 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.6 us W data0 00000000
+31493.1784 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.6 us W data0 00000000
+31604.8805 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.4 us W data0 00000000
+31604.9741 R data0 32383203 n=3 b'282' | +30.8 us R data1 00000000 | +62.5 us W data0 00000000
+31605.0667 R data0 00732002 n=2 b' s' | +30.1 us R data1 00000000 | +62.0 us W data0 00000000
+31605.1588 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.9 us W data0 00000000
+31716.9201 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.2 us W data0 00000000
+31717.0144 R data0 33383203 n=3 b'283' | +30.0 us R data1 00000000 | +62.2 us W data0 00000000
+31717.1072 R data0 00732002 n=2 b' s' | +28.8 us R data1 00000000 | +60.6 us W data0 00000000
+31717.1982 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.2 us W data0 00000000
+31828.9627 R data0 74707507 n=7 b'uptime ' | +30.5 us R data1 20656d69 | +63.2 us W data0 00000000
+31829.0576 R data0 34383203 n=3 b'284' | +30.4 us R data1 00000000 | +63.0 us W data0 00000000
+31829.1514 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +61.3 us W data0 00000000
+31829.2424 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +61.0 us W data0 00000000
+31940.9634 R data0 74707507 n=7 b'uptime ' | +28.6 us R data1 20656d69 | +60.0 us W data0 00000000
+31941.0544 R data0 35383203 n=3 b'285' | +29.8 us R data1 00000000 | +61.2 us W data0 00000000
+31941.1459 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +60.6 us W data0 00000000
+31941.2366 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.6 us W data0 00000000
+32052.9382 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +61.9 us W data0 00000000
+32053.0312 R data0 36383203 n=3 b'286' | +29.8 us R data1 00000000 | +61.6 us W data0 00000000
+32053.1223 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +60.7 us W data0 00000000
+32053.2135 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +61.8 us W data0 00000000
+32164.8981 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.2 us W data0 00000000
+32164.9917 R data0 37383203 n=3 b'287' | +30.3 us R data1 00000000 | +62.3 us W data0 00000000
+32165.0847 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.4 us W data0 00000000
+32165.1767 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.2 us W data0 00000000
+32276.9042 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +62.8 us W data0 00000000
+32276.9986 R data0 38383203 n=3 b'288' | +31.4 us R data1 00000000 | +63.6 us W data0 00000000
+32277.0924 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.1 us W data0 00000000
+32277.1834 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+32388.9096 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +63.5 us W data0 00000000
+32389.0056 R data0 39383203 n=3 b'289' | +30.8 us R data1 00000000 | +62.7 us W data0 00000000
+32389.0992 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.0 us W data0 00000000
+32389.1921 R data0 000a0d02 n=2 b'\r\n' | +30.7 us R data1 00000000 | +62.5 us W data0 00000000
+32500.8784 R data0 74707507 n=7 b'uptime ' | +30.7 us R data1 20656d69 | +63.6 us W data0 00000000
+32500.9742 R data0 30393203 n=3 b'290' | +29.8 us R data1 00000000 | +61.2 us W data0 00000000
+32501.0659 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +60.6 us W data0 00000000
+32501.1569 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +60.9 us W data0 00000000
+32612.9102 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.2 us W data0 00000000
+32613.0046 R data0 31393203 n=3 b'291' | +29.6 us R data1 00000000 | +61.7 us W data0 00000000
+32613.0969 R data0 00732002 n=2 b' s' | +30.9 us R data1 00000000 | +61.9 us W data0 00000000
+32613.1894 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.4 us W data0 00000000
+32724.9177 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.0 us W data0 00000000
+32725.0121 R data0 32393203 n=3 b'292' | +30.3 us R data1 00000000 | +62.2 us W data0 00000000
+32725.1056 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.8 us W data0 00000000
+32725.1978 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +62.3 us W data0 00000000
+32836.9450 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.4 us W data0 00000000
+32837.0398 R data0 33393203 n=3 b'293' | +29.8 us R data1 00000000 | +61.8 us W data0 00000000
+32837.1324 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.2 us W data0 00000000
+32837.2251 R data0 000a0d02 n=2 b'\r\n' | +29.0 us R data1 00000000 | +60.8 us W data0 00000000
+32948.9766 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +62.2 us W data0 00000000
+32949.0706 R data0 34393203 n=3 b'294' | +31.3 us R data1 00000000 | +63.0 us W data0 00000000
+32949.1639 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+32949.2559 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +61.8 us W data0 00000000
+33061.0127 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +61.7 us W data0 00000000
+33061.1058 R data0 35393203 n=3 b'295' | +29.6 us R data1 00000000 | +62.1 us W data0 00000000
+33061.1984 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.7 us W data0 00000000
+33061.2907 R data0 000a0d02 n=2 b'\r\n' | +30.7 us R data1 00000000 | +62.9 us W data0 00000000
+33173.0051 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.7 us W data0 00000000
+33173.1004 R data0 36393203 n=3 b'296' | +29.7 us R data1 00000000 | +62.0 us W data0 00000000
+33173.1930 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +62.1 us W data0 00000000
+33173.2854 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.9 us W data0 00000000
+33284.9928 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.1 us W data0 00000000
+33285.0872 R data0 37393203 n=3 b'297' | +29.9 us R data1 00000000 | +62.2 us W data0 00000000
+33285.1799 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +60.7 us W data0 00000000
+33285.2712 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.8 us W data0 00000000
+33397.0387 R data0 74707507 n=7 b'uptime ' | +31.0 us R data1 20656d69 | +63.2 us W data0 00000000
+33397.1336 R data0 38393203 n=3 b'298' | +31.3 us R data1 00000000 | +62.8 us W data0 00000000
+33397.2267 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.1 us W data0 00000000
+33397.3180 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +60.8 us W data0 00000000
+33509.0494 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +63.4 us W data0 00000000
+33509.1453 R data0 39393203 n=3 b'299' | +30.4 us R data1 00000000 | +62.3 us W data0 00000000
+33509.2378 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +62.2 us W data0 00000000
+33509.3300 R data0 000a0d02 n=2 b'\r\n' | +31.0 us R data1 00000000 | +62.9 us W data0 00000000
+33621.0999 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.1 us W data0 00000000
+33621.1950 R data0 30303303 n=3 b'300' | +30.3 us R data1 00000000 | +63.1 us W data0 00000000
+33621.2886 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +60.9 us W data0 00000000
+33621.3792 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +62.1 us W data0 00000000
+33733.1055 R data0 74707507 n=7 b'uptime ' | +29.4 us R data1 20656d69 | +62.0 us W data0 00000000
+33733.1993 R data0 31303303 n=3 b'301' | +30.1 us R data1 00000000 | +62.6 us W data0 00000000
+33733.2923 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+33733.3840 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +62.8 us W data0 00000000
+33845.1010 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +61.2 us W data0 00000000
+33845.1944 R data0 32303303 n=3 b'302' | +29.7 us R data1 00000000 | +61.8 us W data0 00000000
+33845.2873 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.8 us W data0 00000000
+33845.3798 R data0 000a0d02 n=2 b'\r\n' | +30.3 us R data1 00000000 | +62.4 us W data0 00000000
+33957.1179 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.0 us W data0 00000000
+33957.2113 R data0 33303303 n=3 b'303' | +29.6 us R data1 00000000 | +62.1 us W data0 00000000
+33957.3042 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+33957.3954 R data0 000a0d02 n=2 b'\r\n' | +28.4 us R data1 00000000 | +59.8 us W data0 00000000
+34069.1267 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.7 us W data0 00000000
+34069.2219 R data0 34303303 n=3 b'304' | +30.5 us R data1 00000000 | +61.6 us W data0 00000000
+34069.3142 R data0 00732002 n=2 b' s' | +29.1 us R data1 00000000 | +60.8 us W data0 00000000
+34069.4052 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.3 us W data0 00000000
+34181.1123 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.6 us W data0 00000000
+34181.2059 R data0 35303303 n=3 b'305' | +30.2 us R data1 00000000 | +62.3 us W data0 00000000
+34181.2989 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.8 us W data0 00000000
+34181.3909 R data0 000a0d02 n=2 b'\r\n' | +30.9 us R data1 00000000 | +63.0 us W data0 00000000
+34293.1030 R data0 74707507 n=7 b'uptime ' | +29.3 us R data1 20656d69 | +61.7 us W data0 00000000
+34293.1967 R data0 36303303 n=3 b'306' | +29.6 us R data1 00000000 | +62.0 us W data0 00000000
+34293.2896 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.1 us W data0 00000000
+34293.3814 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.9 us W data0 00000000
+34405.1430 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +63.6 us W data0 00000000
+34405.2379 R data0 37303303 n=3 b'307' | +30.5 us R data1 00000000 | +62.5 us W data0 00000000
+34405.3310 R data0 00732002 n=2 b' s' | +30.6 us R data1 00000000 | +62.4 us W data0 00000000
+34405.4246 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +62.2 us W data0 00000000
+34517.0911 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.2 us W data0 00000000
+34517.1848 R data0 38303303 n=3 b'308' | +29.3 us R data1 00000000 | +61.9 us W data0 00000000
+34517.2778 R data0 00732002 n=2 b' s' | +28.7 us R data1 00000000 | +60.0 us W data0 00000000
+34517.3681 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +62.3 us W data0 00000000
+34629.0803 R data0 74707507 n=7 b'uptime ' | +30.1 us R data1 20656d69 | +62.8 us W data0 00000000
+34629.1749 R data0 39303303 n=3 b'309' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+34629.2663 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.4 us W data0 00000000
+34629.3580 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.6 us W data0 00000000
+34741.0974 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +62.6 us W data0 00000000
+34741.1916 R data0 30313303 n=3 b'310' | +30.9 us R data1 00000000 | +62.6 us W data0 00000000
+34741.2849 R data0 00732002 n=2 b' s' | +30.8 us R data1 00000000 | +63.0 us W data0 00000000
+34741.3786 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.2 us W data0 00000000
+34853.0508 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.8 us W data0 00000000
+34853.1453 R data0 31313303 n=3 b'311' | +30.9 us R data1 00000000 | +63.0 us W data0 00000000
+34853.2384 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.0 us W data0 00000000
+34853.3299 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +62.3 us W data0 00000000
+34965.0658 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +61.6 us W data0 00000000
+34965.1588 R data0 32313303 n=3 b'312' | +30.3 us R data1 00000000 | +62.3 us W data0 00000000
+34965.2516 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +60.4 us W data0 00000000
+34965.3422 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +60.5 us W data0 00000000
+35077.0514 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.1 us W data0 00000000
+35077.1449 R data0 33313303 n=3 b'313' | +30.8 us R data1 00000000 | +62.4 us W data0 00000000
+35077.2370 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +61.5 us W data0 00000000
+35077.3292 R data0 000a0d02 n=2 b'\r\n' | +29.2 us R data1 00000000 | +61.3 us W data0 00000000
+35189.0641 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.2 us W data0 00000000
+35189.1581 R data0 34313303 n=3 b'314' | +30.1 us R data1 00000000 | +62.2 us W data0 00000000
+35189.2513 R data0 00732002 n=2 b' s' | +30.2 us R data1 00000000 | +61.3 us W data0 00000000
+35189.3433 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.2 us W data0 00000000
+35301.0519 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.2 us W data0 00000000
+35301.1474 R data0 35313303 n=3 b'315' | +30.7 us R data1 00000000 | +63.0 us W data0 00000000
+35301.2405 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +61.4 us W data0 00000000
+35301.3322 R data0 000a0d02 n=2 b'\r\n' | +30.3 us R data1 00000000 | +62.6 us W data0 00000000
+35413.0440 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +63.0 us W data0 00000000
+35413.1385 R data0 36313303 n=3 b'316' | +29.8 us R data1 00000000 | +62.4 us W data0 00000000
+35413.2316 R data0 00732002 n=2 b' s' | +29.9 us R data1 00000000 | +62.1 us W data0 00000000
+35413.3236 R data0 000a0d02 n=2 b'\r\n' | +31.0 us R data1 00000000 | +62.4 us W data0 00000000
+35525.0046 R data0 74707507 n=7 b'uptime ' | +30.6 us R data1 20656d69 | +64.2 us W data0 00000000
+35525.1010 R data0 37313303 n=3 b'317' | +30.3 us R data1 00000000 | +62.6 us W data0 00000000
+35525.1940 R data0 00732002 n=2 b' s' | +29.1 us R data1 00000000 | +60.7 us W data0 00000000
+35525.2850 R data0 000a0d02 n=2 b'\r\n' | +30.1 us R data1 00000000 | +62.6 us W data0 00000000
+35637.0104 R data0 74707507 n=7 b'uptime ' | +29.0 us R data1 20656d69 | +62.2 us W data0 00000000
+35637.1042 R data0 38313303 n=3 b'318' | +29.9 us R data1 00000000 | +63.3 us W data0 00000000
+35637.1981 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.2 us W data0 00000000
+35637.2902 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.0 us W data0 00000000
+35749.0402 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +63.2 us W data0 00000000
+35749.1351 R data0 39313303 n=3 b'319' | +30.3 us R data1 00000000 | +62.2 us W data0 00000000
+35749.2271 R data0 00732002 n=2 b' s' | +29.3 us R data1 00000000 | +60.0 us W data0 00000000
+35749.3175 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +61.1 us W data0 00000000
+35860.9995 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +62.9 us W data0 00000000
+35861.0948 R data0 30323303 n=3 b'320' | +30.9 us R data1 00000000 | +62.0 us W data0 00000000
+35861.1872 R data0 00732002 n=2 b' s' | +30.6 us R data1 00000000 | +62.1 us W data0 00000000
+35861.2795 R data0 000a0d02 n=2 b'\r\n' | +28.9 us R data1 00000000 | +60.1 us W data0 00000000
+35972.9658 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.7 us W data0 00000000
+35973.0608 R data0 31323303 n=3 b'321' | +30.8 us R data1 00000000 | +63.5 us W data0 00000000
+35973.1549 R data0 00732002 n=2 b' s' | +30.5 us R data1 00000000 | +61.6 us W data0 00000000
+35973.2469 R data0 000a0d02 n=2 b'\r\n' | +29.7 us R data1 00000000 | +61.6 us W data0 00000000
+36084.9592 R data0 74707507 n=7 b'uptime ' | +30.8 us R data1 20656d69 | +64.0 us W data0 00000000
+36085.0549 R data0 32323303 n=3 b'322' | +31.5 us R data1 00000000 | +64.2 us W data0 00000000
+36085.1496 R data0 00732002 n=2 b' s' | +29.7 us R data1 00000000 | +61.7 us W data0 00000000
+36085.2420 R data0 000a0d02 n=2 b'\r\n' | +30.8 us R data1 00000000 | +63.0 us W data0 00000000
+36196.9466 R data0 74707507 n=7 b'uptime ' | +29.3 us R data1 20656d69 | +62.0 us W data0 00000000
+36197.0401 R data0 33323303 n=3 b'323' | +30.4 us R data1 00000000 | +63.0 us W data0 00000000
+36197.1328 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.2 us W data0 00000000
+36197.2238 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +61.4 us W data0 00000000
+36308.9254 R data0 74707507 n=7 b'uptime ' | +30.4 us R data1 20656d69 | +63.6 us W data0 00000000
+36309.0214 R data0 34323303 n=3 b'324' | +29.8 us R data1 00000000 | +61.9 us W data0 00000000
+36309.1137 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.3 us W data0 00000000
+36309.2060 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.5 us W data0 00000000
+36420.9180 R data0 74707507 n=7 b'uptime ' | +30.6 us R data1 20656d69 | +63.3 us W data0 00000000
+36421.0129 R data0 35323303 n=3 b'325' | +28.9 us R data1 00000000 | +61.6 us W data0 00000000
+36421.1049 R data0 00732002 n=2 b' s' | +29.5 us R data1 00000000 | +61.6 us W data0 00000000
+36421.1967 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.2 us W data0 00000000
+36532.9158 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +63.0 us W data0 00000000
+36533.0100 R data0 36323303 n=3 b'326' | +29.7 us R data1 00000000 | +61.8 us W data0 00000000
+36533.1025 R data0 00732002 n=2 b' s' | +29.8 us R data1 00000000 | +61.7 us W data0 00000000
+36533.1945 R data0 000a0d02 n=2 b'\r\n' | +29.6 us R data1 00000000 | +61.3 us W data0 00000000
+36644.9488 R data0 74707507 n=7 b'uptime ' | +29.3 us R data1 20656d69 | +61.9 us W data0 00000000
+36645.0424 R data0 37323303 n=3 b'327' | +29.8 us R data1 00000000 | +61.8 us W data0 00000000
+36645.1344 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +61.6 us W data0 00000000
+36645.2264 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +62.2 us W data0 00000000
+36756.9464 R data0 74707507 n=7 b'uptime ' | +29.6 us R data1 20656d69 | +61.4 us W data0 00000000
+36757.0390 R data0 38323303 n=3 b'328' | +30.8 us R data1 00000000 | +63.4 us W data0 00000000
+36757.1331 R data0 00732002 n=2 b' s' | +29.2 us R data1 00000000 | +60.5 us W data0 00000000
+36757.2236 R data0 000a0d02 n=2 b'\r\n' | +29.5 us R data1 00000000 | +61.3 us W data0 00000000
+36868.9378 R data0 74707507 n=7 b'uptime ' | +29.8 us R data1 20656d69 | +61.8 us W data0 00000000
+36869.0314 R data0 39323303 n=3 b'329' | +30.6 us R data1 00000000 | +62.4 us W data0 00000000
+36869.1241 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.0 us W data0 00000000
+36869.2146 R data0 000a0d02 n=2 b'\r\n' | +30.0 us R data1 00000000 | +61.4 us W data0 00000000
+36980.9197 R data0 74707507 n=7 b'uptime ' | +30.3 us R data1 20656d69 | +63.3 us W data0 00000000
+36981.0152 R data0 30333303 n=3 b'330' | +29.7 us R data1 00000000 | +61.9 us W data0 00000000
+36981.1073 R data0 00732002 n=2 b' s' | +29.4 us R data1 00000000 | +60.7 us W data0 00000000
+36981.1988 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +61.3 us W data0 00000000
+37092.9244 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +62.2 us W data0 00000000
+37093.0187 R data0 31333303 n=3 b'331' | +29.9 us R data1 00000000 | +62.3 us W data0 00000000
+37093.1114 R data0 00732002 n=2 b' s' | +30.0 us R data1 00000000 | +62.0 us W data0 00000000
+37093.2031 R data0 000a0d02 n=2 b'\r\n' | +30.2 us R data1 00000000 | +62.4 us W data0 00000000
+37204.9439 R data0 74707507 n=7 b'uptime ' | +30.0 us R data1 20656d69 | +62.7 us W data0 00000000
+37205.0379 R data0 32333303 n=3 b'332' | +30.3 us R data1 00000000 | +62.6 us W data0 00000000
+37205.1306 R data0 00732002 n=2 b' s' | +28.4 us R data1 00000000 | +59.9 us W data0 00000000
+37205.2206 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.1 us W data0 00000000
+37316.9490 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +62.6 us W data0 00000000
+37317.0438 R data0 33333303 n=3 b'333' | +29.8 us R data1 00000000 | +62.4 us W data0 00000000
+37317.1365 R data0 00732002 n=2 b' s' | +30.8 us R data1 00000000 | +62.7 us W data0 00000000
+37317.2294 R data0 000a0d02 n=2 b'\r\n' | +30.4 us R data1 00000000 | +62.2 us W data0 00000000
+37428.9971 R data0 74707507 n=7 b'uptime ' | +29.9 us R data1 20656d69 | +62.7 us W data0 00000000
+37429.0914 R data0 34333303 n=3 b'334' | +30.2 us R data1 00000000 | +62.7 us W data0 00000000
+37429.1848 R data0 00732002 n=2 b' s' | +28.8 us R data1 00000000 | +59.8 us W data0 00000000
+37429.2752 R data0 000a0d02 n=2 b'\r\n' | +29.0 us R data1 00000000 | +60.6 us W data0 00000000
+37541.0958 R data0 74707507 n=7 b'uptime ' | +29.2 us R data1 20656d69 | +61.4 us W data0 00000000
+37541.1888 R data0 35333303 n=3 b'335' | +29.8 us R data1 00000000 | +62.2 us W data0 00000000
+37541.2815 R data0 00732002 n=2 b' s' | +30.3 us R data1 00000000 | +62.1 us W data0 00000000
+37541.3742 R data0 000a0d02 n=2 b'\r\n' | +29.4 us R data1 00000000 | +60.8 us W data0 00000000
+37653.1214 R data0 74707507 n=7 b'uptime ' | +29.7 us R data1 20656d69 | +63.1 us W data0 00000000
+37653.2165 R data0 36333303 n=3 b'336' | +29.6 us R data1 00000000 | +61.6 us W data0 00000000
+37653.3082 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +61.3 us W data0 00000000
+37653.4007 R data0 000a0d02 n=2 b'\r\n' | +29.9 us R data1 00000000 | +62.1 us W data0 00000000
+37765.1238 R data0 74707507 n=7 b'uptime ' | +30.2 us R data1 20656d69 | +63.6 us W data0 00000000
+37765.2184 R data0 37333303 n=3 b'337' | +29.7 us R data1 00000000 | +62.9 us W data0 00000000
+37765.3109 R data0 00732002 n=2 b' s' | +29.6 us R data1 00000000 | +60.9 us W data0 00000000
+37765.4024 R data0 000a0d02 n=2 b'\r\n' | +29.3 us R data1 00000000 | +61.2 us W data0 00000000
+37877.1408 R data0 74707507 n=7 b'uptime ' | +29.2 us R data1 20656d69 | +61.4 us W data0 00000000
+37877.2340 R data0 38333303 n=3 b'338' | +29.4 us R data1 00000000 | +61.0 us W data0 00000000
+37877.3258 R data0 00732002 n=2 b' s' | +30.4 us R data1 00000000 | +62.4 us W data0 00000000
+37877.4183 R data0 000a0d02 n=2 b'\r\n' | +29.8 us R data1 00000000 | +61.2 us W data0 00000000
+
+## after the polling phase: every frame (0)

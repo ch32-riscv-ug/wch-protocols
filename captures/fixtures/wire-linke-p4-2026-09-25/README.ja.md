@@ -164,10 +164,14 @@ repo に置いているのは、仕様（[link-to-target](../../../protocols/lin
 | `l103/redo_redetect_0_reset` → `_1_after_reset` → `_2_again` → `_3_status_then_redetect` | クロックスケッチを焼いて reset した後、**USB `81 0d 01 03`（RedetectChip）だけ**を LinkE に直接送る（`tools/redetect.py`、ch32rv を通さない。`.ndjson` は無い）。3 は `81 0d 01 ff` の後に送る | RedetectChip の線上の動作(pc-to-link §4) |
 | `l103/dmiop_*` | 下の「RedetectChip の後の DmiOp」 | RedetectChip の後の DmiOp が target に届かないこと(pc-to-link §4) |
 
-- L103 の `.dmi.txt` / `.mem.txt` は `SPLIT=two DEBOUNCE=3` で作った。`monitor_sdi` の `.dmi.txt`（85 MB）は置いていない（ツールで再生成できる）。
-  その 49〜52 clock の frame は、**25 MHz の収録で clock が落ちた DMDATA0 の読み出し**だった（`captures/tools/rvswd.py` で解読。
-  LinkE は約 29 µs ごとに poll し、0 以外を読むと DATA0 に 0 を書いて受領を返す）。
-- L103 の `monitor_sdi` は `--duration 4` なのに 34.8 s 動いた。その `.sr` は 76 MB。
+- L103 の `.dmi.txt` / `.mem.txt` は `SPLIT=two DEBOUNCE=3` で作った。ただし `monitor_sdi` の `.dmi.txt` は別の作り方の要約(下)。
+- `more/l103/monitor_sdi.dmi.txt`(158 KB)は `cd captures && uv run python tools/rvswd_sdi_monitor.py fixtures/wire-linke-p4-2026-09-25/more/l103/monitor_sdi.sr` の出力(`.sr` を chunk ごとに読む `tools/rvswd_stream.py` で復号。約 5 分、最大 RSS 約 380 MB)。全 frame を 1 行ずつ出すと 85 MB になるので、poll の数と間隔、0 以外の DMDATA0 の読出しごとの続き、mailbox が運んだ文字列、poll 以外の frame の全部だけを書く。中身:
+  - 1,281,852 frame。接続の列(320 frame、125.8 ms まで)の後は、最後まで R data0 / R data1 / W data0 だけ。DMDATA0 の読出しは 1,279,392 回、うち 0 以外は 1,352 回。
+  - 連続する DMDATA0 の読出しの間隔は中央値 29.52 µs(1〜99 % 点 28.80〜30.40 µs)。0 以外を読んだときは R data1 と W data0 が挟まり、次の poll まで約 90〜96 µs。
+  - 0 以外の DMDATA0 を読むと、**文字数(低 byte)に関係なく**、約 30 µs 後に DMDATA1 を読み、約 62 µs 後に DMDATA0 へ 0 を書く(n = 1 / 2 / 3 / 7 の 1,352 回すべて)。
+  - 例: `74707507`(7 文字、"upt")+ DATA1 `20656d69`("ime ")、`000a0d02`(2 文字、"\r\n")。mailbox の文字を並べると `uptime 1 s` から `uptime 338 s` までの 338 行で、1 行は約 112 ms ごとに出る(収録の `monitor_sdi.json` の stdout は host が CDC から受け取った分で、`uptime 2 s` から `42 s` まで)。
+  - 25 MHz では poll の clock の high が 3〜7 sample しかないので、bit clock に hold filter を掛けない(START / STOP には 3 sample)。10 s 目からの 0.3 s で比べると、2 sample の filter では約 0.2 % の frame が 52 clock に、3 sample ではほぼ全部が 46〜52 clock になる(clock が落ちる)。filter なしでは全部が 53 clock の frame として読め、STOP を見落として 2 frame がつながった 107〜114 clock の frame(577 個、どちらの半分も parity の合う R data0 / R data1 / W data0)と、途中で START / STOP を誤検出して 13 / 14 + 39 clock に割れた frame(5 組)だけが残る。
+- L103 の `monitor_sdi` は `--duration 4` なのに 34.8 s 動いた。その `.sr` は 76 MB(展開すると 950 MB)。
 
 ### 分かったこと（L103）
 

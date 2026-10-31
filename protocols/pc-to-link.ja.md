@@ -254,7 +254,7 @@ option bytes は通常の page と手順が違う(専用の unlock と OPTPG/OPT
 | 経路 | 機構 | status |
 |---|---|---|
 | SerialDMDATA | host が DMI で DMDATA0(`0x04`)/DMDATA1(`0x05`)を polling。target→host frame: data0 低 byte=`0x80\|(count+4)`、上位 3B+data1=payload。ACK は data0 に host 入力(bit7 クリア)を書く。**core は running のまま**(attach の後に resume が要る) | `verified`(LinkE 2.22、V203 で連続受信) |
-| SDI print | 下の表の enable を送ると、LinkE が DMDATA0 を約 29 µs ごとに読み、文字を CDC へ forward する([link-to-target](link-to-target.ja.md) §5)。LinkE 専用 | `verified`(LinkE 2.22、V203 / L103) |
+| SDI print | 下の表の enable を送ると、LinkE が DMDATA0 を約 29.5 µs ごとに読み、文字を CDC へ forward する([link-to-target](link-to-target.ja.md#sdi-monitor))。LinkE 専用 | `verified`(LinkE 2.22、V203 / L103) |
 | UART bridge | probe の CDC port を読むだけ(物理 UART 配線が要る)。flash の直後に CDC の配送が止まることがあり、port を開き直すと戻る | `verified`(LinkE、ArduinoCore-CH32RV の実機ログ) |
 
 <!-- BEGIN generated:wchlink-commands section=8 -->

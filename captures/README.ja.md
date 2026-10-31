@@ -53,11 +53,14 @@ uv run python tools/rvswd.py fixtures/wire-linke-p4-2026-09-25/l103/target_info.
 uv run python tools/rvswd.py --k 1 --k-frame 3 fixtures/wire-linke-p4-2026-09-25/v203-100mhz/target_info.sr   # V203 100 MHz
 uv run python tools/swio.py fixtures/wire-linke-p4-2026-09-25/v003/target_info.sr         # SWIO(V003)
 uv run python tools/linke_repeat_compare.py l103 target_info read_ram_256
+uv run python tools/rvswd_sdi_monitor.py fixtures/wire-linke-p4-2026-09-25/more/l103/monitor_sdi.sr   # 長い SDI monitor の要約(約 5 分、約 400 MB)
 ```
 
 - `tools/rvswd.py`: RVSWD を **START/STOP で区切って**復号する。1 行 1 frame で、short(53 clock)は R/W・番地・値・parity、long(85 clock)は host/target 位相、burst(15+38N clock)は各 word を出す。`memory_log()` は abstract command を memory / register access にまとめる。
   - 区切りの条件と、空き時間で区切る方式の問題は [link-to-target](../protocols/link-to-target.ja.md) §3。
   - `--k` は bit clock の hold filter で、既定 3 sample。V203 100 MHz では 1 にする。START/STOP の判定だけに使う filter は `--k-frame` で、V203 100 MHz では 3 にする。
+- `tools/rvswd_stream.py`: rvswd.py と同じ復号を、`.sr` の chunk を順に読んで窓ごとに行う。rvswd.py はファイル全体を memory に載せるので、25 MHz で 38 s(950 MB)のような長い収録はこちらで読む。出力の行は rvswd.py と同じ(frame 数の行は最後に出る)。
+- `tools/rvswd_sdi_monitor.py`: SDI monitor の収録を rvswd_stream.py で読み、poll の数と間隔、DMDATA0 が 0 以外のときの続き(DMDATA1 の読出し、DMDATA0 への書込み)、mailbox が運んだ文字列、poll 以外の frame の全部を短い text にする。既定の hold filter は bit clock に無し、START / STOP に 3 sample。
 - `tools/swio.py`: SWIO の LOW パルス幅を 500 ns で 0/1 に分け、4 µs の空きで区切る。41 / 33 パルスを復号する。
 - `tools/linke_speed_table.py`: `extra/<target>/speed_{high,medium,low}_*` から、速度設定ごとの SWCLK 周期(RVSWD)と SWIO のパルス幅を出す。
 - `rvswd.load()` は unitsize 1 / 2、複数 chunk の `.sr`、単位付きの samplerate(`50 MHz`)を読めるので、09-11 fixture の `wire-x035.sr` もそのまま読める。

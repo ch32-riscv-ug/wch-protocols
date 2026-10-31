@@ -1,4 +1,4 @@
-35372499d05019a0eb16d380b64aa073ad8005efb332d018df68b0e4d8741745  ./README.ja.md
+97e5b664d240a4ee4fd54aa51ebab8afcb82f2bd367bb650a05acbbbb03574d9  ./README.ja.md
 01642396996d28a06a3d7565ee00063e5953f7fb2710b0fce848898ae07046ab  ./extra/l103/clock_dbg_halt.dmi.txt
 f64a297c957be0a127e15a3dc0efc8ab3a9536d31c7b416807ecb62bcff68a0e  ./extra/l103/clock_dbg_halt.json
 bb7f70b3ccb14084527c2579769d2c6078fd106ae1ba262ba36747f6c26a3c70  ./extra/l103/clock_dbg_halt.mem.txt
@@ -541,6 +541,7 @@ df3fb58446e654844726c1d5c7f1b907111924300a445c773c14152788175935  ./more/l103/dm
 07201415de351cbc9d50afc8d2ab92c95d808b200777c8e00d800d14d3cae3b1  ./more/l103/dmiop_5_redetect_dmactive_then_dmi.json
 5eb4cf688e7096a5cc93e24177f066a21611c296ae30b515ffa4c36e08094114  ./more/l103/dmiop_5_redetect_dmactive_then_dmi.mem.txt
 817447d01f7b7cd2adad535821ab08d023edce7bf28fefcbf96b4cc784cb2b4c  ./more/l103/dmiop_5_redetect_dmactive_then_dmi.sr
+a1637610bfc6478b6000850a2aaada1a27ba5990c08e36b044d71ccda349a200  ./more/l103/monitor_sdi.dmi.txt
 e3fe970f61468efc8d55b78a27f8dfa2f2bbf9eb576d11468dcceb6830df39ab  ./more/l103/monitor_sdi.json
 8b74a140a79d85e30e80b127e60690c6d180f12c435ce561518b8ddd960e964f  ./more/l103/monitor_sdi.ndjson
 c0ca1a807a826a1a5cfd6447d491a6ecaf6e7659496f36ccc60b94566edcb081  ./more/l103/monitor_sdi.sr
