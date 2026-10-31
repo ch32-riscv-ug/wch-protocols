@@ -14,13 +14,13 @@
 | **experiment** | 自作 firmware を焼いて得る数値・閾値・性能 | **一回性**。結果が成果物 | **明示指定でのみ**走る(§1.3) |
 | **test** | 仕様どおり動き続けること | **恒久**。通り続けることが成果物 | まとめて走る |
 
-置き場所: capture と experiment は**この repo**(`captures/` と `experiments/`)、test は実装側(`ch32rv-probe/tests/`)。
+置き場所: capture と experiment は**この repo**(`captures/` と `experiments/`)、test は実装側の repo(ch32rv、[oep-probe-arduino](https://github.com/Open-Embedded-Probe/oep-probe-arduino) など)。
 
 **experiment と test は道具もディレクトリ形も同じだが目的が逆**。experiment は「答えが出たら終わり」、test は「落ちたら困る」。混ぜると、答えの出た実験が CI を無駄に縛り、回帰テストが台帳を汚す。
 
 **実験は台帳と同じ repo に置く**。理由は 3 つ: (a) 候補の多く(`linke-error-frame` / `isp-xor-key` / `iap-order` / `dap-mode`)は既存装置の観測で、実装側 repo と無関係。(b) 計画・コード・結果・台帳が repo を跨ぐと、参照に sha を打つ運用が要る。(c) この repo は既に `captures/` で証拠を持っており、実験はその延長。
 
-**回帰テストだけは実装側**(`ch32rv-probe/tests/`)に置く。ライブラリと同じ寿命だから。CH32RVProbe firmware を使う実験は、**隣に clone してある実装 repo のパスを `.env` の `TEST_CH32RVPROBE_DIR` で受け取り**、`sketch.yaml` の `libraries: dir:` へ渡す(パスは環境固有なので §4.1 の原則どおり `.env` に入る)。
+**回帰テストだけは実装側**の repo に置く。ライブラリと同じ寿命だから。CH32RVProbe firmware を使う実験は、**隣に clone してある実装 repo のパスを `.env` の `TEST_CH32RVPROBE_DIR` で受け取り**、`sketch.yaml` の `libraries: dir:` へ渡す(パスは環境固有なので §4.1 の原則どおり `.env` に入る)。
 
 ## 1. 置き場所
 
@@ -259,13 +259,13 @@ TEST_LINKE_PORT=/dev/ttyACM2
 
 | 用途 | 判断 | 理由 |
 |---|---|---|
-| **probe 内の loopback phy**(実際の線を出さず、DMI トランザクションに定型応答を返す疑似 phy) | **まずこれをやる** | ボードが 1 台で済み、**DMI status の fail / busy、無応答、CRC 誤りを任意に注入できる**。transport・多重化・コマンド層([dmi-bridge](../protocols/dmi-bridge.ja.md) §2–§4、`batch`、`tag` 再送、event)はここで全部測れる。実チップでは誤りを狙って起こせない |
+| **probe 内の loopback phy**(実際の線を出さず、DMI トランザクションに定型応答を返す疑似 phy) | **まずこれをやる** | ボードが 1 台で済み、**DMI status の fail / busy、無応答、CRC 誤りを任意に注入できる**。transport・多重化・コマンド層([dmi-bridge](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) §2–§4、`batch`、`tag` 再送、event)はここで全部測れる。実チップでは誤りを狙って起こせない |
 | 実 target(V003 / V307 …) | **線層と性能はこれで** | 線の実波形・タイミング・実書込時間は実チップでしか測れない |
 | 線を喋る dummy target(2 台目が SWIO/RVSWD の target 側を演じる) | **保留**(当面やらない) | target 側は読出し位相で厳しいタイミングを守る必要があり、**実装コスト**が線層の実験そのものと同程度。ただし**配線コストはゼロと確認済み** — 既設 peer 対は GPIO19↔19 / 20↔20 の 2 線が双方向に繋がっており、RVSWD(SWCLK + SWDIO)と形が一致する(E003)。判断は実装コストだけの問題になった |
 | ボードを LA 代わりに使う | **やらない** | サンプルレートと同時取得数で専用機に及ばない。LA は安価 |
 | target UART へ既知の系列を流す peer | **必要になったら**(uart bridge の実験) | 安く、実装も小さい |
 
-**線引きは「線を含むか」で引く。** 線を含まない層は loopback phy で 1 台のまま徹底的に測り、線を含む層だけ実チップ + LA を用意する。この分業なら、回帰([dmi-bridge](../protocols/dmi-bridge.ja.md) §8.1 の Core / Bulk 相当)を**ボード 1 台で CI に載せられる**。
+**線引きは「線を含むか」で引く。** 線を含まない層は loopback phy で 1 台のまま徹底的に測り、線を含む層だけ実チップ + LA を用意する。この分業なら、回帰([dmi-bridge](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) §8.1 の Core / Bulk 相当)を**ボード 1 台で CI に載せられる**。
 
 #### 板は他 session とも共有している。焼く前に何が載っているか確かめる
 
@@ -425,7 +425,7 @@ status 語彙([../README.md](../README.md))と対応させる。**自己申告�
 9. **device lock を切らない。** 複数 board を並べるベンチでは `--device-lock`(既定 `auto`)に任せ、port を直書きしない。機材は他プロジェクトと共有なので、**待たされるのは正常**。timeout はその待ちを見込む。
 10. **開始時刻は握手で合わせる。固定待ちで合わせない。** reset 後いつからシリアルが流れ始めるかは **board 依存**で、監視が接続するのも reset の**1 秒以上あと**になりうる(E002 では ESP32-S3 + CH340 で `setup()` の出力が確定的に失われた)。`sleep` で待つ設計は、board を替えた瞬間に壊れる。使う型は次の 2 つだけ:
 
-    - **(A) PING-PONG(host 起点)** — host が trigger を撃ち、応答が来るまで**再送**する。board は常に受信待ちにしておく。E004 で 3/3・**1 発**で成立。[dmi-bridge §4.1](../protocols/dmi-bridge.ja.md) の `hello` と同じ形なので、実験コードがそのまま protocol の最小形になる。**既定はこちら。**
+    - **(A) PING-PONG(host 起点)** — host が trigger を撃ち、応答が来るまで**再送**する。board は常に受信待ちにしておく。E004 で 3/3・**1 発**で成立。[dmi-bridge §4.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の `hello` と同じ形なので、実験コードがそのまま protocol の最小形になる。**既定はこちら。**
     - **(B) ready 通知 + 開始指示(board 起点)** — board が初期化完了を**定期的に**流し、host はそれを見てから開始を指示する。初期化に時間がかかる / 受信を始められるまでに間がある board で使う。
 
     どちらも「相手が用意できたこと」を観測してから進む。**時間を待つのではなく、事実を待つ。**
@@ -446,5 +446,5 @@ status 語彙([../README.md](../README.md))と対応させる。**自己申告�
 - 実験台帳: [LEDGER.ja.md](LEDGER.ja.md)
 - 既存装置の capture 規則: [../captures/README.ja.md](../captures/README.ja.md)
 - 穴の一覧と優先順: [../coverage.ja.md](../coverage.ja.md)
-- 測る対象の仕様: [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md) / [../protocols/link-to-target.ja.md](../protocols/link-to-target.ja.md)
-- 回帰テストの置き場所(実装側): `ch32rv-probe/tests/`
+- 測る対象の仕様: [../protocols/link-to-target.ja.md](../protocols/link-to-target.ja.md)。自前の probe protocol の draft(`dmi-bridge.ja.md`)は削除した([削除前の版](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))。後継は [OEP](https://github.com/Open-Embedded-Probe/oep-spec)
+- 回帰テストの置き場所: 実装側の repo(当初の予定にあった `ch32rv-probe` は作られず、probe firmware は oep-probe-arduino になった)

@@ -195,7 +195,7 @@ host → probe:  'A'  'B'  <cmd>  <hex params…>  '#'  <checksum 2 char>
 | **GDB server** | host 側。ch32rv `gdb`(P1)がある |
 | **semihosting** | host 側。ch32rv `run` にある |
 | **factory ISP / WCH IAP** | **firmware 不要**。ch32rv の `isp` / `boot` route |
-| **CRC32 による verify 加速** | **新コマンド不要**。[dmi-bridge §4.3](../protocols/dmi-bridge.ja.md) のとおり **stub の load/起動/回収は全部 DMI read/write** なので `batch` で表現できる。Swindle の `ch32v3x_crc32.stub` がそのまま参考になる |
+| **CRC32 による verify 加速** | **新コマンド不要**。[dmi-bridge §4.3](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) のとおり **stub の load/起動/回収は全部 DMI read/write** なので `batch` で表現できる。Swindle の `ch32v3x_crc32.stub` がそのまま参考になる |
 | **UF2 で自分の firmware を配る** | **RP2040 内蔵 BOOTSEL**。ゼロコストで **R-c(保守を自分の手に)が満たされる** |
 | **serial に chip UID を載せる** | RP2040 の flash unique ID を読むだけ。**識別(H-001/006)が満たされる** |
 
@@ -204,7 +204,7 @@ host → probe:  'A'  'B'  <cmd>  <hex params…>  '#'  <checksum 2 char>
 | 広がる先 | 追加コスト | 得るもの |
 |---|---|---|
 | **BMP RISC-V RPC 互換モード** ★ | **3 コマンド(`S`/`r`/`w`)+ ASCII parser 1 本** | **下記 §6.B★** |
-| **ardulink 互換モード** | 6 byte protocol、5 コマンド。**[dmi-bridge §7](../protocols/dmi-bridge.ja.md) で既に設計済み** | **minichlink が day 1 で使える** |
+| **ardulink 互換モード** | 6 byte protocol、5 コマンド。**[dmi-bridge §7](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) で既に設計済み** | **minichlink が day 1 で使える** |
 | **1 線 SWIO phy を足す** | **PIO プログラム 1 本(~16 命令)**。2 線を書くなら同じ枠内 | **`both` の series(V00x / M007 / M030 / M103 / V205 / V407 / V467 / X305 / X315 / H41x)で線を選べる** → [定義 §5.5](harness-tool-definition.ja.md) の「1 線を選ぶと pad が空く」レバーが使える |
 | **NRST + 電源制御** | **GPIO 1〜2 本 + FET** | **unbrick(power-off erase)が付いてくる**。いまは **LinkE/LinkW 専用機能** |
 | **複数 lane(L3)** | **SM を増やすだけ。命令メモリは共有**([probe-pattern-coexistence §2](probe-pattern-coexistence.ja.md))。`lane` は既にヘッダにある | 教室・小ロット |
@@ -228,13 +228,13 @@ host → probe:  'A'  'B'  <cmd>  <hex params…>  '#'  <checksum 2 char>
 | **BMP-RV RPC** | **`0x41`(`'A'`)** |
 | ardulink | `0x3F` `?` / `0x77` `w` / `0x72` `r` / `0x70` `p` / `0x50` `P` |
 
-→ **重複なし。[dmi-bridge §7](../protocols/dmi-bridge.ja.md) の「受信 1 byte 目で自動判別」がそのまま 3 つに拡張できる。**
+→ **重複なし。[dmi-bridge §7](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の「受信 1 byte 目で自動判別」がそのまま 3 つに拡張できる。**
 
 ### 6.C 条件付き — board を選べば無理が無い
 
 | 広がる先 | 条件 | 備考 |
 |---|---|---|
-| **IP transport(L2)** | **Pico W / ESP32 系**の build | **protocol 側は既に transport 非依存**([dmi-bridge §2](../protocols/dmi-bridge.ja.md) の L1 adapter)。**実装は board 依存の別 build** |
+| **IP transport(L2)** | **Pico W / ESP32 系**の build | **protocol 側は既に transport 非依存**([dmi-bridge §2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の L1 adapter)。**実装は board 依存の別 build** |
 | **深いキャプチャ** | **ESP32-S3**(LCD_CAM + PSRAM) | [harness-board-survey §2.3](harness-board-survey.ja.md)。別 build |
 | **5V target** | **CH32X03x** を probe にする build | X03x は VDD 2〜5.5 V。RP2040 では不可 |
 

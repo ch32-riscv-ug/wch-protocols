@@ -33,7 +33,7 @@
 
 **BL がやっているのは「USB で列挙して、送られてきたコードを RAM で走らせる」ことだけ。書込アルゴリズムすら BL には無い。**
 
-これは [dmi-bridge の設計原則 1](../protocols/dmi-bridge.ja.md)「**probe は chip を知らない**」と同じ構造で、**BL も chip を知らない**。だから **新 chip・新しい書込手順への対応は host の更新だけで済む**。既に host 実装が 3 つある(minichlink / rv003usb-webflasher / WebLink_USB)のもこの設計のおかげ。
+これは [dmi-bridge の設計原則 1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)「**probe は chip を知らない**」と同じ構造で、**BL も chip を知らない**。だから **新 chip・新しい書込手順への対応は host の更新だけで済む**。既に host 実装が 3 つある(minichlink / rv003usb-webflasher / WebLink_USB)のもこの設計のおかげ。
 
 ## 2. どれくらい限界なのか(数字)
 
@@ -486,5 +486,5 @@ L265–266 は `#ifdef` に一切囲まれていない(L237–251 の button ブ
 - **BOOT 領域の番地・サイズ・jump 遅延・切替レジスタ・app 側 updater**: [../protocols/custom-bootloader.ja.md §2a](../protocols/custom-bootloader.ja.md)
 - BL 設計空間(entry 方式・trial boot・内蔵ライタ): [bootloader-design-space.ja.md](bootloader-design-space.ja.md)
 - PID 体系と役割の申告: [builtin-probe-and-self-update.ja.md](builtin-probe-and-self-update.ja.md)
-- 「知識を host に置く」という同型の設計: [../protocols/dmi-bridge.ja.md §0](../protocols/dmi-bridge.ja.md)
+- 「知識を host に置く」という同型の設計: [../protocols/dmi-bridge.ja.md §0](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)
 - 一次ソース: [rv003usb](https://github.com/cnlohr/rv003usb)(`README.md` / `bootloader/README.md` / `bootloader/bootloader.c` / `bootloader/ch32v003fun-usb-bootloader.ld` / `demo_terminal/`)、[ch32_user_bootloader_flasher](https://github.com/monte-monte/ch32_user_bootloader_flasher)

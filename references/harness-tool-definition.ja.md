@@ -7,7 +7,7 @@
 |---|---|
 | 何の道具か / 何の問題を解くか / **他では解決できない強み** / 幅 / **方向性の候補** | PID の軸・既存 protocol 対応・profile の粒度 → [harness-choices.ja.md](harness-choices.ja.md) |
 | — | 要求の一覧 → 各 repo(`H-nnn` / `B-nnn` / ライタ `0006`)。所在は [harness-index.ja.md](harness-index.ja.md) |
-| — | byte レベルの仕様 → [dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md) |
+| — | byte レベルの仕様 → [dmi-bridge.ja.md](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) |
 
 > **順序を逆にしない。** 要求は 143 + 7 件、相反は 13 件ある。**個々を裁く前に「何の道具か」が共有されていないと裁定の基準が無い。** 逆に方向性が決まれば、PID の方針・profile の下端・作る順序・相反の多くは**そこから導かれる**(§6)。
 
@@ -131,7 +131,7 @@
 
 ### 5.2 ② ch32rv が対応すればある程度解決すること
 
-**chip 知識が host 側にある**([設計原則 1](../protocols/dmi-bridge.ja.md))ので、**口を足すだけで既存 firmware がまとめて使えるようになる**。ch32rv には継ぎ目(`DtmAccess` trait)と枠(`ch32rv-probe-<name>`、**P2 で予約**、ardulink / funprog / NHC-Link042 が名指し)が既にある。
+**chip 知識が host 側にある**([設計原則 1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))ので、**口を足すだけで既存 firmware がまとめて使えるようになる**。ch32rv には継ぎ目(`DtmAccess` trait)と枠(`ch32rv-probe-<name>`、**P2 で予約**、ardulink / funprog / NHC-Link042 が名指し)が既にある。
 
 | 課題 | ch32rv が口を足すと |
 |---|---|
@@ -313,7 +313,7 @@
 | **N5** | 同梱アップローダになること | コアの既定(同梱は 1 本に絞る)を動かさない |
 | **N6** | 全 series を書ける書込器としての完成 | 線層が `attested` 止まり。**そこは L10 で先に埋める** |
 | **N7** | host からバス転送を返す形 | SPI / UART は待たせる手段が無く原理的に不可 |
-| **N8** | chip 固有知識を firmware に入れること | [設計原則 1](../protocols/dmi-bridge.ja.md)。**ただし「演じるデバイスの知識」は別問題**(相反 C-1) |
+| **N8** | chip 固有知識を firmware に入れること | [設計原則 1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)。**ただし「演じるデバイスの知識」は別問題**(相反 C-1) |
 
 ---
 
@@ -461,5 +461,5 @@
 - 構想の本体(ピン割当・trigger・family 衝突表): [dut-harness-design.ja.md](dut-harness-design.ja.md)
 - board 別の到達範囲: [harness-board-survey.ja.md](harness-board-survey.ja.md)
 - パターン共存(書込のみ / 複数 / +LA): [probe-pattern-coexistence.ja.md](probe-pattern-coexistence.ja.md)
-- protocol の土台: [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)
+- protocol の土台: [../protocols/dmi-bridge.ja.md](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)
 - 要求の正本: コア `docs/harness-requirements.ja.md`(`H-nnn` / `C-n`)/ ベンチ `docs/HARNESS_REQUESTS.ja.md`(`B-nnn`)/ ライタ `docs/data-requests/0006-harness-integration.ja.md`

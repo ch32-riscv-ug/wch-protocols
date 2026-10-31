@@ -144,7 +144,7 @@ EVT から読み取れる実体([`SRC/Peripheral/inc/PIOC_SFR.h`](https://github
 
 ### 2.7 G. 電気 — 5 V target なら CH32X03x だけ
 
-CH32X035/X033 は **VDD 2–5.5 V**。V003(3.3/5.0 V 動作)や 5 V 系の target を**レベル変換なしで直結できる**のはこの 2 つだけ。RP2040/RP2350/ESP32-S3 は 3.3 V で 5 V 非トレラントなので、[dmi-bridge §8.2](../protocols/dmi-bridge.ja.md) の「5 V board は SWIO のみ(open-drain だから直列抵抗で足りる)」の制約がそのままかかる。
+CH32X035/X033 は **VDD 2–5.5 V**。V003(3.3/5.0 V 動作)や 5 V 系の target を**レベル変換なしで直結できる**のはこの 2 つだけ。RP2040/RP2350/ESP32-S3 は 3.3 V で 5 V 非トレラントなので、[dmi-bridge §8.2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の「5 V board は SWIO のみ(open-drain だから直列抵抗で足りる)」の制約がそのままかかる。
 
 ### 2.8 RP2350 の errata E9 — LA 用途では致命的になりうる
 
@@ -245,7 +245,7 @@ CH32X035/X033 は **VDD 2–5.5 V**。V003(3.3/5.0 V 動作)や 5 V 系の targe
 |---|---|
 | CH32V003 | software USB(low-speed HID、timing 制約)。**PIOC が無い**。初回書込に別 programmer が要る |
 | Tiny2040 / XIAO RP2040 等 | 出ているピンが 11–12 本で窓が作れない |
-| Arduino Uno(AVR) | 5 V SWIO の bootstrap 専用。キャプチャもエミュも成立しない([dmi-bridge §8.2](../protocols/dmi-bridge.ja.md)) |
+| Arduino Uno(AVR) | 5 V SWIO の bootstrap 専用。キャプチャもエミュも成立しない([dmi-bridge §8.2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)) |
 
 ## 4. 用途別の推奨
 
@@ -298,6 +298,6 @@ host ───┤ RP2040-Zero  ├───────────────�
 - 構想側(何をやりたいか・ピン割当・family 衝突表): [dut-harness-design.ja.md](dut-harness-design.ja.md)
 - probe パターンの共存(書込のみ / 複数 / +LA): [probe-pattern-coexistence.ja.md](probe-pattern-coexistence.ja.md)
 - 汎用 probe と transport の比較: [generic-probe-design.ja.md](generic-probe-design.ja.md)
-- protocol(caps で能力を申告する仕組み): [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)
+- protocol(caps で能力を申告する仕組み): [../protocols/dmi-bridge.ja.md](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)
 - 自 repo の実測: [E005 クロック同期キャプチャ](../experiments/e005_tool_clocked_capture/README.ja.md) / [E006 パルス幅生成・測定](../experiments/e006_tool_pulse_capture/README.ja.md) / [E003 peer 対の結線](../experiments/e003_smoke_peer/README.ja.md)
 - 一次資料: CH32X035 RM 第 22 章(PIOC)/ CH32X035DS0(型番表)/ EVT `EXAM/PIOC/`(ASM 例)/ [RP2350 errata E9(Raspberry Pi 公式フォーラム)](https://forums.raspberrypi.com/viewtopic.php?t=375631) / [ESP32-S3 datasheet](https://cdn-shop.adafruit.com/product-files/5477/esp32-s3_datasheet_en.pdf) / [ESP-IDF ADC 連続モード](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/adc/adc_continuous.html) / [esp-hal lcd_cam::cam](https://docs.espressif.com/projects/rust/esp-hal/1.0.0-rc.1/esp32s3/esp_hal/lcd_cam/cam/index.html)

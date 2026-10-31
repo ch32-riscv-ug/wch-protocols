@@ -1,3 +1,0 @@
-flashed 736 bytes to CH32L103
-erase:   chip
-verify:  OK (readback matches)

@@ -1,3 +1,0 @@
-flashed 1812 bytes to CH32V003
-erase:   chip
-verify:  OK (readback matches)

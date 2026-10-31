@@ -1,16 +1,16 @@
 # ビルドイン型 probe と「自己書換え」の capability 化 — PID を増やさずに役割を名乗る
 
-状態: **検討メモ**(方針。実装は未)。[ecosystem-any-hardware.ja.md §4](ecosystem-any-hardware.ja.md) の VID/PID 方針と [bootloader-design-space.ja.md §6b](bootloader-design-space.ja.md) の内蔵ライタ MCU を、[dmi-bridge](../protocols/dmi-bridge.ja.md) の `caps` の上で繋ぐ。
+状態: **検討メモ**(方針。実装は未)。[ecosystem-any-hardware.ja.md §4](ecosystem-any-hardware.ja.md) の VID/PID 方針と [bootloader-design-space.ja.md §6b](bootloader-design-space.ja.md) の内蔵ライタ MCU を、[dmi-bridge](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の `caps` の上で繋ぐ。
 
 ## 0. 結論(先に)
 
 1. **PID を分ける基準は「descriptor(interface 構成)が違うか」であって「役割が違うか」ではない。** [ecosystem §4.3](ecosystem-any-hardware.ja.md) の Windows driver cache の制約は **descriptor が変わるときだけ**効く。外付け probe / 内蔵ライタ / 自己書換えは **descriptor が同一**なので、**1 PID で全部覆える**。役割は `caps` が名乗る。
-2. これは新しい原則ではなく、**既にある原則の適用範囲を 1 軸広げるだけ**。[dmi-bridge 設計原則 4](../protocols/dmi-bridge.ja.md):「**正体判定は handshake で行う。USB VID/PID は候補を絞るフィルタにすぎない**」。[ecosystem §5-1](ecosystem-any-hardware.ja.md) が未決にしていた「backend の capability 宣言の項目一覧」への回答でもある。
+2. これは新しい原則ではなく、**既にある原則の適用範囲を 1 軸広げるだけ**。[dmi-bridge 設計原則 4](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md):「**正体判定は handshake で行う。USB VID/PID は候補を絞るフィルタにすぎない**」。[ecosystem §5-1](ecosystem-any-hardware.ja.md) が未決にしていた「backend の capability 宣言の項目一覧」への回答でもある。
 3. **PID 節約より重い理由がある — pid.codes は「1 project 1 PID が原則」**([ecosystem §4.2b](ecosystem-any-hardware.ja.md))。**board の種類ごとに PID を取る運用はそもそも通らない。** caps で役割を名乗るのは、pid.codes の下で複数の役割を成立させる**唯一の方法**。
 4. 足すのは **2 項目だけ**:
    - **lane の `attach`** — その lane の向こう側に何があるか(`external` / `onboard` / `socket` / `self`)。
    - **probe の `self_update`** — 自分自身をどう書き換えられるか(`none` / `bootloader` / `in_place` / `peer`)+ **`recovery`**(失敗したときの逃げ道)。
-5. **X035(hardware USB)も V003(software USB)も同じ形で載る。** dmibridge が transport 非依存だから([dmi-bridge §2](../protocols/dmi-bridge.ja.md))。V003 の low-speed HID は §2.4 の HID adapter、X035 は CDC か HID。**host から見える差は `caps.mtu` と速度だけ**で、host のコードは 1 本。
+5. **X035(hardware USB)も V003(software USB)も同じ形で載る。** dmibridge が transport 非依存だから([dmi-bridge §2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))。V003 の low-speed HID は §2.4 の HID adapter、X035 は CDC か HID。**host から見える差は `caps.mtu` と速度だけ**で、host のコードは 1 本。
 6. **本命は PID 節約ではなく「host が何を守るべきか分かる」こと。** `attach=self` は「消去 = 自分を brick する」を意味する。役割が申告されていれば host が事前に止められる。
 
 ## 1. ビルドイン型 probe とは
@@ -62,7 +62,7 @@ PC ──USB── [内蔵ライタ MCU(probe firmware)] ──SWIO/RVSWD── 
 | firmware の版 | **分けない** | `bcdDevice`([§4.2](ecosystem-any-hardware.ja.md)) |
 | 個体 | **分けない** | serial string = chip UID([§4.2](ecosystem-any-hardware.ja.md)) |
 
-**この表の下 5 行がすべて「caps / string に逃がす」で埋まっているのは偶然ではない。** [dmi-bridge 設計原則 4](../protocols/dmi-bridge.ja.md) の「正体は handshake で判定、ID はフィルタ」がそのまま効いている。CMSIS-DAP が `0x6666` のような無主の VID でも生き延びたのは、識別を protocol 側の string に置いたからだった([ecosystem §4.2b](ecosystem-any-hardware.ja.md))— 同じ構造。
+**この表の下 5 行がすべて「caps / string に逃がす」で埋まっているのは偶然ではない。** [dmi-bridge 設計原則 4](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の「正体は handshake で判定、ID はフィルタ」がそのまま効いている。CMSIS-DAP が `0x6666` のような無主の VID でも生き延びたのは、識別を protocol 側の string に置いたからだった([ecosystem §4.2b](ecosystem-any-hardware.ja.md))— 同じ構造。
 
 ### 2.3 pid.codes の制約が決定打
 
@@ -76,7 +76,7 @@ PC ──USB── [内蔵ライタ MCU(probe firmware)] ──SWIO/RVSWD── 
 
 ### 3.1 lane の `attach` — 向こう側に何があるか
 
-[dmi-bridge §5.2](../protocols/dmi-bridge.ja.md) の lane 入れ子 TLV(`0x01 id` / `0x02 wires` / `0x03 features` / `0x04 uart_max_baud` / `0x05 label` / `0x10 pin`)に追加:
+[dmi-bridge §5.2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の lane 入れ子 TLV(`0x01 id` / `0x02 wires` / `0x03 features` / `0x04 uart_max_baud` / `0x05 label` / `0x10 pin`)に追加:
 
 | type | 項目 | 内容 |
 |---|---|---|
@@ -95,7 +95,7 @@ PC ──USB── [内蔵ライタ MCU(probe firmware)] ──SWIO/RVSWD── 
 
 ### 3.2 probe の `self_update` と `recovery`
 
-[dmi-bridge §5.2](../protocols/dmi-bridge.ja.md) の probe 全体 TLV(`0x01`–`0x0C`、`0x20 lane`)に追加:
+[dmi-bridge §5.2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の probe 全体 TLV(`0x01`–`0x0C`、`0x20 lane`)に追加:
 
 | type | 項目 | 内容 |
 |---|---|---|
@@ -151,7 +151,7 @@ lane0   rvswd GP14/GP15 → (external)   nrst=GP11   uart=GP0/GP1   "breakout"
 
 ## 4. X035 と V003 — 同じ形で載る
 
-内蔵ライタ MCU としての比較。**dmibridge が transport 非依存**([dmi-bridge §1–2](../protocols/dmi-bridge.ja.md))なので、両者は同じ protocol の別 adapter として繋がる。
+内蔵ライタ MCU としての比較。**dmibridge が transport 非依存**([dmi-bridge §1–2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))なので、両者は同じ protocol の別 adapter として繋がる。
 
 | | **CH32V003**(software USB) | **CH32X035 / X033**(hardware USB) |
 |---|---|---|
@@ -167,8 +167,8 @@ lane0   rvswd GP14/GP15 → (external)   nrst=GP11   uart=GP0/GP1   "breakout"
 
 **「X035 でも V003 でも使える」の根拠は 2 段**:
 
-1. **transport 層**: [dmi-bridge §2.2](../protocols/dmi-bridge.ja.md) の adapter 一覧に HID(境界あり・完全性あり)と CDC(境界なし・完全性なし)が両方ある。**L2 以上は 1 bit も変わらない**。
-2. **能力層**: 速度差・mtu 差は `caps` の数値。[dmi-bridge §8.2](../protocols/dmi-bridge.ja.md) が「`mtu` 64 / `max_inflight` 1 が正当な値であることを仕様が保証する限り、低資源 MCU への移植は firmware 側の作業だけで済む」と既に約束している。**V003 はその約束の受益者**。
+1. **transport 層**: [dmi-bridge §2.2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の adapter 一覧に HID(境界あり・完全性あり)と CDC(境界なし・完全性なし)が両方ある。**L2 以上は 1 bit も変わらない**。
+2. **能力層**: 速度差・mtu 差は `caps` の数値。[dmi-bridge §8.2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) が「`mtu` 64 / `max_inflight` 1 が正当な値であることを仕様が保証する限り、低資源 MCU への移植は firmware 側の作業だけで済む」と既に約束している。**V003 はその約束の受益者**。
 
 → **PID も host コードも 1 本のまま、$0.1 の V003 board と $0.4 の X035 board が同じエコシステムに並ぶ。** [ecosystem §2](ecosystem-any-hardware.ja.md) の連鎖 bootstrap(「既に書けた board が次の board の probe になる」)は、**どの board も同じ PID で probe を名乗る**ことで初めて成立する。
 
@@ -191,7 +191,7 @@ lane0  swio PD1 → CH32V006K8U6 (onboard, U1)    ← ch32rv flash --lane 0
 lane1  (self)   → CH32V003     (self, U2)       ← ch32rv flash --lane 1  ← 確認を要求
 ```
 
-**`ch32rv probe info` の出力を見れば、人も機械も「どっちに書くのか」が分かる。** [dmi-bridge §5.3](../protocols/dmi-bridge.ja.md) の「焼いた後に、どのピンをどの機能に割り当てたか分からなくなる問題は、設定ではなく**申告**で解く」を、書込先そのものに広げた形。
+**`ch32rv probe info` の出力を見れば、人も機械も「どっちに書くのか」が分かる。** [dmi-bridge §5.3](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の「焼いた後に、どのピンをどの機能に割り当てたか分からなくなる問題は、設定ではなく**申告**で解く」を、書込先そのものに広げた形。
 
 ## 6. PID はいくつ要るか(§4.2 の更新案)
 
@@ -221,7 +221,7 @@ lane1  (self)   → CH32V003     (self, U2)       ← ch32rv flash --lane 1  ←
 
 - VID/PID 方針の一次資料(3 系統の無償 ID・Windows cache・UART/IP は固定費ゼロ): [ecosystem-any-hardware.ja.md §4](ecosystem-any-hardware.ja.md)
 - 内蔵ライタ MCU の設計比較と UIAPduino の実地限界: [bootloader-design-space.ja.md §6b](bootloader-design-space.ja.md)
-- `caps` TLV の既存項目と「ピンは申告する」原則: [../protocols/dmi-bridge.ja.md §5](../protocols/dmi-bridge.ja.md)
+- `caps` TLV の既存項目と「ピンは申告する」原則: [../protocols/dmi-bridge.ja.md §5](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)
 - **`bootloader` 型自己更新の実測**(entry・frame・stall・救出・脱出): [../protocols/pc-to-link.ja.md §10b](../protocols/pc-to-link.ja.md)
 - **`in_place` 型自己更新の根拠**(BOOT 領域の user code からの書換、V003 実証): [../protocols/custom-bootloader.ja.md §2a](../protocols/custom-bootloader.ja.md)
 - software USB(V003 側の transport): [../protocols/software-usb.ja.md](../protocols/software-usb.ja.md)

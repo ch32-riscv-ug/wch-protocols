@@ -13,7 +13,7 @@
 |---|---|
 | 選択の軸と、軸ごとの得失 | どれを選ぶか |
 | 動かせない制約(実測・仕様・規約) | 要求の一覧(各 repo が正本) |
-| 「決めるために要る情報」 | byte レベルの仕様([dmi-bridge](../protocols/dmi-bridge.ja.md) が正本) |
+| 「決めるために要る情報」 | byte レベルの仕様([dmi-bridge](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) が正本) |
 
 ---
 
@@ -357,7 +357,7 @@ composite にするなら、**使う予定の function を最初から descripto
 | | **A2 出さない**(UART / IP に逃がす) | **pid.codes を消費しない** | 「挿すだけ」の体験を CH32 build で出せない |
 | **B. V003(low-speed)を USB-native の対象に含めるか**<br>⚠ **役割で答えが違う** → [定義 §5.6](harness-tool-definition.ja.md) | **B1 含める** | **$0.1 の chip が単体 probe**(= **probe としての V003**。連鎖 bootstrap の苗)。**target としての V003 は既にエコシステムが揃っているので理由にならない** | K5 より **descriptor が HID 固定**になり、その ID では帯域を上げられない |
 | | **B2 含めない**(**V003 を諦める**) | descriptor に **CDC / bulk / composite** が選べる。**帯域が出せる** | 最も安い入口を失う。UIAPduino 系の資産も外れる |
-| **C. 1 個の PID で mode(BL / app / probe)を跨ぐか** | **C1 跨ぐ** | PID 1 個で済む。[設計原則 4](../protocols/dmi-bridge.ja.md)(正体は handshake)と整合 | K4 より **descriptor を永久固定**。「enumeration だけで mode が分かる」を失う |
+| **C. 1 個の PID で mode(BL / app / probe)を跨ぐか** | **C1 跨ぐ** | PID 1 個で済む。[設計原則 4](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)(正体は handshake)と整合 | K4 より **descriptor を永久固定**。「enumeration だけで mode が分かる」を失う |
 | | **C2 跨がない** | mode が enumeration で分かる(§4.3 の利点) | **PID が複数要る** → K1 と衝突。**複数申請 / 別 project として申請 / vendor program** のどれかが要る |
 | **D. 高帯域(capture)をどう出すか** | **D1 自前 USB bulk** | 速い | PID が要る(**silicon が RP2040 / S3 なら vendor program で 0**) |
 | | **D2 既存 bridge の UART** | **0** | 遅い |
@@ -390,7 +390,7 @@ composite にするなら、**使う予定の function を最初から descripto
 
 #### L0 の低減策 — Core より下の profile を置く案(**採否は未定**)
 
-[dmi-bridge §8.1](../protocols/dmi-bridge.ja.md) の最小は **Core**(`hello` `caps` `info` `ping` / `lane_attach` `lane_detach` `line_reset` / `dmi_read` `dmi_write` / `batch` 8 op 以上)。**これでも V003 の BL には入らない**(BL は `FLASH 1,916 B` + secret 4 B で**既に埋まっている**。[v003-bootloader-replacement](v003-bootloader-replacement.ja.md) §2)。
+[dmi-bridge §8.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の最小は **Core**(`hello` `caps` `info` `ping` / `lane_attach` `lane_detach` `line_reset` / `dmi_read` `dmi_write` / `batch` 8 op 以上)。**これでも V003 の BL には入らない**(BL は `FLASH 1,916 B` + secret 4 B で**既に埋まっている**。[v003-bootloader-replacement](v003-bootloader-replacement.ja.md) §2)。
 
 → **Core の下にもう 1 段**(仮に **Nano**)を置く案。**「幅の下端をどこに取るか」が決まってから採否を決める**。⚠ **[定義 §5.8](harness-tool-definition.ja.md) が V003 の BL を対象外にする方向を出したので、この案の主な動機は消えている** — 残るのは **AVR / 8 bit 級**のためだけで、それは **ardulink 互換モードで足りる可能性**がある:
 
@@ -416,7 +416,7 @@ composite にするなら、**使う予定の function を最初から descripto
 | 方向 | 中身 | 得失 |
 |---|---|---|
 | **(i) protocol を BL に入れる** | Nano profile を BL に実装 | BL が dmibridge を喋る。**ただし 1,920 B に入るかは未検証**(→ `bl-size-baseline`)。入れるには何かを削る |
-| **(ii) protocol が既存実装に歩み寄る** | **host 側**が B003 の HID scratchpad protocol を喋る([custom-bootloader](../protocols/custom-bootloader.ja.md) §2b、**byte 単位で解読済み**)。[dmi-bridge §7](../protocols/dmi-bridge.ja.md) の **ardulink 互換モード**と同じ発想 | **BL を触らない**。§1 の「ch32rv が口を増やす」と同じ性質の作業 |
+| **(ii) protocol が既存実装に歩み寄る** | **host 側**が B003 の HID scratchpad protocol を喋る([custom-bootloader](../protocols/custom-bootloader.ja.md) §2b、**byte 単位で解読済み**)。[dmi-bridge §7](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の **ardulink 互換モード**と同じ発想 | **BL を触らない**。§1 の「ch32rv が口を増やす」と同じ性質の作業 |
 
 ⚠ **(ii) は host 側の互換モードであって、PID の話ではない。** **K3 のとおり、自分の firmware が `1209:B003` を名乗ることは不可**(それは他人の project の ID)。**host が B003 を喋るのは自由**(host は誰の ID も名乗らない)。前版でここを混同していた。
 
@@ -438,7 +438,7 @@ composite にするなら、**使う予定の function を最初から descripto
 
 - **上位(何の道具か・強み・方向性)**: [harness-tool-definition.ja.md](harness-tool-definition.ja.md)
 - 議論の所在: [harness-index.ja.md](harness-index.ja.md)
-- protocol の土台: [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)
+- protocol の土台: [../protocols/dmi-bridge.ja.md](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)
 - USB ID の一次資料: [ecosystem-any-hardware.ja.md](ecosystem-any-hardware.ja.md) §4
 - 既存 probe の landscape: [probe-ecosystem.ja.md](probe-ecosystem.ja.md)
 - board 別の到達範囲: [harness-board-survey.ja.md](harness-board-survey.ja.md)

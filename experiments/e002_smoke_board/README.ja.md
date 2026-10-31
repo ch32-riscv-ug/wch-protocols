@@ -135,7 +135,7 @@ HEARTBEAT 2
 - (b) host が port を開いたあと DTR/RTS で reset する — このプラグインは ESP 固有の reset 機能を**意図的に持たない**設計なので、自前で行う必要がある
 - (c) **host が trigger を送るまで待ち、応答として銘板を返す**
 
-**(c) が本命。** [ecosystem-any-hardware §4.5](../../references/ecosystem-any-hardware.ja.md) が既に「host は port open 後に boot 完了と `hello` 応答を待つ設計にする」と書いており、[dmi-bridge §4.1](../../protocols/dmi-bridge.ja.md) の「`hello` が成立して初めて他のコマンドを送ってよい」と同じ形。**紙の上で決めた設計が、最初の実機実験で裏付けられた。**
+**(c) が本命。** [ecosystem-any-hardware §4.5](../../references/ecosystem-any-hardware.ja.md) が既に「host は port open 後に boot 完了と `hello` 応答を待つ設計にする」と書いており、[dmi-bridge §4.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の「`hello` が成立して初めて他のコマンドを送ってよい」と同じ形。**紙の上で決めた設計が、最初の実機実験で裏付けられた。**
 
 ## 未決
 

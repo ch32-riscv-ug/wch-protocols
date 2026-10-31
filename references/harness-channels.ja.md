@@ -11,7 +11,7 @@
 
 > **議題は probe ↔ PC。** target までの経路(1 線 SWIO / 2 線 RVSWD)は**この決定に持ち込まない**。持ち込むと **1 線のときだけの特殊処理が全部の話に混ざる**。
 >
-> **持ち込まなくてよい根拠**: **1 線と 2 線の差は PC 側に現れない**。[dmi-bridge §2](../protocols/dmi-bridge.ja.md) のとおり **attach / DMI / flash のコマンドは 1 線 / 2 線で同一**で、配線差は probe firmware が吸収する。**線層は probe 内部の実装詳細で、仕様には現れない**(同 §1)。→ **PC から見えるのは常に `(addr7, data32, op2)` の往復だけ。**
+> **持ち込まなくてよい根拠**: **1 線と 2 線の差は PC 側に現れない**。[dmi-bridge §2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) のとおり **attach / DMI / flash のコマンドは 1 線 / 2 線で同一**で、配線差は probe firmware が吸収する。**線層は probe 内部の実装詳細で、仕様には現れない**(同 §1)。→ **PC から見えるのは常に `(addr7, data32, op2)` の往復だけ。**
 
 > **論理 IF の括り自体はまだ決まっていない。** 決まっているのは **dmi-bridge が実際に持っているコマンド**だけで、波形 / 相手役 / ADC は**未設計**。前版は未設計の部分を決まったように書いていた(訂正)。
 
@@ -35,7 +35,7 @@
 | **模型の定義 / preload / readback** | req/resp、たまに大きい | 中 | **未決定** | **未設計** |
 | **障害注入の設定** | req/resp | 低 | **未決定** | **未設計** |
 
-→ **6 件は [dmi-bridge](../protocols/dmi-bridge.ja.md) の現行 draft が「同じ datagram 列」と置いている。7 件は未設計。**
+→ **6 件は [dmi-bridge](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の現行 draft が「同じ datagram 列」と置いている。7 件は未設計。**
 
 ⚠ **「現行 draft の選択」は決定ではない。** dmi-bridge の状態は **`draft`**(実装・実測は未)で、**分離の仕方は変えられる**。たとえば target serial を datagram に載せている(`0x50`〜`0x52`)のも 1 つの選択で、**別 CDC に移す判断は開いている**(§1.1b)。**本書は「いま draft がこう置いている」と「まだ置いていない」を区別するだけで、どれも固定していない。**
 
@@ -68,7 +68,7 @@
 
 **ただし「誰が知識を持つか」が論点になる**:
 
-| 案 | probe が知る必要があるもの | [設計原則 1](../protocols/dmi-bridge.ja.md)(probe は chip を知らない)との関係 |
+| 案 | probe が知る必要があるもの | [設計原則 1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)(probe は chip を知らない)との関係 |
 |---|---|---|
 | **B-1. probe が全部やる**(LinkE 型) | **DMDATA の番地**(series で 3 系統)+ **print protocol の形式**(長さ byte。**2 方式ある**) | **原則 1 に反する。** 新 chip で番地が変わると firmware 更新 |
 | **B-2. host が番地と形式を教え、probe が polling して CDC に流す** | **教えられた番地と形式だけ**(chip 名は知らない) | **原則 1 を守れる。** **`autopoll` の自然な拡張**(`autopoll_set(addr7, mask, expect, interval_us)` が既にある → 「hit したら CDC に流す」を足す) |
@@ -238,7 +238,7 @@
 
 | 論点 | なぜ各論か |
 |---|---|
-| **CDC の本数** | **決める対象ではなく `caps` の申告値**。**0 から probe の上限まで**の範囲で、**silicon と build が決めた事実を申告するだけ**([dmi-bridge 設計原則 2](../protocols/dmi-bridge.ja.md)「数値はすべて `caps` が申告する」)。**0 = CDC を出さない probe も正当**(DMI ラッパーだけで成立する) |
+| **CDC の本数** | **決める対象ではなく `caps` の申告値**。**0 から probe の上限まで**の範囲で、**silicon と build が決めた事実を申告するだけ**([dmi-bridge 設計原則 2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)「数値はすべて `caps` が申告する」)。**0 = CDC を出さない probe も正当**(DMI ラッパーだけで成立する) |
 | **各 CDC への割当** | **実行時の `configure`**。host が毎回選ぶ(補足 B) |
 | **混合を許すか** | host UX の話。**バラに寄せる根拠は既にある**(補足 H の LinkE 実例)が、**仕様を縛る必要が無い** |
 
@@ -285,7 +285,7 @@ DMI    (addr7, data32, op2)          ← 「細い管」
 線      SWIO 1 線 / RVSWD 2 線                ← probe 内部。**議題外**(差は PC 側に現れない)
 ```
 
-→ **`DMI` 1 本で「書ける・デバッグできる・printf が見える」まで届く。** これが [dmi-bridge 設計原則 1](../protocols/dmi-bridge.ja.md)(probe は chip を知らない)の実体で、**新 chip 対応が host の更新だけで済む**理由。
+→ **`DMI` 1 本で「書ける・デバッグできる・printf が見える」まで届く。** これが [dmi-bridge 設計原則 1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)(probe は chip を知らない)の実体で、**新 chip 対応が host の更新だけで済む**理由。
 
 **⚠ 例外は `tty.uart` だけ**: target の**物理 USART** は DMI では運べない(probe の UART ピンが要る)。**printf を DMI 経由で見る道(RTT / DMDATA / SDI)があるので、USART が 1 本しかない chip でも printf は成立する** — この 2 系統の区別が実務で効く。
 
@@ -367,7 +367,7 @@ DMI    (addr7, data32, op2)          ← 「細い管」
 | **M2 物理 channel を分ける** | CDC ×2、HID + bulk、CDC + bulk、IP の port 2 つ | native USB(composite)/ IP |
 | **M3 HID の report ID で分ける** | report ID ごとに用途を割る(**B003 が feature report `0xAA` でやっている形**) | HID |
 
-**M1 は既に仕様にある**([dmi-bridge §3](../protocols/dmi-bridge.ja.md))。`dmi` / `mgmt` / `emu` は **`cmd` 番号範囲**で、`evt` は **`type`** で分かれる。**M2 は descriptor が増える = `bcdDevice` の major が変わる**(→ [choices §2](harness-choices.ja.md))。
+**M1 は既に仕様にある**([dmi-bridge §3](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))。`dmi` / `mgmt` / `emu` は **`cmd` 番号範囲**で、`evt` は **`type`** で分かれる。**M2 は descriptor が増える = `bcdDevice` の major が変わる**(→ [choices §2](harness-choices.ja.md))。
 
 ## 4. 組み合わせ — どの物理 IF でどの論理 IF が成立するか
 
@@ -457,7 +457,7 @@ DMI    (addr7, data32, op2)          ← 「細い管」
 | 3 bit | 0〜7 | **RP2040 の上限まで表現できる** |
 | byte | 0〜255 | TLV なら 1 byte 使っても大差ない |
 
-→ **`caps` は TLV(`u8 type, u8 len, len byte`)なので、bit を惜しむ必要が薄い**([dmi-bridge §5.1](../protocols/dmi-bridge.ja.md))。**bit field に詰めるかどうかも含めて後で決める。**
+→ **`caps` は TLV(`u8 type, u8 len, len byte`)なので、bit を惜しむ必要が薄い**([dmi-bridge §5.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))。**bit field に詰めるかどうかも含めて後で決める。**
 
 ### 6b.3 「オールゼロ = HID のみ」という基準線の案
 
@@ -788,7 +788,7 @@ host: Vendor を開く ──成功──> Vendor で全部やる(~1 MB/s 以上
 |---|---|
 | **同時に使えない** | **構造上排他**。native USB がある probe に bridge を足す意味が無く、bridge を使う probe は native USB を持たない |
 | **PC から見えるものが同じ** | `/dev/ttyACM0` / `COM3`(CDC)と `/dev/ttyUSB0` / `COM3`(CH340/FT232)。**どちらも serial port**。**host コードは open / read / write で同一** |
-| **仕様が既に同一行で扱っている** | [dmi-bridge §2.1](../protocols/dmi-bridge.ja.md):60 の表は **「UART / USB CDC」を 1 行**にして、**両方に `magic + len + payload + CRC16 + 再同期` を課している** |
+| **仕様が既に同一行で扱っている** | [dmi-bridge §2.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md):60 の表は **「UART / USB CDC」を 1 行**にして、**両方に `magic + len + payload + CRC16 + 再同期` を課している** |
 
 **残る違いは 2 点だけ**:
 
@@ -799,7 +799,7 @@ host: Vendor を開く ──成功──> Vendor で全部やる(~1 MB/s 以上
 
 → **ch32rv が既にこの差を反映している**: `monitor` の `--baud` は **uart のみ**([cli.ja.md](../../ch32rv/docs/cli.ja.md))。
 
-**信頼性の差は消える**: UART は framing error / overrun でデータが化けるが、**L1 の CRC16 + 再同期が両方に掛かっている**([dmi-bridge §2.3](../protocols/dmi-bridge.ja.md))ので、**上位から見た信頼性は同じ**。→ **L1 に CRC を置いた設計がここで効いている。**
+**信頼性の差は消える**: UART は framing error / overrun でデータが化けるが、**L1 の CRC16 + 再同期が両方に掛かっている**([dmi-bridge §2.3](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))ので、**上位から見た信頼性は同じ**。→ **L1 に CRC を置いた設計がここで効いている。**
 
 **PID の出どころだけは違う**が、これは**経路の差ではなく board 構成の差**(§6f.1): bridge chip は **CH340 / FT232 が自分の vendor の PID を持つ**ので、**我々は何も名乗らない**。
 
@@ -1071,7 +1071,7 @@ OUT: 1 + n     ≤ 15  →  制約にならない
 - **本書の内側**(1 本の物理 IF の中でどう論理的に分けるか): [harness-virtual-if.ja.md](harness-virtual-if.ja.md)
 
 
-- L2 ヘッダの多重化(M1): [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md) §3
+- L2 ヘッダの多重化(M1): [../protocols/dmi-bridge.ja.md](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) §3
 - HID adapter の分割/再組立: 同 §2.4
 - transport ごとの境界と完全性: 同 §2.2
 - descriptor を増やすことの意味(M2): [harness-choices.ja.md](harness-choices.ja.md) §2

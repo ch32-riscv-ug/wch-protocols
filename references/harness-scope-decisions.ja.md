@@ -72,7 +72,7 @@
 | `ch32-device-data` の `index/parts.csv` は全 series・全型番を持つが、**release / availability / EOL の列が無い** | **「資料がある」と「買える」が区別できない** |
 | EVT の `eval_boards.csv` も**未発売 series に eval board が載っている**(WCH が資料を先行公開する) | eval board の有無は入手可否の代理にならない |
 
-→ **`ch32-device-data` へ「入手可否(released / preview / 未発売 / EOL)」の列を依頼する候補。** これが無いと、**D2 の判断を毎回人の知識に頼ることになる**。同型の依頼が [data/harness-wiring/](data/harness-wiring/README.ja.md) にもある。
+→ **`ch32-device-data` へ「入手可否(released / preview / 未発売 / EOL)」の列を依頼する候補。** これが無いと、**D2 の判断を毎回人の知識に頼ることになる**。同型の依頼が [data/harness-wiring/](https://github.com/ch32-riscv-ug/wch-protocols/tree/717e17a/references/data/harness-wiring) にもある。
 
 ### 2.3 D3 — 1 線 / 2 線
 
@@ -203,5 +203,5 @@ D8(license)/ D9(安全) は上流に依存しない(先に決められる)
 - 既存標準でどこまで / 限界コスト: [harness-existing-standards.ja.md](harness-existing-standards.ja.md)
 - MCU 別の到達範囲: [harness-board-survey.ja.md](harness-board-survey.ja.md)
 - BOOT 領域の一次データ: [../protocols/custom-bootloader.ja.md](../protocols/custom-bootloader.ja.md) §2a
-- series 別の debug 線: [data/harness-wiring/](data/harness-wiring/README.ja.md)
+- series 別の debug 線: [data/harness-wiring/](https://github.com/ch32-riscv-ug/wch-protocols/tree/717e17a/references/data/harness-wiring)
 - 所在: [harness-index.ja.md](harness-index.ja.md)

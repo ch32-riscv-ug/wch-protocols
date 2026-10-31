@@ -2,7 +2,7 @@
 
 状態: **生データ収録済み・一部解析済み**（2026-09-25）。解析の途中経過は下の「分かったこと」。低速の attach 区間は L103 / V203 とも復号済み
 （下の「低速区間と L103 / V203 の比較」。**LinkE は接続のたびに RCC を組み直している**。以前の版のこの README の「RCC へのアクセスは無い」は誤り）。
-同じ日に、配線を変えずに追加の操作（`extra/`）と ch32rv の版ごとの比較（`versions/`）も収録した（下の「追加の収録」）。
+同じ日に、配線を変えずに追加の操作（`extra/`、`more/`）も収録した（下の「追加の収録」）。
 
 [2026-09-11 の fixture](../wire-flash-v003-x035-2026-09-11/README.ja.md)（LA2016）と同じ 50 MHz・同じ channel の割り当て・同じ
 `pattern-4k.bin` で、ch32rv の 12 の操作を target ごとに収録した。各操作の USB 往復も `--capture` で同時に記録した。
@@ -91,14 +91,10 @@
 - `read_obr_after_set.bin`（data0/data1 = 0x5a/0xc3 を書いた後の FLASH_OBR）: L103 0x0c35acfc、V203 0x030d68fc、V003 0x030d6bdc。
 - L103 は `.dmi.txt` / `.mem.txt` まで復号済み。parity の誤り 1 件が `clock_read_rcc_1` と `clock_target_info` に残る（ひげ）。
 
-### `versions/<ch32rv 版>/<target>/` — ch32rv 0.10.0 / 0.9.0 / 0.8.0 で同じ 12 操作
+### ch32rv の版による違い
 
-- GitHub releases の x86_64-unknown-linux-gnu 版（添付の `.sha256` と一致を確認、各フォルダに `.sha256` を保存）。
-  `tools/run_suite2.sh` を環境変数 `CH32RV=<その版の ch32rv>` で実行（`tools/linke_cap.py` が参照する）。
-- 108 件すべて終了コード 0、区画の空白なし。どの版も `read_flash_4k.bin` = `tools/pattern-4k.bin`。
-- L103 の復号結果（`.mem.txt`）の比較: target_info / reset / read_ram_256 のアクセス列は 0.8.0〜0.10.0 と 0.9.1 で一致。
-  flash_pattern4k / erase_all / dbg_halt の違いは値だけ（halt した位置の dpc、復号で取れなかった「?」）で、番地と順序は同じ。
-  parity の誤り（ひげ）: 0.10.0 flash_pattern4k 1・flash_sketch 1、0.9.0 dbg_regs 1、0.8.0 dbg_regs 1・flash_pattern4k 2・flash_sketch 1。
+- ch32rv 0.8.0 / 0.9.0 / 0.10.0 でも同じ 12 操作を収録して比べた。L103 の復号結果（`.mem.txt`）の番地と順序は 0.9.1 と同じで、違いは値（halt した位置の dpc など）と
+  復号の取りこぼしだけだった。線上の列は ch32rv の版に依らない。その収録（21.5 MB）は protocol の主張の根拠ではないので、repo には置いていない。
 
 ### 分かったこと（追加分から）
 
@@ -115,8 +111,8 @@
 - `SPLIT=two`: まず 250 sample（50 MHz 換算）の間で frame を区切り、既知の長さ（53 / 54 / 85 / 585）でない塊を 100 sample で区切り直す。
   低速区間は clock の周期が 105〜155 sample（L103 約 475 kHz、V203 の書き込み frame は low が 2 倍で約 320 kHz）で、
   以前の 100 sample の区切りでは frame が割れていた。閾値は `.sr` の samplerate に合わせて伸縮する。
-- L103 の `.dmi.txt` / `.mem.txt`（`l103/`、`extra/l103/`、`versions/*/l103/`）は `SPLIT=two DEBOUNCE=3` で作り直した。parity の誤りは
-  l103 / extra 0、versions 0.10.0 で 1、0.8.0 で 3。版の比較: target_info / read_ram_256 は 4 版で一致。flash / erase / reset の違いは 1〜2 行の
+- L103 の `.dmi.txt` / `.mem.txt`（`l103/`、`extra/l103/`）は `SPLIT=two DEBOUNCE=3` で作り直した。parity の誤りは
+  l103 / extra 0。版の比較: target_info / read_ram_256 は 4 版で一致。flash / erase / reset の違いは 1〜2 行の
   欠け・ずれで、復号の取りこぼしと見ている（系統的な差ではない、未確定）。
 
 ### 接続時（USB `81 0d 01 02`、約 55 ms）に LinkE がすること（target_info の `.mem.txt`、L103 と V203 で同じ流れ）
@@ -155,23 +151,23 @@
 ## さらに追加の収録（`more/<target>/`、2026-09-25、配線は同じ）
 
 収録の手順: `tools/run_more.sh`、失敗分の取り直しは `tools/run_redo.sh`（ファイル名 `redo_*`）。速さは L103 / V003 50 MHz、V203 100 MHz、
-monitor は L103 / V203 25 MHz（長い収録を空白なしで取るため。V203 の高速区間は記録しきれない）、V003 50 MHz。すべて空白なし。
+monitor は L103 25 MHz（長い収録を空白なしで取るため）。すべて空白なし。
 
-| 操作 | 内容 |
-|---|---|
-| `monitor_{sdi,dmdata,dmseq,rtt}` | core の例 `HelloSDI` / `HelloDMDATA` / `HelloDMSeq` / `HelloRTT`（`tools/monitor_images/<target>_Hello*.bin`）を焼いて `monitor --source <s> --duration 4`。dmdata / dmseq / rtt は stdin に `abc\n`（大文字で返る） |
-| `redo_monitor_sdi_on` / `_off` | `monitor sdi on` / `off`（SDI 転送の有効化・無効化）。`monitor_sdi_enable` は書式違いで rc 2（線は記録なし同然） |
-| `repeat{1..5}_{target_info,read_ram_256}` | 同じ操作を 5 回 |
-| `redo_redetect_0_reset` → `redo_redetect_1_after_reset` → `redo_redetect_2_again` → `redo_redetect_3_status_then_redetect` | クロックスケッチを焼いて reset した後、**USB `81 0d 01 03`（RedetectChip）だけ**を LinkE に直接送る（`tools/redetect.py`、ch32rv を通さない。`.ndjson` は無い）。3 は `81 0d 01 ff` の後に送る |
-| `redo_recover_power_off` / `redo_recover_nrst` | `--chip <family> recover --method power-off / nrst`（code flash の消去） |
-| `recover_unbrick` | `recover --method unbrick`（全体消去）。`recover_power_off` / `recover_nrst`（redo でない方）は `--chip` 無しで rc 2 |
-| `after_recover_target_info` / `redo_after_recover_target_info` | 消去の後の接続 |
+repo に置いているのは、仕様（[link-to-target](../../../protocols/link-to-target.ja.md)、[serial-and-print](../../../protocols/serial-and-print.ja.md)、
+[pc-to-link](../../../protocols/pc-to-link.ja.md)）が根拠として引く次の収録だけ。同じ日に収録した monitor の他の source、recover、V203 / V003 の monitor_sdi などは、
+仕様の主張の根拠ではないので置いていない。
 
-- 最初の `redetect_*`（redo でない方）は、送信は成功しているが `tools/redetect.py` の引数処理の誤りで 2 つ目のコマンドで落ちた（rc 1）。線は有効。
+| 操作 | 内容 | 根拠にしている主張 |
+|---|---|---|
+| `l103/monitor_sdi`、`l103/monitor_sdi_enable` | core の例 `HelloSDI`（`tools/monitor_images/l103_HelloSDI.bin`）を焼いて `monitor --source sdi --duration 4`。`monitor_sdi_enable` は書式違いで rc 2（線は記録なし同然） | SDI monitor の線上の poll(link-to-target §5、serial-and-print §3) |
+| `<target>/repeat{1..5}_{target_info,read_ram_256}` | 同じ操作を 5 回 | 接続時の long 形式の問い合わせが毎回同じであること、park / padding が don't-care であること(link-to-target §3)。`captures/tools/linke_repeat_compare.py` |
+| `l103/redo_redetect_0_reset` → `_1_after_reset` → `_2_again` → `_3_status_then_redetect` | クロックスケッチを焼いて reset した後、**USB `81 0d 01 03`（RedetectChip）だけ**を LinkE に直接送る（`tools/redetect.py`、ch32rv を通さない。`.ndjson` は無い）。3 は `81 0d 01 ff` の後に送る | RedetectChip の線上の動作(pc-to-link §4) |
+| `l103/dmiop_*` | 下の「RedetectChip の後の DmiOp」 | RedetectChip の後の DmiOp が target に届かないこと(pc-to-link §4) |
+
 - L103 の `.dmi.txt` / `.mem.txt` は `SPLIT=two DEBOUNCE=3` で作った。`monitor_sdi` の `.dmi.txt`（85 MB）は置いていない（ツールで再生成できる）。
-  その 49〜52 clock の frame は、**25 MHz の収録で clock が落ちた DMDATA0 の読み出し**だった（2026-09-25、wch-protocols の
-  `captures/tools/rvswd.py` で解読。LinkE は約 29 µs ごとに poll し、0 以外を読むと DATA0 に 0 を書いて受領を返す）。
-- L103 の `monitor_sdi` は `--duration 4` なのに 34.8 s 動いた（V203 / V003 は約 4〜5 s）。その `.sr` は 76 MB。
+  その 49〜52 clock の frame は、**25 MHz の収録で clock が落ちた DMDATA0 の読み出し**だった（`captures/tools/rvswd.py` で解読。
+  LinkE は約 29 µs ごとに poll し、0 以外を読むと DATA0 に 0 を書いて受領を返す）。
+- L103 の `monitor_sdi` は `--duration 4` なのに 34.8 s 動いた。その `.sr` は 76 MB。
 
 ### 分かったこと（L103）
 

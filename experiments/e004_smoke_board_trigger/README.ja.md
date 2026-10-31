@@ -12,7 +12,7 @@
 
 **取れる。** [E002 候補 (c)](../e002_smoke_board/README.ja.md) の方式。監視の接続が reset より 1 秒以上遅れても、**応答は host が要求した時点で生成される**ので接続タイミングに依存しない。
 
-これは [dmi-bridge §4.1](../../protocols/dmi-bridge.ja.md) の `hello`(host が撃ち、probe が答える。成立して初めて他のコマンドを送ってよい)と、[ecosystem-any-hardware §4.5](../../references/ecosystem-any-hardware.ja.md)(DTR 副作用は host が `hello` 待ちで吸収する)を、そのまま最小形にしたもの。
+これは [dmi-bridge §4.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の `hello`(host が撃ち、probe が答える。成立して初めて他のコマンドを送ってよい)と、[ecosystem-any-hardware §4.5](../../references/ecosystem-any-hardware.ja.md)(DTR 副作用は host が `hello` 待ちで吸収する)を、そのまま最小形にしたもの。
 
 ## 反証条件
 
@@ -32,7 +32,7 @@
 
 | 落とすもの | 行き先 |
 |---|---|
-| trigger の byte 体系・frame 形式(magic/len/CRC) | [dmi-bridge §2.3](../../protocols/dmi-bridge.ja.md) の実装。ここは 1 byte の最小形 |
+| trigger の byte 体系・frame 形式(magic/len/CRC) | [dmi-bridge §2.3](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の実装。ここは 1 byte の最小形 |
 | DTR auto-reset の詳細(何秒待てばよいか) | 候補 `uart-dtr-reset` |
 | device lock の 2 プロセス検証 | 候補 `device-lock` |
 | 他 board への移植性 | 別実験 |
@@ -66,7 +66,7 @@
 ## 影響
 
 - 通れば → 実機実験の**共通の型**が決まる(host が撃つ → probe が答える)。E003(peer)以降はこの型で書ける
-- [dmi-bridge](../../protocols/dmi-bridge.ja.md) の `hello` 設計に実測の裏付けが付く(status は動かさない)
+- [dmi-bridge](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の `hello` 設計に実測の裏付けが付く(status は動かさない)
 
 ---
 
@@ -105,12 +105,12 @@
 
 ## 未決
 
-- trigger を frame 化したとき(magic + len + CRC、[dmi-bridge §2.3](../../protocols/dmi-bridge.ja.md))も同じく 1 発で通るか → protocol 実装時に確認する。
+- trigger を frame 化したとき(magic + len + CRC、[dmi-bridge §2.3](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))も同じく 1 発で通るか → protocol 実装時に確認する。
 - 起動直後(reset から 1 秒未満)に trigger を撃った場合の挙動は見ていない → 候補 `uart-dtr-reset`。
 
 ## 反映
 
 - 台帳 [E004](../LEDGER.ja.md) を完了に。**常設 v1 が成立**。
 - [ecosystem-any-hardware §4.5](../../references/ecosystem-any-hardware.ja.md): 「host は open 後に `hello` 応答を待つ」に実測の裏付け(E002/E004)を追記。
-- [dmi-bridge §4.1](../../protocols/dmi-bridge.ja.md): `hello` が成立して初めて他コマンドを送る、という規定に実測の裏付けを追記。
+- [dmi-bridge §4.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md): `hello` が成立して初めて他コマンドを送る、という規定に実測の裏付けを追記。
 - 仕様の status は動かさない(protocol 本体ではなく、その前提の確認なので)。

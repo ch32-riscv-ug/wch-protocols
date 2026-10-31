@@ -42,10 +42,10 @@
 | [probe-pattern-coexistence.ja.md](probe-pattern-coexistence.ja.md) | **書込のみ / 複数 target / 書込+LA / harness / LA のみ / monitor のみ**の共存可否。**能力は build 時、役割は実行時** | 設計検討メモ |
 | [builtin-probe-and-self-update.ja.md](builtin-probe-and-self-update.ja.md) | 内蔵ライタ型と自己書換えの `caps` 化。**PID を分ける基準は descriptor であって役割ではない** | 検討メモ |
 | [v003-bootloader-replacement.ja.md](v003-bootloader-replacement.ja.md) | V003 の software USB BL を入れ替えるべきか(**否**)。サイズ削減の調査項目 | 検討メモ |
-| [data/harness-wiring/](data/harness-wiring/README.ja.md) | **§8 の生成データ**。`debug_pins` / `routes`(5,243) / `pin_conflicts`(1,118) / `coverage` + 抽出スクリプト | 生成データ |
+| [data/harness-wiring/](https://github.com/ch32-riscv-ug/wch-protocols/tree/717e17a/references/data/harness-wiring) | **§8 の生成データ**。`debug_pins` / `routes`(5,243) / `pin_conflicts`(1,118) / `coverage` + 抽出スクリプト | 生成データ |
 | [generic-probe-design.ja.md](generic-probe-design.ja.md) | 親の設計メモ。transport 比較・latency 見積り・足りないもの | 検討メモ |
 | [ecosystem-any-hardware.ja.md](ecosystem-any-hardware.ja.md) | **VID/PID 方針**・hardware 制御度 4 階層・連鎖 bootstrap | 検討メモ |
-| [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md) | **`dmibridge/1` の仕様**。L1/L2/L3・`caps` TLV・profile。harness はこの上に載る | draft |
+| [../protocols/dmi-bridge.ja.md](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) | **`dmibridge/1` の仕様**。L1/L2/L3・`caps` TLV・profile。harness はこの上に載る | draft |
 | [../protocols/link-to-target.ja.md](../protocols/link-to-target.ja.md) | 線層(SWIO/RVSWD)。V003 SWIOはE123〜E131で全書込み・実行まで実証 | V003 SWIO end-to-end verified / RVSWD主要frame verified |
 | [../experiments/LEDGER.ja.md](../experiments/LEDGER.ja.md) | 実験台帳。**E005/E006**(道具の性能)、**E002/E004**(握手)、**E010**(pytest の再 upload)、候補 `bl-size-*` | 台帳 |
 

@@ -1,18 +1,18 @@
 # 書込 probe のパターンと共存可否 — 書込のみ / 複数 target / 書込 + LA を 1 つの仕組みに載せられるか
 
-状態: **設計検討メモ**(実装・実測は未)。対象は [dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)(`dmibridge/1`)を土台にした probe firmware / host のパターン展開。board 別の実力は [harness-board-survey.ja.md](harness-board-survey.ja.md)、計測 probe の構想は [dut-harness-design.ja.md](dut-harness-design.ja.md)。
+状態: **設計検討メモ**(実装・実測は未)。対象は [dmi-bridge.ja.md](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)(`dmibridge/1`)を土台にした probe firmware / host のパターン展開。board 別の実力は [harness-board-survey.ja.md](harness-board-survey.ja.md)、計測 probe の構想は [dut-harness-design.ja.md](dut-harness-design.ja.md)。
 
 ## 0. 結論(先に)
 
 1. **共存できる。ただし線引きが 1 本要る — 「能力は build 時に決まり、役割は実行時に決まる」。** 1 つのバイナリが全パターンをこなすのではなく、**1 つの仕様・1 つのソース木・1 つの host** が、board と用途ごとにビルドされた複数のバイナリを同じように扱う。
-2. **protocol 側はすでに解けている。** [dmi-bridge の設計原則 2](../protocols/dmi-bridge.ja.md)「protocol は上限を持たない。数値はすべて `caps` が申告する」と、全 datagram ヘッダの `lane`、TLV の `caps`、`hello` の版合意。この 3 つで **host は board を知らずに能力だけを見て動ける**。追加で要るのは **cmd 番号範囲の分割**と **profile bit** だけ(§3.1)。
+2. **protocol 側はすでに解けている。** [dmi-bridge の設計原則 2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)「protocol は上限を持たない。数値はすべて `caps` が申告する」と、全 datagram ヘッダの `lane`、TLV の `caps`、`hello` の版合意。この 3 つで **host は board を知らずに能力だけを見て動ける**。追加で要るのは **cmd 番号範囲の分割**と **profile bit** だけ(§3.1)。
 3. **firmware 側で守る規則は 3 つ**(§3.2):
    - **R1 能力は申告、実行時交渉なし** — 資源(PIO SM・命令メモリ・DMA・ピン)は build 時に解決し、`caps` に出す。
    - **R2 キャプチャ/イベントの流れは別チャネル・落ちてよい** — control の `max_inflight = 1` の応答性を守り、落とした量を数えて申告する。
    - **R3 profile は加算のみ。既存コマンドの意味を変えない** — flash 経路のバイト列は、LA 付きビルドでも 1 bit も変わらない。
 4. **一番詰まるのは資源ではなく「ピン」と「USB 帯域」。** `W×N`(複数書込)と `W+LA` は**同じピンを争う**ので、狭い board では排他になる(Zero = どちらか / Pico = 両方少しずつ可)。USB は flash の bulk とキャプチャストリームが競合する → **優先度と degradation で解く**(§4)。
 5. **時間軸の合わせ方が R3 を守る鍵。** DMI 応答にタイムスタンプを足すと flash 経路のバイト列が変わってしまう。→ **応答は変えず、キャプチャが armed のときだけ probe が「この DMI をこの時刻に実行した」記録をイベント流に注入する**。これで書込のみビルドと LA 付きビルドの flash 経路が完全に同一に保てる。
-6. **副産物として "LA だけ" が成立する**。harness firmware を焼いた board は、lane を attach しなければ**単体のロジアナ**として使える。SUMP/sigrok を喋れば PulseView が初日から動く([dmi-bridge §7](../protocols/dmi-bridge.ja.md) の ardulink 互換と同じ発想)。
+6. **副産物として "LA だけ" が成立する**。harness firmware を焼いた board は、lane を attach しなければ**単体のロジアナ**として使える。SUMP/sigrok を喋れば PulseView が初日から動く([dmi-bridge §7](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の ardulink 互換と同じ発想)。
 
 ## 1. パターンの定義
 
@@ -25,7 +25,7 @@
 | **L** | LA のみ | キャプチャだけ | 8–16 | 単体ロジアナ(SUMP/sigrok) |
 | **M** | monitor のみ | target UART / SDI print の橋渡し | 2–3 | 書込は別手段、観測だけ |
 
-- **W が全パターンの基底**。[dmi-bridge §8.1](../protocols/dmi-bridge.ja.md) の `Core` + `Bulk` に相当し、これだけで flash/read/debug が成立する。
+- **W が全パターンの基底**。[dmi-bridge §8.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の `Core` + `Bulk` に相当し、これだけで flash/read/debug が成立する。
 - **M は W の部分集合ではない**(lane を attach せずに `uart_*` と `autopoll` だけ使う)。`caps` の見え方は W より小さい。
 - **L も lane を持たない**。この 2 つがあるので「lane が 0 本の probe」を仕様が許す必要がある。
 
@@ -52,7 +52,7 @@ RP2040-Zero(連番窓 16ch、PIO 2 blk × 4 SM、命令メモリ 32/blk、DMA 12
    - **RP2040-Zero**(連番 16): `WL` は窓を全部使うので `WM` の余地がほぼ無い → **どちらか**。
    - **Pico**(連番 23): `WM(×2)` = 7 ピン + 16ch 窓 = 23 → **両方載る**。
 3. **`WLE` は命令メモリが最も苦しい**。ただし RP2040 の既定ピン割当ならエミュを全部 hardware 周辺に載せられるので、PIO はキャプチャと phy だけで済む([dut-harness-design §3.2](dut-harness-design.ja.md))。
-4. **RAM は WL 以降で支配的**。W / WM は数 KB で足りるので、**書込専用ビルドは AVR 級でも成立する**([dmi-bridge §8.2](../protocols/dmi-bridge.ja.md) の AVR profile)。
+4. **RAM は WL 以降で支配的**。W / WM は数 KB で足りるので、**書込専用ビルドは AVR 級でも成立する**([dmi-bridge §8.2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の AVR profile)。
 
 ### board 別の成立可否
 
@@ -71,7 +71,7 @@ RP2040-Zero(連番窓 16ch、PIO 2 blk × 4 SM、命令メモリ 32/blk、DMA 12
 
 ### 3.1 protocol 層 — 追加は「範囲の分割」と「profile bit」だけ
 
-[dmi-bridge](../protocols/dmi-bridge.ja.md) は既に次を持っている:
+[dmi-bridge](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) は既に次を持っている:
 
 | 既にある仕組み | 何を解決しているか |
 |---|---|
@@ -122,7 +122,7 @@ adc    GP26=vdd GP27=isense GP28=aux     dac  GP29=pwm
 
 **R1: 能力は申告、実行時交渉なし。**
 
-[dmi-bridge §5.3](../protocols/dmi-bridge.ja.md) の「ピンは protocol で設定しないが、protocol で申告する」をそのまま拡張する。理由も同じ:
+[dmi-bridge §5.3](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の「ピンは protocol で設定しないが、protocol で申告する」をそのまま拡張する。理由も同じ:
 
 > ESP32 の RMT channel / RP2040 の PIO SM は有限で、「lane 2 は lane 1 が bit-bang のときだけ使える」式の資源依存を `caps` で表現し始めると破綻する。**スケッチが構築できた構成だけが `caps` に現れる**なら矛盾が起きない。
 
@@ -138,7 +138,7 @@ ANALOG     (adc0,  lane0, .vdd = GP26, .isense = GP27, .aux = GP28, .dac = GP29)
 static CH32RVProbe probe({&lane0}, transport);
 ```
 
-**build 行列は (board × パターン)**。同じソースから、それぞれの `caps` を持つバイナリが出る。**手書きの対応表を作らない**([dmi-bridge §5.3](../protocols/dmi-bridge.ja.md) の「申告は実物から自動導出する。手書きの表は必ず腐る」)。
+**build 行列は (board × パターン)**。同じソースから、それぞれの `caps` を持つバイナリが出る。**手書きの対応表を作らない**([dmi-bridge §5.3](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の「申告は実物から自動導出する。手書きの表は必ず腐る」)。
 
 **R3: profile は加算のみ。既存コマンドの意味を変えない。**
 
@@ -176,7 +176,7 @@ build 時に成立した構成の中でも、**同時にできないことは残
 | lane の attach 中にキャプチャを回す | **可** | キャプチャは DMA が回すので CPU を取らない |
 | キャプチャ中に DMI を撃つ | **可** | むしろ WL の主目的(§3.2 の時刻注入) |
 | **flash の bulk 転送 + 連続キャプチャストリーム** | **競合** | USB FS の実効 ~1 MB/s を分け合う。→ 下記 |
-| エミュ応答 + 線の critical section | **注意** | [dmi-bridge §6.1](../protocols/dmi-bridge.ja.md) の「critical section 中は event を送らずキューに積む」がエミュにも効く。**I2C の clock stretch / SPI の busy で待たせる**のが逃げ道(→ [dut-harness-design §6](dut-harness-design.ja.md)) |
+| エミュ応答 + 線の critical section | **注意** | [dmi-bridge §6.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の「critical section 中は event を送らずキューに積む」がエミュにも効く。**I2C の clock stretch / SPI の busy で待たせる**のが逃げ道(→ [dut-harness-design §6](dut-harness-design.ja.md)) |
 | 複数 lane の同時書込 + キャプチャ | **実質不可** | 帯域とピンの両方で無理。build を分ける |
 | PIOC を debug 線とエミュで共用(X03x) | **不可** | IO が 2 本しか無い |
 
@@ -184,7 +184,7 @@ build 時に成立した構成の中でも、**同時にできないことは残
 
 **優先度を固定する**: `control > flash data > capture stream`。キャプチャは**落ちてよいデータ**なので、落とした量を数えて申告する(R2)。
 
-- [dmi-bridge §2.1](../protocols/dmi-bridge.ja.md) の L1 契約は「化けたものは届かない → 上位が再送で回復」だが、**キャプチャは再送できない**(実時間)。→ **連番 + drop 計上**で扱う。既存 `uart_data` の `dropped` と同じ idiom(§4.4)。
+- [dmi-bridge §2.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の L1 契約は「化けたものは届かない → 上位が再送で回復」だが、**キャプチャは再送できない**(実時間)。→ **連番 + drop 計上**で扱う。既存 `uart_data` の `dropped` と同じ idiom(§4.4)。
 - **チャネルを物理的に分ける**のが素直: 第 2 CDC interface か bulk EP。control の `max_inflight = 1` の応答性を保ったまま bulk を流せる。
 
 **「flash 中にバスを見たい」需要は実は薄い。** ただし例外が 1 つある — **bootloader / app が起動直後に周辺を触る瞬間**は見たい。この場合は「flash を終える → キャプチャを arm → NRST を放す」の順で、競合させずに済む。**trigger が NRST 解放に同期できることが効く**([dut-harness-design §2.2](dut-harness-design.ja.md))。
@@ -193,9 +193,9 @@ build 時に成立した構成の中でも、**同時にできないことは残
 
 [harness-board-survey §5](harness-board-survey.ja.md) の「S3 で深く撮り、RP2040 で probe + エミュ」は **protocol の変更を要しない**:
 
-- 各 probe は独立した transport 接続。`uid`(chip UID)で個体識別([dmi-bridge §5.2](../protocols/dmi-bridge.ja.md))。
+- 各 probe は独立した transport 接続。`uid`(chip UID)で個体識別([dmi-bridge §5.2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))。
 - 足りないのは **host 側の「セッション」概念**: 複数 probe を束ね、**共有 trigger 線のエッジで時間軸を較正する**(オフセットと drift)。
-- これは host の仕事であって probe の仕事ではない。**probe を dumb に保つ原則([dmi-bridge 設計原則 1](../protocols/dmi-bridge.ja.md))と衝突しない。**
+- これは host の仕事であって probe の仕事ではない。**probe を dumb に保つ原則([dmi-bridge 設計原則 1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))と衝突しない。**
 
 ## 5. 作る順序(リスクの高いものを早く潰す)
 
@@ -218,15 +218,15 @@ build 時に成立した構成の中でも、**同時にできないことは残
 
 1. **event の cmd 番号を群ごとに切り直すか**(§3.1 の ⚠)。既存 `0x80`–`0x83` との互換をどう扱うか。
 2. **unit 番号を payload に置くか、`lane` の意味を群でスコープするか**(§3.1 の「足すもの 3」)。前者を採ったが、後者はヘッダを 1 byte も増やさない利点がある。
-3. **第 2 チャネル(CDC / bulk EP)を仕様に書くか、L1 adapter の実装詳細に留めるか。** [dmi-bridge §2](../protocols/dmi-bridge.ja.md) の「L1 は中身を解釈しない」を守るなら後者だが、優先度の規則は上位に要る。
+3. **第 2 チャネル(CDC / bulk EP)を仕様に書くか、L1 adapter の実装詳細に留めるか。** [dmi-bridge §2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の「L1 は中身を解釈しない」を守るなら後者だが、優先度の規則は上位に要る。
 4. **`caps` に「同時実行できない組」を表現しないと決めた場合の説明責任。** R1 は build 時解決で矛盾を消すが、§4 の「flash 中はキャプチャが落ちる」のような**動的な degradation** は host に伝えたい。→ event で「今落としている」と言うだけで足りるか。
-5. **profile 文字列の正式な語彙**(`core+bulk+bench+capture+emulate+analog`)と、[dmi-bridge §8.1](../protocols/dmi-bridge.ja.md) の profile 表への統合方法。
+5. **profile 文字列の正式な語彙**(`core+bulk+bench+capture+emulate+analog`)と、[dmi-bridge §8.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の profile 表への統合方法。
 6. **`L` と `M`(lane 0 本の probe)を仕様が許すことの明記**。現行 §8.1 の Core は lane 前提で書かれている。
 7. 複数 probe セッションの時間軸較正手順(共有 trigger のエッジ数・drift の測り方)。
 
 ## 7. 参照
 
-- 土台の protocol(caps / lane / profile / L1 契約): [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)
+- 土台の protocol(caps / lane / profile / L1 契約): [../protocols/dmi-bridge.ja.md](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)
 - board 別の実力(ピン・PIO・PIOC・PSRAM・E9): [harness-board-survey.ja.md](harness-board-survey.ja.md)
 - 計測 probe の構想(何をやりたいか): [dut-harness-design.ja.md](dut-harness-design.ja.md)
 - **ビルドイン型(内蔵ライタ)と自己書換えの capability 化**: [builtin-probe-and-self-update.ja.md](builtin-probe-and-self-update.ja.md)

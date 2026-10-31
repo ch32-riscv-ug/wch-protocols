@@ -2,7 +2,7 @@
 
 状態: **アイデアメモ**(実装・実測は未。数値はすべて概算で、**実測してから固める**)。名前も仮。
 
-[dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md) の probe は **1 台で複数 target(lane)を相手にする**前提だった。本メモはその逆、**1 台を 1 target に専有させて、debug 線・周辺エミュレーション・ロジックキャプチャ・アナログを 1 つの時間軸に載せる**方向を検討する。target board は RP2040-Zero(同フットプリントの RP2350-Zero も候補)を想定し、LinkE の置き換えというより「LinkE では作れない開発環境」を狙う。
+[dmi-bridge.ja.md](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の probe は **1 台で複数 target(lane)を相手にする**前提だった。本メモはその逆、**1 台を 1 target に専有させて、debug 線・周辺エミュレーション・ロジックキャプチャ・アナログを 1 つの時間軸に載せる**方向を検討する。target board は RP2040-Zero(同フットプリントの RP2350-Zero も候補)を想定し、LinkE の置き換えというより「LinkE では作れない開発環境」を狙う。
 
 ## 0. 結論(先に)
 
@@ -15,7 +15,7 @@
 
 ## 1. なぜ 1 device 専有か(multi-lane との使い分け)
 
-| | multi-lane probe([dmi-bridge](../protocols/dmi-bridge.ja.md)) | DUT harness(本メモ) |
+| | multi-lane probe([dmi-bridge](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)) | DUT harness(本メモ) |
 |---|---|---|
 | 相手 | 複数 target を並列に | **1 target を専有** |
 | probe の責務 | DMI を運ぶだけ(chip を知らない) | DMI + **target の周辺を演じる** + 観測する |
@@ -125,7 +125,7 @@ trigger の source と action を別ドメインから組める。
 
 ### 3.4 電気
 
-- RP2040 の GPIO は **5V トレラントではない**。target が 5V 動作(V003 は 3.3/5.0V)なら分圧かレベル変換が要る。[dmi-bridge §8.2](../protocols/dmi-bridge.ja.md) の「5V board は SWIO のみ」と同じ問題が、エミュ線にも全部かかる。
+- RP2040 の GPIO は **5V トレラントではない**。target が 5V 動作(V003 は 3.3/5.0V)なら分圧かレベル変換が要る。[dmi-bridge §8.2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の「5V board は SWIO のみ」と同じ問題が、エミュ線にも全部かかる。
 - target 向きの全線に直列抵抗(数百 Ω〜1 kΩ)を入れるのを既定にする。競合(両側が同時に駆動)で焼かないため。
 - I2C は open-drain なので pull-up の所在(target 側 / Pico 側 / 両方)を申告できるようにしたい。
 
@@ -183,11 +183,11 @@ trigger の source と action を別ドメインから組める。
 
 **A に分がある**。理由は [link-to-target.ja.md](../protocols/link-to-target.ja.md) 末尾の未解決項目(**SWIO の LOW パルス幅の 0/1 閾値**、**RVSWD の STOP 波形・クロック周波数・トランザクション間アイドル**)が、**自分で出した信号を自分で見れば埋まる**から。この 1 台が「線層を attested → verified に上げる測定器」を兼ねる。
 
-C は A の上位互換なので、仕様側は「**capture unit の数を caps が申告する**」形にしておけば、1 unit 実装と 2 unit 実装が同じ仕様で共存できる([dmi-bridge §0](../protocols/dmi-bridge.ja.md) の設計原則 2 と同じ扱い)。
+C は A の上位互換なので、仕様側は「**capture unit の数を caps が申告する**」形にしておけば、1 unit 実装と 2 unit 実装が同じ仕様で共存できる([dmi-bridge §0](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の設計原則 2 と同じ扱い)。
 
 ## 6. エミュレーションの知識境界
 
-[dmi-bridge](../protocols/dmi-bridge.ja.md) の設計原則 1 は「**probe は chip を知らない**」だった。エミュレーションはその原則をどう扱うかを決める必要がある。**「probe はセンサも知らない。器だけ持ち、中身は host が流し込む」**が原則の自然な延長。
+[dmi-bridge](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の設計原則 1 は「**probe は chip を知らない**」だった。エミュレーションはその原則をどう扱うかを決める必要がある。**「probe はセンサも知らない。器だけ持ち、中身は host が流し込む」**が原則の自然な延長。
 
 | 層 | probe が持つ | host が持つ |
 |---|---|---|
@@ -223,7 +223,7 @@ ADC を 4ch 全部観測に回して DAC を全部外付けにする案もある
 
 ## 8. CH32 family 側の配線と衝突
 
-**生成物**。一次データは [`ch32-device-data`](https://github.com/openwch/ch32-device-data) の **`index/`**、スクリプトと出力は [`data/harness-wiring/`](data/harness-wiring/README.ja.md)。**手書きしない**。
+**生成物**。一次データは [`ch32-device-data`](https://github.com/ch32-riscv-ug/ch32-device-data) の **`index/`**、スクリプトと出力は [`data/harness-wiring/`](https://github.com/ch32-riscv-ug/wch-protocols/tree/717e17a/references/data/harness-wiring)。**手書きしない**。
 
 `ch32-device-data` は 3 層に分かれていて(`docs/data-layout.ja.md`)、**引くのは `index/`**(`evidence/` から `build_index.py` が組み直し、`check_tables.py` が「索引の行は証拠に戻せる」ことを毎回検証している層)。初版は `evidence/` を読んでいて網羅も confidence も劣っていた(§8.3)。
 
@@ -300,8 +300,8 @@ ADC を 4ch 全部観測に回して DAC を全部外付けにする案もある
 7. **RP2040 で足りるか、RP2350-Zero が要るか**(命令メモリと RAM)。
 8. **target 5V 時の扱い**(直列抵抗だけで済む線と、レベル変換が要る線の切り分け)。
 9. **エミュが駆動した時刻と firmware の指示時刻のずれ**。大きければ §3.3 の「Pico が駆動する線は窓から落とす」原則を見直す。
-10. **名前**。DUT harness / bench probe / DUT scope など仮。[dmi-bridge §8.1](../protocols/dmi-bridge.ja.md) に既に `Bench` プロファイルがあるので、`bench` は避けた方がよいかもしれない。
-11. ~~`ch32-device-data` の route データの穴~~ → **穴は無かった**。`index/pinout.csv` に全 series ある(初版が `evidence/` を読んでいたのが原因。[data/harness-wiring/](data/harness-wiring/README.ja.md) 参照)。
+10. **名前**。DUT harness / bench probe / DUT scope など仮。[dmi-bridge §8.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) に既に `Bench` プロファイルがあるので、`bench` は避けた方がよいかもしれない。
+11. ~~`ch32-device-data` の route データの穴~~ → **穴は無かった**。`index/pinout.csv` に全 series ある(初版が `evidence/` を読んでいたのが原因。[data/harness-wiring/](https://github.com/ch32-riscv-ug/wch-protocols/tree/717e17a/references/data/harness-wiring) 参照)。
 12. **`debug_if = both` の series で 1 線モードに入る手順**(option byte / レジスタ)。`debug_interfaces.csv` は「両対応」までしか言わない。→ [custom-bootloader §2a](../protocols/custom-bootloader.ja.md) の切替レジスタと突き合わせる。
 12b. **MCO をキャプチャ窓に入れて「絶対時間」を「比率」に落とすか**。DUT の MCO(`class = clock`、`pinout.csv` にあり)を同じ窓で撮れば、UART の bit 幅などを **DUT の実コア clock 何周期分**として測れる。HSI ±1% と probe の水晶 ±30 ppm を分離できるので、**timing tolerance の決め方が「両者の誤差を分ける」問題から「比率を測る」問題になる**。1ch 消費。
 13. **[link-to-target](../protocols/link-to-target.ja.md) §1 の「1/2 線 切替可」の列挙に V205 / V407 / V467 / X305 / X315 / H41x を反映するか**。`debug_wiring.csv` は `confirmed` で 15 series を挙げている(§8.3-1)。→ protocol 側の記述変更なので別判断。
@@ -320,18 +320,18 @@ ADC を 4ch 全部観測に回して DAC を全部外付けにする案もある
 いずれにせよ効いてくる点:
 
 - **キャプチャストリームは control channel と分けたい**(第 2 CDC interface か bulk EP)。`max_inflight = 1` の応答性を保ったまま bulk を流すため。
-- **キャプチャは再送できない**([dmi-bridge §2.1](../protocols/dmi-bridge.ja.md) の「化けたものは届かない → 上位が再送で回復」が成り立たない)。落とした量を数えて申告する形(§4.4 の `uart_data` の `dropped` と同じ idiom)+ 連番が要る。
-- **既存ツールとの day 1 互換**を [dmi-bridge §7](../protocols/dmi-bridge.ja.md) の ardulink 互換モードと同じ発想で用意できる。キャプチャ側なら SUMP/OLS を喋れば PulseView が初日から使える。
+- **キャプチャは再送できない**([dmi-bridge §2.1](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の「化けたものは届かない → 上位が再送で回復」が成り立たない)。落とした量を数えて申告する形(§4.4 の `uart_data` の `dropped` と同じ idiom)+ 連番が要る。
+- **既存ツールとの day 1 互換**を [dmi-bridge §7](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) の ardulink 互換モードと同じ発想で用意できる。キャプチャ側なら SUMP/OLS を喋れば PulseView が初日から使える。
 
 ## 10. 参照
 
 - **board 別にどこまで届くか**(RP2040 / RP2350 / ESP32-S3 / CH32X035 / X033 の 8 軸比較): [harness-board-survey.ja.md](harness-board-survey.ja.md)
 - **書込のみ / 複数 target / 書込+LA を 1 仕様に載せられるか**: [probe-pattern-coexistence.ja.md](probe-pattern-coexistence.ja.md)
 - 親の設計メモ(汎用 probe と PC 連携): [generic-probe-design.ja.md](generic-probe-design.ja.md)
-- 多 lane 側の protocol 仕様: [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)
+- 多 lane 側の protocol 仕様: [../protocols/dmi-bridge.ja.md](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)
 - 自己観測で埋めたい穴(SWIO パルス幅 / RVSWD STOP 波形): [../protocols/link-to-target.ja.md](../protocols/link-to-target.ja.md)
 - target 側 print(時間軸に載せるもの (d)): [../protocols/serial-and-print.ja.md](../protocols/serial-and-print.ja.md)
-- **§8 の生成データと抽出スクリプト**: [data/harness-wiring/](data/harness-wiring/README.ja.md)(一次データ = `ch32-device-data/index/{debug_interfaces,pinout}.csv`。読んだ表の commit と sha256 は `source.lock.csv`)
+- **§8 の生成データと抽出スクリプト**: [data/harness-wiring/](https://github.com/ch32-riscv-ug/wch-protocols/tree/717e17a/references/data/harness-wiring)(一次データ = `ch32-device-data/index/{debug_interfaces,pinout}.csv`。読んだ表の commit と sha256 は `source.lock.csv`)
 - series 差の扱い方の先例: [bootloader-survey.ja.md](bootloader-survey.ja.md)
 - 実測の規則(計画 → 実行 → レポート): [../experiments/README.ja.md](../experiments/README.ja.md) / 台帳 [../experiments/LEDGER.ja.md](../experiments/LEDGER.ja.md)
 - board 実ピンの出典: [Waveshare RP2040-Zero wiki](https://www.waveshare.com/wiki/RP2040-Zero) / [TinyGo waveshare-rp2040-zero](https://tinygo.org/docs/reference/microcontrollers/machine/waveshare-rp2040-zero/) / [Waveshare RP2350-Zero wiki](https://www.waveshare.com/wiki/RP2350-Zero)

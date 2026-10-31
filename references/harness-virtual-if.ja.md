@@ -12,7 +12,7 @@
 
 | 知っているのは | どうなるか | 仕様の語 |
 |---|---|---|
-| **host** | host が送り、probe が答える。**host は「答えが来るまで」を知っている** | **`req` / `resp`**([§3](../protocols/dmi-bridge.ja.md) `type = 0x00` / `0x01`) |
+| **host** | host が送り、probe が答える。**host は「答えが来るまで」を知っている** | **`req` / `resp`**([§3](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md) `type = 0x00` / `0x01`) |
 | **probe だけ** | **host は聞くべき時刻を知らない**ので、聞くと必ず遅れるか空振りする。→ **probe が要求なしに送る** | **`event`**(`type = 0x02`、`tag = 0x00`) |
 
 → **形は 2 つ。**「push」という語は使わない(**仕様が `event` と呼んでいる**)。
@@ -37,7 +37,7 @@
 
 **「形」は §1 の 2 つ(+ stream)。**「なぜ」の列に、その性質がどこから来るかを書く。
 
-### 2.1 既に仕様にあるもの([dmi-bridge §4](../protocols/dmi-bridge.ja.md))
+### 2.1 既に仕様にあるもの([dmi-bridge §4](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))
 
 | # | 通信 | cmd | 形 | 帯域 | **効く制約とその理由** |
 |---|---|---|:--:|---|---|
@@ -88,7 +88,7 @@
 | HID(64 B / 1 ms)で **1024 B の波形 datagram** が先に入っている | **16 ms**。後続の `dmi` は **1 ms のはずが 16 ms 待つ** |
 | CDC(~1 MB/s)で **MB 級の `emu` preload**(#18)が流れている | **数秒**。その間 `dmi`(#4)が完全に止まる |
 
-⚠ **`max_inflight` の既定が 1**([caps §5.2](../protocols/dmi-bridge.ja.md))なので、**req/resp 側は仕様上そもそも 1 件ずつ**。#18 のような大物を同じ列に置くと、**待ちが単なる遅延ではなく完全停止になる**。
+⚠ **`max_inflight` の既定が 1**([caps §5.2](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))なので、**req/resp 側は仕様上そもそも 1 件ずつ**。#18 のような大物を同じ列に置くと、**待ちが単なる遅延ではなく完全停止になる**。
 
 → **効くのは「1 件の大きさ × 頻度」= 列を占有する時間**。**帯域の桁が違うものを混ぜると、小さい方が待たされる。**
 
@@ -344,7 +344,7 @@
 ## 8. 参照
 
 - 物理 IF(probe ↔ PC): [harness-channels.ja.md](harness-channels.ja.md)
-- 仕様本体: [../protocols/dmi-bridge.ja.md](../protocols/dmi-bridge.ja.md)(§3 L2 / §4.3 batch / §4.4 event / §5 caps / §7 規約)
+- 仕様本体: [../protocols/dmi-bridge.ja.md](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md)(§3 L2 / §4.3 batch / §4.4 event / §5 caps / §7 規約)
 - 往復回数の実数: [generic-probe-design.ja.md §4](generic-probe-design.ja.md)
 - 論点の棚卸し: [harness-tool-definition.ja.md](harness-tool-definition.ja.md) §9b
 - 書込経路を byte 同一に保つ制約: [probe-pattern-coexistence.ja.md](probe-pattern-coexistence.ja.md) R3
