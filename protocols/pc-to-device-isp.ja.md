@@ -2,7 +2,7 @@
 
 # PC ↔ target(factory ISP / シリアル書き込み)
 
-status([語彙](../README.md#status)): **USB 経路は CH32X035F8U6(BTVER 2.60)で `verified`**(ch32rv の実機往復。書いた内容を RVSWD の読出しで照合。replay fixture は ch32rv `tests/fixtures/replay/isp-{info,flash,config-set}-x035.ndjson`)。他の系列と UART 経路は `attested`(minichlink / wchisp / chprog の 3 実装一致)。層は L3(ISP protocol)。経路 ② — WCH-Link を使わず、チップに元から入っている**書き込み専用 bootloader(system bootloader / factory ISP)**を PC から直接叩く。RISC-V debug(DMI)は無く、flash 焼き・option/config 設定・verify だけ。
+status([語彙](../README.md#status)): **USB 経路は CH32X035F8U6(BTVER 2.60)で `verified`**(ch32rv の実機往復。書いた内容を RVSWD の読出しで照合。replay fixture は ch32rv の [isp-info-x035](https://github.com/ch32-riscv-ug/ch32rv/blob/v0.24.0/tests/fixtures/replay/isp-info-x035.ndjson) / [isp-flash-x035](https://github.com/ch32-riscv-ug/ch32rv/blob/v0.24.0/tests/fixtures/replay/isp-flash-x035.ndjson) / [isp-config-set-x035](https://github.com/ch32-riscv-ug/ch32rv/blob/v0.24.0/tests/fixtures/replay/isp-config-set-x035.ndjson))。他の系列と UART 経路は `attested`(minichlink / wchisp / chprog の 3 実装一致)。層は L3(ISP protocol)。経路 ② — WCH-Link を使わず、チップに元から入っている**書き込み専用 bootloader(system bootloader / factory ISP)**を PC から直接叩く。RISC-V debug(DMI)は無く、flash 焼き・option/config 設定・verify だけ。
 
 同じ ISP protocol が **2 つの物理経路**で使える:
 

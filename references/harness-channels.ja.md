@@ -797,7 +797,7 @@ host: Vendor を開く ──成功──> Vendor で全部やる(~1 MB/s 以上
 | **速度** | ~1 MB/s(bulk) | **~125〜375 kB/s**(1〜3 Mbps)+ **latency timer**(FTDI 等で 1〜16 ms) |
 | **baud の意味** | **無意味**。`set_line_coding` は firmware に伝わるだけで、実速度は USB が決める | **実際の線速度を決める**。合っていないと通信できない |
 
-→ **ch32rv が既にこの差を反映している**: `monitor` の `--baud` は **uart のみ**([cli.ja.md](../../ch32rv/docs/cli.ja.md))。
+→ **ch32rv が既にこの差を反映している**: `monitor` の `--baud` は **uart のみ**([cli.ja.md](https://github.com/ch32-riscv-ug/ch32rv/blob/v0.24.0/docs/cli.ja.md))。
 
 **信頼性の差は消える**: UART は framing error / overrun でデータが化けるが、**L1 の CRC16 + 再同期が両方に掛かっている**([dmi-bridge §2.3](https://github.com/ch32-riscv-ug/wch-protocols/blob/717e17a/protocols/dmi-bridge.ja.md))ので、**上位から見た信頼性は同じ**。→ **L1 に CRC を置いた設計がここで効いている。**
 

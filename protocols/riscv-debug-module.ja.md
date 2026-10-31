@@ -76,7 +76,7 @@
 
 両コアは選択直後から anyhalted / allhalted が立っていた。コア 1 の dpc が 0 の理由は未確認。DMSTATUS の上位状態 bit はセッション間で変化し、ackhavereset は発行していないので、**DMSTATUS 全 word をコア識別値にしない**。選択の確認には DMCONTROL readback と mhartid / marchid / mimpid を使う。
 
-**コア 1 の実行制御**(`verified`、同じ chip / LinkE FW 2.22、ch32rv 2026-10-10 の実機 capture): hartsel 1 を保ったまま、step(PC が `0x000026c0` へ進む)、resume、halt ができる。同じ attach の中で、running の DMSTATUS `0x00430c82` からコア 1 宛の haltreq(DMCONTROL ← `0x80010001`)で halted の `0x004f0382` になり、前後の mhartid は 1、最後の DMCONTROL は `0x00010001` だった。コア 1 のメモリ読出しは DMI の abstract command で行った。
+**コア 1 の実行制御**(`verified`、同じ chip / LinkE FW 2.22、ch32rv の[実機の記録](https://github.com/ch32-riscv-ug/ch32rv/blob/v0.24.0/docs/data-requests/measured/h417-core-cli-2026-10-10.md)): hartsel 1 を保ったまま、step(PC が `0x000026c0` へ進む)、resume、halt ができる。同じ attach の中で、running の DMSTATUS `0x00430c82` からコア 1 宛の haltreq(DMCONTROL ← `0x80010001`)で halted の `0x004f0382` になり、前後の mhartid は 1、最後の DMCONTROL は `0x00010001` だった。コア 1 のメモリ読出しは DMI の abstract command で行った。
 
 **実装上の要件**: 選択した hartsel を状態として保持し、halt / resume / reset / ack と要求クリア時を含む全 DMCONTROL 書き込みに反映する。上の基本操作のコア 0 固定値をそのまま書くと選択が 0 に戻る。
 
