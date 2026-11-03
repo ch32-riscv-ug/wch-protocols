@@ -12,6 +12,9 @@ v1 に向けた組み直し。protocol の事実の正本をこの repo に一�
 - E 番号は変えない。`.ja.md` のパスも変えない(英語版は後から隣に `.md` として足す)。
 - WCH-Link のコマンド表の正本を [protocols/data/wchlink-commands.csv](protocols/data/wchlink-commands.csv) にした(schema は [protocols/data/README.ja.md](protocols/data/README.ja.md)、版は `protocols/data/VERSION` = 1)。要求は frame 全体(`81 cmd len payload…`)で書き、len と payload を取り違える余地をなくした。列は status、根拠の種類、範囲(probe の variant と fw、chip)、受理と効果、他の実装での名前、出典。pc-to-link §4 / §5 / §5b / §7 / §8 / §10b の表は `tools/gen_command_tables.py` が CSV から作る。
 
+- AttachChip の family byte の表(pc-to-link §9)の正本を [`protocols/data/families.csv`](protocols/data/families.csv) にした。表は `tools/gen_command_tables.py` が作る(`--check` で一致を確かめる)。
+- firmware image の大きさ・sha256・V3.00 の版の値は、`ch32-device-data` の `index/link_firmware.csv` を正本として引き、§10b に写さない。§10b には読み方(BL の大きさ、`bcdDevice` = 版、`minor = Ver − 20`)と、csv に無い 1 つ前のセットの値だけを残した。
+
 ### status 語彙
 
 - 定義を [README](README.md#status) の 1 か所にまとめ、他の文書(guides/advanced、experiments/README §6、pc-to-link、bootloader-survey)はリンクにした。

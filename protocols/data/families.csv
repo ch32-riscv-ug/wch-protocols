@@ -1,0 +1,23 @@
+byte,family,core,status,note
+0x01,CH32V103,V3A,verified,LinkE 2.22 / CH549 2.12、chip ID `0x2500410f`
+0x02,CH57x,V3A,attested,probe-rs
+0x03,CH56x,V3A,attested,probe-rs
+0x04,CH32F10x,Cortex-M3,attested,probe-rs
+0x05,CH32V20x,V4B/V4C,verified,V203、`0x20310500`
+0x06,CH32V30x,V4C/V4F,verified,V307、`0x30700528`
+0x07,CH58x,V4A,attested,probe-rs
+0x09,CH32V003,V2A,verified,V003、`0x00300500`
+0x0A,CH8571,(undoc),attested,probe-rs
+0x0B,CH59x,V4C,attested,probe-rs
+0x0C,CH643,V4C,attested,probe-rs
+0x0D,CH32X035,V4C,verified,X035、`0x03510601`
+0x0E,CH32L103,V4C,verified,L103、`0x10310710`
+0x49,CH641,V2A,attested,probe-rs
+0x4E,CH32V00X,V2C,verified,V006 QFN32、`0x00600620`
+0x86,CH32V317,V4F,attested,probe-rs
+0x8B,CH570/572,V3C,attested,probe-rs
+0x8E,CH32M030,—,verified,M030、`0x03bb0810`
+0xA6,CH32V407,—,verified,V407、`0x46710011`
+0xC6,CH32H4,V4F,verified,H417、`0x4170053d`
+0xCE,CH32V205,—,verified,V205RCT6、`0x20510510`
+0xE6,CH32X315,—,verified,X315MCU6、`0x31500000`

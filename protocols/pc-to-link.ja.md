@@ -271,8 +271,9 @@ option bytes は通常の page と手順が違う(専用の unlock と OPTPG/OPT
 
 ## 9. AttachChip 応答と chip 識別
 
-応答に family byte + 32bit chip ID。probe-rs はこれを mask(概ね `0xffffff0f`)で照合する([7:4] は silicon revision で don't-care)。
+応答に family byte + 32bit chip ID。表は [protocols/data/families.csv](data/families.csv) から [tools/gen_command_tables.py](../tools/gen_command_tables.py) で作る(手で編集しない)。probe-rs はこれを mask(概ね `0xffffff0f`)で照合する([7:4] は silicon revision で don't-care)。
 
+<!-- BEGIN generated:families -->
 | byte | family | core | status |
 |---|---|---|---|
 | `0x01` | CH32V103 | V3A | `verified`(LinkE 2.22 / CH549 2.12、chip ID `0x2500410f`) |
@@ -297,6 +298,7 @@ option bytes は通常の page と手順が違う(専用の unlock と OPTPG/OPT
 | `0xC6` | CH32H4 | V4F | `verified`(H417、`0x4170053d`) |
 | `0xCE` | CH32V205 | — | `verified`(V205RCT6、`0x20510510`) |
 | `0xE6` | CH32X315 | — | `verified`(X315MCU6、`0x31500000`) |
+<!-- END generated:families -->
 
 `verified` の行はすべて WCH-LinkE fw 2.22 の AttachChip 応答で、`0x01`(V103)だけ CH549 Link fw 2.12 でも測った(ch32rv の replay fixture [`tests/fixtures/replay/target-info-*.ndjson`](https://github.com/ch32-riscv-ug/ch32rv/tree/v0.24.0/tests/fixtures/replay) と [`docs/data-requests/measured/`](https://github.com/ch32-riscv-ug/ch32rv/tree/v0.24.0/docs/data-requests/measured) の記録)。ch32rv の `family_name`(`crates/wchlink/src/probe.rs`)はこの表と同じ byte と名前を持つ。V467 / X305 / M103 の family byte は未測定。
 
@@ -413,23 +415,25 @@ WCH-LinkUtility の `Firmware_Link/` に平文で入っている。**全ファ�
 
 | APP_IAP(外部書込機用) | BL | app(**IAP で流すのはこちら**) | probe | wcfg key |
 |---|---:|---|---|---|
-| `WCH-LinkE-APP-IAP.bin` 117,736 | `0x2000` | `FIRMWARE_CH32V305.bin` 109,544 | WCH-LinkE(CH32V305) | `CH32V307Ver` |
-| `WCH-LinkW-APP-IAP.bin` 122,456 | `0x2000` | `FIRMWARE_CH32V208.bin` 114,264 | WCH-LinkW(CH32V208) | `CH32V208Ver` |
-| `WCH-DAPLink_APP_IAP.bin` 36,292 | `0x2000` | `FIRMWARE_CH32V203.bin` 28,100 | WCH-DAPLink(CH32V203) | `CH32V203Ver` |
-| `WCH-Link_APP_IAP_RV.bin` 45,784 | **`0xC00`** | `FIRMWARE_CH549.bin` 42,712 | 旧 WCH-Link RISC-V(CH549) | `CH549Ver_RV` |
-| `WCH-Link_APP_IAP_ARM.bin` 27,734 | **`0xC00`** | `FIRMWARE_DAP_CH549.bin` 24,662 | 旧 WCH-Link ARM/DAP(CH549) | `CH549Ver_ARM` |
+| `WCH-LinkE-APP-IAP.bin` | `0x2000` | `FIRMWARE_CH32V305.bin` | WCH-LinkE(CH32V305) | `CH32V307Ver` |
+| `WCH-LinkW-APP-IAP.bin` | `0x2000` | `FIRMWARE_CH32V208.bin` | WCH-LinkW(CH32V208) | `CH32V208Ver` |
+| `WCH-DAPLink_APP_IAP.bin` | `0x2000` | `FIRMWARE_CH32V203.bin` | WCH-DAPLink(CH32V203) | `CH32V203Ver` |
+| `WCH-Link_APP_IAP_RV.bin` | **`0xC00`** | `FIRMWARE_CH549.bin` | 旧 WCH-Link RISC-V(CH549) | `CH549Ver_RV` |
+| `WCH-Link_APP_IAP_ARM.bin` | **`0xC00`** | `FIRMWARE_DAP_CH549.bin` | 旧 WCH-Link ARM/DAP(CH549) | `CH549Ver_ARM` |
+
+各 image の大きさ、sha256、版(wcfg の `Ver`、probe が報告する版)の値は [`ch32-device-data` の `index/link_firmware.csv`](https://github.com/ch32-riscv-ug/ch32-device-data/blob/main/index/link_firmware.csv) を正本として引く(この文書には写さない)。
 
 - **BL サイズは family 依存**: CH32V 系は 8 KB(`0x2000`、app は `0x08002000`)、CH549 系は 3 KB(`0xC00`)。「差が `0x2000`」は CH32V 系限定の話。
 - **版は image 自身に埋まっている**: app image 内の **USB device descriptor の `bcdDevice`**(BCD)がそのまま版。probe に挿さずに版が読める。
-- `wchlink.wcfg` の `Ver` 値は WCH 内部の通し番号で **`minor = Ver − 20`**。2 セットの `Ver` と、対応する image の `bcdDevice` が**全 5 機種で一致**した(下表)。この対応は `attested`(wcfg と image の binary の照合。実機の版で突き合わせたのは LinkE の `v42` = 2.22 だけ)。
+- `wchlink.wcfg` の `Ver` 値は WCH 内部の通し番号で **`minor = Ver − 20`**。V3.00 とその 1 つ前の 2 セットで、`Ver` と対応する image の `bcdDevice` が**全 5 機種で一致**した。この対応は `attested`(wcfg と image の binary の照合。実機の版で突き合わせたのは LinkE の `v42` = 2.22 だけ)。V3.00 の値は [`ch32-device-data` の `index/link_firmware.csv`](https://github.com/ch32-riscv-ug/ch32-device-data/blob/main/index/link_firmware.csv) の `wcfg_version` / `reported_version`。1 つ前のセットの値(この csv には無い)は次のとおり。
 
-  | key | 旧セットの Ver / image の bcdDevice | V3.00 の Ver / bcdDevice | 対象 |
-  |---|---|---|---|
-  | `CH32V307Ver` | 33 / `0x0213` | **42 / `0x0222`** | WCH-LinkE |
-  | `CH32V208Ver` | 33 / `0x0213` | 34 / `0x0214` | WCH-LinkW |
-  | `CH32V203Ver` | 32 / `0x0212` | 32 / `0x0212` | WCH-DAPLink |
-  | `CH549Ver_RV` | 32 / `0x0212` | 32 / `0x0212` | 旧 WCH-Link(RISC-V) |
-  | `CH549Ver_ARM` | 31 / `0x0211` | 31 / `0x0211` | 旧 WCH-Link(ARM) |
+  | key | 1 つ前のセットの Ver / image の bcdDevice | 対象 |
+  |---|---|---|
+  | `CH32V307Ver` | 33 / `0x0213` | WCH-LinkE |
+  | `CH32V208Ver` | 33 / `0x0213` | WCH-LinkW |
+  | `CH32V203Ver` | 32 / `0x0212` | WCH-DAPLink |
+  | `CH549Ver_RV` | 32 / `0x0212` | 旧 WCH-Link(RISC-V) |
+  | `CH549Ver_ARM` | 31 / `0x0211` | 旧 WCH-Link(ARM) |
 
   実機の `ch32rv probe list` が出す `v42` はこの Ver 値そのもの。`firmware_version.txt` は旧セット `v34` → V3.00 `v40` と単調増加するが**どの probe の Ver とも一致しない**ので、**Firmware_Link パッケージ自体の版**と読むのが妥当。
 

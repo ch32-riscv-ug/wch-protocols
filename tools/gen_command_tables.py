@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Generate the WCH-Link command tables in protocols/pc-to-link.ja.md from protocols/data/wchlink-commands.csv.
+"""Generate the WCH-Link command tables in protocols/pc-to-link.ja.md from protocols/data/wchlink-commands.csv,
+and the AttachChip family-byte table (§9) from protocols/data/families.csv (between
+`<!-- BEGIN generated:families -->` and `<!-- END generated:families -->`).
 
 The CSV is the source. Each table in the markdown sits between
 
@@ -21,6 +23,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CSV = ROOT / "protocols/data/wchlink-commands.csv"
+FAMILIES = ROOT / "protocols/data/families.csv"
+FAMILY_COLUMNS = ["byte", "family", "core", "status", "note"]
+FAMILY_BLOCK = re.compile(r"(<!-- BEGIN generated:families -->\n)(.*?)(<!-- END generated:families -->)", re.S)
 DOC = ROOT / "protocols/pc-to-link.ja.md"
 COLUMNS = ["id", "section", "name", "request_frame", "cmd", "sub", "payload", "response", "status", "evidence",
            "scope_probe", "scope_fw", "scope_chip", "accepted", "effect", "aliases", "source", "note"]
@@ -91,17 +96,42 @@ def render(doc, rows):
     return BLOCK.sub(sub, doc)
 
 
+def families(doc):
+    with FAMILIES.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames != FAMILY_COLUMNS:
+            sys.exit(f"{FAMILIES}: columns {reader.fieldnames} != {FAMILY_COLUMNS}")
+        rows = list(reader)
+    seen = set()
+    for n, r in enumerate(rows, 2):
+        if not re.fullmatch(r"0x[0-9A-F]{2}", r["byte"]):
+            sys.exit(f"{FAMILIES}:{n}: byte {r['byte']!r} is not 0xHH (upper case)")
+        if r["byte"] in seen:
+            sys.exit(f"{FAMILIES}:{n}: byte {r['byte']} twice")
+        seen.add(r["byte"])
+        if r["status"] not in STATUS:
+            sys.exit(f"{FAMILIES}:{n}: status {r['status']!r} is not in the README vocabulary")
+    out = ["| byte | family | core | status |", "|---|---|---|---|"]
+    for r in rows:
+        status = f"`{r['status']}`" + (f"({r['note']})" if r["note"] else "")
+        out.append("| " + " | ".join(cell(x) for x in (f"`{r['byte']}`", r["family"], r["core"], status)) + " |")
+    body = "\n".join(out) + "\n"
+    if not FAMILY_BLOCK.search(doc):
+        sys.exit(f"{DOC}: no generated:families block")
+    return FAMILY_BLOCK.sub(lambda m: m.group(1) + body + m.group(3), doc)
+
+
 def main():
     rows = load()
     doc = DOC.read_text(encoding="utf-8")
-    new = render(doc, rows)
+    new = families(render(doc, rows))
     used = {m["s"] for m in BLOCK.finditer(doc)}
     missing = sorted({r["section"] for r in rows} - used)
     if missing:
         sys.exit(f"{DOC}: no generated block for section(s) {missing}")
     if "--check" in sys.argv[1:]:
         if new != doc:
-            sys.exit(f"{DOC} is out of date with {CSV}; run tools/gen_command_tables.py")
+            sys.exit(f"{DOC} is out of date with {CSV} / {FAMILIES}; run tools/gen_command_tables.py")
         return
     DOC.write_text(new, encoding="utf-8")
 
