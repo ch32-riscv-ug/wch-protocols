@@ -33,6 +33,10 @@ v1 に向けた組み直し。protocol の事実の正本をこの repo に一�
 - SDI monitor の線(L103、`more/l103/monitor_sdi`)を全区間復号し、要約 [`monitor_sdi.dmi.txt`](captures/fixtures/wire-linke-p4-2026-09-25/more/l103/monitor_sdi.dmi.txt)(158 KB)を置いた。LinkE は DMDATA0 を約 29.5 µs ごとに読み、0 以外なら**文字数に関係なく** DMDATA1 を読んでから DMDATA0 に 0 を書く(「4 文字以上のときだけ DMDATA1 を読む」を直した。[link-to-target](protocols/link-to-target.ja.md#sdi-monitor)、[serial-and-print](protocols/serial-and-print.ja.md))。「49〜52 clock の frame」は 25 MHz の収録に hold filter を掛けたせいで、filter なしではすべて 53 clock の frame として読める。
 - `captures/tools/rvswd_stream.py`(`.sr` を chunk ごとに読む rvswd.py)と `captures/tools/rvswd_sdi_monitor.py`(SDI monitor の要約)を足した。`rvswd.hold()` を同じ結果の vector 演算にし、`rvswd.frames_from_samples()` を分けた(既存の出力は変わらない)。
 
+- `verified` を根拠に合わせて直した: wcfg の `Ver` と `bcdDevice` の対応は binary の照合なので `attested`(実機で突き合わせたのは LinkE `v42` = 2.22 だけ)。resume の「直後に ~10ms sleep」は probe-rs だけの手順なので `single-source` にし、resume の手順を ch32rv の実機(V00x は 1 回の resumereq を取らないことがあり、書き直す)に合わせた。
+- 既知不良版 2.11 の範囲を書いた(CH549 の WCH-Link RISC-V fw 2.11 + V103、LinkE では出ていない)。family byte の表の脚注を直した(`0x01` は CH549 Link 2.12 でも測った。ch32rv の `family_name` と同じ表)。ISP の VID:PID の出所に ch32rv の `ISP_IDS` を足した。
+- 汎用 probe の設計メモの DMI の組を `(addr7, data32, op2)` にした。long 形式の末尾 1 bit は parity ではない(link-to-target §3)。
+
 ### 文書
 
 - 仕様の本文から経緯の語り(「以前は…と書いた」、日付つきの進捗)を除き、今の状態だけを書いた。未決の問いの一覧は残した。

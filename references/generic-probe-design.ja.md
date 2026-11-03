@@ -42,7 +42,7 @@
 ```
 host  ──(transport)──►  probe  ──(SWIO 1線 / RVSWD 2線)──►  target
         dmi_read(addr7)               bit-bang / PIO で
-        dmi_write(addr7, data32)      (addr7, data32, op2, parity) を送受
+        dmi_write(addr7, data32)      (addr7, data32, op2) を送受
         + power / reset / delay
 ```
 
@@ -87,7 +87,7 @@ host  ──(transport)──►  probe  ──(SWIO 1線 / RVSWD 2線)──►
 ### firmware 側(Arduino ライブラリ)の層
 
 1. **線層**: SWIO(pulse 幅、`digitalWrite` では遅すぎるので cycle count / 直接レジスタ / RP2040 は PIO)、RVSWD(clock 付き、比較的容易)。PicoRVD/Swindle(PIO)、cnlohr(bit-bang)が参照。
-2. **DMI 層**: (addr7, data32, op2, parity) の組立・検証。
+2. **DMI 層**: (addr7, data32, op2) の組立・検証。short 形式は header と data に偶数 parity を付ける。long 形式の末尾 1 bit は parity として働いていない([link-to-target](../protocols/link-to-target.ja.md) §3)。
 3. **protocol 層**: frame 解析、batch、stub。
 4. **transport adapter**: `Stream`(UART/CDC)、HID、WiFiServer/WebSocket、BLE。Arduino の `Stream` 抽象に載せれば UART と USB CDC は同じコードで済む。
 

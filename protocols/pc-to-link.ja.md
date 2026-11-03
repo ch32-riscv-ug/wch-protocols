@@ -298,7 +298,7 @@ option bytes は通常の page と手順が違う(専用の unlock と OPTPG/OPT
 | `0xCE` | CH32V205 | — | `verified`(V205RCT6、`0x20510510`) |
 | `0xE6` | CH32X315 | — | `verified`(X315MCU6、`0x31500000`) |
 
-`verified` の行はすべて WCH-LinkE fw 2.22 の AttachChip 応答(ch32rv の replay fixture と `docs/data-requests/measured/` の記録)。V467 / X305 / M103 の family byte は未測定。
+`verified` の行はすべて WCH-LinkE fw 2.22 の AttachChip 応答で、`0x01`(V103)だけ CH549 Link fw 2.12 でも測った(ch32rv の replay fixture [`tests/fixtures/replay/target-info-*.ndjson`](https://github.com/ch32-riscv-ug/ch32rv/tree/v0.24.0/tests/fixtures/replay) と [`docs/data-requests/measured/`](https://github.com/ch32-riscv-ug/ch32rv/tree/v0.24.0/docs/data-requests/measured) の記録)。ch32rv の `family_name`(`crates/wchlink/src/probe.rs`)はこの表と同じ byte と名前を持つ。V467 / X305 / M103 の family byte は未測定。
 
 <a id="chip-id-vs-memory"></a>
 
@@ -317,7 +317,7 @@ option bytes は通常の page と手順が違う(専用の unlock と OPTPG/OPT
 |---|---|---|
 | 取得 | GetProbeInfo 応答の v_major / v_minor(raw byte) | `verified`(LinkE raw `0216`→2.22/v42、CH549 raw `020c`→2.12/v32) |
 | 表記の三重性 | raw `02 0c` = 正規化 `2.12` = WCH 表示 `v32`(`major*10+minor`) | `attested` |
-| 既知不良版 | **2.11(v31): download --reset 後に target が走らない**。2.12 で解消 | `verified`(ArduinoCore-CH32RV の実機ログ) |
+| 既知不良版 | **CH549 の WCH-Link RISC-V fw 2.11(v31): probe-rs の download --reset 後に target(V103)が halt のまま走らない**。2.12 で解消。LinkE では出ていない | `verified`(CH549 Link 2.11 + CH32V103R8T6、ArduinoCore-CH32RV の実機ログ。ch32-device-data `index/link_firmware_issues.csv`) |
 | SDI print 要件 | firmware 2.10 以降 | `single-source`(wlink README) |
 
 - **firmware image と版の対応**: WCH が配る WCH-Link 系の firmware image の sha256 と版(wcfg の版、WCH の表示 `vNN`)の表は `ch32-device-data` の [`index/link_firmware.csv`](https://github.com/ch32-riscv-ug/ch32-device-data/blob/main/index/link_firmware.csv)(10 行、binary は置かず指紋と取得元だけ)。手元の image を照合するときはこれを引く。
@@ -421,7 +421,7 @@ WCH-LinkUtility の `Firmware_Link/` に平文で入っている。**全ファ�
 
 - **BL サイズは family 依存**: CH32V 系は 8 KB(`0x2000`、app は `0x08002000`)、CH549 系は 3 KB(`0xC00`)。「差が `0x2000`」は CH32V 系限定の話。
 - **版は image 自身に埋まっている**: app image 内の **USB device descriptor の `bcdDevice`**(BCD)がそのまま版。probe に挿さずに版が読める。
-- `wchlink.wcfg` の `Ver` 値は WCH 内部の通し番号で **`minor = Ver − 20`**。2 セットの `Ver` と、対応する image の `bcdDevice` が**全 5 機種で一致**した(下表)ので、この対応は verified。
+- `wchlink.wcfg` の `Ver` 値は WCH 内部の通し番号で **`minor = Ver − 20`**。2 セットの `Ver` と、対応する image の `bcdDevice` が**全 5 機種で一致**した(下表)。この対応は `attested`(wcfg と image の binary の照合。実機の版で突き合わせたのは LinkE の `v42` = 2.22 だけ)。
 
   | key | 旧セットの Ver / image の bcdDevice | V3.00 の Ver / bcdDevice | 対象 |
   |---|---|---|---|

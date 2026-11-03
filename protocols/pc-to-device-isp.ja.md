@@ -78,7 +78,7 @@ ISP のコマンド本体(§3)は共通で、**外側の枠だけ transport で�
 | **USB**(`1A86:55E0`、minichlink は `4348:55E0` も探す) | bulk EP `0x02` OUT に `cmd(1) len(2 LE) payload…` を素で載せる | bulk EP `0x82` IN に `cmd(1) 00 len(2 LE) payload…` | sync 無し。**string descriptor / serial を持たない**(識別は topology / BTVER)。timeout は minichlink 5 s。`verified`(X035) |
 | UART | `0x57 0xAB` sync + `cmd(1) len(2 LE) payload…` + `checksum(1)` | `0x55 0xAA` sync + 同形 + checksum | checksum は byte の和。先頭で auto-baud(wchisp)。`attested`(実機未確認) |
 
-- host は **VID `0x4348` または `0x1A86`、PID `0x55E0`** を探す(minichlink)。**WCH-Link の IAP mode(`4348:55e0`)と WCH IAP(EVT の app 内 BL、`1a86:55e0`)も同じ `55E0`** を名乗る([pc-to-link.ja.md](pc-to-link.ja.md) §10b / [wch-iap.ja.md](wch-iap.ja.md) §2)。X035 の factory ISP と WCH IAP は VID も同じなので、**VID では区別できない**。BTVER / chip 種別、および「`0xA1` に答えるか」で判別する。
+- host は **VID `0x4348` または `0x1A86`、PID `0x55E0`** を探す(minichlink、ch32rv `crates/isp` の `ISP_IDS`。実機で列挙を見たのは X035 の `1a86:55e0` だけ)。**WCH-Link の IAP mode(`4348:55e0`)と WCH IAP(EVT の app 内 BL、`1a86:55e0`)も同じ `55E0`** を名乗る([pc-to-link.ja.md](pc-to-link.ja.md) §10b / [wch-iap.ja.md](wch-iap.ja.md) §2)。X035 の factory ISP と WCH IAP は VID も同じなので、**VID では区別できない**。BTVER / chip 種別、および「`0xA1` に答えるか」で判別する。
 
 <a id="commands"></a>
 

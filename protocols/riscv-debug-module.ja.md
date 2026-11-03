@@ -35,7 +35,7 @@
 | 操作 | 手順 | 状態 |
 |---|---|---|
 | **halt** | DMCONTROL=`0x80000001`(haltreq+dmactive)→ DMSTATUS の all/any-halted を待つ → DMCONTROL=`0x00000001`(haltreq クリア) | verified |
-| **resume** | DMCONTROL=`0x40000001`(resumereq+dmactive)。**直後に ~10ms sleep が要る**(quirk) | verified |
+| **resume** | DMCONTROL=`0x40000001`(resumereq+dmactive)→ DMSTATUS の allrunning / allresumeack を待ち、立たなければ resumereq を書き直す → DMCONTROL=`0x00000001`(resumereq クリア)。**CH32V00x は 1 回の resumereq を取らないことがある**(V006K8U6 + WCH-LinkE で hart が allhalted のまま、2 回目で走る。ch32rv `crates/dmi/src/dm.rs` `87a0f97` の実機)。書込みの直後の ~10ms sleep は probe-rs だけの手順(`single-source`、[pc-to-link](pc-to-link.ja.md#quirks) §11) | verified(resumereq。書き直しは WCH-LinkE + V006) |
 | **reset の ack** | DMCONTROL=`0x10000001`(ackhavereset+dmactive)。**CH32V00x の DM は、havereset を ack するまで DMSTATUS の halt / running の bit を reset 時の値のまま固着させる**(V006: 走行中でも `0x004c0382` = halted + havereset、ack の後は `0x00430c82` = allrunning)。soft reset([pc-to-link](pc-to-link.ja.md#cmd-soft-reset))の後は ack → DMSTATUS を読む → halt なら resume、の順で走行を確かめる。V307 は ack なしでも正しい状態を返す | verified(WCH-LinkE、V006 / V307、ch32rv の実機、2026-09-16) |
 | **read_reg**(GPR/CSR/PC) | DMDATA0=0 → DMCOMMAND=`0x00220000 \| regno`(GPR=`0x1000+n`, PC=dpc=`0x7b1`)→ ABSTRACTCS busy 待ち → DMDATA0 読み | verified |
 | **write_reg** | DMDATA0=value → DMCOMMAND=`0x00230000 \| regno` → busy 待ち | verified |
