@@ -155,7 +155,7 @@
 
 §2 の「ほぼ 1,920 B」は upstream README の記述で、**実測値ではない**。§4 で唯一残った動機(entry 方式の同時搭載)は「**あと何 byte あれば載るか**」に還元されるので、**まず測り、次に削る**。新 BL を作るのではなく、**削減が効いたら UIAPduino / upstream に還元する**のが狙い。
 
-なお手元の checkout(`/home/mt/dev_wch/rv003usb`)の origin は **`YuukiUmeta-UIAP/rv003usb`= UIAPduino fork** で、`usb_config.h` の PID も `0xB803`。**調査対象がそのまま手元にある**。
+なお手元の rv003usb の checkout の origin は **`YuukiUmeta-UIAP/rv003usb`= UIAPduino fork** で、`usb_config.h` の PID も `0xB803`。**調査対象がそのまま手元にある**。
 
 ### 8.1 既に適用済みの最適化(提案しても無駄なもの)
 

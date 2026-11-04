@@ -24,7 +24,7 @@
 
 ## 1. WCH IAP(EVT の app 内 bootloader)→ [wch-iap.ja.md](wch-iap.ja.md)
 
-**独立した仕様書に移した**([wch-iap.ja.md](wch-iap.ja.md)、12 シリーズ分の byte・配置・entry を転記済み)。要点だけ:
+**別の仕様書にある**([wch-iap.ja.md](wch-iap.ja.md)。シリーズごとの byte・配置・entry は [§2 の表](wch-iap.ja.md#series-parameters))。要点だけ:
 
 - **3 世代ある**: A = V003/V00X(**BOOT 領域常駐**、APP は `0x08000000` から全部、CheckNum = 「APP 有効」印、UART のみ)/ B = V4 系(user flash 先頭 20 KB、APP `0x08005000`、CheckNum = 「IAP に留まれ」要求、UART + USB `1A86:55E0`)/ C = V103(sync `57 AB`、`4348:55E0`、フラグ無し)。**A と B で CheckNum の極性が逆**。
 - UART frame: `AA 55 | Cmd | Len | [addr 4] | [data Len] | sum_lo sum_hi | 55 AA`、応答 `AA 55 00 status 55 AA`、END は応答なし。USB は EP2 64 B に `isp_cmd` 直載せ。

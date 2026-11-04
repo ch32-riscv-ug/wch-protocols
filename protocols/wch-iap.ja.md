@@ -2,7 +2,7 @@
 
 # WCH IAP(EVT 同梱の app 内 bootloader)— UART / USB からの書込 protocol
 
-状態: **attested(WCH 公式 EVT ソース 12 シリーズ分から転記。実装可)**。自前 capture は未 → `verified` 化には WCHMcuIAP_WinAPP.exe の実 capture が要る。層は L3(IAP protocol)+ L4(target 側 flash 手順)。
+状態: **attested(WCH 公式 EVT ソースから転記。シリーズは §2 の表。実装可)**。自前 capture は未 → `verified` 化には WCHMcuIAP_WinAPP.exe の実 capture が要る。層は L3(IAP protocol)+ L4(target 側 flash 手順)。
 
 WCH の各シリーズ EVT に入っている `IAP/`(`USB_UART` / `UART_USB_IAP` / `USART_IAP`)は、**ユーザーが自分で焼く bootloader**(IAP)と、それに対応した APP の 2 プロジェクト構成。一度 IAP を焼けば、以後は WCH-Link 無しで UART または USB から APP を更新できる。factory ISP([pc-to-device-isp.ja.md](pc-to-device-isp.ja.md)、`0xAx` 系)とは**全くの別 protocol**。host 側は EVT 同梱の `WCHMcuIAP_WinAPP.exe`(Windows)のみで、他 OS の実装は存在しない — 本書はそれを書けるようにするための仕様。
 

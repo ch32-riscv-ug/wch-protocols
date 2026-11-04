@@ -493,7 +493,7 @@ EVT IAP が呼ぶ flash 関数の実体は SDK(`EVT/EXAM/SRC/Peripheral/src/ch32
 
 ### 6b.12 U11 完全決着 — WCH 純正 loader は **18 種**、dispatch は 21 分岐(F48〜F57)
 
-`~/dev_wch/tools` に WCH 純正 OpenOCD の**バイナリとソースの両方**があった。バイナリは **strip されておらず**、
+手元の道具一式に WCH 純正 OpenOCD の**バイナリとソースの両方**があった。バイナリは **strip されておらず**、
 loader がシンボル名付きで並んでいた。
 
 **「どちらが純正か」の答えは「両方」**: wlink の 5 本と minichlink の `linke-flashloader-v3`/`v4` は

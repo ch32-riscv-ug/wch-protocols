@@ -87,7 +87,7 @@ capture した NDJSON は **replay**(オフライン再生)できる: 記録さ�
 - **長い bulk read の残りが次の読みに混ざる**(CH549 で実測): 1 要求の転送が host の timeout を越えると、host が取り消した後も probe は残りを送り続け、それが次の data EP の読みに現れる。→ 1 要求を 16 KiB 程度に区切り、1 転送を timeout より十分短くする([pc-to-link.ja.md](../protocols/pc-to-link.ja.md) §5b)。
 - **CH32V103 の attach quirk**: AttachChip が生きた GPR `s1`/`x9` を chip id で上書きし復元しない。resume 後に program が s1 を使う瞬間 fault する(V103 固有)。→ **attach 後に soft-reset** してレジスタを再構築させる。
 - **大 image で probe が固まる**: 十数 KB の書込中に bulk timeout → probe 無応答化 → USB 再接続でのみ復旧(`USBDEVFS_RESET` 不可)。chunk 化とタイムアウト設計で回避。
-- **firmware 2.11(v31)は download --reset 後に走らない**(2.12 で解消)。版チェックは**正規化値**(`major*10+minor`)で比較(probe-rs は `v_major != 2 && v_minor < 7` の比較ミスがある — 真似しない)。
+- **CH549 の WCH-Link fw 2.11(v31)では、download --reset 後に target(V103)が走らない**(2.12 で解消。LinkE では出ていない。[pc-to-link.ja.md](../protocols/pc-to-link.ja.md) §10)。版チェックは**正規化値**(`major*10+minor`)で比較(probe-rs は `v_major != 2 && v_minor < 7` の比較ミスがある — 真似しない)。
 - **1 線 SWIO と 2 線 RVSWD の差は USB protocol 層に現れない**: attach/DMI/flash のコマンドは同一で、配線差は LinkE firmware が吸収する。ただし 1 線 target は LinkE/LinkW のみ(旧 CH549 Link は不可)。
 - **Windows のドライバ 2 系統(排他)**: WCH-Link の vendor interface は WinUSB(Zadig / 自動 bind)か WCH 純正ドライバ(`WCHLinkW64.SYS`)のどちらかが握り、**両立しない**。WinUSB 前提の `nusb`/`libusb` は純正ドライバ下だと「incompatible driver」で開けない。純正のまま喋るには CH375 系の IOCTL を直接叩く(Zadig 不要)。「列挙できるのに開けない」の主因。→ [pc-usb-driver.ja.md](../protocols/pc-usb-driver.ja.md)。
 
