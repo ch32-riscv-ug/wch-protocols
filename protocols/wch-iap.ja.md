@@ -63,16 +63,19 @@ IAP 起動直後の判定。`UPGRADE_MODE` で command 方式 / IO 方式を選�
 | CH32V00X(V006) | A | BOOT 3,328 B @`0x1FFF0000` | `0x08000000` | `0x08003FFC`(16K−4 のまま) | 256 B / 全消去 | USART1 | PD5/PD6 | 460800(同上) | — | — |
 | CH32V103 | C | user 先頭 | `0x08005000`(APP ld) | **無し** | 128 B / page | **USART3** | PB10/PB11 | **57600** | USBFS(旧 API) | **`4348:55E0`** |
 | CH32V20x | B | user 先頭 20 KB | `0x08005000` | `0x08037FFC`(224K−4) | 256 B / page | USART3 | PB10/PB11 | 460800 | USBFS(`User/`)/ USBD(`CONFIG/`) | `1A86:55E0` / USBD 側は `4348:55E0` |
-| CH32V205 | B | 〃 | `0x08005000` | `0x0803FFFC`(256K−4) | 256 B / page | USART2 | PA2/PA3 | 460800 | USBFS + USBHS | `1A86:55E0`(HID 版 `1A86:FE17`) |
+| CH32V205 | B | 〃 | `0x08005000` | `0x0803FFFC`(256K−4) | 256 B / page | USART2 | PA2/PA3 | 460800 | USBFS + USBHS | **`1A86:FE17`(HID、既定)**/ `1A86:55E0`(vendor) |
 | CH32V307 | B | 〃 | `0x08005000` | `0x08077FFC`(480K−4) | 256 B / page | USART3 | PB10/PB11 | 460800 | USBFS + USBHS | `1A86:55E0` |
-| CH32V407 | B | 〃 | `0x08005000` | `0x080F7FFC`(992K−4) | 256 B / **4 KB erase**(10 KB buffer) | USART2 | PA2/PA3 | 460800 | USBHS | `1A86:55E0`(HID 版 `FE17`) |
+| CH32V407 | B | 〃 | `0x08005000` | `0x080F7FFC`(992K−4) | 256 B / **4 KB erase**(10 KB buffer) | USART2 | PA2/PA3 | 460800 | USBHS | **`1A86:FE17`(HID、既定)**/ `1A86:55E0`(vendor) |
 | CH32X035 | B | 〃 | `0x08005000` | `0x0800F7FC`(62K−4) | 256 B / page | USART2 | PA2/PA3 | 460800 | USBFS | `1A86:55E0` |
-| CH32X315 | B | 〃 | `0x08005000` | `0x08037FFC` | 256 B / 4 KB erase | USART2 | **PA4/PA5** | 460800 | USBHS | `1A86:55E0`(HID 版 `FE17`) |
-| CH32L103 | B | 〃 | `0x08005000` | `0x0800FFFC`(64K−4) | 256 B / page | USART2 | PA2/PA3 | 460800 | USBFS | `1A86:55E0`(HID 版 `FE17`) |
+| CH32X315 | B | 〃 | `0x08005000` | `0x08037FFC` | 256 B / 4 KB erase | USART2 | **PA4/PA5** | 460800 | USBHS | `1A86:55E0`(vendor、既定)/ `1A86:FE17`(HID) |
+| CH32L103 | B | 〃 | `0x08005000` | `0x0800FFFC`(64K−4) | 256 B / page | USART2 | PA2/PA3 | 460800 | USBFS | **`1A86:FE17`(HID、既定)**/ `1A86:55E0`(vendor) |
 | CH32M030 | B | 〃 | `0x08005000` | `0x0800FFFC` | **128 B** / page | USART1 | **PC0/PC1** | 460800 | USBFS | `1A86:55E0` |
-| CH32H417 | B | user 先頭 **24 KB** | **`0x08006000`** | `0x08077FFC` | 256 B / 4 KB erase(10 KB buffer) | USART1 | **PB6/PB7** | 460800 | USBFS + USBHS(V3F / V5F 別 core) | `1A86:55E0`(HID 版 `FE17`) |
+| CH32H417 | B | user 先頭 **24 KB** | **`0x08006000`** | `0x08077FFC` | 256 B / 4 KB erase(10 KB buffer) | USART1 | **PB6/PB7** | 460800 | USBFS + USBHS(V3F / V5F 別 core) | **`1A86:FE17`(HID、既定)**/ `1A86:55E0`(vendor) |
 
-- USB descriptor は全世代 **vendor class(`FF/80/55`)、EP2 OUT/IN、64 B**、`bcdDevice = 0x0100`。`usb_desc.c` 系(V205/V407/L103/X315/H417)は HID descriptor(`PID 0xFE17`)も併載しているが、IAP 経路は vendor 側。
+- USB は **EP2 OUT/IN、64 B**、`bcdDevice = 0x0100`。device の種類は 2 通り(<a id="usb-mode"></a>):
+  - **vendor**(`1A86:55E0`、vendor class `FF/80/55`、bulk): V20x / V307 / X035 / M030 の EVT と、X315 の EVT の既定。
+  - **HID**(`1A86:FE17`、interface class 3、interrupt、vendor 定義の report 64 B・report ID なし): **V205 / V407 / L103 / H417 の EVT の既定**。`usb_inf.h` の `DEF_USB_IAP_MODE`(`_VENDOR` 0 / `_HID` 1)で切り替える(この 5 series の EVT が持つ。X315 だけ既定が vendor)。
+  - どちらでもコマンドと応答のバイト列は §3.3 と同じ。HID では応答も 64 B の report 全体で返る(`00 status` の後は 0)。世代(§0)は変わらない: 置き場・極性・UART sync は世代 B のまま。
 - **`1A86:55E0` は factory ISP と PID が同じで、CH32X035 の factory ISP は VID も同じ `1a86:55e0`**(BTVER 2.60 で実測。[pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) §1)。VID では区別できないので、正体判定は必ず protocol で行う(factory ISP は `0xA1` Identify に答える。WCH-Link の IAP mode `4348:55e0` も同じ問題を持つ)。
 - UART は **8N1、フロー制御なし**。世代 A は `BRR` 直書きなので**システムクロックを変えると baud がずれる**(24 MHz HSI 前提)。
 
@@ -112,7 +115,7 @@ frame の末尾処理は EVT の該当 `UART_Rx_Deal` を実機で確認する�
 
 ### 3.3 USB(世代 B / C)
 
-**EP2 OUT の 64 B packet に `isp_cmd` をそのまま載せる**。sync も checksum も無い(USB が framing を担う)。
+**EP2 OUT の 64 B packet に `isp_cmd` をそのまま載せる**。sync も checksum も無い(USB が framing を担う)。vendor は bulk、HID は interrupt の 64 B report(report ID なし)で、中身は同じ([§2 の USB の種類](#usb-mode))。
 
 ```
 PROM:            Cmd | Len | data[≤62]

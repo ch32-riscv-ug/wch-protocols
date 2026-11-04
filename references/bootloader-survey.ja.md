@@ -16,7 +16,7 @@
 | **Q3** V003 は特殊か | **特殊。ただし「V003 が」ではなく「V003+V00X が」**。この 2 つだけ BOOT 領域常駐・`==` 極性・BOOT_MODE レジスタ経由の jump(F07/F08/F13)。V003 単独で特殊なのは flash 粒度 64 B と inline 実装だけ(F09/F10) |
 | **Q4** stub にどこまで差を押し出せるか | **押し出せている**。b003 系 stub **47 本すべてが x0–x15 のみ**で RV32EC/IMAC 両対応(F17)。機能 1 個 = **8〜120 B** で BL の flash 予算を消費しない(F19) |
 | **Q5** 容量に何が入るか | BL 本体は 1,920 B(V003)〜 20 KB。**拡張余地は flash ではなく RAM の scratchpad** にあり、ch32fun では **BL 本体の 1.9 倍**(F20) |
-| **Q6** protocol は 3 世代で足りるか | **足りない。4 世代**。UART 世代 A / V103 世代 B / UART+USB 生バイト descriptor 世代 C / **USB マクロ + Vendor·HID 切替の世代 D**(F11) |
+| **Q6** protocol は 3 世代で足りるか | **コマンドと置き場は 3 世代で足りる**。ただし USB の device の種類が 2 通りある(生バイト descriptor の vendor / `DEF_USB_VID` マクロで Vendor·HID を切り替える側。F11)。後者は V205 / V407 / L103 / H417 で既定が HID(`1A86:FE17`)。下の「世代 D」はこの USB の軸の名前で、[wch-iap](../protocols/wch-iap.ja.md#usb-mode) では世代 B の中の USB の種類として書く |
 | **Q7** どの言語で書くべきか | **層で分ける。BL 本体は C、stub は asm**。H1〜H4 は棄却されず、H3 は実測で裏付いた(§6) |
 
 **いちばん効く発見**: 統一 BL を阻む本当の障害は **`CheckNum` の判定極性が反転していること**(F07)だけ。もう 1 つの候補だった blank pattern 2 系統は、第 2 回で **RM に明文のあるハードウェア特性**と判明し(F25)、family から引く定数に降格した。
@@ -540,7 +540,7 @@ loader がシンボル名付きで並んでいた。
 | # | 内容 | 影響 |
 |---|---|---|
 | **1** | **USB VID の矛盾は解決**。`0x4348` = v103 / v20x、`0x1A86` = 他 9。PID は全て `0x55E0`。既存 doc の `1A86:55E0` も V20x sample の `4348:55E0` も**どちらも正しい** | `protocols/custom-bootloader.ja.md` §2、`protocols/wch-iap.ja.md` |
-| **2** | **世代は 3 つではなく 4 つ**。世代 D(`DEF_USB_VID` マクロ + **Vendor / HID モード切替**、`PID_HID = 0xFE17`)が v205 / v407 / x315 / l103 / h417 に存在。既定は 4 つが HID、**x315 だけ VENDOR** | `protocols/wch-iap.ja.md` |
+| **2** | **USB の device の種類が 2 通り**(`DEF_USB_VID` マクロ + **Vendor / HID モード切替**、`PID_HID = 0xFE17`)。v205 / v407 / x315 / l103 / h417 が持ち、既定は 4 つが HID、**x315 だけ VENDOR**。コマンド・置き場・極性は世代 B と同じなので、protocol の世代は 3 のまま(wch-iap §2 に反映済み) | `protocols/wch-iap.ja.md` |
 | **3** | 「9 series が `FLASH_ProgramPage_Fast` に収束」は**誤り**。実際は 4 API に割れ、最大群は `FLASH_ROM_WRITE`(5) | 本 repo の従来メモ |
 | **4** | IAP 側の `.ld` が実際にサイズを縛るのは 13 中 **5 つだけ**(x315 と h417-v5f は `.ld` があるが series 既定と同値) | `bootloader-survey-plan.ja.md` §8.8(反映済み) |
 | **5** | **stub 引数 offset `@76/@80/@84` は誤り**。実際は `@108/@112/@116`(data `@120`)。`pgm-b003fun.c` の古いコメントを転記していた(F26) | `protocols/custom-bootloader.ja.md` §2b |

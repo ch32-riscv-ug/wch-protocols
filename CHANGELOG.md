@@ -46,6 +46,7 @@ v1 に向けた組み直し。protocol の事実の正本をこの repo に一�
 - repo の中の食い違いを直した: DmiOp が透過かどうか、long 形式の parity と target の応答、coverage の「最大の穴」、索引の古い status。
 - README を索引に戻し、この repo が protocol の事実の正本であることと、外からの引き方を書いた。
 - 切れたリンクと、repo の外を指すパスを直した。WCH IAP のシリーズ数は書き写さず、wch-iap §2 の表を指す。guides の線上の status と既知不良版 2.11 の範囲を仕様に揃えた。
+- WCH IAP の USB の device は 2 通り(`wch-iap.ja.md#usb-mode`): vendor(`1A86:55E0`、bulk)と HID(`1A86:FE17`、interrupt、64 B report・report ID なし)。V205 / V407 / L103 / H417 の EVT の既定は HID、X315 は vendor(`usb_inf.h` の `DEF_USB_IAP_MODE`)。「IAP 経路は vendor 側」は誤りだったので直した。コマンドと置き場は世代 B と同じで、世代は 3 のまま。bootloader-survey の「世代 D」は、この USB の軸の名前として書き直した。
 
 ### 削除(履歴は書き換えていない)
 
