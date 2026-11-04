@@ -146,4 +146,4 @@ P4 2枚(`esp32-p4-30eda0e31478` = device / `...14f5` = host)の OTG HS を直結
 
 ## 追記（2026-09-15、E110）
 
-本実験の「hardware TX FIFOの1 packetは約24〜26 MB/sの天井原因ではない」は、当時の送信がbufferedで25.6 MB/sのcopy律速だったから見えなかっただけだった。[E110](../experiments/e110_p4_usb_in_ceiling/README.ja.md)でzero-copy送信にした上で同じFIFOを2 packetにすると、29.7→49.3 MB/s（理論の93%）へ上がり、1 packetのFIFOがzero-copy後の唯一の天井だったことが分かった。反証条件1は「その時点の他の律速を外した後で再確認する」必要があった例として残す。
+本実験の「hardware TX FIFOの1 packetは約24〜26 MB/sの天井原因ではない」は、当時の送信がbufferedで25.6 MB/sのcopy律速だったから見えなかっただけだった。[E110](../e110_p4_usb_in_ceiling/README.ja.md)でzero-copy送信にした上で同じFIFOを2 packetにすると、29.7→49.3 MB/s（理論の93%）へ上がり、1 packetのFIFOがzero-copy後の唯一の天井だったことが分かった。反証条件1は「その時点の他の律速を外した後で再確認する」必要があった例として残す。

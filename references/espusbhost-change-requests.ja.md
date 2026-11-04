@@ -237,7 +237,7 @@ README.ja.md に OUT 側の同じ話が書かれている。
 
 ## 追記（2026-09-17、EspUsbHost側sessionの最終測定）: P4 hostは42.5 MB/s
 
-**「P4 host は 36.2 MB/s を超えるか」に答えが出た。超える。42.5 MB/s。** 先方の測定（[E089](../experiments/e089_p4_host_in_queue/README.ja.md) / [E102](../experiments/e102_p4_host_zero_copy_device/README.ja.md) の続き）。**両側ともリリース版**（EspUsbHost 2.9.4 ＋ EspUsbDevice 2.5.0）、HS 直結、vendor bulk IN。
+**「P4 host は 36.2 MB/s を超えるか」に答えが出た。超える。42.5 MB/s。** 先方の測定（[E089](../experiments/e089_p4_host_in_queue/README.ja.md) / [E102](../experiments/e102_p4_vendor_in_zero_copy_precomputed/README.ja.md) の続き）。**両側ともリリース版**（EspUsbHost 2.9.4 ＋ EspUsbDevice 2.5.0）、HS 直結、vendor bulk IN。
 
 | device 側の送り方 | best |
 |---|---:|

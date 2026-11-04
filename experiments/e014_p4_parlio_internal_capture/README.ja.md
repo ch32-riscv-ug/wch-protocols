@@ -171,7 +171,7 @@ cache: esp_cache_msync(...): start address ..., or the size: 0x38 is(are) not al
 - PARLIOを先に初期化し、その後にLEDC outputを接続する
 - LEDC後とPARLIO後の二段階でGPIO dumpを取り、どのAPIでoutput signalが変わるか特定する
 
-これらは計画した方法の変更になるためE014内では試さない。未採番計画[`p4-parlio-routing-order`](../plans/p4-parlio-routing-order/README.ja.md)へ分離する。
+これらは計画した方法の変更になるためE014内では試さない。未採番計画[`p4-parlio-routing-order`](../e015_p4_parlio_routing_order/README.ja.md)へ分離する。
 
 ### 未決
 

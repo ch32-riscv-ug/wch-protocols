@@ -44,7 +44,7 @@
 | **write_mem32** | PROGBUF0=`0x0072a023`(`sw x7,0(x5)`)・PROGBUF1=`0x00100073`(`ebreak`)→ DMDATA0=addr → cmderr クリア → DMCOMMAND=`0x00231005`(x5←data0)→ 待ち → DMDATA0=data → cmderr クリア → DMCOMMAND=`0x00271007`(x7←data0 + postexec で `sw`)→ 待ち | verified |
 | **write_mem16** | write_mem32 と同手順で PROGBUF0 のみ `0x00729023`(`sh x7,0(x5)`)。**V103 の標準 flash に必須**(16bit store ごとに FLASH controller が latch。`sw` では不可)→ [pc-to-link.ja.md](pc-to-link.ja.md) §6 | verified |
 
-- **DMABSTRACTCS**: busy=bit12、cmderr=bits[10:8](書き戻しでクリア)。
+- **DMABSTRACTCS**: busy=bit12、cmderr=bits[10:8]。cmderr は書き戻すとクリアされる。
 - **DMSTATUS**: allrunning=bit11 / anyrunning=bit10 / allhalted=bit9 / anyhalted=bit8。
 - **RV32E の GPR は x0-x15 だけ**(CH32V003、misa の E = bit4 が立つ。misa `0x40800014`): abstract register access で x16-x31(regno `0x1010`〜`0x101f`)を読むと cmderr になる。GPR を一括で読む host は misa を見て x0-x15 に絞る。verified(WCH-LinkE、V003、ch32rv の実機、2026-09-01)
 - **DMCOMMAND(abstract register access)の読み方**: `0x0027xxxx`=transfer+postexec、`0x0023xxxx`=write(transfer, write bit)、`0x0022xxxx`=read(transfer)。下位 16bit が regno(GPR=`0x1000+n`: x5=`0x1005`, x6=`0x1006`, x7=`0x1007`)。read_mem/write_mem は「addr/data を DMDATA0 経由で x5/x7 に載せ、progbuf の lw/sw/sh を postexec」で成立する。
@@ -56,7 +56,7 @@
 
 **verified の範囲**: CH32H417QEU6(chip ID `0x4170053d`、family `0xc6`)と WCH-LinkE(serial `49808F06CE30`、USB `1a86:8010`、FW **2.22** / raw `02 16`)、SWIO → PB9、speed low での **hartsel 0 / 1 の選択・DMCONTROL readback・下表の CSR 読み出し**。2026-10-10 に ch32rv 側で取得した独立した 2 attach セッションの USB capture と結果を収載した。[証拠と照合方法](../captures/fixtures/ch32h417-core-select-2026-10-10/README.ja.md)。既存 CLI の `--core 1` 対応を示すものではない。
 
-[RISC-V Debug Module 一次仕様](https://docs.riscv.org/reference/debug/v1.0/debug_module.html)では、単一 hart は `hasel=0` と `hartsel` で選ぶ。`hartsello`(hartsel 下位 10 bit)は DMCONTROL bits[25:16]、`hartselhi`(上位 10 bit)は bits[15:6]。abstract command の busy 中は hartsel を変更しない。**今回の測定は index 0 / 1 のみ**で、HARTSELLEN・全 index・Hart Array Mask は探索していない。hart index と mhartid の一致もこの 2 index に限定する。
+[RISC-V Debug Module 一次仕様](https://docs.riscv.org/reference/debug/v1.0/debug_module.html)では、単一 hart は `hasel=0` と `hartsel` で選ぶ。`hartsello`(hartsel 下位 10 bit)は DMCONTROL bits[25:16]、`hartselhi`(上位 10 bit)は bits[15:6]。abstract command の busy 中は hartsel を変更しない。**測定は index 0 / 1 のみ**で、HARTSELLEN・全 index・Hart Array Mask は探索していない。hart index と mhartid の一致もこの 2 index に限定する。
 
 実測手順:
 

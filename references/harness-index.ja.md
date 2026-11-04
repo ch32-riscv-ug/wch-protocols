@@ -111,7 +111,7 @@
 | **既に実装が答えている要求** | — | **`0006` §13(参照実装として使える)** | `HARNESS_REQUESTS` §7 | — |
 | **カタログに無い要求候補** | (§5 将来枠) | **`0006` §14** | `HARNESS_REQUESTS` §2 | — |
 | **attach で target を汚さない** | `harness-probe` §2.3 / §5-1 | **`0006` §7(実例)** | — | (**pc-to-link への還流待ち**) |
-| **配線・ピン衝突** | **`harness-wiring` 全体** | — | — | `dut-harness-design` §8 + `data/harness-wiring/` |
+| **配線・ピン衝突** | **`harness-wiring` 全体** | — | — | `dut-harness-design` §8 + [data/harness-wiring/](https://github.com/ch32-riscv-ug/wch-protocols/tree/717e17a/references/data/harness-wiring) |
 | **channel 数と被覆範囲** | `harness-requirements` §2.2 / **C-3** | — | — | `harness-board-survey` §2.2 |
 | **board 選定** | `harness-wiring` 前文 | — | — | **`harness-board-survey` 全体** |
 | **`caps` の形** | `harness-testing` §2 / H-010 | `0006` §5 | — | `dmi-bridge` §5 / `probe-pattern-coexistence` §3.1 |
@@ -190,7 +190,7 @@
 | 2 | 一意な要求 ID の正本を形式的に決めるか | (§4) | 未決(運用は成立している) |
 | 3 | probe firmware の実装 | `ch32rv-probe` | `LICENSE` のみ |
 | 4 | attach 副作用の還流(`RCC_CFGR0` / `FLASH ACTLR`) | `../protocols/pc-to-link.ja.md` | **反映済み(2026-09-25)**: pc-to-link §11「AttachChip の clock 組み直し」。LinkE firmware が AttachChip 中に HSI → PLL(系統ごとの決まった倍率)へ組み直し、元の clock を戻さない(L103/V203/X035 の線上実測、[fixture](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md))。L103/V203/V307 ではアプリ自身が接続後の値を見ることも確認した([E162](../experiments/e162_linke_attach_clock_uart/README.ja.md))。V003 は触らない。**一次実測はコア側の成果**(V307、probe-rs と ch32rv の双方で同一)、ライタは**裏づけ**を出せる、**書き込みは protocol 側の仕事**(ライタ `0006` §16 の回答)。なおライタ固有の材料 `s1`(x9)破壊は **pc-to-link に既に記録済み**(V103 attach quirk) |
-| 5 | 1/2 線両対応 15 series の反映 | `../protocols/link-to-target.ja.md` §1 | 未反映(材料は `data/harness-wiring/`) |
+| 5 | 1/2 線両対応 15 series の反映 | `../protocols/link-to-target.ja.md` §1 | 未反映(材料は [data/harness-wiring/](https://github.com/ch32-riscv-ug/wch-protocols/tree/717e17a/references/data/harness-wiring)) |
 
 ## 7. 更新の仕方
 

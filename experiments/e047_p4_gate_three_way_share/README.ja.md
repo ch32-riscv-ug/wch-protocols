@@ -133,7 +133,7 @@ GPIO 9(1本)
    └─→ RMT RX                : 各high / lowの長さをsample単位で記録
 ```
 
-GPIO 2〜9の8本で8 channelを取り、そのうち1本をqualifierに兼用する。qualifierに選んだchannelはdataとしても残るので情報は失われない。RMTがwindowの長さとgapの長さを別経路で持つので、間引いたsample列から時間軸を再構成できる([E046](e046_p4_gate_variable_width/README.ja.md))。
+GPIO 2〜9の8本で8 channelを取り、そのうち1本をqualifierに兼用する。qualifierに選んだchannelはdataとしても残るので情報は失われない。RMTがwindowの長さとgapの長さを別経路で持つので、間引いたsample列から時間軸を再構成できる([E046](../e046_p4_gate_variable_width/README.ja.md))。
 
 払うものはRMT RX channel 1つ(P4は4 channelがRX可能)と、1 levelあたり32,767 tickの上限だけである。**data_width 8を選べばhost側の計算も`window byte長 = tick数`で済む。**
 

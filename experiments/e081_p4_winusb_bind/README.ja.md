@@ -20,7 +20,7 @@
 **それでもこちらで測る。** 理由は 3 つ。
 
 - **[§3.1.2](../README.ja.md) の原則** — 他所の測定結果をこちらの記録の根拠にしない
-- **こちらの Windows は状態が違う。** [E069](../experiments/e069_p4_hs_vendor_bulk_rate/README.ja.md) 以来、**失敗した driver 判定が device instance に貼り付いている**([E062](../e062_usb_same_identity_layout_change/README.ja.md)、`ConfigFlags=0x40`)。**その汚れた台で直るのかを確かめる価値がある**
+- **こちらの Windows は状態が違う。** [E069](../e069_p4_hs_vendor_bulk_rate/README.ja.md) 以来、**失敗した driver 判定が device instance に貼り付いている**([E062](../e062_usb_same_identity_layout_change/README.ja.md)、`ConfigFlags=0x40`)。**その汚れた台で直るのかを確かめる価値がある**
 - **usbip を外した native の帯域**がまだ一度も取れていない。WinUSB が当たれば**初めて測れる**
 
 ## 仮説
