@@ -46,7 +46,7 @@ target(チップ)に到達する経路は 4 つあり、通る層が違う。詳
 | RISC-V Debug Module(DMI 上) | [protocols/riscv-debug-module.ja.md](protocols/riscv-debug-module.ja.md) | 大半 `verified` |
 | WCH-Link ↔ target(SWIO/RVSWD 線) | [protocols/link-to-target.ja.md](protocols/link-to-target.ja.md) | V003 の SWIO は end-to-end `verified`、RVSWD の主要 frame は `verified`(LinkE fw 2.22)。電気的な許容限界は `todo` |
 | PC ↔ target(factory ISP、USB / UART シリアル) | [protocols/pc-to-device-isp.ja.md](protocols/pc-to-device-isp.ja.md) | USB は X035(BTVER 2.60)で `verified`、他の系列は `attested`。UART は `attested` |
-| **WCH IAP**(EVT の app 内 bootloader、UART / USB 書込。3 世代。シリーズは [wch-iap §2 の表](protocols/wch-iap.ja.md#series-parameters)) | [protocols/wch-iap.ja.md](protocols/wch-iap.ja.md) | `attested`(EVT 転記、自前 capture なし) |
+| **WCH IAP**(EVT の app 内 bootloader、UART / USB 書込。世代とシリーズは [wch-iap §2 の表](protocols/wch-iap.ja.md#series-parameters)) | [protocols/wch-iap.ja.md](protocols/wch-iap.ja.md) | `attested`(EVT 転記、自前 capture なし) |
 | target 側シリアル I/O(USART printf / SDI printf、全シリーズ表) | [protocols/serial-and-print.ja.md](protocols/serial-and-print.ja.md) | `attested`(WCH 公式 EVT ソース)。SDI の線上の poll は `verified` |
 | custom bootloader(BOOT 領域表・切替レジスタ・HID scratchpad BL protocol、DFU/UF2/UART/OTA 事例) | [protocols/custom-bootloader.ja.md](protocols/custom-bootloader.ja.md) | `attested`(BOOT 領域・HID BL)。事例の節は解説 |
 | software USB(V003 系の bit-bang USB。hardware USB 無し chip) | [protocols/software-usb.ja.md](protocols/software-usb.ja.md) | `attested`(解説が主) |

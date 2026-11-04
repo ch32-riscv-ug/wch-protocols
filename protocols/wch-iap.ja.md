@@ -8,7 +8,7 @@ WCH の各シリーズ EVT に入っている `IAP/`(`USB_UART` / `UART_USB_IAP`
 
 <a id="generations"></a>
 
-## 0. 3 つの世代がある(ここを混ぜると実装が壊れる)
+## 0. 世代(ここを混ぜると実装が壊れる)
 
 同じ `0x80..0x84` のコマンドでも、**IAP の置き場・entry フラグの極性・UART sync・USB ID が世代で違う**。
 
@@ -75,7 +75,7 @@ IAP 起動直後の判定。`UPGRADE_MODE` で command 方式 / IO 方式を選�
 - USB は **EP2 OUT/IN、64 B**、`bcdDevice = 0x0100`。device の種類は 2 通り(<a id="usb-mode"></a>):
   - **vendor**(`1A86:55E0`、vendor class `FF/80/55`、bulk): V20x / V307 / X035 / M030 の EVT と、X315 の EVT の既定。
   - **HID**(`1A86:FE17`、interface class 3、interrupt、vendor 定義の report 64 B・report ID なし): **V205 / V407 / L103 / H417 の EVT の既定**。`usb_inf.h` の `DEF_USB_IAP_MODE`(`_VENDOR` 0 / `_HID` 1)で切り替える(この 5 series の EVT が持つ。X315 だけ既定が vendor)。
-  - どちらでもコマンドと応答のバイト列は §3.3 と同じ。HID では応答も 64 B の report 全体で返る(`00 status` の後は 0)。世代(§0)は変わらない: 置き場・極性・UART sync は世代 B のまま。
+  - どちらでもコマンドと応答のバイト列は §3.3 と同じ。HID では応答も 64 B の report 全体で返る(`00 status` の後は 0)。置き場・極性・UART sync は世代 B(§0)のまま。
 - **`1A86:55E0` は factory ISP と PID が同じで、CH32X035 の factory ISP は VID も同じ `1a86:55e0`**(BTVER 2.60 で実測。[pc-to-device-isp.ja.md](pc-to-device-isp.ja.md) §1)。VID では区別できないので、正体判定は必ず protocol で行う(factory ISP は `0xA1` Identify に答える。WCH-Link の IAP mode `4348:55e0` も同じ問題を持つ)。
 - UART は **8N1、フロー制御なし**。世代 A は `BRR` 直書きなので**システムクロックを変えると baud がずれる**(24 MHz HSI 前提)。
 
