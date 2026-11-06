@@ -18,7 +18,7 @@
 - 収録 script は [`linke_cap.py`](linke_cap.py)。E163 の写しで、OEP v1 の新しい wire に合わせて subscribe を `cap.subscribe(0, 0)` にした。client は `oep-client-python` の `fd05776`。
 - 生のコマンドは [`rawcmd.py`](rawcmd.py) で送った(`CH32RV=rawcmd.py`)。
 - 止める sketch は E164 の `clockwatch-CH32X035-hpre9-div4.bin`(HPRE `1001`、CFGR0 `0x90`)。
-- 解析は `captures/tools/rvswd.py`(START/STOP 区切り、`clk_bit` / `dio_bit` で線を選ぶ)。
+- 解析は WireSkein の decode(`.sr` の線の名前は SWCLK / SWDIO。例: `wireskein decode out/10_x035_hpre9_stop.sr --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"}}]}'`)。
 
 ## 結果
 

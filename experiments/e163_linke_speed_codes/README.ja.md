@@ -17,12 +17,16 @@ WCH-LinkE の SetSpeed(`81 0c 02 <family> <speed>`)の high `01` / medium `02` /
 - (a) 生のコマンド: [`raw_speed.py`](raw_speed.py) を ch32rv の代わりに走らせる(`CH32RV=raw_speed.py`)。
   - 流れは SetSpeed(family `01`、値 `00`〜`06` / `ff`)→ AttachChip →(任意で、実の family `0x0e` での SetSpeed)→ DmiOp で DMSTATUS の読出し 20 回 → DATA0 の書込み 4 回 → abstract memory read 4 回 → DetachChip。
 - (b) ch32rv 0.10.1 の `--speed high|medium|low flash pattern-4k.bin`。USB の往復は `out/flash_*.ndjson`。
-- 解析: [`analyze.py`](analyze.py)(a)と、[`captures/tools/rvswd.py`](../../captures/tools/rvswd.py) の START/STOP 区切り。
+- 解析: 線は WireSkein の `wireskein decode`(`f21ee42` 以降)で読む(frame・DMI と、`layers: ["bits"]` で全 sampling edge の時刻)。(a) は [`analyze.py`](analyze.py) がその JSON を DMI の frame の区間で切った SWCLK の間隔と、`out/<name>.json` の USB の往復を読む(標準 library のみ)。
 
 ```console
 OEP_CLIENT_SRC=<oep-client b9e60ed>/src CH32RV=$PWD/raw_speed.py uv run --no-project --with numpy --with pyserial --with pyusb \
   python linke_cap.py 30eda0e343c6-hs 50000000 out/pre01 256 0E028F0692F1 14,15 SWCLK,SWDIO l103 -- 01 -
-cd ../../captures && uv run python ../experiments/e163_linke_speed_codes/analyze.py ../experiments/e163_linke_speed_codes/out
+cd <wireskein>
+for f in <e163>/out/*.sr; do
+  uv run wireskein decode "$f" --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"},"layers":["bits"]}]}' --out <dir>/"$(basename "$f" .sr)".json
+done
+python3 <e163>/analyze.py <dir>/*.json
 ```
 
 ## 結果
@@ -48,7 +52,7 @@ cd ../../captures && uv run python ../experiments/e163_linke_speed_codes/analyze
 
 - どれも 4 KiB pattern と一致し、parity の誤りは 0。
 
-**(c) V203(LinkE `FBC18F0680B0`、100 MHz で収録、`rvswd.py --k 1 --k-frame 3`)の flash**
+**(c) V203(LinkE `FBC18F0680B0`、100 MHz で収録)の flash**
 
 | `--speed` | 4 KiB のデータ書込み frame | 4 KiB を書く区間 | ch32rv 全体 |
 |---|---|---|---|
@@ -56,7 +60,7 @@ cd ../../captures && uv run python ../experiments/e163_linke_speed_codes/analyze
 | medium | 約 1.12 µs | 216.7 ms | 0.61 s |
 | low | 約 2.11 µs | 389.3 ms | 0.80 s |
 
-- 1024 word すべてが順に出た。high は 9,389 frame のうち 15 件が parity 不一致だった(100 MHz 収録の分解能の限界。E162 以前の fixture と同じ)。
+- 1024 word すべてが順に出た。high は 100 MHz 収録の分解能の限界で(E162 以前の fixture と同じ)、SWCLK の反射の 1 sample の high が clock に見える frame が 216 個あり(WireSkein はその edge を除いて読む: `repaired`)、9,347 frame のうち 7 件は parity 不一致だった。
 - high でも、検証の burst・abstractauto・接続は約 1.1 µs / 2.1 µs で、L103 と同じ。
 - ch32rv は SetSpeed を接続前に family `01` で 1 回送るだけで、接続後には送り直していない。
 

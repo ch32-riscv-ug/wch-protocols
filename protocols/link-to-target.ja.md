@@ -66,7 +66,7 @@ clock の空き時間ではなく、START / STOP で区切る。
 - START: SWCLK が high(アイドル)の間に SWDIO が立ち下がる。高速区間では立ち下がりの約 160 ns 前、低速区間では high の中ほどに来る。
 - STOP: SWCLK が high の間に SWDIO が立ち上がり、その high が**その前の 16 回の high の中央値の 1.5 倍より長い**。high の長さは、LinkE の STOP が中央値の 3.3〜3.75 倍、OEP の short 形式の STOP が約 2 倍、target が high の間に線を動かす所が 1.2 倍までだった。決まった長さ(2 µs など)で切ると、速い LinkE の STOP の high(1.84〜2.0 µs)を取りこぼし、2 つの frame が 1 つ(170 clock)にまとまる([E173](../experiments/e173_oep_tap_linke_v103_long/README.ja.md)、wireskein ee37142)。
 - read 中は **target も SWCLK の立ち上がりから 0.3 µs 以内に、high の間に SWDIO を変える**。形の上では START/STOP と同じなので、「frame の外の立下りだけを START とする」「後に長い high が続く立上りだけを STOP とする」という状態の区別が要る。
-- 空き時間で区切ると、低速設定の burst が 46 + 14×(3+35) + 7 のように割れ、前後の clock を 1 つ取り込んで read が 54 clock に見える(fixture 付属の `dmi_decode.py` はこの方式で、一部の write を R と表示し、frame を取りこぼす。値は START/STOP 方式と一致する)。`captures/tools/rvswd.py` は START/STOP 方式で、STOP を決まった長さ(high 1.6 µs 以上)で切る。fixture の L103 / X035 の収録はこれで切れる。
+- 空き時間で区切ると、低速設定の burst が 46 + 14×(3+35) + 7 のように割れ、前後の clock を 1 つ取り込んで read が 54 clock に見える(fixture 付属の `dmi_decode.py` はこの方式で、一部の write を R と表示し、frame を取りこぼす。値は START/STOP 方式と一致する)。WireSkein の decode は START/STOP で切る([captures/README](../captures/README.ja.md)「解析環境」)。
 
 <a id="short-frame"></a>
 
@@ -120,7 +120,7 @@ clock の空き時間ではなく、START / STOP で区切る。
   - 2〜202 個目の host の bit 41 は addr+data+op と合わせて**偶数**になる(資料の odd と合わない)。
   - **1 線の V003 でも同じ問い合わせが SWIO の pin に出る**。V003 の接続時には LOW 4.0 / 8.3 / 9.3 / 102 µs の組が 202 回並び、これは L103 の long frame 中の SWDIO の LOW 区間(4.1 / 8.3 / 9.3 / 102.3 µs)と同じ。続けて 0x7e/0x7d 書込みの short frame が数回出て、約 2 ms の LOW の後に SWIO の通信が始まる。LinkE は target の線の種類を知らずに、まず 2 線の形で問い合わせていると読める。
 - これは [riscv-debug-module.ja.md](riscv-debug-module.ja.md) の DMI トランザクションと 1:1(op/status のコード、addr=DMDATA0=`0x04`/DMCONTROL=`0x10` 等がそのまま線上の 7bit addr に乗る)。
-- 解析: `captures/tools/rvswd.py` / `swio.py` / `linke_repeat_compare.py`(実行方法は [captures/README](../captures/README.ja.md)「解析環境(uv)」)。
+- 解析: WireSkein の decode(RVSWD / SWIO の frame と DMI)と、その出力を読む `captures/tools/linke_repeat_compare.py`(実行方法は [captures/README](../captures/README.ja.md)「解析環境」)。
 
 <a id="swio-relation"></a>
 
@@ -288,7 +288,7 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 
 ### 速度設定と clock
 
-`0x0c` SetSpeed([pc-to-link](pc-to-link.ja.md) §4)。接続時の区間は設定に関係なく、long 3.04 µs・short 2.1 µs で一定。値は L103 と V203 で測った([E163](../experiments/e163_linke_speed_codes/README.ja.md)。解析は `captures/tools/linke_speed_table.py`)。
+`0x0c` SetSpeed([pc-to-link](pc-to-link.ja.md) §4)。接続時の区間は設定に関係なく、long 3.04 µs・short 2.1 µs で一定。値は L103 と V203 で測った([E163](../experiments/e163_linke_speed_codes/README.ja.md)。解析は WireSkein の decode の `period_ns` などを読む `captures/tools/linke_speed_table.py`)。
 
 | 設定 | flash 書込み(Program 経路) | 単発の DMI・読出し・burst |
 |---|---|---|
@@ -300,7 +300,7 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 - 接続の前に family `0x01` で 1 回送れば効く。接続の後に実の family で送り直しても効く(`03` → `0e:01` で 1.12 µs、`01` → `0e:03` で 2.12 µs)。
 - high の Program 経路の速さは target の系統で違う(V203 では 4 KiB を書く区間が 51 ms)。X035 / V003 / V307 は未測定。V203 の高速区間は SWCLK の周期が 60〜100 ns(high 約 20〜30 ns)で、50 MHz の収録では記録しきれない。100 MHz では 99.7 % を parity 一致で復元でき、160 MHz なら既知の長さだけに区切れる。
 - SWCLK は SetSpeed の設定で決まり、target の走行 clock に合わせて変えることはしない、と見ている(PLL から HSI へ落ちる reset でも DMI の reset-halt は化けない。V203 / V307 / V103 で 15/15)。走行 clock を変えて SWCLK を比べた直接の測定は無い。
-- V003 の SWIO は 3 設定とも同じだった(1 = 約 260 ns、0 = 約 860 ns、パルス周期 約 1.1〜1.2 µs)。
+- V003 の SWIO は 3 設定とも同じだった(host の 41 パルスの frame で、LOW は 1 = 約 240〜260 ns、0 = 約 860 ns。パルスの間の high は約 380 ns で一定なので、周期は 1 の後 約 620 ns、0 の後 約 1240 ns)。
 
 <a id="link-open"></a>
 

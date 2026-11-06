@@ -1,73 +1,49 @@
 #!/usr/bin/env python3
-"""Extract the LinkE V003 flash-loader DMI sequence from the real wire capture."""
+"""Extract the LinkE V003 flash-loader DMI sequence from WireSkein's decode of the real wire capture.
+
+The frames and their DMI accesses come from WireSkein (963af20 or later); this script only reads
+the sequence. Decode first, in the wireskein checkout:
+
+    uv run wireskein decode <wch-protocols>/captures/fixtures/wire-flash-v003-x035-2026-09-11/wire-v003.sr \
+        --spec '{"buses":[{"protocol":"swio","pins":{"dio":"CH0"}}]}' --out <dir>/wire-v003.json
+
+then:
+
+    python3 <wch-protocols>/experiments/e134_linke_v003_flash_trace/analyze.py <dir>/wire-v003.json
+"""
 
 from __future__ import annotations
 
-import array
+import json
 import statistics
 import sys
-import zipfile
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CAPTURE = ROOT / "captures/fixtures/wire-flash-v003-x035-2026-09-11/wire-v003.sr"
-RATE = 50_000_000
+FIXTURE = ROOT / "captures/fixtures/wire-flash-v003-x035-2026-09-11"
+CAPTURE = FIXTURE / "wire-v003.sr"
 
 
-def bits_to_int(bits: list[int]) -> int:
-    value = 0
-    for bit in bits:
-        value = (value << 1) | bit
-    return value
-
-
-def load_samples() -> array.array:
-    with zipfile.ZipFile(CAPTURE) as archive:
-        chunks = sorted(
-            (name for name in archive.namelist() if name.startswith("logic-1-")),
-            key=lambda name: int(name.rsplit("-", 1)[1]),
-        )
-        result = array.array("H")
-        for name in chunks:
-            result.frombytes(archive.read(name))
-    if sys.byteorder != "little":
-        result.byteswap()
-    return result
-
-
-def decode_frames(samples: array.array) -> list[tuple[int, int, int, int, int]]:
-    pulses: list[tuple[int, int, int]] = []
-    state = samples[0] & 1
-    falling = None
-    for index, sample in enumerate(samples[1:], 1):
-        current = sample & 1
-        if state and not current:
-            falling = index
-        elif not state and current and falling is not None:
-            pulses.append((falling, index, index - falling))
-            falling = None
-        state = current
-
-    groups: list[list[tuple[int, int, int]]] = []
-    start = 0
-    for index in range(len(pulses) - 1):
-        if pulses[index + 1][0] - pulses[index][0] > 200:
-            groups.append(pulses[start : index + 1])
-            start = index + 1
-    groups.append(pulses[start:])
-
-    frames = []
-    for group in groups:
-        if len(group) != 41:
-            continue
-        bits = [int(pulse[2] < 25) for pulse in group]
-        if bits[0] != 1:
-            continue
-        frames.append(
-            (group[0][0], group[-1][1], bits_to_int(bits[1:8]), bits[8], bits_to_int(bits[9:]))
-        )
-    return frames
+def load_frames(path: str) -> tuple[list[tuple[int, int, int, int, int]], float]:
+    """The 41-pulse DMI frames as (start, end, addr, R/W, data), and nanoseconds per tick."""
+    document = json.loads(Path(path).read_text())
+    assert document["format"] == "wireskein-analysis/1", path
+    capture = document["capture"]
+    sums = dict(reversed(line.split()) for line in (FIXTURE / "SHA256SUMS").read_text().splitlines() if line)
+    assert capture["file"] == CAPTURE.name and capture["sha256"] == sums[CAPTURE.name], (
+        f"{path}: not a decode of {CAPTURE.relative_to(ROOT)}"
+    )
+    (part,) = document["parts"]
+    (bus,) = part["buses"]
+    assert bus["protocol"] == "swio" and bus["decoded"]
+    numerator, denominator = capture["tick_hz"]
+    frames = [
+        (item["s"], item["e"], item["addr"], int(item["op"] == "W"), item["data"])
+        for item in bus["result"]["dmi"]
+        if not item.get("fast")
+    ]
+    return frames, 1e9 * denominator / numerator
 
 
 def percentile(values: list[int], fraction: float) -> int:
@@ -76,7 +52,9 @@ def percentile(values: list[int], fraction: float) -> int:
 
 
 def main() -> None:
-    frames = decode_frames(load_samples())
+    if len(sys.argv) != 2:
+        sys.exit(f"usage: {sys.argv[0]} WIRE-V003-DECODE.json")
+    frames, tick_ns = load_frames(sys.argv[1])
     pattern_start = next(
         index for index, frame in enumerate(frames) if frame[2:] == (0x04, 1, 0x03020100)
     )
@@ -102,7 +80,7 @@ def main() -> None:
     assert actual == expected_prefix
 
     adjacent_gaps_ns = [
-        (frames[index][0] - frames[index - 1][1]) * 20
+        round((frames[index][0] - frames[index - 1][1]) * tick_ns)
         for index in range(pattern_start, pattern_start + 260)
     ]
     normal_gaps = [gap for gap in adjacent_gaps_ns if gap < 20_000]
@@ -118,7 +96,7 @@ def main() -> None:
         index += 1
     assert polls
     poll_gaps_ns = [
-        (polls[index][0] - polls[index - 1][1]) * 20 for index in range(1, len(polls))
+        round((polls[index][0] - polls[index - 1][1]) * tick_ns) for index in range(1, len(polls))
     ]
 
     print(f"capture={CAPTURE.relative_to(ROOT)}")
@@ -168,7 +146,7 @@ def main() -> None:
                 finished = frame
                 break
         assert finished is not None
-        elapsed_us = (finished[1] - frames[resume_index][0]) / RATE * 1_000_000
+        elapsed_us = (finished[1] - frames[resume_index][0]) * tick_ns / 1000
         print(
             f"program_block={block} address=0x{0x08000000 + block * 0x400:08x} "
             f"length=1024 polls={polls} elapsed_us={elapsed_us:.1f}"

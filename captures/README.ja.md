@@ -42,31 +42,34 @@
 
 [WCH-LinkE 線上 capture(ESP32-P4)](fixtures/wire-linke-p4-2026-09-25/README.ja.md)。ESP32-P4 の OEP logic capture(50 MHz、V203 は 100 / 160 MHz も)で取った `.sr` と、同時の ch32rv USB NDJSON。ch32rv の 12 操作に加えて、速度・DMI 単発・誤り・option byte・読出し保護・clock・monitor・反復・RedetectChip を収め、ch32rv 0.8.0〜0.10.0 での比較もある。L103 は DMI まで復号済み(`.dmi.txt` / `.mem.txt`)。arduinocore-ch32 セッションが収録・commit した。[link-to-target.ja.md](../protocols/link-to-target.ja.md) §3/§5 と [pc-to-link.ja.md](../protocols/pc-to-link.ja.md) §4/§11 の根拠。
 
-## 解析環境(uv)
+## 解析環境
 
-capture の解析 script は `captures/` の uv project で動かす。Python 3.13 と numpy は `pyproject.toml` / `uv.lock` で固定してある。
+capture の下処理(エッジから bit・frame・DMI への復号と、frame ごとの時間の測り方)は [WireSkein](https://github.com/Open-Embedded-Probe/wireskein) の decode が行う。ここの script は、その出力(JSON)を読んで、その後の集計と照合だけをする。script は `captures/` の uv project で動かす(Python 3.13 と numpy は `pyproject.toml` / `uv.lock` で固定)。
 
 ```console
 cd captures
 uv sync
-uv run python tools/rvswd.py fixtures/wire-linke-p4-2026-09-25/l103/target_info.sr        # RVSWD(L103、50 MHz)
-uv run python tools/rvswd.py --k 1 --k-frame 3 fixtures/wire-linke-p4-2026-09-25/v203-100mhz/target_info.sr   # V203 100 MHz
-uv run python tools/swio.py fixtures/wire-linke-p4-2026-09-25/v003/target_info.sr         # SWIO(V003)
-uv run python tools/linke_repeat_compare.py l103 target_info read_ram_256
+# WireSkein の checkout で decode する(.sr をそのまま読む)。fixture の線の名前は SWCLK / SWDIO / SWIO
+WIRESKEIN=<wireskein checkout>
+(cd $WIRESKEIN && uv run wireskein decode $OLDPWD/fixtures/wire-linke-p4-2026-09-25/l103/target_info.sr \
+    --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"}}]}' --out /tmp/l103_target_info.json)
+(cd $WIRESKEIN && uv run wireskein decode $OLDPWD/fixtures/wire-linke-p4-2026-09-25/v003/target_info.sr \
+    --spec '{"buses":[{"protocol":"swio","pins":{"dio":"SWIO"}}]}' --out /tmp/v003_target_info.json)
+# fixture の複数の .sr をまとめて decode し、<dir>/<元のパス>.json に置く(v003 は SWIO、ほかは RVSWD)
+WIRESKEIN=$WIRESKEIN sh tools/wireskein_decode.sh <dir> fixtures/wire-linke-p4-2026-09-25/extra/*/speed_*.sr \
+    fixtures/wire-linke-p4-2026-09-25/more/l103/repeat*_{target_info,read_ram_256}.sr
+uv run python tools/linke_speed_table.py <dir>
+uv run python tools/linke_repeat_compare.py <dir> l103 target_info read_ram_256
 uv run python tools/rvswd_sdi_monitor.py fixtures/wire-linke-p4-2026-09-25/more/l103/monitor_sdi.sr   # 長い SDI monitor の要約(約 5 分、約 400 MB)
 ```
 
-- `tools/rvswd.py`: RVSWD を **START/STOP で区切って**復号する。1 行 1 frame で、short(53 clock)は R/W・番地・値・parity、long(85 clock)は host/target 位相、burst(15+38N clock)は各 word を出す。`memory_log()` は abstract command を memory / register access にまとめる。
-  - 区切りの条件と、空き時間で区切る方式の問題は [link-to-target](../protocols/link-to-target.ja.md) §3。
-  - `--k` は bit clock の hold filter で、既定 3 sample。V203 100 MHz では 1 にする。START/STOP の判定だけに使う filter は `--k-frame` で、V203 100 MHz では 3 にする。
-- `tools/rvswd_stream.py`: rvswd.py と同じ復号を、`.sr` の chunk を順に読んで窓ごとに行う。rvswd.py はファイル全体を memory に載せるので、25 MHz で 38 s(950 MB)のような長い収録はこちらで読む。出力の行は rvswd.py と同じ(frame 数の行は最後に出る)。
-- `tools/rvswd_sdi_monitor.py`: SDI monitor の収録を rvswd_stream.py で読み、poll の数と間隔、DMDATA0 が 0 以外のときの続き(DMDATA1 の読出し、DMDATA0 への書込み)、mailbox が運んだ文字列、poll 以外の frame の全部を短い text にする。既定の hold filter は bit clock に無し、START / STOP に 3 sample。
-- `tools/swio.py`: SWIO の LOW パルス幅を 500 ns で 0/1 に分け、4 µs の空きで区切る。41 / 33 パルスを復号する。
-- `tools/linke_speed_table.py`: `extra/<target>/speed_{high,medium,low}_*` から、速度設定ごとの SWCLK 周期(RVSWD)と SWIO のパルス幅を出す。
-- `rvswd.load()` は unitsize 1 / 2、複数 chunk の `.sr`、単位付きの samplerate(`50 MHz`)を読めるので、09-11 fixture の `wire-x035.sr` もそのまま読める。
-- `tools/linke_repeat_compare.py`: `more/<target>/repeat{1..5}_*` を bit 単位で比べる。出力は frame 数、run 間の差、85 clock frame の中身、don't-care bit の分布。
-- fixture 付属の `tools/dmi_decode.py` は空き時間で区切る方式で、一部の write を R と表示し、低速設定の burst を割る(値は rvswd.py と一致)。また `<dir>` の `.dmi.txt` / `.mem.txt` を**上書きする**(SHA256SUMS の対象)ので、使うときは fixture の外へ `.sr` を写してから実行する。
-- 09-11 fixture の `analyze.py` は標準 library だけで動く(uv でも system の python3 でもよい)。
+- WireSkein の decode の出力: RVSWD は frame ごとに R/W・番地・値・形(short 53 / long 85 / burst 15+38N clock)・名前付きの欄(`fields`)・parity・サンプルしたままの bit 列(`bits`)・SWCLK の周期(`period_ns`)、long は target の答えの遅れ(`answer_delay`)。SWIO は frame ごとに R/W・番地・値と、LOW の幅・パルスの間・周期。どちらも `dm` に abstract command と program buffer を memory / register access にまとめたものが出る。`"layers": ["pulses"]`(SWIO)/ `["bits"]`(RVSWD)でパルス・クロック 1 本ずつの時刻も出る。形式は WireSkein の `docs/analysis-format.md`。区切りの条件と、空き時間で区切る方式の問題は [link-to-target](../protocols/link-to-target.ja.md) §3。
+- `tools/wireskein_decode.sh`: fixture の `.sr` を WireSkein でまとめて decode する。
+- `tools/linke_speed_table.py`: `extra/<target>/speed_{high,medium,low}_*` の decode から、速度設定ごとの SWCLK 周期(RVSWD)と、SWIO の LOW の幅・パルスの間・周期を出す。
+- `tools/linke_repeat_compare.py`: `more/<target>/repeat{1..5}_*` の decode を bit 単位で比べる。出力は frame 数、run 間の差、85 clock frame の中身、don't-care bit の分布。
+- `tools/rvswd_sdi_monitor.py`: SDI monitor の収録(25 MHz、38 s、950 MB)を読み、poll の数と間隔、DMDATA0 が 0 以外のときの続き(DMDATA1 の読出し、DMDATA0 への書込み)、mailbox が運んだ文字列、poll 以外の frame の全部を短い text にする。この長さは WireSkein の decode ではまだ読めないので、復号は `tools/rvswd_stream.py`(`.sr` の chunk を順に読む)と `tools/rvswd.py`(START/STOP で区切る)が行う。既定の hold filter は bit clock に無し、START / STOP に 3 sample。
+- fixture 付属の `tools/dmi_decode.py` は収録時の復号で、空き時間で区切る(一部の write を R と表示し、低速設定の burst を割る。値は START/STOP 方式と一致)。fixture の `.dmi.txt` / `.mem.txt` はその出力。
+- 09-11 fixture の `analyze.py` は、その fixture の WireSkein の decode を読んで照合する。標準 library だけで動く(uv でも system の python3 でもよい)。
 
 [`fixtures/`](fixtures/) に実機 capture を置く。命名例: `<操作>-<target>-fw<版>.ndjson`。firmware 版で挙動が変わる項目(消去済みセルの read 値など)は**版ごとに**記録する。
 

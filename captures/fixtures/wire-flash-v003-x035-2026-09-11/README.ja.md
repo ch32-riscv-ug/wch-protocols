@@ -36,21 +36,25 @@ target の厳密な package、電源電圧、pull-up 値、LA probe の電気条
 | [`usb-x035.ndjson`](usb-x035.ndjson) | X035 flash の USB 往復（64 transfers） |
 | [`pattern-4k.bin`](pattern-4k.bin) | `00 01 … ff` を 16 回繰り返す既知の 4096 byte |
 | [`SHA256SUMS`](SHA256SUMS) | 上記生データの SHA-256 |
-| [`analyze.py`](analyze.py) | 以下の構造・timing・既知 pattern 一致を再計算する標準 library のみの script |
+| [`analyze.py`](analyze.py) | WireSkein の decode 結果から以下の構造・timing・既知 pattern 一致を検算する標準 library のみの script |
 
 元の `.json` は JSON array ではなく 1 行 1 object の NDJSON なので、内容を変えず拡張子だけ `.ndjson` にした。`.sr` は PulseView で再オープンできる生セッション。
 
-解析は外部 package 不要で再現できる。既知 pattern の 4096 byte 一致を `assert` し、一致しなければ静かに結果を出さず失敗する。
+解析は 2 段で再現する。線の pulse / bit / frame / field / DMI への読み取りと timing は WireSkein の `wireskein decode`（`f21ee42` 以降）が出し、`analyze.py` はその JSON を読んで検算する（標準 library のみ）。既知 pattern の 4096 byte 一致を `assert` し、一致しなければ静かに結果を出さず失敗する。
 
 ```console
-python3 analyze.py
+cd <wireskein>
+uv run wireskein decode <この directory>/wire-v003.sr --spec '{"buses":[{"protocol":"swio","pins":{"dio":"CH0"},"layers":["pulses"]}]}' --out <dir>/wire-v003.json
+uv run wireskein decode <この directory>/wire-x035.sr --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"CH0","dio":"CH1"},"layers":["bits"]}]}' --out <dir>/wire-x035.json
+python3 <この directory>/analyze.py <dir>/wire-v003.json <dir>/wire-x035.json
 ```
 
 ## 解析方法
 
-- `.sr` の `logic-1-*` を session metadata の順で連結し、little-endian 16-bit sample として読む。計測分解能は 20 ns/sample。
-- V003 は CH0 の LOW pulse 幅を 500 ns で 2 値化する。短 pulse = `1`、長 pulse = `0`。pulse 開始間隔が 4 µs を超えたところをフレーム候補の切れ目にする。
-- X035 は CH0 の rising edge で CH1 を sample する。既知 pattern が 1024 words すべて一致する位置からフィールド境界を決めた。
+- `.sr` は WireSkein が直接読む。計測分解能は 20 ns/sample。
+- V003 は WireSkein の `swio` decode で読む。CH0 の LOW pulse 幅を 2 群の間（このcaptureでは 471.4 ns）で 2 値化し、短 pulse = `1`、長 pulse = `0`。41-pulse frame と、DATA0 の read に続く 33-pulse fast-read を DMI access として出す。`layers: ["pulses"]` で全 pulse の開始・幅・短/長も出し、`analyze.py` は DMI access の区間でそれを切って pulse 幅を数える。R/W bit から data 先頭までの間隔は各 frame の `rw_gap_ns`。
+- X035 は WireSkein の `rvswd` decode で読む。CH0 の rising edge で CH1 を sample し（sampling edge で 1–2 sample だけ立つ CH1 の反射は落ち着いた値で読む）、START / STOP で frame を区切る。53-clock の short frame と 585-clock の burst（`BURST`）は DMI access として、名前付きの field（`fields`: parity と park / padding / STOP sample、burst の header・word 間 aux・trailer）と各 parity の検算付きで出る。`layers: ["bits"]` で全 sampling edge の時刻も出し、`analyze.py` は DMI access の区間でそれを切って SWCLK の周期を数える。
+- フィールド境界は、既知 pattern が 1024 words すべて一致する位置から決めた。
 - `00..ff` の反復は bit の 0/1、byte 順、word 境界を同時に含むため、単純な全 0/全 1 より強い検算ベクタになる。
 
 ## V003: SWIO 詳細
@@ -70,12 +74,12 @@ python3 analyze.py
 
 ### pulse timing
 
-41-pulse と確定したフレーム内の 411,520 pulse を対象にした。
+41-pulse と確定したフレーム内の 421,808 pulse を対象にした。
 
 | bit | n | LOW min | median | p99 | max | mean |
 |---|---:|---:|---:|---:|---:|---:|
-| `1` | 131,541 | 200 ns | **240 ns** | 340 ns | 380 ns | 248 ns |
-| `0` | 279,979 | 780 ns | **860 ns** | 880 ns | 880 ns | 849 ns |
+| `1` | 133,177 | 200 ns | **240 ns** | 340 ns | 380 ns | 248 ns |
+| `0` | 288,631 | 780 ns | **860 ns** | 880 ns | 880 ns | 849 ns |
 
 2 群の間に 400 ns の空きがあり、500 ns 閾値で全対象 pulse を重なり無く分離できる。先行実装から転記した 290/890 ns より、この LinkE の `1` は約 40–50 ns 短い。
 
@@ -115,11 +119,11 @@ START（DIO falling while CLK high）からSTOP（DIO rising while CLK high）�
 |---|---:|---|
 | 0–6 | 7 | DMI address |
 | 7 | 1 | R/W（read = `0`, write = `1`） |
-| 8 | 1 | address + R/W のeven parity。8,628 packetすべて一致 |
-| 9 | 1 | park/don't-care。実測ではbit 8と同値（8,628/8,628）。ただし2026-09-25のL103では約93 %しか一致しない（[wire-linke-p4-2026-09-25](../wire-linke-p4-2026-09-25/README.ja.md)、[link-to-target §3](../../../protocols/link-to-target.ja.md)） |
-| 10–13 | 4 | host padding/don't-care。`0000` × 8,358、`0100` × 270 |
+| 8 | 1 | address + R/W のeven parity。8,846 packetすべて一致 |
+| 9 | 1 | park/don't-care。実測ではbit 8と同値（8,846/8,846）。ただし2026-09-25のL103では約93 %しか一致しない（[wire-linke-p4-2026-09-25](../wire-linke-p4-2026-09-25/README.ja.md)、[link-to-target §3](../../../protocols/link-to-target.ja.md)） |
+| 10–13 | 4 | host padding/don't-care。`0000` × 8,610、`0100` × 236 |
 | 14–45 | 32 | write/read data |
-| 46 | 1 | data32 のeven parity。8,628 packetすべて一致 |
+| 46 | 1 | data32 のeven parity。8,846 packetすべて一致 |
 | 47–51 | 5 | aux。実機動作するprobe実装はhostが`10111`を駆動する。旧解析の「target status 2 bit」はE142のX035 DMI試験で反証 |
 | 52 | — | termination clock。sample値は常に`0`、直後にSTOP |
 
@@ -145,14 +149,14 @@ START（DIO falling while CLK high）からSTOP（DIO rising while CLK high）�
 | 領域 | 観測値 |
 |---|---|
 | burst header 14 bit | `00001000110100` × 46 / `00001000110000` × 18（先頭 8 bit は両方 `addr=0x04, read=0`） |
-| word 間 aux6 | `000000` × 853 / `000100` × 42 / `000001` × 1 |
-| burst trailer7 | `0000110` × 61 / `0001110` × 3 |
+| word 間 aux6 | `000000` × 896 |
+| burst trailer7 | `0000110` × 64 |
 | burst 内 clock period | median 1.10 µs（約 0.91 MHz）, p99 1.22 µs |
 | 最後の 1 word frame | median 2.08 µs（約 0.48 MHz） |
 
 585-edge burstも、`14-bit header + 15 × data32 + 14 × 6-bit feedback + 6-bit final feedback + termination clock` とすると過不足なく説明できる。6-bit feedbackを`data parity1 + park1 + status2 + padding2`と読む配置は既存decoder/実装と一致する。
 
-statusは通常packetとburstの両方で`00`または`01`だった。[`ch32-tapioca-probe`](https://github.com/pierrejay/ch32-tapioca-probe/blob/084110c4c02b099ac4e0181ea0c56585789d0d82/src/wchlink/rvswd_frame.hpp#L116-L147)はWCH-LinkE→V307 captureとX035/V203/V307実機試験を根拠に、`0/1=OK, 2=fail, 3=busy`としている。今回のflash成功とも矛盾しないが、`2/3`は今回のcaptureには現れていない。
+statusは通常packetで`00`または`01`、burstでは`00`だった。[`ch32-tapioca-probe`](https://github.com/pierrejay/ch32-tapioca-probe/blob/084110c4c02b099ac4e0181ea0c56585789d0d82/src/wchlink/rvswd_frame.hpp#L116-L147)はWCH-LinkE→V307 captureとX035/V203/V307実機試験を根拠に、`0/1=OK, 2=fail, 3=busy`としている。今回のflash成功とも矛盾しないが、`2/3`は今回のcaptureには現れていない。
 
 ### 既存実装との照合
 
