@@ -1,6 +1,6 @@
 # E173 WCH-LinkE と CH32V103 の long 形式を線で見る（OEP の短い形式と並べる）
 
-状態: **収録済み(2026-11-06)**。
+状態: **収録済み(2026-11-06)**。OEP 側の対応は oep-probe-arduino の `OepRvswdFrame.h`（`longFrame`）。
 
 ## 問い
 
@@ -21,6 +21,18 @@
 | `out/10_linke_v103c8t6_target_info.wireskein` | g44 = SWCLK、g45 = SWDIO（g42〜47） | LinkE が V103 を `target info` で読む間 |
 | `out/20_oep_v103c8t6_attach_short.wireskein` | clk = GPIO17、dio = GPIO18 | OEP が V103 に attach しようとして失敗する間 |
 | `out/30_oep_v208_attach_short.wireskein` | clk = GPIO15、dio = GPIO14 | OEP が V208 に attach する間（成功） |
+| `out/11_info_low.wireskein` | swclk = GPIO44、swdio = GPIO45、80 MS/s | `ch32rv target info --speed low`（rc 0） |
+| `out/12_info_medium.wireskein` | swclk = GPIO44、swdio = GPIO45、80 MS/s | `ch32rv target info --speed medium`（rc 0） |
+| `out/13_info_high.wireskein` | swclk = GPIO44、swdio = GPIO45、80 MS/s | `ch32rv target info --speed high`（rc 0） |
+| `out/14_option_get.wireskein` | swclk = GPIO44、swdio = GPIO45、80 MS/s | `ch32rv target option get --speed high`（rc 0） |
+| `out/15_read_option.wireskein` | swclk = GPIO44、swdio = GPIO45、80 MS/s | `ch32rv read --region option -o /dev/null --speed high`（rc 0） |
+| `out/16_read_ram.wireskein` | swclk = GPIO44、swdio = GPIO45、80 MS/s | `ch32rv read --region ram+0+20480 -o /dev/null --speed high`（rc 0） |
+| `out/17_read_code.wireskein` | swclk = GPIO44、swdio = GPIO45、80 MS/s | `ch32rv read --region code -o /dev/null --speed high`（rc 0） |
+| `out/18_dbg_halt.wireskein` | swclk = GPIO44、swdio = GPIO45、80 MS/s | `ch32rv dbg halt --speed medium`（rc 0） |
+| `out/19_dbg_regs.wireskein` | swclk = GPIO44、swdio = GPIO45、80 MS/s | `ch32rv dbg regs --speed medium`（rc 0） |
+| `out/21_dbg_resume_low.wireskein` | swclk = GPIO44、swdio = GPIO45、80 MS/s | `ch32rv dbg resume --speed low`（rc 0） |
+
+`out/11_*` 以降は [`linke_tap.py`](linke_tap.py) で取った。読むだけの操作で、V103 には書き込んでいない（最後に resume）。各 `.json` に ch32rv のコマンドと出力がある。`20_dbg_resume` は medium の速さで `dmi write failed` になったので消し、low で取り直した（`21_dbg_resume_low`）。
 
 ## 結果
 
@@ -33,4 +45,6 @@
   85 clocks  host write addr 0x20 data 0x00058483 [0] | target addr 0x20 data 0x00058483 status 0 [0]
   ```
 - **OEP と V208**: 53 クロック（52 ビットの短い形式と STOP 前の 1 クロック）でやり取りし、つながった。
-- **OEP と V103**: OEP は V103 にも短い形式で話しかけ、V103 は答えなかった（8、17、11、6、2 クロックの短いフレームのあと、107 クロックのものが 1 つ）。V103 は long 形式でしか答えないと見ている。OEP のファーム（oep-probe-arduino の `OepRvswdPhy`）に long 形式を足すのが次の作業。
+- **OEP と V103**: OEP は V103 にも短い形式で話しかけ、V103 は答えなかった。V103 は long 形式でしか答えない。
+- **bit 83 はホストのもの**: LinkE の書き込みは bit 83 が 0、読みは 1。OEP が long 形式を足した最初の版は、bit 83 で線を放したまま（引き上げで 1）にしていて、V103 は書き込みを受け付けなかった（DMCONTROL の書き込みに status 1、PROGBUF0 は書いても 0 のまま）。bit 83 をホストが書き込みで 0、読みで 1 にして出すと、OEP は V103 に attach できた（halt、DMSTATUS 0x382、494 kHz）。link-to-target の表は bit 83 を target の位相に入れているが、ホストが出すビットと読める。
+- 読み出し: `long_frames.py` の START / STOP の区切りは、link-to-target#frame-delimiting のとおり、STOP を「SWCLK の high が 2 µs 以上続くもの」としている。OEP の短いフレームは STOP のすぐ後に次の START が来るので、2 つが 1 つ（106 クロック）に見える。

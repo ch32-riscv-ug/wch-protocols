@@ -1,0 +1,14 @@
+{
+ "command": "target info --speed high --probe wchlink://FB868F068059 --non-interactive --progress none",
+ "rc": 0,
+ "output": "model:    WCH-LinkE\nmode:     riscv\nusb:      1a86:8010\nserial:   FB868F068059\ntopology: 3-3.3.4.4\nports:    /dev/ttyACM16\nfirmware: 2.22 (WCH v42, raw 0216, riscv firmware)\n---\ntarget:   connected (ambiguous)\nfamily:   CH32V103\nfamily byte: 0x01\nchip id:  0x2500410f  (bits [7:4] = silicon revision)\nuid:      1035abcd7869bc67\nflash:    64 KiB\nsku:      - (2 candidates in CH32V103)\nsram:     20 KiB (DB)\nwarning[sku-ambiguous]: chip_id matches 2 SKUs in family CH32V103: CH32V103C8T6, CH32V103R8T6 - pass --chip to disambiguate\n",
+ "rate_hz": 80000000,
+ "channels": {
+  "swclk": "GPIO44",
+  "swdio": "GPIO45"
+ },
+ "probe": "oep://80f1b2d80a34?via=usb",
+ "firmware": "0.0.51+13c9f74",
+ "complete": true,
+ "lost": []
+}

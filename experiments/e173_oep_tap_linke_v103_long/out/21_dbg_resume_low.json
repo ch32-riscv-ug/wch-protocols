@@ -1,0 +1,14 @@
+{
+ "command": "dbg resume --speed low --probe wchlink://FB868F068059 --non-interactive --progress none",
+ "rc": 0,
+ "output": "resumed\n",
+ "rate_hz": 80000000,
+ "channels": {
+  "swclk": "GPIO44",
+  "swdio": "GPIO45"
+ },
+ "probe": "oep://80f1b2d80a34?via=usb",
+ "firmware": "0.0.51+13c9f74",
+ "complete": true,
+ "lost": []
+}

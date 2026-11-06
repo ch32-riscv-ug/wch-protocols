@@ -1,0 +1,14 @@
+{
+ "command": "dbg regs --speed medium --probe wchlink://FB868F068059 --non-interactive --progress none",
+ "rc": 0,
+ "output": "x0  zero 0x00000000\nx1  ra   0x0000046e\nx2  sp   0x20004ff0\nx3  gp   0x20000800\nx4  tp   0x79f913ee\nx5  t0   0x000000f4\nx6  t1   0x08400000\nx7  t2   0x00000000\nx8  s0   0x00000494\nx9  s1   0x2500410f\nx10 a0   0x2000000c\nx11 a1   0x1ffff7f4\nx12 a2   0x1ffff7f0\nx13 a3   0xe0000380\nx14 a4   0x00000001\nx15 a5   0x00000000\nx16 a6   0x08080010\nx17 a7   0x00000000\nx18 s2   0x47fd184d\nx19 s3   0x2a357dc7\nx20 s4   0x8fa0d759\nx21 s5   0x831d4448\nx22 s6   0xd2740111\nx23 s7   0xf0b1973f\nx24 s8   0xee8efebe\nx25 s9   0xa68ab708\nx26 s10  0x295b4d6d\nx27 s11  0xd5fc75ca\nx28 t3   0x00000000\nx29 t4   0x42020001\nx30 t5   0x00000000\nx31 t6   0x00000000\npc       0x0000011a\n",
+ "rate_hz": 80000000,
+ "channels": {
+  "swclk": "GPIO44",
+  "swdio": "GPIO45"
+ },
+ "probe": "oep://80f1b2d80a34?via=usb",
+ "firmware": "0.0.51+13c9f74",
+ "complete": true,
+ "lost": []
+}

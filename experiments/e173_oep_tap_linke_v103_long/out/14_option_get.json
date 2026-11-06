@@ -1,0 +1,14 @@
+{
+ "command": "target option get --speed high --probe wchlink://FB868F068059 --non-interactive --progress none",
+ "rc": 0,
+ "output": "family: CH32V103\nraw:    a55aff00ffffffffffffffffffffffff\nread-protect=off          (rdpr 0xa5)\nwrite-protect=0x00000000  (a set bit protects its sectors; WRPR 0xffffffff)\niwdg=sw                   (raw 1)\nstandby-reset=off         (raw 1)\nstop-reset=off            (raw 1)\nuser.PORCTR=1\ndata0=0xff\ndata1=0xff\n",
+ "rate_hz": 80000000,
+ "channels": {
+  "swclk": "GPIO44",
+  "swdio": "GPIO45"
+ },
+ "probe": "oep://80f1b2d80a34?via=usb",
+ "firmware": "0.0.51+13c9f74",
+ "complete": true,
+ "lost": []
+}
