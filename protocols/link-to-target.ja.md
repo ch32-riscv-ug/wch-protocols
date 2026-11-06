@@ -64,9 +64,9 @@ status: 形式ごとに違う。**52-bit short 形式**は WCH-LinkE fw 2.22 + X
 clock の空き時間ではなく、START / STOP で区切る。
 
 - START: SWCLK が high(アイドル)の間に SWDIO が立ち下がる。高速区間では立ち下がりの約 160 ns 前、低速区間では high の中ほどに来る。
-- STOP: SWCLK が high の間に SWDIO が立ち上がり、その後 SWCLK の high が 2 µs 以上続く。
+- STOP: SWCLK が high の間に SWDIO が立ち上がり、その high が**その前の 16 回の high の中央値の 1.5 倍より長い**。high の長さは、LinkE の STOP が中央値の 3.3〜3.75 倍、OEP の short 形式の STOP が約 2 倍、target が high の間に線を動かす所が 1.2 倍までだった。決まった長さ(2 µs など)で切ると、速い LinkE の STOP の high(1.84〜2.0 µs)を取りこぼし、2 つの frame が 1 つ(170 clock)にまとまる([E173](../experiments/e173_oep_tap_linke_v103_long/README.ja.md)、wireskein ee37142)。
 - read 中は **target も SWCLK の立ち上がりから 0.3 µs 以内に、high の間に SWDIO を変える**。形の上では START/STOP と同じなので、「frame の外の立下りだけを START とする」「後に長い high が続く立上りだけを STOP とする」という状態の区別が要る。
-- 空き時間で区切ると、低速設定の burst が 46 + 14×(3+35) + 7 のように割れ、前後の clock を 1 つ取り込んで read が 54 clock に見える(fixture 付属の `dmi_decode.py` はこの方式で、一部の write を R と表示し、frame を取りこぼす。値は START/STOP 方式と一致する)。`captures/tools/rvswd.py` は START/STOP 方式。
+- 空き時間で区切ると、低速設定の burst が 46 + 14×(3+35) + 7 のように割れ、前後の clock を 1 つ取り込んで read が 54 clock に見える(fixture 付属の `dmi_decode.py` はこの方式で、一部の write を R と表示し、frame を取りこぼす。値は START/STOP 方式と一致する)。`captures/tools/rvswd.py` は START/STOP 方式で、STOP を決まった長さ(high 1.6 µs 以上)で切る。fixture の L103 / X035 の収録はこれで切れる。
 
 <a id="short-frame"></a>
 
@@ -100,11 +100,14 @@ clock の空き時間ではなく、START / STOP で区切る。
 | Address | target | **7** | エコー |
 | Data | target | **32** | 読出データ |
 | Status | target | **2** | status(0 success / 2 failed / 3 busy) |
-| bit 83 | target | **1** | 資料は「Address+Data+Status の even parity」と書く。実測は下 |
+| bit 83 | **host** | **1** | 資料は「Address+Data+Status の even parity」と書き、target の位相に置く。実測は host が出す(下) |
 
-- host 位相(7+32+2+1)→ target 位相(7+32+2+1)と続き、最後に終端の 1 clock(`0`)。START + 85 clock + STOP。明示の turnaround bit は無い(位相の並びで切り替わる)。
+- host 位相(7+32+2+1)→ target 位相(7+32+2)→ host の bit 83 と続き、最後に終端の 1 clock(`0`)。START + 85 clock + STOP。明示の turnaround bit は無い(位相の並びで切り替わる)。
 - **CH549 WCH-Link fw 2.12 → V103 は、すべての DMI をこの形で送る**([E165](../experiments/e165_linke_x035_v103_wire/README.ja.md))。target 位相の番地は host の番地をそのまま返し、write では data も返し、read では読んだ値が載る。status は `00`。**bit 41 と bit 83 は parity として働いていない**: bit 41 は常に `0`、bit 83 は write で `0`、read で `1` だった。
-- **LinkE 2.22 は接続時(AttachChip、約 475 kHz の低速区間)の先頭でこの形の frame を 202 個送る**(L103 / V203 / V003、5 回の接続で 1005/1005 が同一):
+- **bit 83 は host が出す**(LinkE 2.22 → V103 も write で `0`、read で `1`)。線を放して pull-up の `1` のままにすると、V103 は write を受けない(DMCONTROL の write に status 1、PROGBUF0 は書いても 0 のまま)。host が write で `0`、read で `1` を出すと attach できた(OEP の probe、[E173](../experiments/e173_oep_tap_linke_v103_long/README.ja.md))。
+- **LinkE 2.22 → V103 も、すべての DMI をこの形で送る**([E173](../experiments/e173_oep_tap_linke_v103_long/README.ja.md)、85 clock。最初の 1 個だけ 80 clock で、下の問い合わせと見ている)。
+- **動いている V103 は、short 形式の frame を受けるか、線を放されるか、frame の途中で線が切れると、以降の frame に status 2 を返し続け、電源を切るまで戻らない**([E173](../experiments/e173_oep_tap_linke_v103_long/README.ja.md)、dmactive の立った V103。別の CH32V103R8T6 でも同じ)。V103 に short 形式を送らず、閉じた後も線を駆動したまま保つ。
+- **LinkE 2.22 は接続時(AttachChip、約 475 kHz の低速区間)の先頭でこの形の frame を 202 個送る**(L103 / V203 / V003、5 回の接続で 1005/1005 が同一。[E173](../experiments/e173_oep_tap_linke_v103_long/README.ja.md) の V203 の target info でも 202 回の後に short 形式へ移った):
 
   | 部分 | 1 個目 | 2〜202 個目 |
   |---|---|---|
@@ -131,7 +134,8 @@ clock の空き時間ではなく、START / STOP で区切る。
 ### まだ不明
 
 - (RVSWD)STOP 条件の波形の詳細、トランザクション間のアイドル規則、host 位相 → target 位相の切り替わりの電気的な振る舞い(どちらがいつ線を放すか)。
-- (RVSWD)long と short を選ぶ規則。LinkE が long 形式に答える target(V103)に接続したときの続き(LinkE の V103 の線は未収録)。
+- (RVSWD)long と short を選ぶ規則。LinkE は long 形式の問い合わせに V103 が答えればそのまま long 形式を使い、答えなければ short 形式に移ると見ている([E173](../experiments/e173_oep_tap_linke_v103_long/README.ja.md))が、判定の条件は確かめていない。
+- (RVSWD)ch32rv の操作の終わりの 1〜2 frame で、V103 の答えが 1 clock 遅れる(0x10 を 0x08 として返し、data も 1 bit ずれる。status 2 の frame もある。[E173](../experiments/e173_oep_tap_linke_v103_long/README.ja.md) の 13、14、19)。どの DMI の後に起きるかは確かめていない。
 - (RVSWD)7bit addr が RISC-V 標準 DTM(abits 可変)とどう対応するか。WCH の線上は 7 bit と観測。Swindle は `dmi->address_width = 8U` と宣言し、probe 側の responder は `address as u8` で受けている(`blackmagic_addon/hosted/remote_rv_protocol.c` / `rs_swindle/src/native/rpc_target/mod.rs`)ので、8 bit で上位が未使用なのか、Swindle が余裕を取っているのかは分からない。
 - (SWIO)LOW パルス幅の 0/1 の**許容閾値**、pull-up/open-drain 条件の限界、33 パルスの fast-read 応答の先頭 bit の意味。
 
