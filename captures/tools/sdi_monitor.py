@@ -12,7 +12,7 @@ the polling phase and the mailbox in them. It writes:
 - every access before and after the polling phase, one line per DMI op with its time; in the polling phase one line
   per nonzero DMDATA0 read with the ops that follow it, and every other access except DMDATA0 reads of 0.
 
-    WIRESKEIN=<wireskein checkout>   # 0.0.25 or later: a long capture is read in pieces
+    WIRESKEIN=<wireskein checkout>   # d681cc5 or later (a long capture read in pieces, ringing at START / STOP)
     (cd $WIRESKEIN && uv run wireskein decode $OLDPWD/<file.sr> \\
         --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"}}]}' \\
         --split workers=4 --items <dir>/items.ndjson --out <dir>/doc.json)

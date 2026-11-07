@@ -166,8 +166,8 @@ repo に置いているのは、仕様（[link-to-target](../../../protocols/lin
 
 - L103 の `.dmi.txt` / `.mem.txt` は `SPLIT=two DEBOUNCE=3` で作った。ただし `monitor_sdi` の `.dmi.txt` は別の作り方の要約(下)。
 - `more/l103/monitor_sdi.wireskein` は、収録の先頭 2 s(接続の列と、ch32rv の monitor が動いていた間の poll)を WireSkein の形式で残したもの(`wireskein convert monitor_sdi.sr monitor_sdi.wireskein --to 2`、3.6 MB)。L103 の `monitor_sdi` は `--duration 4` なのに 34.8 s 動き、元の `.sr`(展開すると 950 MB、38 s)の残りは同じ poll のくり返しだった。
-- `more/l103/monitor_sdi.dmi.txt`(36 KB)は、それを WireSkein の decode で読み、`captures/tools/sdi_monitor.py` で要約したもの(手順は [captures/README](../../README.ja.md)「解析環境」)。poll の数と間隔、0 以外の DMDATA0 の読出しごとの続き、mailbox が運んだ文字列、poll 以外の frame の全部を書く。中身:
-  - 63,824 frame。接続の列(320 frame、125.8 ms まで)の後は、最後まで R data0 / R data1 / W data0 だけ。DMDATA0 の読出しは 63,367 回、うち 0 以外は 68 回。
+- `more/l103/monitor_sdi.dmi.txt`(36 KB)は、それを WireSkein(d681cc5 以降)の decode で読み、`captures/tools/sdi_monitor.py` で要約したもの(手順は [captures/README](../../README.ja.md)「解析環境」)。poll の数と間隔、0 以外の DMDATA0 の読出しごとの続き、mailbox が運んだ文字列、poll 以外の frame の全部を書く。中身:
+  - 63,825 frame。接続の列(320 frame、125.8 ms まで)の後は、最後まで R data0 / R data1 / W data0 だけ。DMDATA0 の読出しは 63,368 回、うち 0 以外は 68 回。
   - 連続する DMDATA0 の読出しの間隔は中央値 29.52 µs(1〜99 % 点 28.80〜30.40 µs)。0 以外を読んだときは R data1 と W data0 が挟まり、次の poll まで約 90〜95 µs。
   - 0 以外の DMDATA0 を読むと、**文字数(低 byte)に関係なく**、約 30 µs 後に DMDATA1 を読み、約 62 µs 後に DMDATA0 へ 0 を書く(n = 1 / 2 / 7 の 68 回すべて)。
   - 例: `74707507`(7 文字、"upt")+ DATA1 `20656d69`("ime ")、`000a0d02`(2 文字、"\r\n")。mailbox の文字を並べると `uptime 1 s` から `uptime 17 s` までの 17 行で、1 行は約 112 ms ごとに出る(収録の `monitor_sdi.json` の stdout は host が CDC から受け取った分)。

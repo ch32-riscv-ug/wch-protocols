@@ -1,16 +1,16 @@
 # monitor_sdi.wireskein: RVSWD decoded by WireSkein 0.0.25, summarised by captures/tools/sdi_monitor.py
-# tick 25 MHz, 63824 DMI frames. Times are ms from the start of the capture.
+# tick 25 MHz, 63825 DMI frames. Times are ms from the start of the capture.
 
 ## DMI frames by clock count (clocks form read: count)
-  53 short  ok      63622
+  53 short  ok      63623
   85 long   not ok  202
-uninterpreted activity (WireSkein): 60414 stretch(es), 191812 edges
+uninterpreted activity (WireSkein): 60415 stretch(es), 191686 edges
 
 ## polling phase
-from 125.8076 ms to 1999.9727 ms: 63504 frames, all R data0 / R data1 / W data0 except 0 not read
-DMDATA0 reads: 63367, of which data 0: 63299, nonzero: 68
+from 125.8076 ms to 1999.9727 ms: 63505 frames, all R data0 / R data1 / W data0 except 0 not read
+DMDATA0 reads: 63368, of which data 0: 63300, nonzero: 68
 interval between consecutive DMDATA0 reads (us): median 29.52, p1 28.80, p99 30.40, min 27.40, max 94.80
-histogram, 1 us bins (100 = 100 or more): 27:10, 28:3144, 29:55933, 30:4117, 31:73, 32:13, 59:1, 60:2, 61:3, 62:1, 90:8, 91:20, 92:18, 93:10, 94:13
+histogram, 1 us bins (100 = 100 or more): 27:10, 28:3144, 29:55934, 30:4118, 31:73, 32:13, 60:2, 61:3, 62:1, 90:8, 91:20, 92:18, 93:10, 94:13
 
 ## mailbox sequence: what follows each nonzero DMDATA0 read in the polling phase, up to the next DMDATA0 read
 (n = DATA0 low byte = character count; EVT SDI_Printf puts characters 3-6 in DATA1)
