@@ -60,14 +60,16 @@ WIRESKEIN=$WIRESKEIN sh tools/wireskein_decode.sh <dir> fixtures/wire-linke-p4-2
     fixtures/wire-linke-p4-2026-09-25/more/l103/repeat*_{target_info,read_ram_256}.sr
 uv run python tools/linke_speed_table.py <dir>
 uv run python tools/linke_repeat_compare.py <dir> l103 target_info read_ram_256
-uv run python tools/rvswd_sdi_monitor.py fixtures/wire-linke-p4-2026-09-25/more/l103/monitor_sdi.sr   # 長い SDI monitor の要約(約 5 分、約 400 MB)
+(cd $WIRESKEIN && uv run wireskein decode $OLDPWD/fixtures/wire-linke-p4-2026-09-25/more/l103/monitor_sdi.wireskein \
+    --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"}}]}' --items /tmp/sdi.ndjson --out /tmp/sdi.json)
+uv run python tools/sdi_monitor.py /tmp/sdi.json /tmp/sdi.ndjson   # SDI monitor の要約(fixture の monitor_sdi.dmi.txt)
 ```
 
 - WireSkein の decode の出力: RVSWD は frame ごとに R/W・番地・値・形(short 53 / long 85 / burst 15+38N clock)・名前付きの欄(`fields`)・parity・サンプルしたままの bit 列(`bits`)・SWCLK の周期(`period_ns`)、long は target の答えの遅れ(`answer_delay`)。SWIO は frame ごとに R/W・番地・値と、LOW の幅・パルスの間・周期。どちらも `dm` に abstract command と program buffer を memory / register access にまとめたものが出る。`"layers": ["pulses"]`(SWIO)/ `["bits"]`(RVSWD)でパルス・クロック 1 本ずつの時刻も出る。形式は WireSkein の `docs/analysis-format.md`。区切りの条件と、空き時間で区切る方式の問題は [link-to-target](../protocols/link-to-target.ja.md) §3。
 - `tools/wireskein_decode.sh`: fixture の `.sr` を WireSkein でまとめて decode する。
 - `tools/linke_speed_table.py`: `extra/<target>/speed_{high,medium,low}_*` の decode から、速度設定ごとの SWCLK 周期(RVSWD)と、SWIO の LOW の幅・パルスの間・周期を出す。
 - `tools/linke_repeat_compare.py`: `more/<target>/repeat{1..5}_*` の decode を bit 単位で比べる。出力は frame 数、run 間の差、85 clock frame の中身、don't-care bit の分布。
-- `tools/rvswd_sdi_monitor.py`: SDI monitor の収録(25 MHz、38 s、950 MB)を読み、poll の数と間隔、DMDATA0 が 0 以外のときの続き(DMDATA1 の読出し、DMDATA0 への書込み)、mailbox が運んだ文字列、poll 以外の frame の全部を短い text にする。この長さは WireSkein の decode ではまだ読めないので、復号は `tools/rvswd_stream.py`(`.sr` の chunk を順に読む)と `tools/rvswd.py`(START/STOP で区切る)が行う。既定の hold filter は bit clock に無し、START / STOP に 3 sample。
+- `tools/sdi_monitor.py`: SDI monitor の収録の decode(`--items` の 1 行 1 項目)から、poll の数と間隔、DMDATA0 が 0 以外のときの続き(DMDATA1 の読出し、DMDATA0 への書込み)、mailbox が運んだ文字列、poll 以外の frame の全部を短い text にする。長い収録は WireSkein の decode が区切って読む(`--split`、WireSkein の `docs/long-captures.md`)。
 - fixture 付属の `tools/dmi_decode.py` は収録時の復号で、空き時間で区切る(一部の write を R と表示し、低速設定の burst を割る。値は START/STOP 方式と一致)。fixture の `.dmi.txt` / `.mem.txt` はその出力。
 - 09-11 fixture の `analyze.py` は、その fixture の WireSkein の decode を読んで照合する。標準 library だけで動く(uv でも system の python3 でもよい)。
 

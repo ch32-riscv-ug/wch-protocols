@@ -282,7 +282,7 @@ WCH 公開仕様は薄いが、**動作を主張する第三者実装が複数�
 
 ### SDI monitor
 
-`verified`(WCH-LinkE 2.22 → CH32L103、`more/l103/monitor_sdi`、25 MHz 収録。復号の要約は [`monitor_sdi.dmi.txt`](../captures/fixtures/wire-linke-p4-2026-09-25/more/l103/monitor_sdi.dmi.txt)、作り方は [fixture の README](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md))。LinkE は接続の列の後、DMDATA0 を約 29.5 µs ごとに読み続ける(38 s で 1,279,392 回、間隔の 1〜99 % 点は 28.8〜30.4 µs)。0 以外(低 byte = 文字数、上位 3 byte = 文字)を読むと、**文字数に関係なく** DMDATA1 を読み(約 30 µs 後)、DMDATA0 に 0 を書いて受領を返す(約 62 µs 後)。文字数 1 / 2 / 3 / 7 の 1,352 回すべてがこの順だった。[serial-and-print](serial-and-print.ja.md) §3 の郵便受け方式が線上でもそのまま見える。25 MHz の収録では poll の SWCLK の high が 3〜7 sample しかないので、bit clock に hold filter を掛けずに復号する(掛けると clock が落ちて 46〜52 clock に見える)。
+`verified`(WCH-LinkE 2.22 → CH32L103、`more/l103/monitor_sdi`、25 MHz 収録。復号の要約は [`monitor_sdi.dmi.txt`](../captures/fixtures/wire-linke-p4-2026-09-25/more/l103/monitor_sdi.dmi.txt)、作り方は [fixture の README](../captures/fixtures/wire-linke-p4-2026-09-25/README.ja.md))。LinkE は接続の列の後、DMDATA0 を約 29.5 µs ごとに読み続ける(収録の先頭 2 s で 63,367 回、間隔の 1〜99 % 点は 28.8〜30.4 µs)。0 以外(低 byte = 文字数、上位 3 byte = 文字)を読むと、**文字数に関係なく** DMDATA1 を読み(約 30 µs 後)、DMDATA0 に 0 を書いて受領を返す(約 62 µs 後)。文字数 1 / 2 / 7 の 68 回すべてがこの順だった。[serial-and-print](serial-and-print.ja.md) §3 の郵便受け方式が線上でもそのまま見える。25 MHz の収録では poll の SWCLK の high が 3〜7 sample しかなく、SWDIO は clock の縁で揺れる(WireSkein の decode は、揺れが収まった値で読む)。
 
 <a id="speed"></a>
 
