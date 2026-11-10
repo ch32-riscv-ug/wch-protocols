@@ -1,4 +1,4 @@
-# monitor_sdi.wireskein: RVSWD decoded by WireSkein 0.0.25, summarised by captures/tools/sdi_monitor.py
+# monitor_sdi.wireskein: RVSWD decoded by WireSkein 0.0.27, summarised by captures/tools/sdi_monitor.py
 # tick 25 MHz, 63825 DMI frames. Times are ms from the start of the capture.
 
 ## DMI frames by clock count (clocks form read: count)

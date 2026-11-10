@@ -7,7 +7,7 @@ frames (not the target's fast-read ones), the median of the frames' LOW widths o
 `long_median_ns`), of the high between pulses (`space_ns`) and of the period after a 1 / a 0 (`pitch_1_ns` /
 `pitch_0_ns`).
 
-    cd captures && WIRESKEIN=<wireskein checkout> sh tools/wireskein_decode.sh <dir> \\
+    cd captures && sh tools/wireskein_decode.sh <dir> \\
         fixtures/wire-linke-p4-2026-09-25/extra/*/speed_*.sr
     uv run python tools/linke_speed_table.py <dir>
 """

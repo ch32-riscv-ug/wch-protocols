@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Extract the LinkE V003 flash-loader DMI sequence from WireSkein's decode of the real wire capture.
 
-The frames and their DMI accesses come from WireSkein (963af20 or later); this script only reads
-the sequence. Decode first, in the wireskein checkout:
+The frames and their DMI accesses come from WireSkein (0.0.27 or later, from PyPI); this script only reads
+the sequence. Decode first:
 
-    uv run wireskein decode <wch-protocols>/captures/fixtures/wire-flash-v003-x035-2026-09-11/wire-v003.sr \
+    uvx --from 'wireskein>=0.0.27' wireskein decode <wch-protocols>/captures/fixtures/wire-flash-v003-x035-2026-09-11/wire-v003.sr \
         --spec '{"buses":[{"protocol":"swio","pins":{"dio":"CH0"}}]}' --out <dir>/wire-v003.json
 
 then:

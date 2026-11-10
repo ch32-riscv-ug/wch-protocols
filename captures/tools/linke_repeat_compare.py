@@ -3,7 +3,7 @@ WireSkein's decode of each (tools/wireskein_decode.sh): each frame's `bits` are 
 fields (park/padding, tail) included, so they can be compared, not only addr/data. The bit positions below are
 link-to-target's (#short-frame, #long-frame).
 
-    cd captures && WIRESKEIN=<wireskein checkout> sh tools/wireskein_decode.sh <dir> \\
+    cd captures && sh tools/wireskein_decode.sh <dir> \\
         fixtures/wire-linke-p4-2026-09-25/more/l103/repeat*_{target_info,read_ram_256}.sr
     uv run python tools/linke_repeat_compare.py <dir> l103 target_info read_ram_256
 """

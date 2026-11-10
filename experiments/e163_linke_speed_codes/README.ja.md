@@ -17,14 +17,13 @@ WCH-LinkE の SetSpeed(`81 0c 02 <family> <speed>`)の high `01` / medium `02` /
 - (a) 生のコマンド: [`raw_speed.py`](raw_speed.py) を ch32rv の代わりに走らせる(`CH32RV=raw_speed.py`)。
   - 流れは SetSpeed(family `01`、値 `00`〜`06` / `ff`)→ AttachChip →(任意で、実の family `0x0e` での SetSpeed)→ DmiOp で DMSTATUS の読出し 20 回 → DATA0 の書込み 4 回 → abstract memory read 4 回 → DetachChip。
 - (b) ch32rv 0.10.1 の `--speed high|medium|low flash pattern-4k.bin`。USB の往復は `out/flash_*.ndjson`。
-- 解析: 線は WireSkein の `wireskein decode`(`f21ee42` 以降)で読む(frame・DMI と、`layers: ["bits"]` で全 sampling edge の時刻)。(a) は [`analyze.py`](analyze.py) がその JSON を DMI の frame の区間で切った SWCLK の間隔と、`out/<name>.json` の USB の往復を読む(標準 library のみ)。
+- 解析: 線は WireSkein(PyPI の 0.0.27 以降)の `wireskein decode` で読む(frame・DMI と、`layers: ["bits"]` で全 sampling edge の時刻)。(a) は [`analyze.py`](analyze.py) がその JSON を DMI の frame の区間で切った SWCLK の間隔と、`out/<name>.json` の USB の往復を読む(標準 library のみ)。
 
 ```console
 OEP_CLIENT_SRC=<oep-client b9e60ed>/src CH32RV=$PWD/raw_speed.py uv run --no-project --with numpy --with pyserial --with pyusb \
   python linke_cap.py 30eda0e343c6-hs 50000000 out/pre01 256 0E028F0692F1 14,15 SWCLK,SWDIO l103 -- 01 -
-cd <wireskein>
 for f in <e163>/out/*.sr; do
-  uv run wireskein decode "$f" --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"},"layers":["bits"]}]}' --out <dir>/"$(basename "$f" .sr)".json
+  uvx --from 'wireskein>=0.0.27' wireskein decode "$f" --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"},"layers":["bits"]}]}' --out <dir>/"$(basename "$f" .sr)".json
 done
 python3 <e163>/analyze.py <dir>/*.json
 ```

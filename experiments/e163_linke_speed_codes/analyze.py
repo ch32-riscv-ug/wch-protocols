@@ -1,10 +1,10 @@
 """E163: SWCLK period of the DMI frames sent after AttachChip, per SetSpeed experiment (stdlib only).
 
-The frames and every sampling edge's time come from WireSkein's decode of out/<name>.sr (f21ee42 or
-later, with the `bits` layer); the USB side from out/<name>.json. Decode first, in the wireskein checkout:
+The frames and every sampling edge's time come from WireSkein's decode of out/<name>.sr (WireSkein
+0.0.27 or later from PyPI, with the `bits` layer); the USB side from out/<name>.json. Decode first:
 
     for f in <e163>/out/*.sr; do
-      uv run wireskein decode "$f" \
+      uvx --from 'wireskein>=0.0.27' wireskein decode "$f" \
         --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"},"layers":["bits"]}]}' \
         --out <dir>/"$(basename "$f" .sr)".json
     done

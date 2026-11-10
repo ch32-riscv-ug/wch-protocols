@@ -2,12 +2,12 @@
 """Check the structure in README.ja.md on WireSkein's decode of the two wire captures (stdlib only).
 
 The pulses, sampling edges, frames, fields, DMI accesses and per-frame timing come from WireSkein;
-this script only checks and summarises them. Decode first, in the wireskein checkout (f21ee42 or later),
+this script only checks and summarises them. Decode first with WireSkein (0.0.27 or later, from PyPI),
 with the lower layers the timing needs (SWIO's pulses, RVSWD's sampling edges):
 
-    uv run wireskein decode <fixture>/wire-v003.sr \
+    uvx --from 'wireskein>=0.0.27' wireskein decode <fixture>/wire-v003.sr \
         --spec '{"buses":[{"protocol":"swio","pins":{"dio":"CH0"},"layers":["pulses"]}]}' --out <dir>/wire-v003.json
-    uv run wireskein decode <fixture>/wire-x035.sr \
+    uvx --from 'wireskein>=0.0.27' wireskein decode <fixture>/wire-x035.sr \
         --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"CH0","dio":"CH1"},"layers":["bits"]}]}' --out <dir>/wire-x035.json
 
 then:

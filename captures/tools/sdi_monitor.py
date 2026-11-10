@@ -12,10 +12,9 @@ the polling phase and the mailbox in them. It writes:
 - every access before and after the polling phase, one line per DMI op with its time; in the polling phase one line
   per nonzero DMDATA0 read with the ops that follow it, and every other access except DMDATA0 reads of 0.
 
-    WIRESKEIN=<wireskein checkout>   # d681cc5 or later (a long capture read in pieces, ringing at START / STOP)
-    (cd $WIRESKEIN && uv run wireskein decode $OLDPWD/<file.sr> \\
+    uvx --from 'wireskein>=0.0.27' wireskein decode <file.sr> \\
         --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"}}]}' \\
-        --split workers=4 --items <dir>/items.ndjson --out <dir>/doc.json)
+        --split workers=4 --items <dir>/items.ndjson --out <dir>/doc.json
     uv run python tools/sdi_monitor.py <dir>/doc.json <dir>/items.ndjson > <file>.dmi.txt
 """
 import json, statistics, sys

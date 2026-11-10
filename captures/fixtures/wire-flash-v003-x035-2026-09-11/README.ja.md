@@ -40,12 +40,11 @@ target の厳密な package、電源電圧、pull-up 値、LA probe の電気条
 
 元の `.json` は JSON array ではなく 1 行 1 object の NDJSON なので、内容を変えず拡張子だけ `.ndjson` にした。`.sr` は PulseView で再オープンできる生セッション。
 
-解析は 2 段で再現する。線の pulse / bit / frame / field / DMI への読み取りと timing は WireSkein の `wireskein decode`（`f21ee42` 以降）が出し、`analyze.py` はその JSON を読んで検算する（標準 library のみ）。既知 pattern の 4096 byte 一致を `assert` し、一致しなければ静かに結果を出さず失敗する。
+解析は 2 段で再現する。線の pulse / bit / frame / field / DMI への読み取りと timing は WireSkein（PyPI の 0.0.27 以降）の `wireskein decode` が出し、`analyze.py` はその JSON を読んで検算する（標準 library のみ）。既知 pattern の 4096 byte 一致を `assert` し、一致しなければ静かに結果を出さず失敗する。
 
 ```console
-cd <wireskein>
-uv run wireskein decode <この directory>/wire-v003.sr --spec '{"buses":[{"protocol":"swio","pins":{"dio":"CH0"},"layers":["pulses"]}]}' --out <dir>/wire-v003.json
-uv run wireskein decode <この directory>/wire-x035.sr --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"CH0","dio":"CH1"},"layers":["bits"]}]}' --out <dir>/wire-x035.json
+uvx --from 'wireskein>=0.0.27' wireskein decode <この directory>/wire-v003.sr --spec '{"buses":[{"protocol":"swio","pins":{"dio":"CH0"},"layers":["pulses"]}]}' --out <dir>/wire-v003.json
+uvx --from 'wireskein>=0.0.27' wireskein decode <この directory>/wire-x035.sr --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"CH0","dio":"CH1"},"layers":["bits"]}]}' --out <dir>/wire-x035.json
 python3 <この directory>/analyze.py <dir>/wire-v003.json <dir>/wire-x035.json
 ```
 

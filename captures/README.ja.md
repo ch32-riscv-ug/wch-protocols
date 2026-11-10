@@ -49,19 +49,18 @@ capture の下処理(エッジから bit・frame・DMI への復号と、frame �
 ```console
 cd captures
 uv sync
-# WireSkein の checkout で decode する(.sr をそのまま読む)。fixture の線の名前は SWCLK / SWDIO / SWIO
-WIRESKEIN=<wireskein checkout>
-(cd $WIRESKEIN && uv run wireskein decode $OLDPWD/fixtures/wire-linke-p4-2026-09-25/l103/target_info.sr \
-    --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"}}]}' --out /tmp/l103_target_info.json)
-(cd $WIRESKEIN && uv run wireskein decode $OLDPWD/fixtures/wire-linke-p4-2026-09-25/v003/target_info.sr \
-    --spec '{"buses":[{"protocol":"swio","pins":{"dio":"SWIO"}}]}' --out /tmp/v003_target_info.json)
+# WireSkein(PyPI の 0.0.27 以降)で decode する(.sr をそのまま読む)。fixture の線の名前は SWCLK / SWDIO / SWIO
+uvx --from 'wireskein>=0.0.27' wireskein decode fixtures/wire-linke-p4-2026-09-25/l103/target_info.sr \
+    --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"}}]}' --out /tmp/l103_target_info.json
+uvx --from 'wireskein>=0.0.27' wireskein decode fixtures/wire-linke-p4-2026-09-25/v003/target_info.sr \
+    --spec '{"buses":[{"protocol":"swio","pins":{"dio":"SWIO"}}]}' --out /tmp/v003_target_info.json
 # fixture の複数の .sr をまとめて decode し、<dir>/<元のパス>.json に置く(v003 は SWIO、ほかは RVSWD)
-WIRESKEIN=$WIRESKEIN sh tools/wireskein_decode.sh <dir> fixtures/wire-linke-p4-2026-09-25/extra/*/speed_*.sr \
+sh tools/wireskein_decode.sh <dir> fixtures/wire-linke-p4-2026-09-25/extra/*/speed_*.sr \
     fixtures/wire-linke-p4-2026-09-25/more/l103/repeat*_{target_info,read_ram_256}.sr
 uv run python tools/linke_speed_table.py <dir>
 uv run python tools/linke_repeat_compare.py <dir> l103 target_info read_ram_256
-(cd $WIRESKEIN && uv run wireskein decode $OLDPWD/fixtures/wire-linke-p4-2026-09-25/more/l103/monitor_sdi.wireskein \
-    --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"}}]}' --items /tmp/sdi.ndjson --out /tmp/sdi.json)
+uvx --from 'wireskein>=0.0.27' wireskein decode fixtures/wire-linke-p4-2026-09-25/more/l103/monitor_sdi.wireskein \
+    --spec '{"buses":[{"protocol":"rvswd","pins":{"clk":"SWCLK","dio":"SWDIO"}}]}' --items /tmp/sdi.ndjson --out /tmp/sdi.json
 uv run python tools/sdi_monitor.py /tmp/sdi.json /tmp/sdi.ndjson   # SDI monitor の要約(fixture の monitor_sdi.dmi.txt)
 ```
 

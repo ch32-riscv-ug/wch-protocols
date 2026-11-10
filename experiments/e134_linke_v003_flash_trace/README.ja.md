@@ -36,12 +36,11 @@ loaderを残したまま小pageごとにunlock+erase+program+verifyを繰り返�
 
 ## 再現
 
-線のframe・DMIへの読み取りはWireSkeinの`wireskein decode`（`963af20`以降）が出し、
+線のframe・DMIへの読み取りはWireSkein（PyPIの0.0.27以降）の`wireskein decode`が出し、
 `analyze.py`はそのJSONからコマンド列と間隔を読む（標準libraryのみ）。
 
 ```sh
-cd <wireskein>
-uv run wireskein decode <wch-protocols>/captures/fixtures/wire-flash-v003-x035-2026-09-11/wire-v003.sr \
+uvx --from 'wireskein>=0.0.27' wireskein decode <wch-protocols>/captures/fixtures/wire-flash-v003-x035-2026-09-11/wire-v003.sr \
   --spec '{"buses":[{"protocol":"swio","pins":{"dio":"CH0"}}]}' --out <dir>/wire-v003.json
 python3 <wch-protocols>/experiments/e134_linke_v003_flash_trace/analyze.py <dir>/wire-v003.json
 ```
