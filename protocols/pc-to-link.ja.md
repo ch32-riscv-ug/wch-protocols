@@ -59,6 +59,7 @@ probe → host:  0x81 | reason | len | ...       (エラー。観測した形)
 |---|---|---|---|---|---|---|---|
 | `81 0d 01 01` | <a id="cmd-get-probe-info"></a>**GetProbeInfo** | `82 0d 04 {fw_major} {fw_minor} {variant} {fw_mode}` | `verified` | yes / yes | LinkE 2.22 | usb-capture; wlink; probe-rs; minichlink | variant: 1=CH549 / 2,0x12=LinkE / 3=LinkS / 4=DAPLink / 5,0x85=LinkW。fw_mode: 0=RISC-V / 1=ARM。実測: LinkE `02 16 12 00`(2.22)、CH549 `02 0c 01 00`(2.12) 別名: wlink=GetProbeInfo; openocd=wlink_init / wlink_clean; minichlink=LESetupInterface / LEResetInterface; probe-rs=GetProbeInfo |
 | `81 0d 01 01` | GetProbeInfo | `82 0d 04 02 0c 01 00` | `verified` | yes / yes | CH549 Link 2.12 | usb-capture; ch32rv replay target-info-v103 |  |
+| `81 0d 01 01` | GetProbeInfo | `82 0d 04 …` | `verified` | yes / yes | LinkE 2.23 · V307 | hw-log; ch32rv 3b9f49a | 副作用: SDI print の転送(`81 0d 02 ee 00`)を止め、CDC を UART bridge に戻す。`ee 00` の後に GetProbeInfo を 1 つ送ると、CDC に SDI の行が来なくなり UART の行が戻った。USB を開いて閉じるだけ・SetSpeed(`0x01`)では転送のまま。ch32rv のように接続のたびに GetProbeInfo を送る道具は、どれも転送を切る(ch32rv 0.35.4 の実測、2026-11-26) |
 | `81 0d 02 01 13` | <a id="cmd-get-probe-info-extra-bytes"></a>**GetProbeInfo(payload に余分な byte)** | `82 0d 04 02 16 12 00` | `verified` | yes / yes | LinkE 2.22 | usb-capture | probe は payload の先頭 byte を sub と読み、残りを無視して GetProbeInfo として答える。RstOut のつもりでこの frame を送ると RST は動かず、続く DmiOp の read が busy(data `ffffffff`)になる 別名: - |
 | `81 0d 02 01 13` | GetProbeInfo(payload に余分な byte) | `82 0d 04 02 0c 01 00` | `verified` | yes / yes | CH549 Link 2.12 | usb-capture |  |
 | `81 0d 01 02` | <a id="cmd-attach-chip"></a>**AttachChip** | `82 0d 05 {family} {chip_id:be32}` | `verified` | yes / yes | LinkE 2.22 · V003 V103 V203 V205 V307 V407 X035 X315 L103 M030 H417 V006 | usb-capture; wire-capture; wlink; probe-rs; board-identify | target が無いと 4 byte の応答、または `81 55 01 xx`。接続の間 hart を halt し、target の clock を組み直して戻さない(§11) 別名: wlink=AttachChip; openocd=wlink_init / wlink_clean; minichlink=LESetupInterface / InternalLinkEHaltMode; probe-rs=AttachChip |
@@ -265,6 +266,7 @@ option bytes は通常の page と手順が違う(専用の unlock と OPTPG/OPT
 <!-- END generated:wchlink-commands section=8 -->
 
 - **SDI enable 手順**: GetProbeInfo → SetSpeed(family=`0x01`)→ AttachChip → **SetSpeed(実 family)** → **`81 0d 02 ee 00`**。詰まりやすい点は 2 つ: enable の flag が逆(`ee 01` は disable)、AttachChip の後に実 family で SetSpeed を送り直す(LinkE が forward する DM data の番地がこれで決まると見られる)。wlink の `sdi-print enable` の usbmon capture と一致。enable の後は vendor interface を解放してよい。
+- **GetProbeInfo で転送が止まる**(`verified`、LinkE 2.23 · V307): enable の後に [GetProbeInfo](#cmd-get-probe-info)(`81 0d 01 01`)を受けると、LinkE は SDI の転送を止め、CDC を UART bridge に戻す。USB を開いて閉じるだけ、SetSpeed(`0x01`)では止まらない。接続のたびに GetProbeInfo を送る道具(ch32rv など)を 1 つ流すと転送は切れるので、転送で読むのは enable の直後に CDC を開いたときだけになる。
 - **CDC の DTR**: CDC を開くときに DTR を assert すると、LinkE は SDI の forward を 1 行で止める。SDI を読むときは DTR を触らない開き方をする(UART bridge は DTR を立てても影響しない)。
 
 <a id="chip-identification"></a>
