@@ -50,7 +50,9 @@ app を bypass して system bootloader を起動させる:
 
 <a id="x035-read-protect"></a>
 
-**読み出し保護(RDPR)中は factory bootloader が走らない**(`verified`、CH32X035F8U6、BTVER 2.60、debug 線は OEP probe の RVSWD、2026-10-14): WriteConfig で RDPR/nRDPR = `00 ff` を書くと option bytes にすぐ反映され、reset 後に `FLASH_OBR` の bit1(RDPRT)が立つ(`FLASH_OBR` = `0x03ffff7e`)。この状態では RVSWD の flash 読み出しが fault(`0x03`)になる。`BOOT_MODE` を立てて reset すると、`STATR` は `0xF000` になるが PC は `0x0`(`ra` = `0x684`)で止まり、ISP device は現れない。確かめた入り方は 2 通り: (1) debug 線で `BOOT_MODE` を立てて reset、(2) debugger の電源を落とし(OEP probe の hub port を off)、X035 の USB port だけ電源を入れ直してから app に DFU_DETACH(app は `BOOT_MODE` を立てて reset するが、bootloader は同じく PC `0x0` で止まり一度も列挙されない)。ISP 経由で保護を外すことはできないので、解除は debug 線で行う(code flash は消える)。BOOT キーで入った場合は未確認。
+**読み出し保護(RDPR)中は factory bootloader が走らない**(`verified`、CH32X035F8U6、BTVER 2.60、debug 線は OEP probe の RVSWD、2026-10-14): WriteConfig で RDPR/nRDPR = `00 ff` を書くと option bytes にすぐ反映され、reset 後に `FLASH_OBR` の bit1(RDPRT)が立つ(`FLASH_OBR` = `0x03ffff7e`)。この状態では RVSWD の flash 読み出しが fault(`0x03`)になる。`BOOT_MODE` を立てて reset すると、`STATR` は `0xF000` になるが PC は `0x0`(`ra` = `0x684`)で止まり、ISP device は現れない。確かめた入り方は 2 通り: (1) debug 線で `BOOT_MODE` を立てて reset、(2) debugger の電源を落とし(OEP probe の hub port を off)、X035 の USB port だけ電源を入れ直してから app に DFU_DETACH(app は `BOOT_MODE` を立てて reset するが、bootloader は同じく PC `0x0` で止まり一度も列挙されない)。debug 線や DFU_DETACH から入れた場合は、ISP 経由で保護を外すことはできないので、解除は debug 線で行う(code flash は消える)。
+
+**BOOT キーで入れた場合は、保護中でも bootloader が走る**(`verified`、CH32X035G8U6、BTVER 2.60、Windows、ch32rv 0.38.0、2026-11-27。出荷時に保護の掛かった PPVision の板): BOOT キーを押して USB を挿すと `1a86:55e0` が列挙され、ReadConfig は RDPR `ff`(保護)を返し、Program は受けるが flash は変わらない(照合が先頭から合わない)。WriteConfig で RDPR/nRDPR = `a5 5a` を書くと ReadConfig はすぐ `a5` を返すが、同じ session で書いても照合はまた合わない。**保護を外した設定は chip の次の reset から効く**: IspEnd で抜け、BOOT キーで入れ直すと ReadConfig は `a5`(保護なし)で、書き込み・照合・起動まで通った。
 
 - **保護中の app は数秒で止まる**(`verified`、同じ範囲): debugger なしで電源を入れると app は起動するが、約 4〜5 s で USB を切って止まった。debugger(OEP probe)が起動して約 1 s で止まった例もある(probe が起動時に線を触るためと見られる。推定)。保護を外すと同じ image は止まらない。止まる原因は未調査。
 
